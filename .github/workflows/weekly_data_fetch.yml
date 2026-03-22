@@ -1,0 +1,54 @@
+name: Weekly Data Accumulation
+
+on:
+  schedule:
+    # Friday 10 PM UTC = Friday 6 PM ET (well after US market close and data settlement)
+    - cron: '0 22 * * 5'
+  workflow_dispatch:
+    # Manual trigger for re-runs or debugging
+    inputs:
+      dry_run:
+        description: 'Dry run (log actions, skip HTTP calls)'
+        required: false
+        default: 'false'
+
+jobs:
+  fetch:
+    name: Fetch weekly market data
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run weekly fetch
+        env:
+          AV_API_KEY: ${{ secrets.AV_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          DRY_FLAG=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_FLAG="--dry-run"
+          fi
+          python scripts/weekly_fetch.py $DRY_FLAG
+
+      - name: Commit updated database
+        # Only commit if the DB file actually changed (skip for dry-run)
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/pgr_financials.db
+          # Only commit if there are staged changes
+          git diff --staged --quiet || git commit -m \
+            "chore: weekly data update $(date -u +%Y-%m-%d) [skip ci]"
+          git push

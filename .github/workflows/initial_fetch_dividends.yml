@@ -1,0 +1,119 @@
+name: Initial Fetch — Day 2 (Dividends)
+
+# Scheduled for Tue 2026-03-24 at 06:00 AM EDT (10:00 AM UTC).
+# Run this the day after initial_fetch_prices.yml so both fetches stay
+# within the 25 AV calls/day free-tier limit.
+#
+# AV budget: 23 calls (one per ticker).
+
+on:
+  schedule:
+    # 06:00 AM EDT = 10:00 AM UTC  |  date: Tue 2026-03-24
+    - cron: '0 10 24 3 *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run — log actions, skip HTTP calls and DB writes'
+        required: false
+        default: 'false'
+      force:
+        description: 'Force re-fetch even if already run today'
+        required: false
+        default: 'false'
+
+jobs:
+  fetch-dividends:
+    name: Fetch full dividend history (23 AV calls)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check Day 1 (prices) completed successfully
+        # Warn — but do NOT block — if the DB appears to have no price rows.
+        # This catches the case where Day 2 runs before Day 1.
+        run: |
+          python - <<'EOF'
+          import sqlite3, sys
+          try:
+              conn = sqlite3.connect("data/pgr_financials.db")
+              n = conn.execute("SELECT COUNT(*) FROM daily_prices").fetchone()[0]
+              print(f"daily_prices rows: {n}")
+              if n == 0:
+                  print("WARNING: No price rows found. Did Day 1 (initial_fetch_prices) run?")
+          except Exception as e:
+              print(f"WARNING: Could not check DB: {e}")
+          EOF
+
+      - name: Run initial dividend fetch
+        id: fetch
+        env:
+          AV_API_KEY:  ${{ secrets.AV_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          DRY_FLAG=""
+          FORCE_FLAG=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_FLAG="--dry-run"
+          fi
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            FORCE_FLAG="--force"
+          fi
+          python scripts/initial_fetch.py --dividends $DRY_FLAG $FORCE_FLAG \
+            --status-file data/fetch_status.md
+
+      - name: Commit database and status report
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/pgr_financials.db data/fetch_status.md
+          git diff --staged --quiet || git commit -m \
+            "chore: initial fetch Day 2 — dividends $(date -u +%Y-%m-%d) [skip ci]"
+          git push
+
+      - name: Verify dividend rows in DB
+        # Assert the DB has dividend rows for PGR and at least one ETF.
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          python - <<'EOF'
+          import sqlite3, sys
+          conn = sqlite3.connect("data/pgr_financials.db")
+          for ticker in ["PGR", "VTI"]:
+              n = conn.execute(
+                  "SELECT COUNT(*) FROM daily_dividends WHERE ticker=?", (ticker,)
+              ).fetchone()[0]
+              print(f"  {ticker}: {n} dividend rows")
+              if n == 0:
+                  print(f"ERROR: {ticker} has no dividend rows — fetch may have failed.")
+                  sys.exit(1)
+          print("Verification passed.")
+          EOF
+
+      - name: Bootstrap complete summary
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          python - <<'EOF'
+          import sqlite3
+          conn = sqlite3.connect("data/pgr_financials.db")
+          price_count = conn.execute("SELECT COUNT(*) FROM daily_prices").fetchone()[0]
+          div_count   = conn.execute("SELECT COUNT(*) FROM daily_dividends").fetchone()[0]
+          tickers     = conn.execute("SELECT COUNT(DISTINCT ticker) FROM daily_prices").fetchone()[0]
+          print("=" * 50)
+          print("  PGR v2 Bootstrap Complete")
+          print("=" * 50)
+          print(f"  Price rows    : {price_count:,}")
+          print(f"  Dividend rows : {div_count:,}")
+          print(f"  Tickers       : {tickers}")
+          print("  Run weekly_fetch.py each Friday to stay current.")
+          EOF

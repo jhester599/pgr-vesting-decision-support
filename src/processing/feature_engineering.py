@@ -28,6 +28,7 @@ Feature groups:
 """
 
 import os
+import sqlite3
 
 import numpy as np
 import pandas as pd
@@ -189,6 +190,68 @@ def get_feature_columns(df: pd.DataFrame) -> list[str]:
     return [c for c in df.columns if c != "target_6m_return"]
 
 
+def build_feature_matrix_from_db(
+    conn: sqlite3.Connection,
+    force_refresh: bool = False,
+) -> pd.DataFrame:
+    """DB-backed entry point for the PGR feature matrix.
+
+    Loads PGR price, dividend, split, fundamental, and EDGAR data from the
+    v2 SQLite database and delegates to the existing build_feature_matrix().
+    The Parquet cache is always bypassed because the DB is the authoritative
+    source for v2 runs.
+
+    Args:
+        conn:          Open SQLite connection with v2 schema.
+        force_refresh: When True, forces recomputation even if a Parquet cache
+                       file already exists (always True internally; parameter
+                       preserved for API symmetry with build_feature_matrix).
+
+    Returns:
+        DataFrame identical in structure to build_feature_matrix() output:
+        monthly DatetimeIndex, feature columns, and ``target_6m_return``.
+
+    Raises:
+        ValueError: If PGR has no price data in the database.
+    """
+    from src.database import db_client
+
+    prices = db_client.get_prices(conn, "PGR")
+
+    dividends_raw = db_client.get_dividends(conn, "PGR")
+    if dividends_raw.empty:
+        dividends = pd.DataFrame(
+            columns=["dividend", "source"],
+            index=pd.DatetimeIndex([], name="ex_date"),
+        )
+    else:
+        dividends = dividends_raw.rename(columns={"amount": "dividend"})
+
+    splits_raw = db_client.get_splits(conn, "PGR")
+    if splits_raw.empty:
+        splits = pd.DataFrame(
+            columns=["split_ratio", "numerator", "denominator"],
+            index=pd.DatetimeIndex([], name="split_date"),
+        )
+    else:
+        splits = splits_raw
+
+    fundamentals_raw = db_client.get_pgr_fundamentals(conn)
+    fundamentals = fundamentals_raw if not fundamentals_raw.empty else None
+
+    edgar_raw = db_client.get_pgr_edgar_monthly(conn)
+    pgr_monthly = edgar_raw if not edgar_raw.empty else None
+
+    return build_feature_matrix(
+        price_history=prices,
+        dividend_history=dividends,
+        split_history=splits,          # may be empty DataFrame with DatetimeIndex
+        fundamentals=fundamentals,
+        pgr_monthly=pgr_monthly,
+        force_refresh=True,            # always recompute from DB; never use stale Parquet
+    )
+
+
 def get_X_y(
     df: pd.DataFrame,
     drop_na_target: bool = True,
@@ -209,4 +272,54 @@ def get_X_y(
     feature_cols = get_feature_columns(df)
     X = df[feature_cols].copy()
     y = df["target_6m_return"].copy()
+    return X, y
+
+
+def get_X_y_relative(
+    df: pd.DataFrame,
+    relative_returns: pd.Series,
+    drop_na_target: bool = True,
+) -> tuple[pd.DataFrame, pd.Series]:
+    """Align the feature matrix to a relative return target series.
+
+    Used by the v2 WFO engine to build (X, y) pairs where y is the
+    PGR-minus-ETF relative return rather than the absolute PGR return.
+
+    Args:
+        df:               Feature matrix from build_feature_matrix() or
+                          build_feature_matrix_from_db().  Must have a
+                          DatetimeIndex of month-end dates.
+        relative_returns: Pre-computed relative return Series (e.g. from
+                          load_relative_return_matrix() or a column from
+                          build_relative_return_targets()).  DatetimeIndex
+                          must overlap with ``df``.
+        drop_na_target:   If True, drop rows where ``relative_returns`` is NaN.
+
+    Returns:
+        ``(X, y)`` where X is the aligned feature DataFrame (same columns as
+        ``get_feature_columns(df)``) and y is the relative return Series.
+
+    Raises:
+        ValueError: If the aligned index is empty (no date overlap between
+                    ``df`` and ``relative_returns``, or all NaN after dropping).
+    """
+    feature_cols = get_feature_columns(df)
+    X_raw = df[feature_cols]
+
+    # Inner join: retain only dates present in both the feature matrix and
+    # the relative return series.
+    aligned = X_raw.join(relative_returns, how="inner")
+
+    if drop_na_target:
+        aligned = aligned.dropna(subset=[relative_returns.name])
+
+    if aligned.empty:
+        raise ValueError(
+            f"No overlapping non-NaN dates between feature matrix and relative "
+            f"return series '{relative_returns.name}'. Verify that both cover "
+            f"the same date range and that the series is not all-NaN."
+        )
+
+    X = aligned[feature_cols].copy()
+    y = aligned[relative_returns.name].copy()
     return X, y

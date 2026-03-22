@@ -1,0 +1,87 @@
+name: Initial Fetch — Day 1 (Prices)
+
+# Scheduled for Mon 2026-03-23 at 06:00 AM EDT (10:00 AM UTC).
+# workflow_dispatch lets you trigger it manually at any time (e.g. to test).
+#
+# AV budget: 23 calls (one per ticker).  Run this on Day 1; run
+# initial_fetch_dividends.yml on Day 2 so the two fetches don't share a day.
+
+on:
+  schedule:
+    # 06:00 AM EDT = 10:00 AM UTC  |  date: Mon 2026-03-23
+    - cron: '0 10 23 3 *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run — log actions, skip HTTP calls and DB writes'
+        required: false
+        default: 'false'
+      force:
+        description: 'Force re-fetch even if already run today'
+        required: false
+        default: 'false'
+
+jobs:
+  fetch-prices:
+    name: Fetch full price history (23 AV calls)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run initial price fetch
+        id: fetch
+        env:
+          AV_API_KEY:  ${{ secrets.AV_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          DRY_FLAG=""
+          FORCE_FLAG=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_FLAG="--dry-run"
+          fi
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            FORCE_FLAG="--force"
+          fi
+          python scripts/initial_fetch.py --prices $DRY_FLAG $FORCE_FLAG \
+            --status-file data/fetch_status.md
+
+      - name: Commit database and status report
+        # Skip commit for dry runs — nothing was written to disk
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/pgr_financials.db data/fetch_status.md
+          git diff --staged --quiet || git commit -m \
+            "chore: initial fetch Day 1 — prices $(date -u +%Y-%m-%d) [skip ci]"
+          git push
+
+      - name: Verify row counts in DB
+        # Quick sanity check: assert the DB has price rows for PGR and VTI.
+        # Fails the job (and triggers a GitHub notification) if either is empty.
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          python - <<'EOF'
+          import sqlite3, sys
+          conn = sqlite3.connect("data/pgr_financials.db")
+          for ticker in ["PGR", "VTI"]:
+              n = conn.execute(
+                  "SELECT COUNT(*) FROM daily_prices WHERE ticker=?", (ticker,)
+              ).fetchone()[0]
+              print(f"  {ticker}: {n} price rows")
+              if n == 0:
+                  print(f"ERROR: {ticker} has no price rows — fetch may have failed.")
+                  sys.exit(1)
+          print("Verification passed.")
+          EOF

@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 
 import config
-from src.models.wfo_engine import run_wfo, WFOResult, FoldResult
+from src.models.wfo_engine import run_wfo, predict_current, WFOResult, FoldResult
 from src.models.regularized_models import (
     build_lasso_pipeline,
     build_ridge_pipeline,
@@ -83,19 +83,40 @@ class TestWFOTemporalIntegrity:
     def test_embargo_gap_enforced(self, synthetic_dataset):
         """
         The gap between train_end and test_start must be at least
-        EMBARGO_MONTHS to prevent autocorrelation leakage.
+        target_horizon_months (default 6) to prevent autocorrelation leakage
+        from overlapping forward return windows.
+
+        v2 fix: embargo = target_horizon_months (not the legacy 1-month gap).
+        With a 6-month forward return target, consecutive monthly observations
+        share 5 months of overlapping return window — a 1-month gap does NOT
+        purge this.  Asserting >= 168 days (6 × 28) confirms the fix.
         """
         X, y = synthetic_dataset
-        result = run_wfo(X, y, model_type="lasso")
-        embargo = pd.DateOffset(months=config.WFO_EMBARGO_MONTHS)
+        target_horizon = 6
+        result = run_wfo(X, y, model_type="lasso", target_horizon_months=target_horizon)
 
         for fold in result.folds:
             gap = fold.test_start - fold.train_end
-            # Allow a few days tolerance for business-day rounding
-            min_gap = pd.Timedelta(days=config.WFO_EMBARGO_MONTHS * 28)
+            # 6 months × 28 days/month = 168 days minimum (business-day safe)
+            min_gap = pd.Timedelta(days=target_horizon * 28)
             assert gap >= min_gap, (
                 f"Fold {fold.fold_idx}: gap between train_end and test_start "
-                f"({gap.days} days) is less than {min_gap.days} days (embargo)."
+                f"({gap.days} days) is less than {min_gap.days} days "
+                f"(required embargo for {target_horizon}M horizon)."
+            )
+
+    def test_embargo_gap_enforced_12m(self, synthetic_dataset):
+        """Embargo must be >= 12 months for a 12-month target horizon."""
+        X, y = synthetic_dataset
+        target_horizon = 12
+        result = run_wfo(X, y, model_type="lasso", target_horizon_months=target_horizon)
+
+        for fold in result.folds:
+            gap = fold.test_start - fold.train_end
+            min_gap = pd.Timedelta(days=target_horizon * 28)
+            assert gap >= min_gap, (
+                f"Fold {fold.fold_idx}: gap {gap.days} days < {min_gap.days} days "
+                f"(embargo for {target_horizon}M horizon)."
             )
 
     def test_no_test_dates_overlap_train_dates(self, synthetic_dataset):
@@ -105,13 +126,18 @@ class TestWFOTemporalIntegrity:
         """
         X, y = synthetic_dataset
         from sklearn.model_selection import TimeSeriesSplit
+        target_horizon = 6
         n = len(X)
-        n_splits = max(1, (n - config.WFO_TRAIN_WINDOW_MONTHS) // config.WFO_TEST_WINDOW_MONTHS)
+        n_splits = max(
+            1,
+            (n - config.WFO_TRAIN_WINDOW_MONTHS - target_horizon)
+            // config.WFO_TEST_WINDOW_MONTHS,
+        )
         tscv = TimeSeriesSplit(
             n_splits=n_splits,
             max_train_size=config.WFO_TRAIN_WINDOW_MONTHS,
             test_size=config.WFO_TEST_WINDOW_MONTHS,
-            gap=config.WFO_EMBARGO_MONTHS,
+            gap=target_horizon,
         )
         for fold_idx, (train_idx, test_idx) in enumerate(tscv.split(X.values)):
             overlap = set(train_idx) & set(test_idx)
@@ -124,13 +150,18 @@ class TestWFOTemporalIntegrity:
         """Verify numerically that max train index < min test index for every fold."""
         X, y = synthetic_dataset
         from sklearn.model_selection import TimeSeriesSplit
+        target_horizon = 6
         n = len(X)
-        n_splits = max(1, (n - config.WFO_TRAIN_WINDOW_MONTHS) // config.WFO_TEST_WINDOW_MONTHS)
+        n_splits = max(
+            1,
+            (n - config.WFO_TRAIN_WINDOW_MONTHS - target_horizon)
+            // config.WFO_TEST_WINDOW_MONTHS,
+        )
         tscv = TimeSeriesSplit(
             n_splits=n_splits,
             max_train_size=config.WFO_TRAIN_WINDOW_MONTHS,
             test_size=config.WFO_TEST_WINDOW_MONTHS,
-            gap=config.WFO_EMBARGO_MONTHS,
+            gap=target_horizon,
         )
         for fold_idx, (train_idx, test_idx) in enumerate(tscv.split(X.values)):
             assert max(train_idx) < min(test_idx), (
@@ -249,3 +280,102 @@ class TestFeatureImportances:
         assert abs_coefs == sorted(abs_coefs, reverse=True), (
             "Feature importances must be sorted by absolute value descending."
         )
+
+
+# ---------------------------------------------------------------------------
+# v2 WFOResult metadata tests
+# ---------------------------------------------------------------------------
+
+class TestWFOResultMetadata:
+    def test_benchmark_stored_in_result(self, synthetic_dataset):
+        """benchmark kwarg is stored in WFOResult.benchmark."""
+        X, y = synthetic_dataset
+        result = run_wfo(X, y, benchmark="VTI")
+        assert result.benchmark == "VTI"
+
+    def test_target_horizon_stored_in_result(self, synthetic_dataset):
+        """target_horizon_months kwarg is stored in WFOResult.target_horizon."""
+        X, y = synthetic_dataset
+        result = run_wfo(X, y, target_horizon_months=12)
+        assert result.target_horizon == 12
+
+    def test_model_type_stored_in_result(self, synthetic_dataset):
+        X, y = synthetic_dataset
+        result = run_wfo(X, y, model_type="ridge")
+        assert result.model_type == "ridge"
+
+    def test_summary_includes_benchmark_and_horizon(self, synthetic_dataset):
+        X, y = synthetic_dataset
+        result = run_wfo(X, y, benchmark="BND", target_horizon_months=12)
+        summary = result.summary()
+        assert summary["benchmark"] == "BND"
+        assert summary["target_horizon"] == 12
+
+
+# ---------------------------------------------------------------------------
+# v2 predict_current tests
+# ---------------------------------------------------------------------------
+
+class TestPredictCurrent:
+    def test_returns_required_keys(self, synthetic_dataset):
+        X, y = synthetic_dataset
+        result = run_wfo(X, y, model_type="lasso", target_horizon_months=6)
+        # Use all but last row as full history; last row as current
+        X_full = X.iloc[:-1]
+        y_full = y.iloc[:-1]
+        X_current = X.iloc[[-1]]
+        pred = predict_current(X_full, y_full, X_current, result)
+        assert "predicted_return" in pred
+        assert "ic" in pred
+        assert "hit_rate" in pred
+        assert "benchmark" in pred
+        assert "target_horizon" in pred
+        assert "top_features" in pred
+
+    def test_predicted_return_is_float(self, synthetic_dataset):
+        X, y = synthetic_dataset
+        result = run_wfo(X, y, model_type="lasso")
+        pred = predict_current(X.iloc[:-1], y.iloc[:-1], X.iloc[[-1]], result)
+        assert isinstance(pred["predicted_return"], float)
+
+    def test_predict_current_is_not_last_fold_mean(self, synthetic_dataset):
+        """
+        predict_current() must return a fresh model prediction, not the v1
+        placeholder (mean of the last fold's y_hat).
+
+        We verify this by passing an extreme X_current (all features set to
+        10× the column max) and checking that the prediction differs from the
+        last fold's out-of-sample mean — i.e., features are actually used.
+        """
+        X, y = synthetic_dataset
+        result = run_wfo(X, y, model_type="ridge")  # Ridge never zeros coefficients
+        X_full = X.iloc[:-1]
+        y_full = y.iloc[:-1]
+
+        # Construct two extreme observations at opposite ends of the feature space
+        X_extreme_high = X.iloc[[-1]].copy()
+        X_extreme_low = X.iloc[[-1]].copy()
+        X_extreme_high.iloc[0] = X.max().values * 10
+        X_extreme_low.iloc[0] = X.min().values * 10
+
+        pred_high = predict_current(X_full, y_full, X_extreme_high, result,
+                                    model_type="ridge")
+        pred_low = predict_current(X_full, y_full, X_extreme_low, result,
+                                   model_type="ridge")
+
+        # Ridge with non-zero coefficients must give different predictions for
+        # extreme-high vs extreme-low feature values.
+        assert pred_high["predicted_return"] != pred_low["predicted_return"], (
+            "predict_current returned the same value for extreme-high and "
+            "extreme-low feature inputs under Ridge — this suggests the model "
+            "has no non-zero coefficients or is using a constant placeholder."
+        )
+
+    def test_ic_and_hit_rate_from_wfo_result(self, synthetic_dataset):
+        """ic and hit_rate in predict_current output must match wfo_result metrics."""
+        X, y = synthetic_dataset
+        result = run_wfo(X, y, model_type="lasso", benchmark="VTI")
+        pred = predict_current(X.iloc[:-1], y.iloc[:-1], X.iloc[[-1]], result)
+        assert pred["ic"] == pytest.approx(result.information_coefficient)
+        assert pred["hit_rate"] == pytest.approx(result.hit_rate)
+        assert pred["benchmark"] == "VTI"

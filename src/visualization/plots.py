@@ -4,10 +4,16 @@ Visualization module for the PGR Vesting Decision Support engine.
 All figures are saved to /plots/*.png.  plt.show() is never called
 (headless-compatible).
 
-Three outputs:
+v1 outputs:
   - plots/wfo_equity_curve.png    : Out-of-sample predicted vs. actual returns
   - plots/feature_importance.png  : Lasso coefficient magnitudes across WFO folds
   - plots/portfolio_drift.png     : Current vs. target sector allocation
+
+v2 outputs (backtest & multi-benchmark):
+  - plots/backtest_heatmap_<horizon>m.png  : Event × benchmark realized return grid
+  - plots/hit_rate_by_benchmark.png        : Bar chart of directional hit rates
+  - plots/predicted_vs_realized_<etf>.png  : Scatter per vesting event
+  - plots/multi_benchmark_signals.png      : Current signal bar chart
 """
 
 from __future__ import annotations
@@ -228,6 +234,304 @@ def plot_portfolio_drift(portfolio_state: "PortfolioState") -> str:
 
     plt.tight_layout(rect=[0, 0.05, 1, 1])
     path = os.path.join(_PLOTS_DIR, "portfolio_drift.png")
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+# ---------------------------------------------------------------------------
+# v2 Plot 4: Backtest heatmap
+# ---------------------------------------------------------------------------
+
+def plot_backtest_heatmap(
+    results: list,
+    horizon: int,
+) -> str:
+    """
+    Heatmap of realized relative returns: rows = vesting events, columns = ETF
+    benchmarks.  Cells are color-coded by return magnitude; correct directional
+    predictions are marked with a checkmark, incorrect with an X.
+
+    Args:
+        results: List of BacktestEventResult from run_historical_backtest().
+        horizon: Target horizon in months (6 or 12).
+
+    Returns:
+        Path to the saved PNG, or ``""`` if no data.
+    """
+    from src.reporting.backtest_report import (
+        generate_backtest_table,
+        generate_correct_direction_table,
+    )
+
+    realized = generate_backtest_table(results, horizon)
+    if realized.empty:
+        return ""
+
+    correct = generate_correct_direction_table(results, horizon)
+
+    _ensure_plots_dir()
+
+    n_events, n_bench = realized.shape
+    fig_w = max(12, n_bench * 0.7)
+    fig_h = max(6, n_events * 0.5)
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+
+    vals = realized.values.astype(float)
+    vmax = np.nanpercentile(np.abs(vals), 95)
+    im = ax.imshow(vals, cmap="RdYlGn", aspect="auto",
+                   vmin=-vmax, vmax=vmax)
+
+    ax.set_xticks(range(n_bench))
+    ax.set_xticklabels(realized.columns, rotation=45, ha="right", fontsize=8)
+    ax.set_yticks(range(n_events))
+    ax.set_yticklabels(
+        [str(d) for d in realized.index], fontsize=8
+    )
+
+    # Overlay correctness markers
+    for i, event_date in enumerate(realized.index):
+        for j, bench in enumerate(realized.columns):
+            if bench in correct.columns and event_date in correct.index:
+                is_correct = correct.loc[event_date, bench]
+                marker = "✓" if is_correct else "✗"
+                color = "black"
+                ax.text(j, i, marker, ha="center", va="center",
+                        fontsize=7, color=color, alpha=0.8)
+
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label("Realized Relative Return (PGR − ETF)", fontsize=9)
+    ax.set_title(
+        f"PGR Backtest — Realized Relative Return Heatmap ({horizon}M horizon)\n"
+        "✓ = correct directional prediction, ✗ = incorrect",
+        fontsize=11,
+    )
+    plt.tight_layout()
+
+    path = os.path.join(_PLOTS_DIR, f"backtest_heatmap_{horizon}m.png")
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+# ---------------------------------------------------------------------------
+# v2 Plot 5: Hit rate by benchmark
+# ---------------------------------------------------------------------------
+
+def plot_hit_rate_by_benchmark(
+    results: list,
+) -> str:
+    """
+    Horizontal bar chart of directional hit rate per ETF benchmark, with
+    separate bars for the 6M and 12M target horizons.
+
+    Args:
+        results: List of BacktestEventResult (all horizons combined).
+
+    Returns:
+        Path to the saved PNG, or ``""`` if no data.
+    """
+    if not results:
+        return ""
+
+    _ensure_plots_dir()
+    import collections
+
+    # hit_rates[horizon][benchmark] = (n_correct, n_total)
+    hit_data: dict[int, dict[str, list[bool]]] = collections.defaultdict(
+        lambda: collections.defaultdict(list)
+    )
+    for r in results:
+        hit_data[r.target_horizon][r.benchmark].append(r.correct_direction)
+
+    horizons = sorted(hit_data.keys())
+    if not horizons:
+        return ""
+
+    # Collect benchmark names across all horizons
+    all_benchmarks = sorted(
+        {b for h in hit_data.values() for b in h.keys()}
+    )
+
+    n_bench = len(all_benchmarks)
+    fig, ax = plt.subplots(figsize=(10, max(5, n_bench * 0.45)))
+
+    bar_height = 0.35
+    y = np.arange(n_bench)
+    colors = ["#1f77b4", "#ff7f0e", "#2ca02c"]
+
+    for i, horizon in enumerate(horizons):
+        hit_rates = []
+        for bench in all_benchmarks:
+            vals = hit_data[horizon].get(bench, [])
+            hit_rates.append(np.mean(vals) if vals else np.nan)
+        offset = (i - len(horizons) / 2 + 0.5) * bar_height
+        ax.barh(
+            y + offset, hit_rates, bar_height,
+            label=f"{horizon}M", color=colors[i % len(colors)], alpha=0.85,
+        )
+
+    ax.axvline(0.5, color="black", linewidth=1.0, linestyle="--",
+               label="50% baseline")
+    ax.set_yticks(y)
+    ax.set_yticklabels(all_benchmarks, fontsize=9)
+    ax.xaxis.set_major_formatter(mtick.PercentFormatter(xmax=1, decimals=0))
+    ax.set_xlabel("Directional Hit Rate")
+    ax.set_title(
+        "PGR Backtest — Directional Hit Rate by Benchmark\n"
+        "(fraction of vesting events where PGR direction was correctly predicted)"
+    )
+    ax.legend(fontsize=9)
+    ax.grid(True, axis="x", alpha=0.3)
+    ax.set_xlim(0, 1)
+
+    plt.tight_layout()
+    path = os.path.join(_PLOTS_DIR, "hit_rate_by_benchmark.png")
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+# ---------------------------------------------------------------------------
+# v2 Plot 6: Predicted vs. realized scatter
+# ---------------------------------------------------------------------------
+
+def plot_predicted_vs_realized_scatter(
+    results: list,
+    benchmark: str,
+) -> str:
+    """
+    Scatter plot of predicted vs. realized relative return for one benchmark,
+    one point per vesting event, colored by RSU type (time/performance).
+
+    Args:
+        results:   List of BacktestEventResult.
+        benchmark: ETF ticker to filter on (e.g. ``"VTI"``).
+
+    Returns:
+        Path to the saved PNG, or ``""`` if no data for this benchmark.
+    """
+    subset = [r for r in results if r.benchmark == benchmark]
+    if not subset:
+        return ""
+
+    _ensure_plots_dir()
+
+    time_r = [r for r in subset if r.event.rsu_type == "time"]
+    perf_r = [r for r in subset if r.event.rsu_type == "performance"]
+
+    fig, ax = plt.subplots(figsize=(8, 7))
+
+    for group, color, label in [
+        (time_r, "#1f77b4", "Time RSU (January)"),
+        (perf_r, "#ff7f0e", "Performance RSU (July)"),
+    ]:
+        if group:
+            ax.scatter(
+                [r.predicted_relative_return for r in group],
+                [r.realized_relative_return for r in group],
+                color=color, alpha=0.75, s=60, label=label,
+            )
+
+    all_vals = (
+        [r.predicted_relative_return for r in subset]
+        + [r.realized_relative_return for r in subset]
+    )
+    all_vals = [v for v in all_vals if not np.isnan(v)]
+    if all_vals:
+        lim = max(abs(min(all_vals)), abs(max(all_vals))) * 1.15
+        ax.set_xlim(-lim, lim)
+        ax.set_ylim(-lim, lim)
+
+    ax.axhline(0, color="black", linewidth=0.5)
+    ax.axvline(0, color="black", linewidth=0.5)
+    ax.plot([-1, 1], [-1, 1], "k--", linewidth=0.8, alpha=0.4, label="Perfect prediction")
+
+    ax.xaxis.set_major_formatter(mtick.PercentFormatter(xmax=1, decimals=1))
+    ax.yaxis.set_major_formatter(mtick.PercentFormatter(xmax=1, decimals=1))
+    ax.set_xlabel("Predicted Relative Return (PGR − ETF)")
+    ax.set_ylabel("Realized Relative Return (PGR − ETF)")
+    ax.set_title(f"PGR vs. {benchmark} — Predicted vs. Realized\n(all vesting events)")
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.3)
+
+    # IC annotation
+    predicted = [r.predicted_relative_return for r in subset]
+    realized = [r.realized_relative_return for r in subset
+                if not np.isnan(r.realized_relative_return)]
+    if len(predicted) == len(realized) and len(realized) > 2:
+        from scipy.stats import spearmanr
+        ic, _ = spearmanr(predicted, realized)
+        ax.text(
+            0.04, 0.96, f"IC (Spearman) = {ic:.3f}",
+            transform=ax.transAxes, fontsize=9,
+            verticalalignment="top",
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.7),
+        )
+
+    plt.tight_layout()
+    safe_bench = benchmark.replace("/", "_")
+    path = os.path.join(_PLOTS_DIR, f"predicted_vs_realized_{safe_bench}.png")
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+# ---------------------------------------------------------------------------
+# v2 Plot 7: Multi-benchmark current signals
+# ---------------------------------------------------------------------------
+
+def plot_multi_benchmark_signals(
+    signals_df: pd.DataFrame,
+) -> str:
+    """
+    Horizontal bar chart of the current model predictions across all ETF
+    benchmarks.  Bars are colored green (OUTPERFORM), red (UNDERPERFORM), or
+    grey (NEUTRAL).
+
+    Args:
+        signals_df: DataFrame from ``get_current_signals()`` with index =
+                    benchmark ticker and columns including
+                    ``predicted_relative_return`` and ``signal``.
+
+    Returns:
+        Path to the saved PNG, or ``""`` if signals_df is empty.
+    """
+    if signals_df.empty or "predicted_relative_return" not in signals_df.columns:
+        return ""
+
+    _ensure_plots_dir()
+
+    df = signals_df.sort_values("predicted_relative_return", ascending=True)
+    benchmarks = df.index.tolist()
+    values = df["predicted_relative_return"].values
+
+    signal_col = df["signal"] if "signal" in df.columns else pd.Series(
+        ["NEUTRAL"] * len(df), index=df.index
+    )
+    colors = []
+    for sig in signal_col.loc[benchmarks]:
+        if sig == "OUTPERFORM":
+            colors.append("#2ca02c")
+        elif sig == "UNDERPERFORM":
+            colors.append("#d62728")
+        else:
+            colors.append("#7f7f7f")
+
+    fig, ax = plt.subplots(figsize=(10, max(5, len(benchmarks) * 0.45)))
+    ax.barh(benchmarks, values, color=colors, alpha=0.85)
+    ax.axvline(0, color="black", linewidth=1.0)
+    ax.xaxis.set_major_formatter(mtick.PercentFormatter(xmax=1, decimals=1))
+    ax.set_xlabel("Predicted Relative Return (PGR − ETF)")
+    ax.set_title(
+        "PGR Current Signals — Live Model Predictions\n"
+        "Green = OUTPERFORM (hold PGR), Red = UNDERPERFORM (consider selling), "
+        "Grey = NEUTRAL"
+    )
+    ax.grid(True, axis="x", alpha=0.3)
+
+    plt.tight_layout()
+    path = os.path.join(_PLOTS_DIR, "multi_benchmark_signals.png")
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     return path

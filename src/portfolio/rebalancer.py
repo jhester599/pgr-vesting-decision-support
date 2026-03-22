@@ -48,6 +48,10 @@ class VestingRecommendation:
     etf_allocation: dict[str, float]   # ticker -> $ amount
     tax_lot_strategy: str              # e.g. "Sell 50 LTCG lots, 0 STCG lots"
     signal_rationale: str              # Human-readable explanation
+    # v2 multi-benchmark fields (optional; populated when multi-benchmark WFO
+    # results are available)
+    benchmark_signals: dict[str, dict] | None = None   # ETF -> signal dict
+    target_horizon: int = 6                            # months (6 or 12)
 
 
 def generate_recommendation(
@@ -58,18 +62,24 @@ def generate_recommendation(
     wfo_result: WFOResult,
     portfolio_state: PortfolioState,
     sell_pct_override: float | None = None,
+    multi_benchmark_results: dict[str, WFOResult] | None = None,
+    target_horizon: int = 6,
 ) -> VestingRecommendation:
     """
     Generate a vesting recommendation for a single event.
 
     Args:
-        vest_date:         The RSU vesting date.
-        rsu_type:          "time" (January) or "performance" (July).
-        current_price:     Current PGR market price per share.
-        lots:              All available tax lots.
-        wfo_result:        Completed WFOResult from run_wfo().
-        portfolio_state:   Current aggregate portfolio (PGR + ETF holdings).
-        sell_pct_override: If provided, overrides the signal-derived percentage.
+        vest_date:               The RSU vesting date.
+        rsu_type:                "time" (January) or "performance" (July).
+        current_price:           Current PGR market price per share.
+        lots:                    All available tax lots.
+        wfo_result:              Completed WFOResult from run_wfo().
+        portfolio_state:         Current aggregate portfolio (PGR + ETF holdings).
+        sell_pct_override:       If provided, overrides the signal-derived percentage.
+        multi_benchmark_results: Optional dict from run_all_benchmarks() mapping
+                                 ETF ticker → WFOResult.  When provided, populates
+                                 ``benchmark_signals`` on the returned recommendation.
+        target_horizon:          Forward return horizon in months (default 6).
 
     Returns:
         VestingRecommendation data structure.
@@ -79,6 +89,8 @@ def generate_recommendation(
     hit_rate = wfo_result.hit_rate
 
     # Use last fold's out-of-sample mean as a directional proxy
+    # (predict_current() provides a live refit; this path uses the WFO
+    # result directly when a current observation is not yet available)
     last_fold = wfo_result.folds[-1]
     predicted_return = float(last_fold.y_hat.mean())
 
@@ -119,6 +131,19 @@ def generate_recommendation(
     # --- Reallocation recommendation ---
     etf_allocation = recommend_reallocation(portfolio_state, net) if net > 0 else {}
 
+    # --- Multi-benchmark signal summary (v2) ---
+    benchmark_signals: dict[str, dict] | None = None
+    if multi_benchmark_results is not None:
+        benchmark_signals = {
+            etf: {
+                "ic":        res.information_coefficient,
+                "hit_rate":  res.hit_rate,
+                "n_folds":   len(res.folds),
+                "benchmark": etf,
+            }
+            for etf, res in multi_benchmark_results.items()
+        }
+
     return VestingRecommendation(
         vest_date=vest_date,
         rsu_type=rsu_type,
@@ -134,6 +159,8 @@ def generate_recommendation(
         etf_allocation=etf_allocation,
         tax_lot_strategy=lot_strategy,
         signal_rationale=rationale,
+        benchmark_signals=benchmark_signals,
+        target_horizon=target_horizon,
     )
 
 
