@@ -6,9 +6,19 @@ sklearn.model_selection.TimeSeriesSplit with a defined embargo/purge
 period to prevent autocorrelation leakage between adjacent folds.
 
 Configuration (from config.py):
-  TRAIN_WINDOW_MONTHS = 60  (5-year rolling training window)
-  TEST_WINDOW_MONTHS  = 6   (6-month out-of-sample test period)
-  EMBARGO_MONTHS      = 1   (gap between train end and test start)
+  WFO_TRAIN_WINDOW_MONTHS = 60  (5-year rolling training window)
+  WFO_TEST_WINDOW_MONTHS  = 6   (6-month out-of-sample test period)
+
+v2 embargo fix: the gap between train and test must equal the forward return
+horizon being predicted.  With a 6-month target, consecutive monthly
+observations share 5 months of overlapping return window — a gap of 1
+month (the v1 default) does not purge this autocorrelation.
+
+    target horizon = 6M  →  gap = 6 months  (WFO_EMBARGO_MONTHS_6M)
+    target horizon = 12M →  gap = 12 months (WFO_EMBARGO_MONTHS_12M)
+
+The legacy ``WFO_EMBARGO_MONTHS = 1`` constant is retained in config.py
+only for v1 backward compatibility.
 
 WFO procedure per fold:
   1. Slice X_train, y_train using the rolling window index.
@@ -24,6 +34,8 @@ No in-sample data contaminates the performance statistics.
 PROHIBITED: K-Fold cross-validation. This module exclusively uses
 TimeSeriesSplit as mandated by CLAUDE.md.
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Literal
@@ -67,6 +79,9 @@ class FoldResult:
 class WFOResult:
     """Aggregated results across all WFO folds."""
     folds: list[FoldResult] = field(default_factory=list)
+    benchmark: str = ""          # ETF ticker this model was trained against (v2)
+    target_horizon: int = 6      # Forward return horizon in months (v2)
+    model_type: str = "lasso"    # "lasso" or "ridge"
 
     @property
     def y_true_all(self) -> np.ndarray:
@@ -105,6 +120,9 @@ class WFOResult:
             "information_coefficient": self.information_coefficient,
             "mean_absolute_error": self.mean_absolute_error,
             "hit_rate": self.hit_rate,
+            "benchmark": self.benchmark,
+            "target_horizon": self.target_horizon,
+            "model_type": self.model_type,
         }
 
 
@@ -116,20 +134,34 @@ def run_wfo(
     X: pd.DataFrame,
     y: pd.Series,
     model_type: Literal["lasso", "ridge"] = "lasso",
+    target_horizon_months: int = 6,
+    benchmark: str = "",
 ) -> WFOResult:
     """
     Run Walk-Forward Optimization on the feature matrix.
 
+    The embargo (gap between training end and test start) is set equal to
+    ``target_horizon_months`` to eliminate autocorrelation leakage from
+    overlapping forward return windows.
+
     Args:
-        X:          Feature DataFrame (no NaN in price-derived columns;
-                    may have NaN in optional fundamental features).
-        y:          Target Series (6-month forward total return). Must have
-                    no NaN — call get_X_y(df, drop_na_target=True) first.
-        model_type: ``"lasso"`` (default; automatic feature selection via L1)
-                    or ``"ridge"`` (stable shrinkage via L2).
+        X:                     Feature DataFrame (no NaN in price-derived
+                               columns; may have NaN in optional fundamentals).
+        y:                     Target Series (forward total return or relative
+                               return). Must have no NaN — call
+                               get_X_y(drop_na_target=True) first.
+        model_type:            ``"lasso"`` (default; L1 feature selection) or
+                               ``"ridge"`` (L2 shrinkage).
+        target_horizon_months: Forward return horizon in months.  Sets the
+                               embargo gap.  Use 6 for 6M models, 12 for 12M.
+                               Default: 6.
+        benchmark:             ETF ticker this model is trained against
+                               (e.g. ``"VTI"``).  Stored in WFOResult for
+                               identification; does not affect computation.
 
     Returns:
         WFOResult containing per-fold FoldResults and aggregate metrics.
+        ``result.target_horizon`` and ``result.benchmark`` are set from args.
 
     Raises:
         ValueError: If y contains NaN values (caller must drop them first).
@@ -141,9 +173,12 @@ def run_wfo(
         )
 
     n = len(X)
+    # Subtract the embargo from available rows to avoid requesting more folds
+    # than the data can support with the new (larger) gap.
+    available = n - config.WFO_TRAIN_WINDOW_MONTHS - target_horizon_months
     n_splits = max(
         1,
-        (n - config.WFO_TRAIN_WINDOW_MONTHS) // config.WFO_TEST_WINDOW_MONTHS,
+        available // config.WFO_TEST_WINDOW_MONTHS,
     )
 
     if n < config.WFO_TRAIN_WINDOW_MONTHS + config.WFO_TEST_WINDOW_MONTHS:
@@ -158,43 +193,37 @@ def run_wfo(
         n_splits=n_splits,
         max_train_size=config.WFO_TRAIN_WINDOW_MONTHS,
         test_size=config.WFO_TEST_WINDOW_MONTHS,
-        gap=config.WFO_EMBARGO_MONTHS,
+        gap=target_horizon_months,   # v2: embargo = target horizon (not 1 month)
     )
 
-    # NaN imputation for optional fundamental features: forward-fill within
-    # the training fold, then fill remaining NaN with the training median.
-    # This is done inside each fold to prevent leakage.
     X_arr = X.values
     y_arr = y.values
     feature_names = list(X.columns)
     dates = X.index
 
-    result = WFOResult()
+    result = WFOResult(
+        benchmark=benchmark,
+        target_horizon=target_horizon_months,
+        model_type=model_type,
+    )
 
     for fold_idx, (train_idx, test_idx) in enumerate(tscv.split(X_arr)):
-        X_train, X_test = X_arr[train_idx], X_arr[test_idx]
+        X_train, X_test = X_arr[train_idx].copy(), X_arr[test_idx].copy()
         y_train, y_test = y_arr[train_idx], y_arr[test_idx]
 
-        # Impute NaN with training-fold column medians (no leakage: only train data).
-        # If an entire column is NaN within this fold (e.g. EDGAR fundamentals are
-        # absent in the earliest windows), fall back to 0.0 as a neutral "no signal"
-        # placeholder rather than propagating NaN into the scaler/model.
+        # Impute NaN with training-fold column medians (no leakage).
         train_medians = np.nanmedian(X_train, axis=0)
         train_medians = np.where(np.isnan(train_medians), 0.0, train_medians)
         for col_i in range(X_train.shape[1]):
-            nan_mask_train = np.isnan(X_train[:, col_i])
-            nan_mask_test = np.isnan(X_test[:, col_i])
-            X_train[nan_mask_train, col_i] = train_medians[col_i]
-            X_test[nan_mask_test, col_i] = train_medians[col_i]
+            X_train[np.isnan(X_train[:, col_i]), col_i] = train_medians[col_i]
+            X_test[np.isnan(X_test[:, col_i]), col_i] = train_medians[col_i]
 
-        # Build and fit pipeline (StandardScaler fit only on X_train)
         pipeline: Pipeline = (
             build_lasso_pipeline() if model_type == "lasso" else build_ridge_pipeline()
         )
         pipeline.fit(X_train, y_train)
         y_hat = pipeline.predict(X_test)
 
-        # Extract optimal alpha
         model_step = pipeline.named_steps["model"]
         optimal_alpha = float(
             model_step.alpha_ if hasattr(model_step, "alpha_") else model_step.alpha
@@ -222,30 +251,77 @@ def run_wfo(
 
 
 def predict_current(
+    X_full: pd.DataFrame,
+    y_full: pd.Series,
     X_current: pd.DataFrame,
     wfo_result: WFOResult,
     model_type: Literal["lasso", "ridge"] = "lasso",
+    train_window_months: int | None = None,
 ) -> dict:
     """
-    Generate a live prediction for the current vesting date using a model
-    retrained on the most recent full training window.
+    Generate a live prediction for the current observation by refitting on
+    the most recent ``train_window_months`` of data.
+
+    Unlike the v1 placeholder (which returned the last fold's y_hat mean),
+    this function actually trains a fresh model on the most recent window
+    and predicts on ``X_current``.  The WFO IC and hit_rate from the
+    completed out-of-sample folds are retained as confidence metrics.
 
     Args:
-        X_current:  Single-row DataFrame with features for the current date.
-        wfo_result: Completed WFOResult from run_wfo().
-        model_type: Must match the model_type used in run_wfo().
+        X_full:              Complete feature DataFrame (same X used in run_wfo).
+        y_full:              Complete target Series (same y used in run_wfo,
+                             including NaN rows which are dropped here).
+        X_current:           Single-row DataFrame with current features.
+        wfo_result:          Completed WFOResult from run_wfo() — provides IC,
+                             hit_rate, benchmark, and target_horizon metadata.
+        model_type:          Must match the model_type used in run_wfo().
+        train_window_months: Number of most-recent months to refit on.
+                             Defaults to ``config.WFO_TRAIN_WINDOW_MONTHS`` (60).
 
     Returns:
-        Dict with keys: predicted_6m_return, ic_weighted_confidence,
-        top_features (list of (name, coef) tuples).
+        Dict with keys:
+          - ``predicted_return`` (float): fresh model prediction on X_current
+          - ``ic`` (float): out-of-sample IC from wfo_result
+          - ``hit_rate`` (float): directional hit rate from wfo_result
+          - ``benchmark`` (str): ETF ticker (from wfo_result)
+          - ``target_horizon`` (int): forward months (from wfo_result)
+          - ``top_features`` (list): top 5 (name, coef) from refitted model
     """
-    last_fold = wfo_result.folds[-1]
-    predicted = last_fold.y_hat.mean()  # Proxy — refit model not stored here
+    if train_window_months is None:
+        train_window_months = config.WFO_TRAIN_WINDOW_MONTHS
+
+    # Align X and y; drop NaN targets (same as get_X_y with drop_na_target=True)
+    aligned = X_full.join(y_full, how="inner")
+    aligned = aligned.dropna(subset=[y_full.name])
+    recent = aligned.iloc[-train_window_months:]
+
+    feature_cols = list(X_full.columns)
+    X_recent = recent[feature_cols].values.copy()
+    y_recent = recent[y_full.name].values
+
+    # Impute NaN with training medians (same as per-fold logic in run_wfo)
+    train_medians = np.nanmedian(X_recent, axis=0)
+    train_medians = np.where(np.isnan(train_medians), 0.0, train_medians)
+    for col_i in range(X_recent.shape[1]):
+        X_recent[np.isnan(X_recent[:, col_i]), col_i] = train_medians[col_i]
+
+    X_curr_arr = X_current[feature_cols].values.copy()
+    for col_i in range(X_curr_arr.shape[1]):
+        X_curr_arr[np.isnan(X_curr_arr[:, col_i]), col_i] = train_medians[col_i]
+
+    pipeline: Pipeline = (
+        build_lasso_pipeline() if model_type == "lasso" else build_ridge_pipeline()
+    )
+    pipeline.fit(X_recent, y_recent)
+    predicted = float(pipeline.predict(X_curr_arr)[0])
+
+    importances = get_feature_importances(pipeline, feature_cols)
 
     return {
-        "predicted_6m_return": float(predicted),
-        "ic_weighted_confidence": wfo_result.information_coefficient,
-        "top_features": list(last_fold.feature_importances.items())[:5],
-        "wfo_hit_rate": wfo_result.hit_rate,
-        "wfo_mae": wfo_result.mean_absolute_error,
+        "predicted_return":  predicted,
+        "ic":                wfo_result.information_coefficient,
+        "hit_rate":          wfo_result.hit_rate,
+        "benchmark":         wfo_result.benchmark,
+        "target_horizon":    wfo_result.target_horizon,
+        "top_features":      list(importances.items())[:5],
     }

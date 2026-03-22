@@ -1,4 +1,4 @@
-# PGR Vesting Decision Support
+# PGR Vesting Decision Support · v2.7
 
 A quantitative decision-support engine for systematically unwinding a concentrated
 Progressive Corporation (PGR) RSU position held in a taxable brokerage account.
@@ -23,6 +23,7 @@ For each event the engine outputs:
 - Estimated gross proceeds, tax liability, and net after-tax proceeds
 - Tax lot selection strategy (loss harvesting → LTCG → STCG priority)
 - ETF reallocation targets for the proceeds
+- Per-benchmark signal grid (OUTPERFORM / UNDERPERFORM / NEUTRAL vs. all 20 ETFs)
 
 ---
 
@@ -35,21 +36,27 @@ Models PGR price performance in isolation.  Inputs are PGR-only features
 Predicts PGR 6-month DRIP total return; recommendation is sell/hold/partial
 based on model IC and predicted magnitude.
 
-### v2 — Relative Return Prediction Engine (in development)
+### v2 — Relative Return Prediction Engine (v2.7 — complete)
 
 Answers the question: *"At this vesting event, is PGR statistically likely to
-outperform each of the 22 alternative diversified funds over the next 6 or 12
+outperform each of the 20 alternative diversified funds over the next 6 or 12
 months?"*  One separate LassoCV/RidgeCV WFO model per benchmark ETF.
 
 Key improvements over v1:
+
 - **Relative return target**: PGR DRIP total return minus ETF DRIP total return
-- **22 benchmark ETFs**: complete backtest across all alternative investment targets
+- **20 benchmark ETFs**: Vanguard-preferred, sector coverage, all pre-2014 history
 - **6M and 12M horizons**: separate models for each prediction window
-- **Correct embargo**: 6M target → 6-month embargo (v1 used 1 month — a bug)
+- **Correct embargo**: 6M target → 6-month embargo; 12M target → 12-month embargo
+  (v1 used `gap=1` — a bug that allowed autocorrelation leakage)
 - **SQLite accumulation pipeline**: price + dividend + fundamentals history
   auto-updated weekly via GitHub Actions; committed back to the repository
-- **Historical vesting event backtest**: all mid-January and mid-July events
-  since 2014 are backtested end-to-end
+- **Multi-benchmark WFO**: 20 parallel models with per-event temporal slicing;
+  `predict_current()` genuinely refits on the most recent training window
+- **Historical vesting backtest**: all mid-January and mid-July events since 2014
+  backtested end-to-end; hit rate and IC reported per benchmark
+- **Reporting & visualization**: pivot tables, CSV export, heatmap, hit-rate bars,
+  predicted-vs-realized scatter, live multi-benchmark signal chart
 
 ---
 
@@ -100,7 +107,7 @@ pgr-vesting-decision-support/
 └── tests/                            # 69 pytest tests (v1), all passing
 ```
 
-### v2 modules (Phases 1–2 complete)
+### v2 modules (v2.7 — all phases complete)
 
 ```
 ├── src/
@@ -111,10 +118,45 @@ pgr-vesting-decision-support/
 │   │   └── db_client.py              # Connection, schema init, upsert/get helpers,
 │   │                                 #   API budget enforcement
 │   │
-│   └── ingestion/
-│       ├── multi_ticker_loader.py    # AV TIME_SERIES_WEEKLY → DB (23 tickers)
-│       ├── multi_dividend_loader.py  # AV DIVIDENDS → DB (23 tickers)
-│       └── fetch_scheduler.py        # get_all_price_tickers() / get_all_dividend_tickers()
+│   ├── ingestion/
+│   │   ├── multi_ticker_loader.py    # AV TIME_SERIES_WEEKLY → DB (23 tickers)
+│   │   ├── multi_dividend_loader.py  # AV DIVIDENDS → DB (23 tickers)
+│   │   └── fetch_scheduler.py        # get_all_price_tickers() / get_all_dividend_tickers()
+│   │
+│   ├── processing/
+│   │   ├── multi_total_return.py     # DRIP total return for all 20 ETFs;
+│   │   │                             #   build_relative_return_targets() upserts to DB
+│   │   └── feature_engineering.py   # + build_feature_matrix_from_db()
+│   │                                 #   + get_X_y_relative() (inner-join alignment)
+│   │
+│   ├── models/
+│   │   ├── wfo_engine.py             # v2: embargo=target_horizon; WFOResult extended
+│   │   │                             #   with benchmark/target_horizon/model_type;
+│   │   │                             #   predict_current() genuinely refits + predicts
+│   │   └── multi_benchmark_wfo.py    # run_all_benchmarks() — 20 parallel WFO models
+│   │                                 #   get_current_signals() — live signal grid
+│   │
+│   ├── portfolio/
+│   │   └── rebalancer.py             # + benchmark_signals / target_horizon fields;
+│   │                                 #   generate_recommendation() accepts
+│   │                                 #   multi_benchmark_results kwarg
+│   │
+│   ├── backtest/
+│   │   ├── vesting_events.py         # enumerate_vesting_events() — Jan/Jul since 2014
+│   │   │                             #   nearest-business-day snap, forward windows
+│   │   └── backtest_engine.py        # run_historical_backtest() — strict temporal
+│   │                                 #   slicing per event; run_full_backtest()
+│   │
+│   ├── reporting/
+│   │   └── backtest_report.py        # generate_backtest_table() / prediction_table()
+│   │                                 #   / correct_direction_table();
+│   │                                 #   print_backtest_summary(); export_backtest_to_csv()
+│   │
+│   └── visualization/
+│       └── plots.py                  # + plot_backtest_heatmap()
+│                                     # + plot_hit_rate_by_benchmark()
+│                                     # + plot_predicted_vs_realized_scatter()
+│                                     # + plot_multi_benchmark_signals()
 │
 ├── scripts/
 │   ├── migrate_v1_to_v2.py          # One-time: v1 JSON/Parquet → SQLite
@@ -128,17 +170,27 @@ pgr-vesting-decision-support/
 │   └── pgr_financials.db            # SQLite accumulation DB (committed to git;
 │                                    #   updated weekly by GitHub Actions)
 │
+├── pytest.ini                        # testpaths=tests; integration / unit markers
+│
 ├── .github/workflows/
 │   └── weekly_data_fetch.yml        # Cron: Friday 10 PM UTC; commits DB update
 │
 └── tests/
     ├── test_db_client.py             # 37 tests: schema, upserts, budget enforcement
-    └── test_multi_ticker_loader.py  # 34 tests: parsers, loaders, scheduler, proxy fill
+    ├── test_multi_ticker_loader.py  # 34 tests: parsers, loaders, scheduler, proxy fill
+    ├── test_multi_total_return.py   # 36 tests: DRIP computation, relative targets,
+    │                                 #   DatetimeIndex guard, get_X_y_relative
+    ├── test_wfo_engine.py            # 24 tests: temporal integrity, embargo (6M/12M),
+    │                                 #   v2 metadata, predict_current refit
+    ├── test_multi_benchmark_wfo.py  # 16 tests: run_all_benchmarks, get_current_signals,
+    │                                 #   skip-on-no-overlap, signal classification
+    ├── test_backtest_engine.py       # 32 tests: date enumeration, business-day snap,
+    │                                 #   forward windows, signal/sell-pct logic
+    ├── test_reporting.py             # 27 tests: pivot tables, print summary, CSV export,
+    │                                 #   all 4 new plot functions
+    └── test_integration.py           # 11 tests: end-to-end smoke test, synthetic DB,
+                                      #   full pipeline from schema to signal generation
 ```
-
-**v2 phases still in development:** Phase 3 (relative return computation),
-Phase 4 (WFO engine upgrade + multi-benchmark models), Phase 5 (historical
-backtest engine), Phase 6 (reporting + visualization), Phase 7 (integration tests).
 
 ---
 
@@ -146,8 +198,8 @@ backtest engine), Phase 6 (reporting + visualization), Phase 7 (integration test
 
 | Source | Data | Tier |
 |--------|------|------|
-| Alpha Vantage `TIME_SERIES_WEEKLY` | Weekly OHLCV — PGR + 22 ETF benchmarks (~25 years) | Free |
-| Alpha Vantage `DIVIDENDS` | Ex-dividend history — PGR + 22 ETF benchmarks | Free (25 req/day) |
+| Alpha Vantage `TIME_SERIES_WEEKLY` | Weekly OHLCV — PGR + 20 ETF benchmarks (~25 years) | Free |
+| Alpha Vantage `DIVIDENDS` | Ex-dividend history — PGR + 20 ETF benchmarks | Free (25 req/day) |
 | FMP `/v3/key-metrics` + `/v3/income-statement` | PGR quarterly PE, PB, ROE, EPS, revenue | Free |
 | EDGAR cache CSV | 256 months of combined ratio, PIF, EPS | User-provided |
 | `config.PGR_KNOWN_SPLITS` | 3 historical splits (1992, 2002, 2006) | Hardcoded |
@@ -221,10 +273,10 @@ Gainshare features are retained only if ≥ 60 non-NaN observations exist.
 
 ```python
 TimeSeriesSplit(
-    n_splits       = (total_months - 60) // 6,
-    max_train_size = 60,    # 5-year rolling window
-    test_size      = 6,     # 6-month out-of-sample test
-    gap            = N,     # embargo = target horizon (6 or 12 months in v2)
+    n_splits       = (total_months - train_window - target_horizon) // test_window,
+    max_train_size = 60,             # 5-year rolling window
+    test_size      = 6,              # 6-month out-of-sample test
+    gap            = target_horizon, # embargo = target horizon (6 or 12 months)
 )
 ```
 
@@ -233,11 +285,23 @@ forward return target — consecutive monthly observations share 5 months of
 overlapping return window (autocorrelation leakage).  v2 sets `gap` equal to
 the target horizon: 6 for the 6M model, 12 for the 12M model.
 
-**22 separate models (v2):** One LassoCV/RidgeCV model per ETF benchmark.
-PGR-vs-BND has a fundamentally different statistical character than PGR-vs-IEMG;
+**20 separate models (v2):** One LassoCV/RidgeCV model per ETF benchmark.
+PGR-vs-BND has a fundamentally different statistical character than PGR-vs-VGT;
 a multi-output model would impose the same regularization on both.
 
-### v1 Recommendation Logic
+**`predict_current()` refit (v2):** v1 returned `last_fold.y_hat.mean()` — a
+constant regardless of the current observation.  v2 refits on the most recent
+`train_window_months` rows and calls `model.predict(X_current)`.
+
+### Signal Classification (v2)
+
+```
+IC < 0.05  OR  |predicted return| < 1%  →  NEUTRAL
+IC ≥ 0.05  AND  predicted return > +1%  →  OUTPERFORM  (favor holding PGR)
+IC ≥ 0.05  AND  predicted return < −1%  →  UNDERPERFORM (favor selling PGR)
+```
+
+### Recommendation Logic
 
 ```
 IC < 0.05                           → 50% sale (model below confidence threshold)
@@ -324,47 +388,88 @@ with `[skip ci]` to avoid triggering a recursive run.
 
 ---
 
-## Running the Engine (v1)
+## Running the Engine
+
+### v2 (recommended)
 
 ```python
-import sys
-sys.path.insert(0, ".")
+import sqlite3
+import config
+from src.database.db_client import get_connection, initialize_schema
+from src.processing.feature_engineering import build_feature_matrix_from_db
+from src.processing.multi_total_return import build_relative_return_targets, load_relative_return_matrix
+from src.models.multi_benchmark_wfo import run_all_benchmarks, get_current_signals
+from src.backtest.backtest_engine import run_full_backtest
+from src.reporting.backtest_report import print_backtest_summary, export_backtest_to_csv
+from src.visualization.plots import (
+    plot_backtest_heatmap, plot_hit_rate_by_benchmark,
+    plot_multi_benchmark_signals
+)
 
-from datetime import date
+conn = get_connection()
+initialize_schema(conn)
+
+# Build feature matrix and relative return targets
+df = build_feature_matrix_from_db(conn)
+feature_cols = [c for c in df.columns if c != "target_6m_return"]
+X = df[feature_cols]
+
+# Pre-compute relative returns for all benchmarks (upserts to DB)
+build_relative_return_targets(conn, forward_months=6)
+build_relative_return_targets(conn, forward_months=12)
+
+# Build relative return matrix
+import pandas as pd
+rel = pd.DataFrame({
+    etf: load_relative_return_matrix(conn, etf, 6).rename(etf)
+    for etf in config.ETF_BENCHMARK_UNIVERSE
+})
+
+# Train 20 WFO models
+wfo_results = run_all_benchmarks(X, rel, model_type="lasso", target_horizon_months=6)
+
+# Generate live signals for the current observation
+signals = get_current_signals(X, rel, wfo_results, X.iloc[[-1]])
+print(signals[["predicted_relative_return", "signal", "ic"]])
+
+# Run historical backtest
+backtest_df = run_full_backtest(conn)
+print_backtest_summary(list_of_results)
+export_backtest_to_csv(list_of_results, "data/backtest_results.csv")
+
+# Save plots
+plot_backtest_heatmap(list_of_results, horizon=6)
+plot_hit_rate_by_benchmark(list_of_results)
+plot_multi_benchmark_signals(signals)
+```
+
+### v1 (legacy)
+
+```python
 from src.ingestion import price_loader, dividend_loader, split_loader, pgr_monthly_loader
 from src.processing.feature_engineering import build_feature_matrix, get_X_y
 from src.models.wfo_engine import run_wfo
 from src.tax.capital_gains import load_position_lots
 from src.portfolio.drift_analyzer import PortfolioState
 from src.portfolio.rebalancer import generate_recommendation, print_recommendation
-from src.visualization.plots import (
-    plot_wfo_equity_curve, plot_feature_importance, plot_portfolio_drift
-)
 
-# Load data
 prices      = price_loader.load()
 divs        = dividend_loader.load()
 splits      = split_loader.load()
 pgr_monthly = pgr_monthly_loader.load()
 
-# Build features and train WFO
 fm = build_feature_matrix(prices, divs, splits, pgr_monthly=pgr_monthly)
 X, y = get_X_y(fm, drop_na_target=True)
 wfo = run_wfo(X, y, model_type="lasso")
 
-# Generate recommendations
 current_price = 206.00
 lots = load_position_lots("data/processed/position_lots.csv")
 portfolio = PortfolioState(pgr_value=1000 * current_price, etf_holdings={})
 
+from datetime import date
 for vest_date, rsu_type in [(date(2026, 7, 17), "performance"), (date(2027, 1, 19), "time")]:
     rec = generate_recommendation(vest_date, rsu_type, current_price, lots, wfo, portfolio)
     print_recommendation(rec)
-
-# Save plots
-plot_wfo_equity_curve(wfo)
-plot_feature_importance(wfo)
-plot_portfolio_drift(portfolio)
 ```
 
 ---
@@ -372,30 +477,41 @@ plot_portfolio_drift(portfolio)
 ## Tests
 
 ```bash
-pytest tests/ -v
+pytest                     # all tests
+pytest -m integration      # integration smoke tests only
+pytest -m "not integration" # fast unit tests only
 ```
 
-140 tests across 7 modules, all passing:
+**271 tests across 14 modules, all passing** (as of v2.7):
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
 | `test_corporate_actions.py` | 17 | Split application, known split validation, cumulative multiplier |
 | `test_total_return.py` | 13 | DRIP share accumulation, portfolio value, no negative prices |
 | `test_feature_engineering.py` | 11 | No-leakage guarantee, target NaN in final 6M, Gainshare threshold |
-| `test_wfo_engine.py` | 15 | Temporal integrity, embargo gap, scaler isolation, independent folds |
 | `test_capital_gains.py` | 13 | LTCG/STCG rate selection, lot priority, oversell validation |
 | `test_db_client.py` | 37 | Schema idempotency, upsert/replace semantics, budget enforcement, proxy_fill |
 | `test_multi_ticker_loader.py` | 34 | Price/dividend parsers, MultiTickerLoader, MultiDividendLoader, scheduler |
+| `test_multi_total_return.py` | 36 | DRIP computation, relative targets, DatetimeIndex guard, get_X_y_relative |
+| `test_wfo_engine.py` | 24 | Temporal integrity, embargo (6M & 12M), v2 metadata, predict_current refit |
+| `test_multi_benchmark_wfo.py` | 16 | run_all_benchmarks, get_current_signals, skip-on-no-overlap, signal classification |
+| `test_backtest_engine.py` | 32 | Date enumeration, business-day snap, forward windows, signal/sell-pct logic |
+| `test_reporting.py` | 27 | Pivot tables, print summary, CSV export, all 4 new plot functions |
+| `test_integration.py` | 11 | End-to-end smoke test: synthetic DB → schema → features → WFO → signals |
 
 Critical invariants enforced by tests:
+
 - `max(train_idx) < min(test_idx)` for every WFO fold
-- `min(test_idx) - max(train_idx) >= EMBARGO_MONTHS`
+- Embargo gap ≥ `target_horizon × 28` days (168 days for 6M, 336 days for 12M)
 - `StandardScaler` is a named step inside `Pipeline` — never fit on full dataset
 - `target_6m_return` is NaN for the final 6 months (no look-ahead leakage)
+- `predict_current()` produces different outputs for different `X_current` inputs
+  (verifies it is a live model, not the v1 constant placeholder)
 - LTCG boundary: exactly 365 days does NOT qualify (must be > 365)
 - API budget enforcement: 26th AV call raises `RuntimeError` (limit: 25/day)
 - Upsert is idempotent: duplicate inserts replace, never duplicate rows
 - `proxy_fill=1` rows are flagged and round-trip correctly through the DB
+- All 20 vesting event dates (2014–2023) fall on weekdays
 
 ---
 
@@ -415,6 +531,9 @@ Critical invariants enforced by tests:
   roughly 7 months before the earliest backtested vesting event (Jan 2014).  The
   BNDX relative-return model will have slightly fewer early training observations
   than the other 19 benchmarks; no proxy backfill is applied.
+- **`scipy` optional dependency**: `plot_predicted_vs_realized_scatter()` uses
+  `scipy.stats.spearmanr` to annotate the IC on scatter plots.  The function
+  degrades gracefully if fewer than 3 events are available.
 
 ---
 
