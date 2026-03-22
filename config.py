@@ -87,47 +87,59 @@ PERF_RSU_VEST_MONTH: int = 7    # July (performance-based)
 PERF_RSU_VEST_DAY: int = 17
 
 # ---------------------------------------------------------------------------
-# v2 ETF benchmark universe
-# These 22 ETFs are the alternative investment targets used for:
+# v2 ETF benchmark universe (20 ETFs)
+# These ETFs are the alternative investment targets used for:
 #   (a) ML relative return prediction (one WFO model per ETF)
 #   (b) Historical vesting event backtest
-# They overlap with but are distinct from the drift_analyzer's sector-overlap ETFs.
+#
+# Design principles:
+#   - Vanguard preferred for provider consistency and low expense ratios
+#   - Sector ETFs added to capture industry-specific alternatives to PGR
+#   - Redundant broad-market trackers removed (one total market, one S&P 500)
+#   - All ETFs have pre-2014 history — no proxy backfill required
 # ---------------------------------------------------------------------------
 ETF_BENCHMARK_UNIVERSE: list[str] = [
-    # US Broad Market
-    "FZROX", "FNILX", "FSKAX", "VTI", "ITOT", "SCHB",
-    # International
-    "VXUS", "FZILX", "VEA", "IEMG",
-    # Dividend
-    "SCHD", "VIG", "DGRO",
-    # Fixed Income
-    "BND", "VBTLX", "VCIT", "LQD", "MBB",
-    # Alternatives
-    "VNQ", "GLD", "DBC", "VEE",
+    # US Broad Market (2)
+    "VTI",              # Vanguard Total Stock Market
+    "VOO",              # Vanguard S&P 500
+    # US Sectors — Vanguard (6)
+    "VGT",              # Vanguard Information Technology
+    "VHT",              # Vanguard Health Care
+    "VFH",              # Vanguard Financials (includes insurance, banks, asset managers)
+    "VIS",              # Vanguard Industrials
+    "VDE",              # Vanguard Energy
+    "VPU",              # Vanguard Utilities
+    # International (3)
+    "VXUS",             # Vanguard Total International Stock
+    "VEA",              # Vanguard Developed Markets ex-US
+    "VWO",              # Vanguard Emerging Markets
+    # Dividend-focused (2)
+    "VIG",              # Vanguard Dividend Appreciation (dividend growth)
+    "SCHD",             # Schwab US Dividend Equity (high yield; meaningfully differs from VIG)
+    # Fixed Income (4)
+    "BND",              # Vanguard Total Bond Market
+    "BNDX",             # Vanguard Total International Bond
+    "VCIT",             # Vanguard Intermediate-Term Corporate Bond
+    "VMBS",             # Vanguard Mortgage-Backed Securities
+    # Real Assets (3)
+    "VNQ",              # Vanguard Real Estate
+    "GLD",              # SPDR Gold Shares (no Vanguard equivalent)
+    "DBC",              # Invesco DB Commodity Index (no Vanguard equivalent)
 ]
 
 # ---------------------------------------------------------------------------
-# ETF launch dates — tickers with limited history need proxy backfill
+# ETF launch dates — tickers with limited history need proxy backfill.
+# All ETFs in ETF_BENCHMARK_UNIVERSE have pre-2014 history; no proxies are
+# currently required.  BNDX (launched 2013-06-03) pre-dates all backtested
+# vesting events (earliest: Jan 2014) by a sufficient margin.
 # ---------------------------------------------------------------------------
-ETF_LAUNCH_DATES: dict[str, str] = {
-    "FZROX": "2018-08-02",   # Fidelity Zero Total Market
-    "FNILX": "2018-08-02",   # Fidelity Zero Large Cap
-    "FZILX": "2018-08-02",   # Fidelity Zero International
-    "DGRO":  "2014-06-11",   # iShares Core Dividend Growth
-}
+ETF_LAUNCH_DATES: dict[str, str] = {}
 
 # ---------------------------------------------------------------------------
 # Proxy map for pre-launch / limited-data tickers
 # Key   = ticker with limited history
-# Value = proxy ticker whose total return is substituted for pre-launch periods
-# Rows filled from proxies are flagged proxy_fill=1 in the DB.
+# Value = proxy ticker whose history is copied, flagged proxy_fill=1 in DB.
+# Empty because all current benchmark ETFs have sufficient pre-2014 history.
 # ---------------------------------------------------------------------------
-ETF_PROXY_MAP: dict[str, str] = {
-    "FZROX": "VTI",    # Total US market — identical exposure
-    "FNILX": "VTI",    # Large-cap US — effectively identical
-    "FZILX": "VXUS",   # Total international — identical exposure
-    "DGRO":  "VIG",    # Dividend growth — equivalent index
-    "VBTLX": "BND",    # Same Bloomberg US Aggregate index, different wrapper
-    "VEE":   "IEMG",   # Canadian TSX ETF; IEMG is the closest US-listed equivalent
-}
+ETF_PROXY_MAP: dict[str, str] = {}
 

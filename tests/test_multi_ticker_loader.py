@@ -372,10 +372,9 @@ class TestFetchScheduler:
         tickers = get_all_price_tickers()
         assert tickers[0] == "PGR"
 
-    def test_price_list_length_is_23(self):
-        # 1 (PGR) + 22 ETFs = 23
+    def test_price_list_length_is_correct(self):
         tickers = get_all_price_tickers()
-        assert len(tickers) == 23
+        assert len(tickers) == 1 + len(config.ETF_BENCHMARK_UNIVERSE)
 
     def test_all_etfs_in_price_list(self):
         tickers = get_all_price_tickers()
@@ -390,9 +389,9 @@ class TestFetchScheduler:
         tickers = get_all_dividend_tickers()
         assert tickers[0] == "PGR"
 
-    def test_dividend_list_length_is_23(self):
+    def test_dividend_list_length_is_correct(self):
         tickers = get_all_dividend_tickers()
-        assert len(tickers) == 23
+        assert len(tickers) == 1 + len(config.ETF_BENCHMARK_UNIVERSE)
 
     def test_all_etfs_in_dividend_list(self):
         tickers = get_all_dividend_tickers()

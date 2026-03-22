@@ -152,19 +152,23 @@ backtest engine), Phase 6 (reporting + visualization), Phase 7 (integration test
 | EDGAR cache CSV | 256 months of combined ratio, PIF, EPS | User-provided |
 | `config.PGR_KNOWN_SPLITS` | 3 historical splits (1992, 2002, 2006) | Hardcoded |
 
-### v2 ETF Benchmark Universe (22 ETFs)
+### v2 ETF Benchmark Universe (20 ETFs)
 
-| Category | Tickers |
-|----------|---------|
-| US Broad Market | FZROX, FNILX, FSKAX, VTI, ITOT, SCHB |
-| International | VXUS, FZILX, VEA, IEMG |
-| Dividend | SCHD, VIG, DGRO |
-| Fixed Income | BND, VBTLX, VCIT, LQD, MBB |
-| Alternatives | VNQ, GLD, DBC, VEE |
+Vanguard is the preferred provider.  Sector ETFs are included so the engine
+can evaluate PGR against meaningfully different industry exposures (e.g.
+technology, energy) rather than only broad-market alternatives.
 
-Short-history ETFs (FZROX, FNILX, FZILX launched 2018; DGRO launched 2014) are
-backfilled with proxy data flagged `proxy_fill=1` in the database:
-FZROX/FNILX → VTI, FZILX → VXUS, DGRO → VIG, VBTLX → BND, VEE → IEMG.
+| Category | Tickers | Notes |
+|----------|---------|-------|
+| US Broad Market | VTI, VOO | Total market + S&P 500 |
+| US Sectors | VGT, VHT, VFH, VIS, VDE, VPU | Tech, Health, Financials, Industrials, Energy, Utilities |
+| International | VXUS, VEA, VWO | Total intl, Developed ex-US, Emerging |
+| Dividend | VIG, SCHD | Dividend growth (Vanguard) vs high yield (Schwab) |
+| Fixed Income | BND, BNDX, VCIT, VMBS | Total bond, Intl bond, Corporate, Mortgage-backed |
+| Real Assets | VNQ, GLD, DBC | REIT, Gold, Commodities |
+
+All 20 ETFs have history predating January 2014 (the earliest backtested
+vesting event).  No proxy backfill is required.
 
 ### API Budget
 
@@ -407,9 +411,10 @@ Critical invariants enforced by tests:
 - **Both lots are STCG at vest**: Shares vest on grant date with zero holding
   period, so both tranches are classified as short-term at the moment of vest-day
   sale. LTCG status accrues if shares are held at least 366 days post-vest.
-- **Short-history ETFs**: FZROX, FNILX, FZILX (Fidelity Zero funds, launched 2018)
-  and DGRO (launched 2014) use proxy data for pre-launch periods; these rows are
-  flagged `proxy_fill=1` and can be excluded from training if desired.
+- **BNDX history**: Vanguard Total International Bond (BNDX) launched June 2013,
+  roughly 7 months before the earliest backtested vesting event (Jan 2014).  The
+  BNDX relative-return model will have slightly fewer early training observations
+  than the other 19 benchmarks; no proxy backfill is applied.
 
 ---
 
