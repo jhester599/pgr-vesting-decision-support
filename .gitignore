@@ -1,0 +1,41 @@
+# Environment
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Data cache (regenerated from API; never commit raw API responses)
+data/raw/
+data/processed/
+
+# Exception: user-maintained reference data committed intentionally
+!data/processed/pgr_edgar_cache.csv
+!data/processed/pgr_combined_ratio_manual.csv
+
+# Personal financial data — never commit
+data/processed/position_lots.csv
+
+# Plot output
+plots/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
