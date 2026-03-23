@@ -1,0 +1,28 @@
+Once your CLAUDE.md is saved, use the following series of sequential prompts in your Claude Code terminal. Do not proceed to the next prompt until the previous phase's tests pass successfully.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Prompt 1: Project Initialization and Planning
+Note: Run this prompt using Plan Mode by typing claude -p or hitting Shift+Tab to prevent the agent from writing code before the architecture is finalized.
+
+"Please review CLAUDE.md. We are building a quantitative backtesting engine for unwinding a concentrated stock position in Progressive Corporation (PGR). Act as a quantitative software architect. Analyze the project constraints and generate a comprehensive plan.md document that outlines the exact file structure, API endpoints for Financial Modeling Prep (FMP), the mathematical formulas for the Walk-Forward Optimization, and the data schema. Do not write any Python code yet. Ask me any clarifying questions about API keys or local environments before finishing the plan.
+
+The GitHub repo for this project can be found at https://github.com/jhester599/pgr-vesting-decison-support we will use this for version control.
+
+I have also included a gemini deep research peer review report of the project for reference"
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Prompt 2: Financial Data Pipeline
+Note: Once you approve plan.md, exit Plan Mode and run this standard prompt.
+
+"Execute Phase 1 of plan.md to build the financial data pipeline. Create data_loader.py integrating the FMP API for fundamental data and a reliable source for unadjusted historical prices. Ensure the logic properly calculates total returns by manually accounting for PGR's historical stock splits and variable dividends. Before concluding, write a test in tests/test_data_loader.py that verifies the output arrays contain no NaN values and that point-in-time fundamental data does not suffer from look-ahead bias. Run the test using pytest and fix any failures."
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Prompt 3: Machine Learning & Temporal Validation
+Note: Because LLM context windows degrade as they fill with code and test outputs, clear your session context by typing /clear before running this prompt. Claude will still remember your CLAUDE.md and your newly written files.
+
+"Read data_loader.py and plan.md. Implement the machine learning and Walk-Forward Optimization (WFO) engine. Aggressively restrict the feature space using Lasso Regression to handle our small sample size. Implement WFO using a rolling training window and evaluate strictly on out-of-sample forward 6-month returns. Write a verification test in tests/test_wfo.py that explicitly checks the temporal indexes of the training and testing folds to guarantee zero chronological overlap or data leakage. Run the test and ensure it passes."
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Prompt 4: Tax Optimization and Portfolio Reallocation
+"Implement the final decision logic module. Create a function that ingests the historical cost basis of the vested PGR shares and calculates the comparative after-tax yield of a standard IRA rollover versus a Net Unrealized Appreciation (NUA) taxable distribution strategy. If the NUA tax savings are significant, the hurdle rate to trigger a 'Sell' signal should dynamically increase. Finally, implement a pseudo-direct indexing function that calculates the portfolio drift and allocates simulated sell proceeds strictly into underweighted, non-correlated sector ETFs to achieve target diversification. Write and run a test simulating a $1M portfolio liquidation with an $850k NUA spread to verify the tax math."
