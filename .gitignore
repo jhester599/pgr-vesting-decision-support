@@ -22,6 +22,7 @@ data/processed/position_lots.csv
 # API keys
 alphavantage-api-key.txt
 fmp-api-key.txt
+fred-api-key.txt
 
 # v2 SQLite database — committed to repo so GitHub Actions can accumulate data
 # over time and push daily updates back to the branch.
