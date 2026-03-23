@@ -1,0 +1,114 @@
+name: Post-Initial Bootstrap
+
+# Runs one hour after the Day 2 dividends workflow (Wed 2026-03-25 at 11:00 UTC)
+# to build derived data and generate the first monthly decision report.
+#
+# What this workflow does
+# -----------------------
+# 1. Build relative return targets (6M + 12M) for all 20 ETF benchmarks.
+#    Populates the monthly_relative_returns table that the WFO engine reads.
+#    This is the critical derived step that must happen before monthly_decision
+#    can train models — prices + dividends alone are not enough.
+#
+# 2. Run monthly_decision.py to produce the first recommendation report in
+#    results/monthly_decisions/YYYY-MM/.
+#
+# Prerequisites
+# -------------
+#   - initial_fetch_prices.yml  (Day 1 — prices)     complete
+#   - initial_fetch_dividends.yml (Day 2 — dividends) complete
+#   Both must have committed a populated pgr_financials.db before this runs.
+#
+# workflow_dispatch lets you trigger it manually (e.g. to re-run after a
+# partial failure or to test with --dry-run before the scheduled date).
+
+on:
+  schedule:
+    # 11:00 AM UTC = 07:00 AM EDT  |  date: Wed 2026-03-25
+    - cron: '0 11 25 3 *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run — log actions, skip HTTP calls and DB writes'
+        required: false
+        default: 'false'
+      skip_decision:
+        description: 'Build relative returns only; skip monthly decision report'
+        type: boolean
+        default: false
+      as_of_date:
+        description: 'Override as-of date for monthly decision (YYYY-MM-DD)'
+        required: false
+
+jobs:
+  bootstrap:
+    name: Build relative returns + first monthly decision
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run bootstrap
+        id: bootstrap
+        env:
+          AV_API_KEY:   ${{ secrets.AV_API_KEY }}
+          FMP_API_KEY:  ${{ secrets.FMP_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: |
+          DRY_FLAG=""
+          SKIP_DEC_FLAG=""
+          AS_OF_FLAG=""
+
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_FLAG="--dry-run"
+          fi
+          if [ "${{ github.event.inputs.skip_decision }}" = "true" ]; then
+            SKIP_DEC_FLAG="--skip-decision"
+          fi
+          if [ -n "${{ github.event.inputs.as_of_date }}" ]; then
+            AS_OF_FLAG="--as-of ${{ github.event.inputs.as_of_date }}"
+          fi
+
+          python scripts/bootstrap.py $DRY_FLAG $SKIP_DEC_FLAG $AS_OF_FLAG
+
+      - name: Commit results
+        # Skip commit for dry runs — nothing was written to disk
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/pgr_financials.db
+          git add results/ || true          # results/ may not exist on first run
+          git diff --staged --quiet || git commit -m \
+            "chore: bootstrap relative returns + first monthly decision $(date -u +%Y-%m-%d) [skip ci]"
+          git push
+
+      - name: Verify monthly_relative_returns populated
+        # Sanity check: confirm the table has rows for at least two benchmarks.
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          python - <<'EOF'
+          import sqlite3, sys
+          conn = sqlite3.connect("data/pgr_financials.db")
+          n = conn.execute("SELECT COUNT(*) FROM monthly_relative_returns").fetchone()[0]
+          n_benchmarks = conn.execute(
+              "SELECT COUNT(DISTINCT benchmark) FROM monthly_relative_returns"
+          ).fetchone()[0]
+          print(f"  monthly_relative_returns: {n} rows, {n_benchmarks} benchmarks")
+          if n == 0:
+              print("ERROR: monthly_relative_returns is empty — bootstrap may have failed.")
+              sys.exit(1)
+          if n_benchmarks < 2:
+              print(f"WARNING: only {n_benchmarks} benchmark(s) found; expected ~20.")
+          print("Verification passed.")
+          EOF
