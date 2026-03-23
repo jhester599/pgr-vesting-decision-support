@@ -392,6 +392,44 @@ class TestMultiDividendLoader:
         assert "BND" in results
 
     @patch("src.ingestion.multi_dividend_loader.requests.get")
+    def test_fetch_for_tickers_av_ratelimit_returns_partial(self, mock_get, conn):
+        """AV server-side rate limit on dividends returns partial results instead of raising.
+
+        When AV returns an 'Information' or 'Note' key mid-batch, fetch_for_tickers
+        stops gracefully: the throttled ticker and all remaining ones are set to None,
+        while already-completed tickers retain their integer row counts.
+        """
+        tickers = ["PGR", "VTI", "BND"]
+
+        def side_effect(url, params=None, timeout=None):
+            symbol = (params or {}).get("symbol", "")
+            if symbol == "VTI":
+                mock_resp = MagicMock()
+                mock_resp.raise_for_status = MagicMock()
+                mock_resp.json.return_value = {
+                    "Information": (
+                        "We have detected your API key and our standard API "
+                        "rate limit is 25 requests per day."
+                    )
+                }
+                return mock_resp
+            mock_resp = MagicMock()
+            mock_resp.raise_for_status = MagicMock()
+            mock_resp.json.return_value = self._av_div_response(symbol or "PGR")
+            return mock_resp
+
+        mock_get.side_effect = side_effect
+        loader = MultiDividendLoader(conn)
+        results = loader.fetch_for_tickers(tickers, sleep_between=0)
+
+        # PGR succeeded before the rate limit
+        assert results["PGR"] is not None
+        assert isinstance(results["PGR"], int)
+        # VTI (throttled) and BND (not attempted) are deferred
+        assert results["VTI"] is None
+        assert results["BND"] is None
+
+    @patch("src.ingestion.multi_dividend_loader.requests.get")
     def test_idempotent_upsert_no_duplicates(self, mock_get, conn):
         """Fetching the same dividends twice must not create duplicate rows."""
         mock_get.return_value = MagicMock(

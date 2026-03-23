@@ -32,15 +32,7 @@ import requests
 
 import config
 from src.database import db_client
-
-
-class AVRateLimitError(RuntimeError):
-    """Raised when Alpha Vantage returns a server-side rate-limit response.
-
-    Distinct from RuntimeError (DB budget exhaustion) so callers can handle
-    AV throttling gracefully (return partial results) vs. hard budget errors
-    (stop processing entirely).
-    """
+from src.ingestion.exceptions import AVRateLimitError  # noqa: F401 (re-exported)
 
 # Alpha Vantage endpoint details
 _AV_BASE = config.AV_BASE_URL

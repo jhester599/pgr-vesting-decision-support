@@ -7,18 +7,22 @@ allows only 25 calls/day, the two fetches must be run on separate days:
 
     Day 1:  python scripts/initial_fetch.py --prices
     Day 2:  python scripts/initial_fetch.py --dividends
+    Day 3:  python scripts/initial_fetch.py --fred     # free API, any day
 
-After both days the database will have complete historical data back to
-~2000 for all tickers that AV covers.
+After both price and dividend days the database will have complete historical
+data back to ~2000 for all tickers that AV covers.  FRED can be run any day
+as it uses a separate free public API with no daily call limit.
 
 Usage:
     python scripts/initial_fetch.py --prices     [--dry-run]
     python scripts/initial_fetch.py --dividends  [--dry-run]
+    python scripts/initial_fetch.py --fred       [--dry-run]
     python scripts/initial_fetch.py --prices --dividends   # NOT recommended: exceeds 25 call/day
 
 Options:
     --prices        Fetch full weekly price history for all 23 tickers (23 AV calls).
     --dividends     Fetch full dividend history for all 23 tickers (23 AV calls).
+    --fred          Fetch full FRED macro history (free API, no AV/FMP budget impact).
     --dry-run       Log which tickers would be fetched but make no HTTP calls.
     --force         Re-fetch even if data was already fetched today.
     --status-file   Path to write a Markdown status report (default: data/fetch_status.md).
@@ -53,9 +57,42 @@ class TickerResult(NamedTuple):
     detail: str         # row count or error message
 
 
+def _fetch_fred_step(conn, dry_run: bool = False) -> int:
+    """Fetch full FRED macro history and upsert into fred_macro_monthly.
+
+    Fetches all series in ``config.FRED_SERIES_MACRO`` + ``config.FRED_SERIES_PGR``.
+    FRED is a free public API with no daily call limit; this step has no impact
+    on the AV or FMP budget counters.
+
+    Returns:
+        Total rows upserted across all series.
+    """
+    from src.ingestion.fred_loader import fetch_all_fred_macro, upsert_fred_to_db
+
+    series_list = list(config.FRED_SERIES_MACRO) + list(getattr(config, "FRED_SERIES_PGR", []))
+    print(f"\nFetching {len(series_list)} FRED series (no AV/FMP budget impact)...")
+    if dry_run:
+        print(f"  [DRY RUN] Would fetch: {series_list}")
+        return 0
+
+    if getattr(config, "FRED_API_KEY", None) is None:
+        print("  WARNING: FRED_API_KEY not set — skipping FRED fetch.")
+        return 0
+
+    try:
+        df = fetch_all_fred_macro(series_list)
+        n = upsert_fred_to_db(conn, df)
+        print(f"  FRED: {n} rows upserted ({len(series_list)} series)")
+        return n
+    except Exception as exc:  # noqa: BLE001
+        print(f"  WARNING: FRED fetch failed: {exc}. Continuing without FRED data.")
+        return 0
+
+
 def main(
     do_prices: bool = False,
     do_dividends: bool = False,
+    do_fred: bool = False,
     dry_run: bool = False,
     force: bool = False,
     status_file: str = _DEFAULT_STATUS_FILE,
@@ -66,17 +103,20 @@ def main(
     Returns:
         0 on full success, 1 if any ticker failed to load data.
     """
-    if not do_prices and not do_dividends:
-        print("Error: specify --prices and/or --dividends.")
+    if not do_prices and not do_dividends and not do_fred:
+        print("Error: specify at least one of --prices, --dividends, --fred.")
         return 1
 
     run_start = datetime.now(timezone.utc)
     today = date.today()
-    mode_label = (
-        "prices + dividends" if (do_prices and do_dividends)
-        else "prices" if do_prices
-        else "dividends"
-    )
+    parts = []
+    if do_prices:
+        parts.append("prices")
+    if do_dividends:
+        parts.append("dividends")
+    if do_fred:
+        parts.append("FRED")
+    mode_label = " + ".join(parts) if parts else "none"
     prefix = "[DRY RUN] " if dry_run else ""
     results: list[TickerResult] = []
     had_error = False
@@ -155,6 +195,12 @@ def main(
 
         div_ok = sum(1 for r in results if r.mode == "dividends" and r.status == "OK")
         print(f"\n  Dividends: {div_ok}/{len(div_tickers)} tickers loaded new data")
+
+    # -------------------------------------------------------------------------
+    # FRED macro fetch (free API — no AV/FMP budget impact)
+    # -------------------------------------------------------------------------
+    if do_fred:
+        _fetch_fred_step(conn, dry_run=dry_run)
 
     # -------------------------------------------------------------------------
     # Budget summary
@@ -373,6 +419,8 @@ if __name__ == "__main__":
                         help="Fetch full price history for all tickers.")
     parser.add_argument("--dividends", action="store_true",
                         help="Fetch full dividend history for all tickers.")
+    parser.add_argument("--fred", action="store_true",
+                        help="Fetch full FRED macro history (free API, no AV budget impact).")
     parser.add_argument("--dry-run", action="store_true",
                         help="Log actions without making HTTP calls.")
     parser.add_argument("--force", action="store_true",
@@ -383,6 +431,7 @@ if __name__ == "__main__":
     sys.exit(main(
         do_prices=args.prices,
         do_dividends=args.dividends,
+        do_fred=args.fred,
         dry_run=args.dry_run,
         force=args.force,
         status_file=args.status_file,

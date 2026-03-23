@@ -172,20 +172,28 @@ def main(dry_run: bool = False, skip_fred: bool = False) -> None:
     # --- Price fetch (23 AV calls) ---
     loader = MultiTickerLoader(conn)
     price_results = loader.fetch_all_prices(all_tickers, dry_run=dry_run)
-    total_price_rows = sum(price_results.values())
+    total_price_rows = sum(v for v in price_results.values() if v is not None)
+    price_deferred = [t for t, v in price_results.items() if v is None]
     print(f"\nPrices — {total_price_rows} total rows upserted")
     for ticker, n in price_results.items():
         if n:
             print(f"  {ticker}: {n} rows")
+    if price_deferred:
+        print(f"  WARNING: {len(price_deferred)} price tickers deferred by AV rate limit: "
+              f"{price_deferred}")
 
     # --- PGR dividend fetch (1 AV call) ---
     div_loader = MultiDividendLoader(conn)
     div_results = div_loader.fetch_for_tickers(pgr_only, dry_run=dry_run)
-    total_div_rows = sum(div_results.values())
+    total_div_rows = sum(v for v in div_results.values() if v is not None)
+    div_deferred = [t for t, v in div_results.items() if v is None]
     print(f"\nDividends — {total_div_rows} rows upserted")
     for ticker, n in div_results.items():
         if n:
             print(f"  {ticker}: {n} rows")
+    if div_deferred:
+        print(f"  WARNING: {len(div_deferred)} dividend tickers deferred by AV rate limit: "
+              f"{div_deferred}")
 
     # --- FMP fundamentals (2 FMP calls) ---
     print("\nRefreshing PGR quarterly fundamentals from FMP...")
