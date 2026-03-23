@@ -186,7 +186,7 @@ class TestMultiTickerLoader:
         assert "BND" in results
 
     def test_fetch_all_prices_budget_exceeded_raises(self, conn):
-        """Once the daily AV limit is logged, fetch_all_prices must raise."""
+        """Once the LOCAL DB daily AV limit is logged, fetch_all_prices must raise."""
         # Exhaust the budget in the DB
         today = date.today().isoformat()
         for i in range(config.AV_DAILY_LIMIT):
@@ -200,6 +200,48 @@ class TestMultiTickerLoader:
         loader = MultiTickerLoader(conn)
         with pytest.raises(RuntimeError):
             loader.fetch_all_prices(["VTI"], sleep_between=0)
+
+    @patch("src.ingestion.multi_ticker_loader.requests.get")
+    def test_fetch_all_prices_av_ratelimit_returns_partial(self, mock_get, conn):
+        """AV server-side rate limit returns partial results instead of raising.
+
+        When AV returns an 'Information' key (server-side throttle), the batch
+        stops gracefully and returns results for completed tickers with None for
+        the throttled ticker and all remaining ones.
+        """
+        from src.ingestion.multi_ticker_loader import AVRateLimitError
+
+        tickers = ["VTI", "BND", "GLD"]
+
+        def side_effect(url, params=None, timeout=None):
+            symbol = (params or {}).get("symbol", "")
+            if symbol == "BND":
+                # Simulate AV returning rate-limit Information on second ticker
+                mock_resp = MagicMock()
+                mock_resp.raise_for_status = MagicMock()
+                mock_resp.json.return_value = {
+                    "Information": (
+                        "We have detected your API key and our standard API "
+                        "rate limit is 25 requests per day."
+                    )
+                }
+                return mock_resp
+            # All other tickers: normal weekly series response
+            mock_resp = MagicMock()
+            mock_resp.raise_for_status = MagicMock()
+            mock_resp.json.return_value = self._av_response()
+            return mock_resp
+
+        mock_get.side_effect = side_effect
+        loader = MultiTickerLoader(conn)
+        results = loader.fetch_all_prices(tickers, sleep_between=0)
+
+        # VTI succeeded before the rate limit
+        assert results["VTI"] is not None
+        assert results["VTI"] >= 0
+        # BND and GLD were not processed (None = deferred)
+        assert results["BND"] is None
+        assert results["GLD"] is None
 
     def test_fill_proxy_history_sets_proxy_fill_flag(self, conn):
         """fill_proxy_history must copy proxy rows with proxy_fill=1."""
@@ -348,6 +390,44 @@ class TestMultiDividendLoader:
         results = loader.fetch_for_tickers(["VTI", "BND"], sleep_between=0)
         assert "VTI" in results
         assert "BND" in results
+
+    @patch("src.ingestion.multi_dividend_loader.requests.get")
+    def test_fetch_for_tickers_av_ratelimit_returns_partial(self, mock_get, conn):
+        """AV server-side rate limit on dividends returns partial results instead of raising.
+
+        When AV returns an 'Information' or 'Note' key mid-batch, fetch_for_tickers
+        stops gracefully: the throttled ticker and all remaining ones are set to None,
+        while already-completed tickers retain their integer row counts.
+        """
+        tickers = ["PGR", "VTI", "BND"]
+
+        def side_effect(url, params=None, timeout=None):
+            symbol = (params or {}).get("symbol", "")
+            if symbol == "VTI":
+                mock_resp = MagicMock()
+                mock_resp.raise_for_status = MagicMock()
+                mock_resp.json.return_value = {
+                    "Information": (
+                        "We have detected your API key and our standard API "
+                        "rate limit is 25 requests per day."
+                    )
+                }
+                return mock_resp
+            mock_resp = MagicMock()
+            mock_resp.raise_for_status = MagicMock()
+            mock_resp.json.return_value = self._av_div_response(symbol or "PGR")
+            return mock_resp
+
+        mock_get.side_effect = side_effect
+        loader = MultiDividendLoader(conn)
+        results = loader.fetch_for_tickers(tickers, sleep_between=0)
+
+        # PGR succeeded before the rate limit
+        assert results["PGR"] is not None
+        assert isinstance(results["PGR"], int)
+        # VTI (throttled) and BND (not attempted) are deferred
+        assert results["VTI"] is None
+        assert results["BND"] is None
 
     @patch("src.ingestion.multi_dividend_loader.requests.get")
     def test_idempotent_upsert_no_duplicates(self, mock_get, conn):

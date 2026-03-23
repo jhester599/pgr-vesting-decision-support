@@ -48,3 +48,9 @@ build/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Claude Code local config
+.claude/
+
+# Archives
+*.zip
