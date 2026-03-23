@@ -45,6 +45,7 @@ from src.database import db_client
 from src.ingestion.fetch_scheduler import get_all_price_tickers
 from src.ingestion.multi_dividend_loader import MultiDividendLoader
 from src.ingestion.multi_ticker_loader import MultiTickerLoader
+from src.processing.multi_total_return import build_relative_return_targets
 
 
 # ---------------------------------------------------------------------------
@@ -172,20 +173,28 @@ def main(dry_run: bool = False, skip_fred: bool = False) -> None:
     # --- Price fetch (23 AV calls) ---
     loader = MultiTickerLoader(conn)
     price_results = loader.fetch_all_prices(all_tickers, dry_run=dry_run)
-    total_price_rows = sum(price_results.values())
+    total_price_rows = sum(v for v in price_results.values() if v is not None)
+    price_deferred = [t for t, v in price_results.items() if v is None]
     print(f"\nPrices — {total_price_rows} total rows upserted")
     for ticker, n in price_results.items():
         if n:
             print(f"  {ticker}: {n} rows")
+    if price_deferred:
+        print(f"  WARNING: {len(price_deferred)} price tickers deferred by AV rate limit: "
+              f"{price_deferred}")
 
     # --- PGR dividend fetch (1 AV call) ---
     div_loader = MultiDividendLoader(conn)
     div_results = div_loader.fetch_for_tickers(pgr_only, dry_run=dry_run)
-    total_div_rows = sum(div_results.values())
+    total_div_rows = sum(v for v in div_results.values() if v is not None)
+    div_deferred = [t for t, v in div_results.items() if v is None]
     print(f"\nDividends — {total_div_rows} rows upserted")
     for ticker, n in div_results.items():
         if n:
             print(f"  {ticker}: {n} rows")
+    if div_deferred:
+        print(f"  WARNING: {len(div_deferred)} dividend tickers deferred by AV rate limit: "
+              f"{div_deferred}")
 
     # --- FMP fundamentals (2 FMP calls) ---
     print("\nRefreshing PGR quarterly fundamentals from FMP...")
@@ -197,6 +206,19 @@ def main(dry_run: bool = False, skip_fred: bool = False) -> None:
         _fetch_fred_step(conn, dry_run=dry_run)
     else:
         print("\nSkipping FRED fetch (--skip-fred).")
+
+    # --- Relative return targets (derived; no API calls) ---
+    # Refresh monthly_relative_returns after new prices/dividends are upserted
+    # so the WFO models always train on the latest targets.
+    print("\nRefreshing relative return targets (6M and 12M)...")
+    if dry_run:
+        print("  [DRY RUN] Skipping relative return computation.")
+    else:
+        for horizon in (6, 12):
+            df = build_relative_return_targets(conn, forward_months=horizon, upsert=True)
+            n_rows = df.shape[0] * df.shape[1] if not df.empty else 0
+            print(f"  {horizon}M: {n_rows} rows upserted across "
+                  f"{df.shape[1] if not df.empty else 0} benchmarks")
 
     # --- Budget summary ---
     today_str = today.isoformat()
