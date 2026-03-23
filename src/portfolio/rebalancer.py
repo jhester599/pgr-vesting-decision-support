@@ -293,3 +293,73 @@ def print_recommendation(rec: VestingRecommendation) -> None:
         for ticker, amount in sorted(rec.etf_allocation.items()):
             print(f"    {ticker:<10} ${amount:>12,.2f}")
     print(separator)
+
+
+# ---------------------------------------------------------------------------
+# v4.0 — Per-Benchmark Weighting
+# ---------------------------------------------------------------------------
+
+def compute_benchmark_weights(
+    monthly_stability_results: list,
+    window_months: int = 24,
+    min_ic: float = 0.0,
+) -> dict[str, float]:
+    """
+    Compute reliability weights for each ETF benchmark based on rolling IC.
+
+    Benchmarks are weighted by their recent predictive skill:
+        raw_weight = rolling_ic × rolling_hit_rate
+
+    Benchmarks with mean IC ≤ ``min_ic`` over the window receive zero weight.
+    Weights are normalised to sum to 1.0 across active benchmarks.
+
+    This allows the final recommendation to favour benchmarks where the WFO
+    model has demonstrated consistent predictive power, rather than equal-
+    weighting all 20 ETFs regardless of model quality.
+
+    Args:
+        monthly_stability_results: List of BacktestEventResult from
+                                   ``run_monthly_stability_backtest()``.
+        window_months:             Rolling look-back window (default 24).
+        min_ic:                    Minimum mean IC over the window for a
+                                   benchmark to receive non-zero weight.
+
+    Returns:
+        Dict mapping ETF ticker → float weight.  Weights sum to 1.0.
+        Returns equal weights if no benchmark exceeds ``min_ic``.
+    """
+    import numpy as np
+
+    if not monthly_stability_results:
+        return {}
+
+    # Aggregate IC and hit_rate by benchmark
+    from collections import defaultdict
+    data: dict[str, list] = defaultdict(list)
+    for r in monthly_stability_results:
+        data[r.benchmark].append({
+            "ic":       r.ic_at_event,
+            "correct":  float(r.correct_direction),
+        })
+
+    weights_raw: dict[str, float] = {}
+    for benchmark, rows in data.items():
+        # Take the most recent window_months observations
+        recent = rows[-window_months:]
+        ics = [r["ic"] for r in recent]
+        hits = [r["correct"] for r in recent]
+        mean_ic = float(np.mean(ics)) if ics else 0.0
+        mean_hit = float(np.mean(hits)) if hits else 0.0
+
+        if mean_ic <= min_ic:
+            weights_raw[benchmark] = 0.0
+        else:
+            weights_raw[benchmark] = mean_ic * mean_hit
+
+    total = sum(weights_raw.values())
+    if total <= 0.0:
+        # All benchmarks below threshold — return equal weights
+        n = len(weights_raw)
+        return {k: 1.0 / n for k in weights_raw} if n > 0 else {}
+
+    return {k: v / total for k, v in weights_raw.items()}

@@ -405,3 +405,189 @@ def get_X_y_relative(
     X = aligned[feature_cols].copy()
     y = aligned[relative_returns.name].copy()
     return X, y
+
+
+# ---------------------------------------------------------------------------
+# v4.0 — Fractional Differentiation (López de Prado FFD method)
+# ---------------------------------------------------------------------------
+
+def _fracdiff_weights(d: float, size: int, threshold: float = 1e-5) -> np.ndarray:
+    """
+    Compute the fixed-width window (FFD) fractional differencing weights.
+
+    w_k = -(d - k + 1) / k × w_{k-1}  for k = 1, 2, ...
+
+    Weights decay to zero; truncate when abs(w_k) < threshold.  The fixed-width
+    window retains memory while achieving (approximate) stationarity.
+
+    Args:
+        d:         Fractional differencing order in [0, 1].
+        size:      Maximum window length.
+        threshold: Stop adding weights when |w_k| < threshold.
+
+    Returns:
+        Array of weights w_0, w_1, ..., w_K (K ≤ size - 1).
+    """
+    w = [1.0]
+    for k in range(1, size):
+        w_k = -w[-1] * (d - k + 1) / k
+        if abs(w_k) < threshold:
+            break
+        w.append(w_k)
+    return np.array(w[::-1])
+
+
+def _find_min_d(
+    series: pd.Series,
+    max_d: float = 0.5,
+    corr_threshold: float = 0.90,
+    adf_alpha: float = 0.05,
+    n_grid: int = 11,
+) -> float:
+    """
+    Find the minimum d* that achieves stationarity while preserving memory.
+
+    Searches d in [0, max_d] using a grid of n_grid evenly-spaced values.
+    Returns the smallest d such that:
+      1. ADF test rejects unit root at adf_alpha level, AND
+      2. Pearson correlation with the original ≥ corr_threshold.
+
+    Args:
+        series:         Input time series (non-stationary, e.g. log price).
+        max_d:          Maximum d to try.
+        corr_threshold: Minimum correlation with original series.
+        adf_alpha:      ADF significance level for stationarity test.
+        n_grid:         Number of grid points in [0, max_d].
+
+    Returns:
+        Minimum d* in [0, max_d] satisfying both conditions, or max_d if none found.
+    """
+    from scipy.stats import pearsonr
+
+    try:
+        from statsmodels.tsa.stattools import adfuller
+    except ImportError:
+        return max_d
+
+    series_clean = series.dropna()
+    if len(series_clean) < 20:
+        return max_d
+
+    original = series_clean.values
+    d_grid = np.linspace(0.0, max_d, n_grid)
+
+    for d in d_grid:
+        weights = _fracdiff_weights(d, len(original))
+        width = len(weights)
+        if width > len(original):
+            continue
+
+        # Apply weights as a convolution (moving window)
+        result = np.full(len(original), np.nan)
+        for i in range(width - 1, len(original)):
+            window = original[i - width + 1: i + 1]
+            result[i] = np.dot(weights, window)
+
+        valid_mask = ~np.isnan(result)
+        if valid_mask.sum() < 10:
+            continue
+
+        diff_series = result[valid_mask]
+        orig_aligned = original[valid_mask]
+
+        # Stationarity check via ADF
+        try:
+            adf_pval = adfuller(diff_series, autolag="AIC")[1]
+        except Exception:  # noqa: BLE001
+            continue
+
+        # Memory preservation via Pearson correlation
+        try:
+            corr_val, _ = pearsonr(diff_series, orig_aligned)
+        except Exception:  # noqa: BLE001
+            continue
+
+        if adf_pval < adf_alpha and abs(corr_val) >= corr_threshold:
+            return float(d)
+
+    return float(max_d)
+
+
+def apply_fracdiff(
+    series: pd.Series,
+    max_d: float | None = None,
+    corr_threshold: float | None = None,
+    adf_alpha: float | None = None,
+) -> tuple[pd.Series, float]:
+    """
+    Apply fractional differentiation to achieve stationarity while preserving memory.
+
+    Uses the Fixed-width Window (FFD) approach from López de Prado (2018),
+    "Advances in Financial Machine Learning", Chapter 5.
+
+    This is designed for non-stationary level series (e.g., log prices) that
+    integer differencing would make too noisy.  Integer differencing (d=1) is
+    equivalent to simple returns — highly stationary but loses all memory of
+    price levels.  Fractional differencing at d∈(0,0.5) preserves long memory
+    while achieving statistical stationarity.
+
+    Do NOT apply to return series (which are already differenced).
+
+    The minimum d* is found by grid search, selecting the smallest d such that:
+      1. ADF test rejects the unit root (stationarity), AND
+      2. Pearson correlation with the original series ≥ corr_threshold (memory).
+
+    Note: The ``fracdiff`` package is not available for Python ≥ 3.11.  This
+    implementation uses numpy/scipy and produces equivalent results for the
+    FFD method used in this project.
+
+    Args:
+        series:          Input Series (non-stationary level, e.g. log price).
+                         Must have a DatetimeIndex.
+        max_d:           Maximum fractional order to try.  Default: config.FRACDIFF_MAX_D.
+        corr_threshold:  Minimum Pearson correlation.  Default: config.FRACDIFF_CORR_THRESHOLD.
+        adf_alpha:       ADF significance level.  Default: config.FRACDIFF_ADF_ALPHA.
+
+    Returns:
+        Tuple of (differenced_series, d_star) where:
+          - differenced_series has the same DatetimeIndex as input, with NaN
+            in the burn-in window.
+          - d_star is the minimum differencing order used.
+
+    Raises:
+        ValueError: If ``series`` has fewer than 20 non-NaN observations.
+    """
+    if max_d is None:
+        max_d = config.FRACDIFF_MAX_D
+    if corr_threshold is None:
+        corr_threshold = config.FRACDIFF_CORR_THRESHOLD
+    if adf_alpha is None:
+        adf_alpha = config.FRACDIFF_ADF_ALPHA
+
+    series_clean = series.dropna()
+    if len(series_clean) < 20:
+        raise ValueError(
+            f"apply_fracdiff requires ≥ 20 non-NaN observations, got {len(series_clean)}."
+        )
+
+    d_star = _find_min_d(
+        series_clean,
+        max_d=max_d,
+        corr_threshold=corr_threshold,
+        adf_alpha=adf_alpha,
+    )
+
+    # Apply FFD at d_star
+    original = series_clean.values
+    weights = _fracdiff_weights(d_star, len(original))
+    width = len(weights)
+
+    result = np.full(len(original), np.nan)
+    for i in range(width - 1, len(original)):
+        window = original[i - width + 1: i + 1]
+        result[i] = np.dot(weights, window)
+
+    diff_series = pd.Series(result, index=series_clean.index, name=series.name)
+    # Reindex to original index (NaN for any missing dates)
+    diff_series = diff_series.reindex(series.index)
+    return diff_series, d_star

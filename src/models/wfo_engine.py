@@ -367,3 +367,188 @@ def predict_current(
         "target_horizon":    wfo_result.target_horizon,
         "top_features":      list(importances.items())[:5],
     }
+
+
+# ---------------------------------------------------------------------------
+# v4.0 — Combinatorial Purged Cross-Validation (CPCV)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class CPCVResult:
+    """
+    Results from Combinatorial Purged Cross-Validation.
+
+    CPCV generates C(n_folds, n_test_folds) train-test splits, then recombines
+    the test predictions into ``n_test_paths`` backtest paths.  Each path
+    contains non-overlapping test observations that together span the full
+    dataset — enabling overfitting detection via the distribution of path ICs.
+
+    A wide spread in ``path_ics`` suggests the model overfit to a specific
+    market regime rather than learning a generalizable pattern.
+
+    Attributes:
+        model_type:    Model type used (e.g. "elasticnet").
+        benchmark:     ETF ticker this model was trained against.
+        n_splits:      Total number of train-test splits (= C(n_folds, n_test_folds)).
+        n_paths:       Number of recombined backtest paths.
+        path_ics:      IC computed independently for each backtest path.
+        mean_ic:       Mean IC across all paths (primary performance estimate).
+        ic_std:        Std dev of path ICs (spread → overfitting signal).
+        split_ics:     IC per raw split (length = n_splits).
+    """
+    model_type: str
+    benchmark: str
+    n_splits: int
+    n_paths: int
+    path_ics: list[float] = field(default_factory=list)
+    mean_ic: float = float("nan")
+    ic_std: float = float("nan")
+    split_ics: list[float] = field(default_factory=list)
+
+
+def run_cpcv(
+    X: pd.DataFrame,
+    y: pd.Series,
+    model_type: Literal["lasso", "ridge", "elasticnet", "bayesian_ridge"] = "elasticnet",
+    target_horizon_months: int = 6,
+    n_folds: int | None = None,
+    n_test_folds: int | None = None,
+    benchmark: str = "",
+) -> CPCVResult:
+    """
+    Run Combinatorial Purged Cross-Validation (CPCV) for overfitting detection.
+
+    CPCV is a diagnostic/validation tool that generates multiple backtest paths
+    from a single dataset.  If the spread of per-path ICs is wide, the model
+    is likely overfit to a specific sub-period.  It is NOT a replacement for
+    ``run_wfo()`` — use this alongside the primary WFO to validate that results
+    are stable across data sub-samples.
+
+    The purge size is set to ``target_horizon_months`` to match the WFO embargo,
+    preventing autocorrelation leakage between adjacent folds.
+
+    Uses ``skfolio.model_selection.CombinatorialPurgedCV``.
+
+    Args:
+        X:                     Feature DataFrame (monthly DatetimeIndex).
+        y:                     Target Series (same index as X).
+        model_type:            Model type — must match a supported builder.
+        target_horizon_months: Forward return horizon; used as purge window.
+        n_folds:               Number of folds (default: config.CPCV_N_FOLDS = 6).
+        n_test_folds:          Test folds per split (default: config.CPCV_N_TEST_FOLDS = 2).
+                               C(n_folds, n_test_folds) = 15 splits for (6, 2).
+        benchmark:             ETF ticker label for the result.
+
+    Returns:
+        CPCVResult with per-path and per-split ICs.
+
+    Raises:
+        ValueError: If X/y are too small for the requested CPCV configuration.
+        ImportError: If skfolio is not installed.
+    """
+    from skfolio.model_selection import CombinatorialPurgedCV
+    from scipy.stats import spearmanr as _spearmanr
+
+    if n_folds is None:
+        n_folds = config.CPCV_N_FOLDS
+    if n_test_folds is None:
+        n_test_folds = config.CPCV_N_TEST_FOLDS
+
+    # Drop NaN targets; align X and y
+    aligned = X.join(y, how="inner").dropna(subset=[y.name])
+    if len(aligned) < n_folds * 2:
+        raise ValueError(
+            f"Insufficient data for CPCV: {len(aligned)} rows < {n_folds * 2} minimum."
+        )
+
+    feature_cols = list(X.columns)
+    X_arr = aligned[feature_cols].values.copy()
+    y_arr = aligned[y.name].values.copy()
+
+    cv = CombinatorialPurgedCV(
+        n_folds=n_folds,
+        n_test_folds=n_test_folds,
+        purged_size=target_horizon_months,
+        embargo_size=0,
+    )
+
+    # Collect per-split predictions
+    n_obs = len(X_arr)
+    all_y_hat = np.full(n_obs, np.nan)
+    split_ics: list[float] = []
+
+    splits = list(cv.split(X_arr))
+    n_splits = len(splits)
+
+    for train_idx, test_idx_list in splits:
+        X_train = X_arr[train_idx].copy()
+        y_train = y_arr[train_idx]
+
+        # Impute NaN with training medians
+        train_medians = np.nanmedian(X_train, axis=0)
+        train_medians = np.where(np.isnan(train_medians), 0.0, train_medians)
+        for col_i in range(X_train.shape[1]):
+            X_train[np.isnan(X_train[:, col_i]), col_i] = train_medians[col_i]
+
+        # Build and fit model
+        if model_type == "elasticnet":
+            pipeline = build_elasticnet_pipeline()
+        elif model_type == "lasso":
+            pipeline = build_lasso_pipeline()
+        elif model_type == "bayesian_ridge":
+            pipeline = build_bayesian_ridge_pipeline()
+        else:
+            pipeline = build_ridge_pipeline()
+        pipeline.fit(X_train, y_train)
+
+        # Predict on all test index arrays for this split
+        split_y_true: list[float] = []
+        split_y_hat: list[float] = []
+
+        for test_idx in test_idx_list:
+            X_test = X_arr[test_idx].copy()
+            for col_i in range(X_test.shape[1]):
+                X_test[np.isnan(X_test[:, col_i]), col_i] = train_medians[col_i]
+            y_hat = pipeline.predict(X_test)
+            all_y_hat[test_idx] = y_hat
+            split_y_true.extend(y_arr[test_idx].tolist())
+            split_y_hat.extend(y_hat.tolist())
+
+        if len(split_y_true) >= 2:
+            ic_val, _ = _spearmanr(split_y_true, split_y_hat)
+            split_ics.append(float(ic_val) if np.isfinite(ic_val) else float("nan"))
+
+    # Recombined paths: each path is a non-overlapping sequence of test observations
+    path_ics: list[float] = []
+    # cv.recombined_paths is available after split() — shape (n_paths, n_test_folds)
+    # Each row gives split indices whose test sets together cover the full dataset
+    if hasattr(cv, "recombined_paths") and cv.recombined_paths is not None:
+        try:
+            for path_split_ids in cv.recombined_paths:
+                path_y_true: list[float] = []
+                path_y_hat_vals: list[float] = []
+                for sid in path_split_ids:
+                    _, test_idx_list_s = splits[sid]
+                    for test_idx in test_idx_list_s:
+                        valid = ~np.isnan(all_y_hat[test_idx])
+                        path_y_true.extend(y_arr[test_idx][valid].tolist())
+                        path_y_hat_vals.extend(all_y_hat[test_idx][valid].tolist())
+                if len(path_y_true) >= 2:
+                    ic_p, _ = _spearmanr(path_y_true, path_y_hat_vals)
+                    path_ics.append(float(ic_p) if np.isfinite(ic_p) else float("nan"))
+        except Exception:  # noqa: BLE001
+            path_ics = []
+
+    mean_ic = float(np.nanmean(path_ics)) if path_ics else float("nan")
+    ic_std = float(np.nanstd(path_ics)) if len(path_ics) > 1 else float("nan")
+
+    return CPCVResult(
+        model_type=model_type,
+        benchmark=benchmark,
+        n_splits=n_splits,
+        n_paths=cv.n_test_paths,
+        path_ics=path_ics,
+        mean_ic=mean_ic,
+        ic_std=ic_std,
+        split_ics=split_ics,
+    )

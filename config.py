@@ -167,6 +167,53 @@ KELLY_MAX_POSITION: float = 0.30      # cap single-stock allocation at 30%
 ENSEMBLE_MODELS: list[str] = ["elasticnet", "ridge", "bayesian_ridge"]
 
 # ---------------------------------------------------------------------------
+# v4.0 Tax-Loss Harvesting replacement map
+# Maps tickers to a correlated-but-not-substantially-identical substitute.
+# Wash-sale rule: must wait ≥ 31 days before repurchasing the original.
+# ---------------------------------------------------------------------------
+TLH_REPLACEMENT_MAP: dict[str, str] = {
+    # PGR has no direct ETF substitute (individual stock)
+    "VTI":  "ITOT",   # iShares Core S&P Total US Stock (highly correlated)
+    "VOO":  "IVV",    # iShares Core S&P 500
+    "VGT":  "QQQ",    # Invesco Nasdaq-100 (tech-heavy, not substantially identical)
+    "VHT":  "XLV",    # Health Care Select Sector SPDR
+    "VFH":  "XLF",    # Financial Select Sector SPDR
+    "VIS":  "XLI",    # Industrial Select Sector SPDR
+    "VDE":  "XLE",    # Energy Select Sector SPDR
+    "VPU":  "XLU",    # Utilities Select Sector SPDR
+    "VXUS": "IXUS",   # iShares Core MSCI Total International
+    "VEA":  "EFA",    # iShares MSCI EAFE
+    "VWO":  "EEM",    # iShares MSCI Emerging Markets
+    "VIG":  "DGRO",   # iShares Core Dividend Growth
+    "SCHD": "VYM",    # Vanguard High Dividend Yield
+    "BND":  "AGG",    # iShares Core US Aggregate Bond
+    "BNDX": "IAGG",   # iShares Core International Aggregate Bond
+    "VCIT": "LQD",    # iShares iBoxx $ Investment Grade Corporate Bond
+    "VMBS": "MBB",    # iShares MBS ETF
+    "VNQ":  "IYR",    # iShares US Real Estate
+    "GLD":  "IAU",    # iShares Gold Trust
+    "DBC":  "PDBC",   # Invesco Optimum Yield Diversified Commodity
+}
+
+# v4.0 CPCV parameters
+CPCV_N_FOLDS: int = 6         # Number of folds for CombinatorialPurgedCV
+CPCV_N_TEST_FOLDS: int = 2    # Test folds per split; yields C(6,2)=15 splits, 5 paths
+
+# v4.0 Black-Litterman parameters
+BL_RISK_AVERSION: float = 2.5           # Moderate risk aversion (1=aggressive, 5=conservative)
+BL_TAU: float = 0.05                    # Uncertainty in equilibrium returns (small = trust prior)
+BL_VIEW_CONFIDENCE_SCALAR: float = 1.0  # Scales Ω = RMSE² × scalar
+
+# v4.0 Tax-Loss Harvesting parameters
+TLH_LOSS_THRESHOLD: float = -0.10       # Harvest when unrealized return < -10%
+TLH_WASH_SALE_DAYS: int = 31            # Minimum days before repurchasing original
+
+# v4.0 Fractional differentiation parameters
+FRACDIFF_MAX_D: float = 0.5             # Maximum differentiation order (preserves memory)
+FRACDIFF_CORR_THRESHOLD: float = 0.90   # Minimum correlation with original series
+FRACDIFF_ADF_ALPHA: float = 0.05        # Stationarity significance level
+
+# ---------------------------------------------------------------------------
 # ETF launch dates — tickers with limited history need proxy backfill.
 # All ETFs in ETF_BENCHMARK_UNIVERSE have pre-2014 history; no proxies are
 # currently required.  BNDX (launched 2013-06-03) pre-dates all backtested
