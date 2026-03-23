@@ -160,6 +160,13 @@ ETF_BENCHMARK_UNIVERSE: list[str] = [
 ]
 
 # ---------------------------------------------------------------------------
+# v3.1 ensemble and Kelly sizing parameters
+# ---------------------------------------------------------------------------
+KELLY_FRACTION: float = 0.25          # quarter-Kelly to control risk
+KELLY_MAX_POSITION: float = 0.30      # cap single-stock allocation at 30%
+ENSEMBLE_MODELS: list[str] = ["elasticnet", "ridge", "bayesian_ridge"]
+
+# ---------------------------------------------------------------------------
 # ETF launch dates — tickers with limited history need proxy backfill.
 # All ETFs in ETF_BENCHMARK_UNIVERSE have pre-2014 history; no proxies are
 # currently required.  BNDX (launched 2013-06-03) pre-dates all backtested

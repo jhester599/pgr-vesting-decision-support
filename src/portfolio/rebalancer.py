@@ -52,6 +52,10 @@ class VestingRecommendation:
     # results are available)
     benchmark_signals: dict[str, dict] | None = None   # ETF -> signal dict
     target_horizon: int = 6                            # months (6 or 12)
+    # v3.1 Kelly sizing fields (optional; populated when BayesianRidge uncertainty
+    # is available from the ensemble runner)
+    prediction_std: float = 0.0          # BayesianRidge posterior std (0 if unavailable)
+    kelly_fraction_used: float = 0.0     # Effective Kelly fraction applied
 
 
 def generate_recommendation(
@@ -207,6 +211,65 @@ def _compute_sell_pct(
         )
 
     return pct, rationale
+
+
+def _compute_sell_pct_kelly(
+    predicted_excess_return: float,
+    prediction_variance: float,
+    kelly_fraction: float | None = None,
+    max_position: float | None = None,
+) -> tuple[float, float, str]:
+    """
+    Compute recommended sell percentage using fractional Kelly criterion.
+
+    The Kelly formula sizes the optimal position as:
+        f* = kelly_fraction × predicted_excess_return / prediction_variance
+
+    A high signal (positive predicted return) → larger position in PGR
+    → sell LESS.  A high uncertainty (large variance) → smaller position
+    → sell MORE.
+
+    The sell percentage is ``1 - f*`` (clipped to [0, 1]).
+
+    Args:
+        predicted_excess_return: Model's predicted PGR excess return (can be
+                                 negative).
+        prediction_variance:     BayesianRidge posterior variance (std²).
+                                 Must be positive; falls back to legacy logic
+                                 if zero.
+        kelly_fraction:          Kelly multiplier (< 1 for fractional Kelly).
+                                 Defaults to ``config.KELLY_FRACTION`` (0.25).
+        max_position:            Maximum single-stock allocation fraction.
+                                 Defaults to ``config.KELLY_MAX_POSITION`` (0.30).
+
+    Returns:
+        Tuple of (sell_pct, kelly_fraction_used, rationale_str).
+    """
+    if kelly_fraction is None:
+        kelly_fraction = config.KELLY_FRACTION
+    if max_position is None:
+        max_position = config.KELLY_MAX_POSITION
+
+    if prediction_variance <= 0.0:
+        # No uncertainty estimate — fall back to legacy logic
+        sell_pct, rationale = _compute_sell_pct(
+            predicted_excess_return, ic=0.06, hit_rate=0.5
+        )
+        return sell_pct, 0.0, rationale + " [Kelly fallback: no variance estimate]"
+
+    raw_kelly = kelly_fraction * predicted_excess_return / prediction_variance
+    position_fraction = min(max(raw_kelly, 0.0), max_position)
+    sell_pct = 1.0 - position_fraction
+    sell_pct = min(max(sell_pct, 0.0), 1.0)
+
+    rationale = (
+        f"Fractional Kelly sizing: predicted excess return {predicted_excess_return:+.2%}, "
+        f"variance {prediction_variance:.4f}, raw f* = {raw_kelly:.3f}, "
+        f"capped at {max_position:.0%} max position → hold {position_fraction:.0%}, "
+        f"sell {sell_pct:.0%}. "
+        f"(Kelly fraction = {kelly_fraction}, max position = {max_position:.0%})"
+    )
+    return sell_pct, kelly_fraction, rationale
 
 
 def print_recommendation(rec: VestingRecommendation) -> None:

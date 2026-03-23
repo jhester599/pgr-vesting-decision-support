@@ -26,12 +26,16 @@ Feature groups:
     Dropped entirely if fewer than WFO_MIN_GAINSHARE_OBS non-NaN rows.
 
   FRED macro features (v3.0+, from fred_macro_monthly table):
-    - yield_slope      (T10Y2Y — 10Y-2Y spread)
-    - yield_curvature  (2×GS5 − GS2 − GS10)
-    - real_rate_10y    (GS10 − T10YIE)
-    - credit_spread_ig (BAA10Y — investment-grade credit spread)
-    - credit_spread_hy (BAMLH0A0HYM2 — high-yield OAS)
-    - nfci             (Chicago Fed NFCI composite)
+    - yield_slope           (T10Y2Y — 10Y-2Y spread)
+    - yield_curvature       (2×GS5 − GS2 − GS10)
+    - real_rate_10y         (GS10 − T10YIE)
+    - credit_spread_ig      (BAA10Y — investment-grade credit spread)
+    - credit_spread_hy      (BAMLH0A0HYM2 — high-yield OAS)
+    - nfci                  (Chicago Fed NFCI composite)
+    - vix                   (VIXCLS — CBOE VIX for regime classification)
+    PGR-specific FRED features (v3.1+):
+    - insurance_cpi_mom3m   (3-month momentum of motor vehicle insurance CPI)
+    - vmt_yoy               (year-over-year change in vehicle miles traveled)
     Dropped silently if FRED data is absent (backward-compatible with pre-v3.0 runs).
 
 """
@@ -216,6 +220,26 @@ def build_feature_matrix(
         if "NFCI" in fred_aligned.columns:
             df["nfci"] = fred_aligned["NFCI"]
 
+        # vix: CBOE Volatility Index (for regime classification in v3.1+)
+        if "VIXCLS" in fred_aligned.columns:
+            df["vix"] = fred_aligned["VIXCLS"]
+
+        # ------------------------------------------------------------------
+        # v3.1 PGR-specific FRED features
+        # CUSR0000SETC01 = Motor vehicle insurance CPI (rate adequacy proxy)
+        # TRFVOLUSM227NFWA = Vehicle miles traveled NSA (claims frequency proxy)
+        # ------------------------------------------------------------------
+
+        # insurance_cpi_mom3m: 3-month momentum of motor vehicle insurance CPI
+        if "CUSR0000SETC01" in fred_aligned.columns:
+            ins_cpi = fred_aligned["CUSR0000SETC01"]
+            df["insurance_cpi_mom3m"] = ins_cpi.pct_change(periods=3)
+
+        # vmt_yoy: year-over-year % change in vehicle miles traveled
+        if "TRFVOLUSM227NFWA" in fred_aligned.columns:
+            vmt = fred_aligned["TRFVOLUSM227NFWA"]
+            df["vmt_yoy"] = vmt.pct_change(periods=12)
+
     # ------------------------------------------------------------------
     # Target variable: 6-month forward DRIP total return
     # ------------------------------------------------------------------
@@ -294,8 +318,9 @@ def build_feature_matrix_from_db(
     edgar_raw = db_client.get_pgr_edgar_monthly(conn)
     pgr_monthly = edgar_raw if not edgar_raw.empty else None
 
-    # v3.0: load FRED macro series if the table is populated
-    fred_raw = db_client.get_fred_macro(conn, config.FRED_SERIES_MACRO)
+    # v3.0+: load FRED macro + v3.1 PGR-specific series if the table is populated
+    all_fred_series = list(config.FRED_SERIES_MACRO) + list(config.FRED_SERIES_PGR)
+    fred_raw = db_client.get_fred_macro(conn, all_fred_series)
     fred_macro = fred_raw if not fred_raw.empty else None
 
     return build_feature_matrix(

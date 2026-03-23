@@ -49,6 +49,7 @@ from sklearn.pipeline import Pipeline
 
 import config
 from src.models.regularized_models import (
+    build_bayesian_ridge_pipeline,
     build_elasticnet_pipeline,
     build_lasso_pipeline,
     build_ridge_pipeline,
@@ -82,7 +83,7 @@ class WFOResult:
     folds: list[FoldResult] = field(default_factory=list)
     benchmark: str = ""          # ETF ticker this model was trained against (v2)
     target_horizon: int = 6      # Forward return horizon in months (v2)
-    model_type: str = "lasso"    # "lasso", "ridge", or "elasticnet"
+    model_type: str = "lasso"    # "lasso", "ridge", "elasticnet", or "bayesian_ridge"
 
     @property
     def y_true_all(self) -> np.ndarray:
@@ -134,7 +135,7 @@ class WFOResult:
 def run_wfo(
     X: pd.DataFrame,
     y: pd.Series,
-    model_type: Literal["lasso", "ridge", "elasticnet"] = "elasticnet",
+    model_type: Literal["lasso", "ridge", "elasticnet", "bayesian_ridge"] = "elasticnet",
     target_horizon_months: int = 6,
     benchmark: str = "",
     purge_buffer: int | None = None,
@@ -244,6 +245,8 @@ def run_wfo(
             pipeline: Pipeline = build_elasticnet_pipeline()
         elif model_type == "lasso":
             pipeline = build_lasso_pipeline()
+        elif model_type == "bayesian_ridge":
+            pipeline = build_bayesian_ridge_pipeline()
         else:
             pipeline = build_ridge_pipeline()
         pipeline.fit(X_train, y_train)
@@ -280,7 +283,7 @@ def predict_current(
     y_full: pd.Series,
     X_current: pd.DataFrame,
     wfo_result: WFOResult,
-    model_type: Literal["lasso", "ridge", "elasticnet"] = "elasticnet",
+    model_type: Literal["lasso", "ridge", "elasticnet", "bayesian_ridge"] = "elasticnet",
     train_window_months: int | None = None,
 ) -> dict:
     """
@@ -306,6 +309,7 @@ def predict_current(
     Returns:
         Dict with keys:
           - ``predicted_return`` (float): fresh model prediction on X_current
+          - ``prediction_std`` (float): posterior std (BayesianRidge only; 0 otherwise)
           - ``ic`` (float): out-of-sample IC from wfo_result
           - ``hit_rate`` (float): directional hit rate from wfo_result
           - ``benchmark`` (str): ETF ticker (from wfo_result)
@@ -334,19 +338,29 @@ def predict_current(
     for col_i in range(X_curr_arr.shape[1]):
         X_curr_arr[np.isnan(X_curr_arr[:, col_i]), col_i] = train_medians[col_i]
 
+    prediction_std = 0.0
     if model_type == "elasticnet":
         pipeline: Pipeline = build_elasticnet_pipeline()
     elif model_type == "lasso":
         pipeline = build_lasso_pipeline()
+    elif model_type == "bayesian_ridge":
+        pipeline = build_bayesian_ridge_pipeline()
     else:
         pipeline = build_ridge_pipeline()
     pipeline.fit(X_recent, y_recent)
-    predicted = float(pipeline.predict(X_curr_arr)[0])
+
+    if model_type == "bayesian_ridge" and hasattr(pipeline, "predict_with_std"):
+        y_pred_arr, y_std_arr = pipeline.predict_with_std(X_curr_arr)
+        predicted = float(y_pred_arr[0])
+        prediction_std = float(y_std_arr[0])
+    else:
+        predicted = float(pipeline.predict(X_curr_arr)[0])
 
     importances = get_feature_importances(pipeline, feature_cols)
 
     return {
         "predicted_return":  predicted,
+        "prediction_std":    prediction_std,
         "ic":                wfo_result.information_coefficient,
         "hit_rate":          wfo_result.hit_rate,
         "benchmark":         wfo_result.benchmark,

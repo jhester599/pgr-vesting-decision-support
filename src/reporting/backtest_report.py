@@ -223,6 +223,104 @@ def generate_rolling_ic_series(
     return result.dropna(how="all")
 
 
+def generate_regime_breakdown(
+    results: list["BacktestEventResult"],
+    vix_series: pd.Series | None = None,
+    sp500_returns: pd.Series | None = None,
+    vix_threshold: float = 20.0,
+    return_threshold: float = 0.0,
+) -> pd.DataFrame:
+    """
+    Compute a 4-quadrant regime breakdown of model performance.
+
+    Regimes are defined by two dimensions:
+      - Market direction: bull (SP500 trailing 12M return > threshold) vs. bear.
+      - Volatility:       low (VIX ≤ threshold) vs. high.
+
+    If ``sp500_returns`` or ``vix_series`` are not provided, the function uses
+    the ``realized_relative_return`` sign and ``ic_at_event`` magnitude as
+    simple proxies to classify events.
+
+    Args:
+        results:          List of BacktestEventResult (typically monthly).
+        vix_series:       Monthly VIX observations (DatetimeIndex, pd.Series).
+                          Used to classify low/high-vol regimes.
+        sp500_returns:    Monthly SP500 trailing 12M returns (DatetimeIndex).
+                          Used to classify bull/bear regimes.
+        vix_threshold:    VIX level separating low (≤) from high (>) vol.
+        return_threshold: SP500 12M return separating bull (>) from bear (≤).
+
+    Returns:
+        DataFrame with 4 rows (one per quadrant) and columns:
+          ``regime``, ``n_obs``, ``hit_rate``, ``mean_ic``, ``oos_r2``.
+        Quadrant labels: "bull_low_vol", "bull_high_vol",
+                         "bear_low_vol", "bear_high_vol".
+    """
+    if not results:
+        return pd.DataFrame(
+            columns=["regime", "n_obs", "hit_rate", "mean_ic", "oos_r2"]
+        )
+
+    rows = []
+    for r in results:
+        event_ts = pd.Timestamp(r.event.event_date)
+
+        # Classify market regime
+        if sp500_returns is not None and not sp500_returns.empty:
+            sp500_at_event = sp500_returns.asof(event_ts)
+            is_bull = (not pd.isna(sp500_at_event)) and (sp500_at_event > return_threshold)
+        else:
+            # Proxy: realized relative return > 0 as a rough bull/bear proxy
+            is_bull = r.realized_relative_return > 0
+
+        # Classify volatility regime
+        if vix_series is not None and not vix_series.empty:
+            vix_at_event = vix_series.asof(event_ts)
+            is_low_vol = (not pd.isna(vix_at_event)) and (vix_at_event <= vix_threshold)
+        else:
+            # Proxy: IC < median IC as "low predictability = high vol"
+            all_ics = [res.ic_at_event for res in results if res.ic_at_event is not None]
+            median_ic = float(np.median(all_ics)) if all_ics else 0.0
+            is_low_vol = r.ic_at_event <= median_ic
+
+        market_label = "bull" if is_bull else "bear"
+        vol_label = "low_vol" if is_low_vol else "high_vol"
+        quadrant = f"{market_label}_{vol_label}"
+
+        rows.append({
+            "regime":     quadrant,
+            "correct":    float(r.correct_direction),
+            "ic":         r.ic_at_event,
+            "predicted":  r.predicted_relative_return,
+            "realized":   r.realized_relative_return,
+        })
+
+    if not rows:
+        return pd.DataFrame(
+            columns=["regime", "n_obs", "hit_rate", "mean_ic", "oos_r2"]
+        )
+
+    df = pd.DataFrame(rows)
+    output_rows = []
+    for regime, group in df.groupby("regime"):
+        pred_s = pd.Series(group["predicted"].values)
+        real_s = pd.Series(group["realized"].values)
+        oos_r2 = compute_oos_r_squared(pred_s, real_s)
+        output_rows.append({
+            "regime":    regime,
+            "n_obs":     len(group),
+            "hit_rate":  float(group["correct"].mean()),
+            "mean_ic":   float(group["ic"].mean()),
+            "oos_r2":    oos_r2,
+        })
+
+    result_df = pd.DataFrame(output_rows).set_index("regime")
+    # Ensure all 4 quadrants appear (fill missing with NaN)
+    all_quadrants = ["bull_low_vol", "bull_high_vol", "bear_low_vol", "bear_high_vol"]
+    result_df = result_df.reindex(all_quadrants)
+    return result_df
+
+
 # ---------------------------------------------------------------------------
 # Table generation
 # ---------------------------------------------------------------------------
