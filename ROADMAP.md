@@ -2,80 +2,84 @@
 
 ## Version History
 
-### v2.7 (Current stable — develop branch)
+### v2.7 (complete)
 **Released:** March 2026
 **Theme:** Complete v2 Relative Return Engine
 
 - 20 independent WFO models (one per ETF benchmark)
-- Correct 6M/12M embargo periods (v2 fix — eliminates autocorrelation leakage)
+- Correct 6M/12M embargo periods (eliminates autocorrelation leakage)
 - SQLite accumulation pipeline with weekly GitHub Actions fetch
 - DRIP total return reconstruction with split-adjusted unadjusted prices
 - Tax-aware lot selection (LTCG/STCG prioritization)
-- 271+ passing pytest tests covering all modules
+- 271 passing pytest tests covering all modules
 
 ---
 
-## Upcoming Versions
+### v3.0 (complete)
+**Released:** March 2026
+**Theme:** Macro Intelligence + Monthly Decision Engine
 
-### v3.0 — Macro Intelligence + Monthly Decision Engine
-**Theme:** FRED macro features, ElasticNet model, monthly stability backtesting, automated monthly decision reporting
-
-**Key changes:**
 - `src/ingestion/fred_loader.py` — FRED public API client (8 macro series: yield curve, credit spreads, NFCI)
 - `src/database/schema.sql` — New `fred_macro_monthly` table
-- `src/processing/feature_engineering.py` — 6 derived FRED features integrated into monthly feature matrix
-- `src/models/regularized_models.py` — ElasticNetCV pipeline (L1+L2 blend, l1_ratio grid [0.1–1.0])
+- `src/processing/feature_engineering.py` — 6 derived FRED features in monthly feature matrix
+- `src/models/regularized_models.py` — ElasticNetCV pipeline (l1_ratio grid [0.1–1.0])
 - `src/models/wfo_engine.py` — Purge buffer fix: gap = horizon + buffer (6M→8, 12M→15)
 - `src/backtest/vesting_events.py` — `enumerate_monthly_evaluation_dates()` → 120+ evaluation points
-- `src/reporting/backtest_report.py` — Campbell-Thompson OOS R², BHY multiple testing correction, Newey-West IC
+- `src/reporting/backtest_report.py` — Campbell-Thompson OOS R², BHY FDR correction, Newey-West IC
 - `scripts/monthly_decision.py` — Automated monthly sell/hold recommendation script
 - `.github/workflows/monthly_decision.yml` — Cron: 20th of each month (first business day)
-- `results/` — New structured output folder with `monthly_decisions/decision_log.md`
-- `requirements.txt` — Add `statsmodels>=0.14.0`
-
-**New tests:** test_fred_loader, test_fred_db, test_fred_features, test_elasticnet, test_embargo_fix, test_monthly_backtest, test_oos_r2
+- `results/` — Structured output folder with `monthly_decisions/decision_log.md`
+- **New tests:** test_fred_loader (13), test_fred_db (10), test_fred_features (5),
+  test_elasticnet (11), test_embargo_fix (9), test_monthly_backtest (11), test_oos_r2 (22)
 
 ---
 
-### v3.1 — Ensemble Models + Kelly Sizing + Regime Diagnostics
-**Theme:** BayesianRidge ensemble, fractional Kelly position sizing, PGR-specific insurance features, regime breakdown reports
+### v3.1 (complete)
+**Released:** March 2026
+**Theme:** Ensemble Models + Kelly Sizing + Regime Diagnostics
 
-**Key changes:**
-- `src/models/regularized_models.py` — BayesianRidge pipeline with `predict_with_std()`
-- `src/models/multi_benchmark_wfo.py` — Equal-weight ensemble (ElasticNet + Ridge + BayesianRidge)
-- `src/portfolio/rebalancer.py` — Fractional Kelly sizing (0.25× Kelly, 30% cap)
-- `src/ingestion/fred_loader.py` — Add PGR-specific: motor vehicle insurance CPI, vehicle miles traveled
-- `src/processing/feature_engineering.py` — `insurance_cpi_mom3m`, `vmt_yoy` features
+- `src/models/regularized_models.py` — `UncertaintyPipeline` + `build_bayesian_ridge_pipeline()`
+- `src/models/multi_benchmark_wfo.py` — `EnsembleWFOResult` + equal-weight 3-model ensemble
+- `src/portfolio/rebalancer.py` — `_compute_sell_pct_kelly()` (0.25× Kelly, 30% cap)
+- `src/ingestion/fred_loader.py` — PGR-specific: motor vehicle insurance CPI + VMT
+- `src/processing/feature_engineering.py` — `insurance_cpi_mom3m`, `vmt_yoy`, `vix` features
 - `src/reporting/backtest_report.py` — Rolling 24M IC series, 4-quadrant regime breakdown
-- `config.py` — KELLY_FRACTION=0.25, KELLY_MAX_POSITION=0.30, VIXCLS added to FRED series
-
-**New tests:** test_bayesian_ridge, test_kelly_sizing, test_pgr_fred_features, test_regime_breakdown
+- `config.py` — `KELLY_FRACTION=0.25`, `KELLY_MAX_POSITION=0.30`, VIXCLS in FRED series
+- **New tests:** test_bayesian_ridge (14), test_kelly_sizing (16),
+  test_pgr_fred_features (7), test_regime_breakdown (10)
 
 ---
 
-### v4.0 — Production Validation + Portfolio Optimization + Tax-Loss Harvesting
-**Theme:** CPCV validation, Black-Litterman portfolio construction, TLH with wash-sale, fractional differentiation
+### v4.0 (current — develop branch)
+**Released:** March 2026
+**Theme:** Production Validation + Portfolio Optimization + Tax-Loss Harvesting
 
-**Key changes:**
-- `src/models/wfo_engine.py` — `run_cpcv()` using skfolio CombinatorialPurgedCV
-- `src/portfolio/black_litterman.py` — New module: PyPortfolioOpt BL with Ledoit-Wolf covariance
-- `src/tax/capital_gains.py` — TLH candidate identification, after-tax return, wash-sale replacement
-- `src/processing/feature_engineering.py` — `apply_fracdiff()` for stationarity-preserving differentiation
-- `src/portfolio/rebalancer.py` — Per-benchmark weighting by historical IC × hit_rate
-- `requirements.txt` — Add `skfolio>=0.3.0`, `PyPortfolioOpt>=1.5.5`, `fracdiff>=0.1.0`
-
-**New tests:** test_cpcv, test_black_litterman, test_tlh, test_fracdiff, test_benchmark_weights
+- `src/models/wfo_engine.py` — `run_cpcv()` using skfolio `CombinatorialPurgedCV`
+  (C(6,2)=15 splits, 5 backtest paths); `CPCVResult` dataclass
+- `src/portfolio/black_litterman.py` — **NEW**: `build_bl_weights()` via PyPortfolioOpt
+  `BlackLittermanModel`; Ledoit-Wolf shrunk covariance; view confidence = CV RMSE²
+- `src/tax/capital_gains.py` — `identify_tlh_candidates()`, `compute_after_tax_expected_return()`,
+  `suggest_tlh_replacement()`, `wash_sale_clear_date()`
+- `src/processing/feature_engineering.py` — `apply_fracdiff()` + `_fracdiff_weights()`;
+  FFD stationarity transform implemented in numpy/scipy (fracdiff package Python <3.10 only)
+- `src/portfolio/rebalancer.py` — `compute_benchmark_weights()` (IC × hit_rate normalized)
+- `config.py` — `TLH_REPLACEMENT_MAP` (20 ETF pairs), CPCV/BL/TLH/fracdiff constants
+- `requirements.txt` — Add `skfolio>=0.3.0`, `PyPortfolioOpt>=1.5.5`
+- **New tests:** test_cpcv (17), test_black_litterman (14), test_tlh (23),
+  test_fracdiff (13), test_benchmark_weights (11)
+- **Total: 477 tests, all passing**
 
 ---
 
 ## Development Principles
 
 - **Never finalize a module without a passing pytest suite** (CLAUDE.md mandate)
-- **No K-Fold cross-validation** — TimeSeriesSplit with embargo only
-- **No StandardScaler across full dataset** — scaler isolated within each WFO fold
+- **No K-Fold cross-validation** — `TimeSeriesSplit` with embargo + purge buffer only
+- **No StandardScaler across full dataset** — scaler isolated within each WFO fold Pipeline
 - **No yfinance for fundamentals** — FMP and FRED REST APIs only
 - **Python 3.10+**, strict PEP 8, full type hinting
-- **Approved libraries:** pandas, numpy, scikit-learn, matplotlib, xgboost, requests, statsmodels (v3.0+), skfolio/PyPortfolioOpt/fracdiff (v4.0+)
+- **Approved libraries:** pandas, numpy, scikit-learn, matplotlib, xgboost, requests,
+  statsmodels (v3.0+), skfolio/PyPortfolioOpt (v4.0+)
 
 ## Monthly Decision Log
 
