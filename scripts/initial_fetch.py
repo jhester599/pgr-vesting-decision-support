@@ -49,7 +49,7 @@ class TickerResult(NamedTuple):
     ticker: str
     mode: str           # "prices" or "dividends"
     rows_upserted: int
-    status: str         # "OK", "SKIPPED", "ERROR"
+    status: str         # "OK", "SKIPPED", "DEFERRED", "DRY-RUN", "ERROR"
     detail: str         # row count or error message
 
 
@@ -107,14 +107,17 @@ def main(
             price_results = {t: 0 for t in all_tickers}
 
         for ticker, n_rows in price_results.items():
-            if n_rows > 0:
-                status, detail = "OK", f"{n_rows} rows upserted"
+            if n_rows is None:
+                status, detail = "DEFERRED", "not attempted — AV rate limit reached earlier in batch"
+                rows = 0
+            elif n_rows > 0:
+                status, detail, rows = "OK", f"{n_rows} rows upserted", n_rows
             elif dry_run:
-                status, detail = "DRY-RUN", "no HTTP call made"
+                status, detail, rows = "DRY-RUN", "no HTTP call made", 0
             else:
-                status, detail = "SKIPPED", "already fresh or no new data"
-            results.append(TickerResult(ticker, "prices", n_rows, status, detail))
-            marker = "OK" if status == "OK" else ("--" if status in ("SKIPPED", "DRY-RUN") else "!!")
+                status, detail, rows = "SKIPPED", "already fresh or no new data", 0
+            results.append(TickerResult(ticker, "prices", rows, status, detail))
+            marker = "OK" if status == "OK" else ("--" if status in ("SKIPPED", "DRY-RUN", "DEFERRED") else "!!")
             print(f"  [{marker}] {ticker:<6} {detail}")
 
         price_ok = sum(1 for r in results if r.mode == "prices" and r.status == "OK")
@@ -137,14 +140,17 @@ def main(
             div_results = {t: 0 for t in div_tickers}
 
         for ticker, n_rows in div_results.items():
-            if n_rows > 0:
-                status, detail = "OK", f"{n_rows} rows upserted"
+            if n_rows is None:
+                status, detail = "DEFERRED", "not attempted — AV rate limit reached earlier in batch"
+                rows = 0
+            elif n_rows > 0:
+                status, detail, rows = "OK", f"{n_rows} rows upserted", n_rows
             elif dry_run:
-                status, detail = "DRY-RUN", "no HTTP call made"
+                status, detail, rows = "DRY-RUN", "no HTTP call made", 0
             else:
-                status, detail = "SKIPPED", "already fresh or no new data"
-            results.append(TickerResult(ticker, "dividends", n_rows, status, detail))
-            marker = "OK" if status == "OK" else ("--" if status in ("SKIPPED", "DRY-RUN") else "!!")
+                status, detail, rows = "SKIPPED", "already fresh or no new data", 0
+            results.append(TickerResult(ticker, "dividends", rows, status, detail))
+            marker = "OK" if status == "OK" else ("--" if status in ("SKIPPED", "DRY-RUN", "DEFERRED") else "!!")
             print(f"  [{marker}] {ticker:<6} {detail}")
 
         div_ok = sum(1 for r in results if r.mode == "dividends" and r.status == "OK")
@@ -172,12 +178,15 @@ def main(
     # -------------------------------------------------------------------------
     run_end = datetime.now(timezone.utc)
     duration_s = (run_end - run_start).total_seconds()
+    # DEFERRED = AV server-side rate limit hit mid-batch; not a genuine error.
+    # The partial data already written is valid; remaining tickers need a re-run.
     overall_ok = not had_error and all(
-        r.status in ("OK", "SKIPPED", "DRY-RUN") for r in results
+        r.status in ("OK", "SKIPPED", "DRY-RUN", "DEFERRED") for r in results
     )
-    n_ok    = sum(1 for r in results if r.status == "OK")
-    n_skip  = sum(1 for r in results if r.status in ("SKIPPED", "DRY-RUN"))
-    n_err   = sum(1 for r in results if r.status == "ERROR")
+    n_ok       = sum(1 for r in results if r.status == "OK")
+    n_skip     = sum(1 for r in results if r.status in ("SKIPPED", "DRY-RUN"))
+    n_deferred = sum(1 for r in results if r.status == "DEFERRED")
+    n_err      = sum(1 for r in results if r.status == "ERROR")
 
     _write_status_file(
         status_file=status_file,
@@ -189,6 +198,7 @@ def main(
         av_limit=config.AV_DAILY_LIMIT,
         duration_s=duration_s,
         overall_ok=overall_ok,
+        n_deferred=n_deferred,
     )
 
     _write_github_step_summary(
@@ -196,6 +206,7 @@ def main(
         dry_run=dry_run,
         n_ok=n_ok,
         n_skip=n_skip,
+        n_deferred=n_deferred,
         n_err=n_err,
         av_used=av_used,
         av_limit=config.AV_DAILY_LIMIT,
@@ -204,9 +215,14 @@ def main(
     )
 
     # Console footer
-    badge = "[SUCCESS]" if overall_ok else "[PARTIAL FAILURE]"
-    print(f"\n{badge}  {n_ok} loaded, {n_skip} skipped, {n_err} errors "
-          f"| {av_used}/{config.AV_DAILY_LIMIT} AV calls "
+    if n_deferred:
+        badge = "[PARTIAL — RATE LIMITED]"
+        deferred_note = f", {n_deferred} deferred (re-run tomorrow for remaining tickers)"
+    else:
+        badge = "[SUCCESS]" if overall_ok else "[PARTIAL FAILURE]"
+        deferred_note = ""
+    print(f"\n{badge}  {n_ok} loaded, {n_skip} skipped, {n_err} errors"
+          f"{deferred_note} | {av_used}/{config.AV_DAILY_LIMIT} AV calls "
           f"| {duration_s:.0f}s")
 
     return 0 if overall_ok else 1
@@ -226,11 +242,15 @@ def _write_status_file(
     av_limit: int,
     duration_s: float,
     overall_ok: bool,
+    n_deferred: int = 0,
 ) -> None:
     """Write (or append) a Markdown status report to ``status_file``."""
     Path(status_file).parent.mkdir(parents=True, exist_ok=True)
 
-    badge = "✅ SUCCESS" if overall_ok else "❌ PARTIAL FAILURE"
+    if n_deferred:
+        badge = "⚠️ PARTIAL — RATE LIMITED"
+    else:
+        badge = "✅ SUCCESS" if overall_ok else "❌ PARTIAL FAILURE"
     dry_note = " *(dry run)*" if dry_run else ""
     ts = run_dt.strftime("%Y-%m-%d %H:%M UTC")
 
@@ -243,13 +263,21 @@ def _write_status_file(
         f"- **Tickers attempted:** {len(results)}",
         f"- **Loaded new data:** {sum(1 for r in results if r.status == 'OK')}",
         f"- **Skipped (no new data):** {sum(1 for r in results if r.status in ('SKIPPED', 'DRY-RUN'))}",
+        f"- **Deferred (AV rate limit):** {n_deferred}" if n_deferred else "",
         f"- **Errors:** {sum(1 for r in results if r.status == 'ERROR')}",
         "",
         "| Ticker | Mode | Rows | Status | Detail |",
         "|--------|------|-----:|--------|--------|",
     ]
     for r in sorted(results, key=lambda x: (x.mode, x.ticker)):
-        icon = "✅" if r.status == "OK" else ("⏭️" if r.status in ("SKIPPED", "DRY-RUN") else "❌")
+        if r.status == "DEFERRED":
+            icon = "⏸️"
+        elif r.status == "OK":
+            icon = "✅"
+        elif r.status in ("SKIPPED", "DRY-RUN"):
+            icon = "⏭️"
+        else:
+            icon = "❌"
         lines.append(
             f"| `{r.ticker}` | {r.mode} | {r.rows_upserted:,} "
             f"| {icon} {r.status} | {r.detail} |"
@@ -278,6 +306,7 @@ def _write_github_step_summary(
     dry_run: bool,
     n_ok: int,
     n_skip: int,
+    n_deferred: int,
     n_err: int,
     av_used: int,
     av_limit: int,
@@ -292,8 +321,15 @@ def _write_github_step_summary(
     if not summary_path:
         return
 
-    badge = "✅ SUCCESS" if overall_ok else "❌ PARTIAL FAILURE"
+    if n_deferred:
+        badge = "⚠️ PARTIAL — RATE LIMITED"
+    else:
+        badge = "✅ SUCCESS" if overall_ok else "❌ PARTIAL FAILURE"
     dry_note = " *(dry run)*" if dry_run else ""
+    deferred_row = (
+        [f"| Tickers deferred (re-run tomorrow) | ⚠️ **{n_deferred}** |"]
+        if n_deferred else []
+    )
     lines = [
         f"# PGR Initial Fetch — `{mode_label}`{dry_note}",
         "",
@@ -303,6 +339,7 @@ def _write_github_step_summary(
         "|--------|-------|",
         f"| Tickers loaded | **{n_ok}** |",
         f"| Tickers skipped | {n_skip} |",
+        *deferred_row,
         f"| Errors | {'**' + str(n_err) + '**' if n_err else '0'} |",
         f"| AV API calls | {av_used} / {av_limit} |",
         "",
@@ -312,7 +349,14 @@ def _write_github_step_summary(
         "|--------|------|-----:|--------|",
     ]
     for r in sorted(results, key=lambda x: (x.mode, x.ticker)):
-        icon = "✅" if r.status == "OK" else ("⏭️" if r.status in ("SKIPPED", "DRY-RUN") else "❌")
+        if r.status == "DEFERRED":
+            icon = "⏸️"
+        elif r.status == "OK":
+            icon = "✅"
+        elif r.status in ("SKIPPED", "DRY-RUN"):
+            icon = "⏭️"
+        else:
+            icon = "❌"
         lines.append(f"| `{r.ticker}` | {r.mode} | {r.rows_upserted:,} | {icon} {r.status} |")
     lines += ["", "</details>", ""]
 
