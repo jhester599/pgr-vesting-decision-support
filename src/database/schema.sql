@@ -121,3 +121,19 @@ CREATE TABLE IF NOT EXISTS ingestion_metadata (
     rows_stored  INTEGER,
     PRIMARY KEY (ticker, data_type)
 );
+
+-- ---------------------------------------------------------------------------
+-- FRED macro and insurance-specific monthly series (v3.0+)
+-- series_id: FRED series identifier (e.g. 'T10Y2Y', 'BAMLH0A0HYM2')
+-- month_end:  ISO date of the last calendar day of the month ('YYYY-MM-DD')
+-- value:      Raw FRED observation value (numeric); NULL if FRED reports '.'
+--
+-- Populated by src/ingestion/fred_loader.py via scripts/weekly_fetch.py.
+-- Used by src/processing/feature_engineering.py as macro regime features.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS fred_macro_monthly (
+    series_id  TEXT NOT NULL,
+    month_end  TEXT NOT NULL,
+    value      REAL,
+    PRIMARY KEY (series_id, month_end)
+);

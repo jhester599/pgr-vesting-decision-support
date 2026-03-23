@@ -52,6 +52,10 @@ class VestingRecommendation:
     # results are available)
     benchmark_signals: dict[str, dict] | None = None   # ETF -> signal dict
     target_horizon: int = 6                            # months (6 or 12)
+    # v3.1 Kelly sizing fields (optional; populated when BayesianRidge uncertainty
+    # is available from the ensemble runner)
+    prediction_std: float = 0.0          # BayesianRidge posterior std (0 if unavailable)
+    kelly_fraction_used: float = 0.0     # Effective Kelly fraction applied
 
 
 def generate_recommendation(
@@ -209,6 +213,65 @@ def _compute_sell_pct(
     return pct, rationale
 
 
+def _compute_sell_pct_kelly(
+    predicted_excess_return: float,
+    prediction_variance: float,
+    kelly_fraction: float | None = None,
+    max_position: float | None = None,
+) -> tuple[float, float, str]:
+    """
+    Compute recommended sell percentage using fractional Kelly criterion.
+
+    The Kelly formula sizes the optimal position as:
+        f* = kelly_fraction × predicted_excess_return / prediction_variance
+
+    A high signal (positive predicted return) → larger position in PGR
+    → sell LESS.  A high uncertainty (large variance) → smaller position
+    → sell MORE.
+
+    The sell percentage is ``1 - f*`` (clipped to [0, 1]).
+
+    Args:
+        predicted_excess_return: Model's predicted PGR excess return (can be
+                                 negative).
+        prediction_variance:     BayesianRidge posterior variance (std²).
+                                 Must be positive; falls back to legacy logic
+                                 if zero.
+        kelly_fraction:          Kelly multiplier (< 1 for fractional Kelly).
+                                 Defaults to ``config.KELLY_FRACTION`` (0.25).
+        max_position:            Maximum single-stock allocation fraction.
+                                 Defaults to ``config.KELLY_MAX_POSITION`` (0.30).
+
+    Returns:
+        Tuple of (sell_pct, kelly_fraction_used, rationale_str).
+    """
+    if kelly_fraction is None:
+        kelly_fraction = config.KELLY_FRACTION
+    if max_position is None:
+        max_position = config.KELLY_MAX_POSITION
+
+    if prediction_variance <= 0.0:
+        # No uncertainty estimate — fall back to legacy logic
+        sell_pct, rationale = _compute_sell_pct(
+            predicted_excess_return, ic=0.06, hit_rate=0.5
+        )
+        return sell_pct, 0.0, rationale + " [Kelly fallback: no variance estimate]"
+
+    raw_kelly = kelly_fraction * predicted_excess_return / prediction_variance
+    position_fraction = min(max(raw_kelly, 0.0), max_position)
+    sell_pct = 1.0 - position_fraction
+    sell_pct = min(max(sell_pct, 0.0), 1.0)
+
+    rationale = (
+        f"Fractional Kelly sizing: predicted excess return {predicted_excess_return:+.2%}, "
+        f"variance {prediction_variance:.4f}, raw f* = {raw_kelly:.3f}, "
+        f"capped at {max_position:.0%} max position → hold {position_fraction:.0%}, "
+        f"sell {sell_pct:.0%}. "
+        f"(Kelly fraction = {kelly_fraction}, max position = {max_position:.0%})"
+    )
+    return sell_pct, kelly_fraction, rationale
+
+
 def print_recommendation(rec: VestingRecommendation) -> None:
     """Print a formatted recommendation to stdout."""
     separator = "=" * 70
@@ -230,3 +293,73 @@ def print_recommendation(rec: VestingRecommendation) -> None:
         for ticker, amount in sorted(rec.etf_allocation.items()):
             print(f"    {ticker:<10} ${amount:>12,.2f}")
     print(separator)
+
+
+# ---------------------------------------------------------------------------
+# v4.0 — Per-Benchmark Weighting
+# ---------------------------------------------------------------------------
+
+def compute_benchmark_weights(
+    monthly_stability_results: list,
+    window_months: int = 24,
+    min_ic: float = 0.0,
+) -> dict[str, float]:
+    """
+    Compute reliability weights for each ETF benchmark based on rolling IC.
+
+    Benchmarks are weighted by their recent predictive skill:
+        raw_weight = rolling_ic × rolling_hit_rate
+
+    Benchmarks with mean IC ≤ ``min_ic`` over the window receive zero weight.
+    Weights are normalised to sum to 1.0 across active benchmarks.
+
+    This allows the final recommendation to favour benchmarks where the WFO
+    model has demonstrated consistent predictive power, rather than equal-
+    weighting all 20 ETFs regardless of model quality.
+
+    Args:
+        monthly_stability_results: List of BacktestEventResult from
+                                   ``run_monthly_stability_backtest()``.
+        window_months:             Rolling look-back window (default 24).
+        min_ic:                    Minimum mean IC over the window for a
+                                   benchmark to receive non-zero weight.
+
+    Returns:
+        Dict mapping ETF ticker → float weight.  Weights sum to 1.0.
+        Returns equal weights if no benchmark exceeds ``min_ic``.
+    """
+    import numpy as np
+
+    if not monthly_stability_results:
+        return {}
+
+    # Aggregate IC and hit_rate by benchmark
+    from collections import defaultdict
+    data: dict[str, list] = defaultdict(list)
+    for r in monthly_stability_results:
+        data[r.benchmark].append({
+            "ic":       r.ic_at_event,
+            "correct":  float(r.correct_direction),
+        })
+
+    weights_raw: dict[str, float] = {}
+    for benchmark, rows in data.items():
+        # Take the most recent window_months observations
+        recent = rows[-window_months:]
+        ics = [r["ic"] for r in recent]
+        hits = [r["correct"] for r in recent]
+        mean_ic = float(np.mean(ics)) if ics else 0.0
+        mean_hit = float(np.mean(hits)) if hits else 0.0
+
+        if mean_ic <= min_ic:
+            weights_raw[benchmark] = 0.0
+        else:
+            weights_raw[benchmark] = mean_ic * mean_hit
+
+    total = sum(weights_raw.values())
+    if total <= 0.0:
+        # All benchmarks below threshold — return equal weights
+        n = len(weights_raw)
+        return {k: 1.0 / n for k in weights_raw} if n > 0 else {}
+
+    return {k: v / total for k, v in weights_raw.items()}

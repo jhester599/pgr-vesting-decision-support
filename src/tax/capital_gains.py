@@ -283,3 +283,123 @@ def compute_position_summary(
         "stcg_shares": stcg_shares,
         "ltcg_pct_of_position": ltcg_shares / total_shares if total_shares > 0 else 0.0,
     }
+
+
+# ---------------------------------------------------------------------------
+# v4.0 Tax-Loss Harvesting
+# ---------------------------------------------------------------------------
+
+def identify_tlh_candidates(
+    lots: list[TaxLot],
+    current_price: float,
+    loss_threshold: float | None = None,
+) -> list[TaxLot]:
+    """
+    Identify tax lots eligible for tax-loss harvesting.
+
+    A lot is a TLH candidate when its unrealized return falls below
+    ``loss_threshold`` (default: config.TLH_LOSS_THRESHOLD = -10%).
+
+    Harvesting a loss lets it offset capital gains elsewhere (or up to
+    $3,000/year of ordinary income), reducing the after-tax cost of
+    diversification.
+
+    Args:
+        lots:           List of TaxLot objects (current position).
+        current_price:  Current price per share.
+        loss_threshold: Unrealized return below which harvest is triggered.
+                        Default: config.TLH_LOSS_THRESHOLD (-0.10).
+
+    Returns:
+        List of TaxLot objects with unrealized return < loss_threshold,
+        sorted by unrealized return ascending (largest loss first).
+    """
+    if loss_threshold is None:
+        loss_threshold = config.TLH_LOSS_THRESHOLD
+
+    candidates: list[TaxLot] = []
+    for lot in lots:
+        if lot.shares_remaining is None or lot.shares_remaining <= 0:
+            continue
+        unrealized_return = (
+            (current_price - lot.cost_basis_per_share) / lot.cost_basis_per_share
+        )
+        if unrealized_return < loss_threshold:
+            candidates.append(lot)
+
+    return sorted(
+        candidates,
+        key=lambda lot: (current_price - lot.cost_basis_per_share) / lot.cost_basis_per_share,
+    )
+
+
+def compute_after_tax_expected_return(
+    predicted_return: float,
+    unrealized_gain_fraction: float,
+    tax_rate: float | None = None,
+) -> float:
+    """
+    Compute the after-tax expected return, accounting for embedded capital gains.
+
+    After-tax return = predicted_return − max(0, unrealized_gain_fraction × tax_rate)
+
+    This creates a natural asymmetry:
+      - Lots with embedded losses increase the effective sell incentive (no tax drag).
+      - Lots with large embedded gains raise the hurdle rate (tax drag must be overcome).
+
+    Args:
+        predicted_return:        Model's predicted 6M forward return.
+        unrealized_gain_fraction: Embedded gain as a fraction of cost basis
+                                  (positive = gain, negative = loss).
+        tax_rate:                Applicable capital gains tax rate.
+                                 Defaults to config.LTCG_RATE.
+
+    Returns:
+        After-tax expected return as a float.
+    """
+    if tax_rate is None:
+        tax_rate = config.LTCG_RATE
+    tax_drag = max(0.0, unrealized_gain_fraction * tax_rate)
+    return predicted_return - tax_drag
+
+
+def suggest_tlh_replacement(harvested_ticker: str) -> str | None:
+    """
+    Suggest a correlated-but-not-substantially-identical replacement ETF.
+
+    Uses ``config.TLH_REPLACEMENT_MAP`` to find the replacement.  The IRS
+    wash-sale rule prohibits repurchasing a "substantially identical" security
+    within 30 days before or after the sale.  ETF pairs in the map are chosen
+    to be correlated (tracking similar indices) but legally distinct (different
+    index methodologies or providers).
+
+    Wash-sale compliance: wait at least ``config.TLH_WASH_SALE_DAYS`` (31) days
+    before re-purchasing the original ticker.
+
+    Args:
+        harvested_ticker: The ticker being sold for a tax loss.
+
+    Returns:
+        Replacement ticker from TLH_REPLACEMENT_MAP, or None if no replacement
+        is defined (e.g., for individual stocks like PGR).
+    """
+    return config.TLH_REPLACEMENT_MAP.get(harvested_ticker)
+
+
+def wash_sale_clear_date(harvest_date: "date", wash_sale_days: int | None = None) -> "date":
+    """
+    Return the earliest date on which the original security can be repurchased.
+
+    Per IRS rules, this is 31 days after the sale date.
+
+    Args:
+        harvest_date:    Date of the tax-loss sale.
+        wash_sale_days:  Days to wait (default: config.TLH_WASH_SALE_DAYS = 31).
+
+    Returns:
+        First safe repurchase date.
+    """
+    from datetime import timedelta
+    if wash_sale_days is None:
+        wash_sale_days = config.TLH_WASH_SALE_DAYS
+    return harvest_date + timedelta(days=wash_sale_days)
