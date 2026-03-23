@@ -18,18 +18,42 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 FMP_API_KEY: str | None = os.getenv("FMP_API_KEY")
 AV_API_KEY: str | None = os.getenv("AV_API_KEY")
+FRED_API_KEY: str | None = os.getenv("FRED_API_KEY")
 
 # ---------------------------------------------------------------------------
 # API base URLs
 # ---------------------------------------------------------------------------
 FMP_BASE_URL: str = "https://financialmodelingprep.com/api"
 AV_BASE_URL: str = "https://www.alphavantage.co/query"
+FRED_BASE_URL: str = "https://api.stlouisfed.org/fred/series/observations"
 
 # ---------------------------------------------------------------------------
 # Rate limits (requests per day)
 # ---------------------------------------------------------------------------
 FMP_DAILY_LIMIT: int = 250
 AV_DAILY_LIMIT: int = 25
+# FRED is a free public API with no enforced daily limit; no budget tracking needed.
+
+# ---------------------------------------------------------------------------
+# FRED series lists
+# ---------------------------------------------------------------------------
+# v3.0: macro regime and credit spread features
+FRED_SERIES_MACRO: list[str] = [
+    "T10Y2Y",            # 10Y-2Y yield curve spread (recession predictor)
+    "GS5",               # 5-Year Treasury Constant Maturity Rate
+    "GS2",               # 2-Year Treasury Constant Maturity Rate
+    "GS10",              # 10-Year Treasury Constant Maturity Rate
+    "T10YIE",            # 10-Year Breakeven Inflation Rate
+    "BAA10Y",            # Moody's Baa Corp Bond Yield minus 10Y Treasury (credit spread)
+    "BAMLH0A0HYM2",      # ICE BofA High-Yield OAS (HY credit spread)
+    "NFCI",              # Chicago Fed National Financial Conditions Index
+    "VIXCLS",            # CBOE Volatility Index (VIX) — for regime classification
+]
+# v3.1: PGR-specific insurance and claims frequency features (defined here, fetched in v3.1)
+FRED_SERIES_PGR: list[str] = [
+    "CUSR0000SETC01",    # Motor vehicle insurance CPI (rate adequacy proxy)
+    "TRFVOLUSM227NFWA",  # Vehicle miles traveled NSA (claims frequency proxy)
+]
 
 # ---------------------------------------------------------------------------
 # Cache paths (v1 JSON/parquet cache — retained for migration compatibility)
@@ -71,6 +95,14 @@ WFO_EMBARGO_MONTHS: int = 1          # Retained for v1 backward-compat; DO NOT U
 WFO_EMBARGO_MONTHS_6M: int = 6       # Correct embargo for 6-month target horizon
 WFO_EMBARGO_MONTHS_12M: int = 12     # Correct embargo for 12-month target horizon
 WFO_TARGET_HORIZONS: list[int] = [6, 12]
+
+# v3.0: additional purge buffer beyond the target horizon to account for
+# serial autocorrelation in monthly data (research report recommendation).
+# Total gap = target_horizon + purge_buffer:
+#   6M horizon  → gap = 6 + 2 = 8 months
+#   12M horizon → gap = 12 + 3 = 15 months
+WFO_PURGE_BUFFER_6M: int = 2
+WFO_PURGE_BUFFER_12M: int = 3
 
 # ---------------------------------------------------------------------------
 # Tax rates (federal maximums; add state rate in .env as needed)

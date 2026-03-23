@@ -3,7 +3,8 @@ Weekly data accumulation entrypoint for GitHub Actions.
 
 Fetches prices for all 23 tickers (PGR + 22 ETF benchmarks) and PGR dividends
 via Alpha Vantage TIME_SERIES_WEEKLY, then refreshes PGR quarterly fundamentals
-from FMP.  All results are upserted into the v2 SQLite database.
+from FMP and FRED macro series (v3.0+).  All results are upserted into the
+v2 SQLite database.
 
 Budget per run:
   23 AV calls  — all ticker prices (TIME_SERIES_WEEKLY, full history)
@@ -13,16 +14,21 @@ Budget per run:
    2 FMP calls — PGR key-metrics + income-statement
   ─────────────
    2 FMP total (free-tier limit: 250/day)
+  N FRED calls — one per series in FRED_SERIES_MACRO (no daily limit)
+  ─────────────
+  FRED is a free public API; calls do not count against AV or FMP budgets.
 
 ETF dividends are NOT fetched here; use scripts/initial_fetch.py for the
 one-time bootstrap and for quarterly ETF dividend refreshes.
 
 Usage (local or CI):
-    python scripts/weekly_fetch.py [--dry-run]
+    python scripts/weekly_fetch.py [--dry-run] [--skip-fred]
 
 Options:
-    --dry-run   Log which tickers would be fetched but make no HTTP calls.
-                Useful for verifying budget projection before a real run.
+    --dry-run    Log which tickers would be fetched but make no HTTP calls.
+                 Useful for verifying budget projection before a real run.
+    --skip-fred  Skip the FRED macro fetch step.  Useful if FRED_API_KEY
+                 is not set or during budget-constrained testing.
 """
 
 from __future__ import annotations
@@ -126,7 +132,29 @@ def _refresh_pgr_fundamentals(conn, dry_run: bool = False) -> int:
 # Main
 # ---------------------------------------------------------------------------
 
-def main(dry_run: bool = False) -> None:
+def _fetch_fred_step(conn, dry_run: bool = False) -> None:
+    """Fetch FRED macro series and upsert into fred_macro_monthly (v3.0+)."""
+    from src.ingestion.fred_loader import fetch_all_fred_macro, upsert_fred_to_db
+
+    series_list = config.FRED_SERIES_MACRO
+    print(f"\nFetching {len(series_list)} FRED macro series...")
+    if dry_run:
+        print(f"  [DRY RUN] Would fetch: {series_list}")
+        return
+
+    if config.FRED_API_KEY is None:
+        print("  WARNING: FRED_API_KEY not set. Skipping FRED fetch.")
+        return
+
+    try:
+        df = fetch_all_fred_macro(series_list)
+        n = upsert_fred_to_db(conn, df)
+        print(f"  FRED macro: {n} rows upserted ({len(series_list)} series)")
+    except Exception as exc:  # noqa: BLE001
+        print(f"  WARNING: FRED fetch failed: {exc}. Continuing with cached data.")
+
+
+def main(dry_run: bool = False, skip_fred: bool = False) -> None:
     today = date.today()
     print(f"{'[DRY RUN] ' if dry_run else ''}PGR v2 Weekly Fetch — {today}")
     print(f"Database: {config.DB_PATH}")
@@ -164,6 +192,12 @@ def main(dry_run: bool = False) -> None:
     n = _refresh_pgr_fundamentals(conn, dry_run=dry_run)
     print(f"  PGR fundamentals: {n} rows upserted")
 
+    # --- FRED macro series (v3.0+, no AV/FMP budget impact) ---
+    if not skip_fred:
+        _fetch_fred_step(conn, dry_run=dry_run)
+    else:
+        print("\nSkipping FRED fetch (--skip-fred).")
+
     # --- Budget summary ---
     today_str = today.isoformat()
     if dry_run:
@@ -182,8 +216,10 @@ def main(dry_run: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="PGR v2 weekly data accumulation.")
+    parser = argparse.ArgumentParser(description="PGR v3.0 weekly data accumulation.")
     parser.add_argument("--dry-run", action="store_true",
                         help="Log actions without making HTTP calls.")
+    parser.add_argument("--skip-fred", action="store_true",
+                        help="Skip FRED macro fetch step.")
     args = parser.parse_args()
-    main(dry_run=args.dry_run)
+    main(dry_run=args.dry_run, skip_fred=args.skip_fred)

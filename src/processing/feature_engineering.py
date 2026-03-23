@@ -25,6 +25,15 @@ Feature groups:
     - combined_ratio_ttm, pif_growth_yoy, gainshare_est
     Dropped entirely if fewer than WFO_MIN_GAINSHARE_OBS non-NaN rows.
 
+  FRED macro features (v3.0+, from fred_macro_monthly table):
+    - yield_slope      (T10Y2Y — 10Y-2Y spread)
+    - yield_curvature  (2×GS5 − GS2 − GS10)
+    - real_rate_10y    (GS10 − T10YIE)
+    - credit_spread_ig (BAA10Y — investment-grade credit spread)
+    - credit_spread_hy (BAMLH0A0HYM2 — high-yield OAS)
+    - nfci             (Chicago Fed NFCI composite)
+    Dropped silently if FRED data is absent (backward-compatible with pre-v3.0 runs).
+
 """
 
 import os
@@ -62,6 +71,7 @@ def build_feature_matrix(
     technical_indicators: pd.DataFrame | None = None,
     fundamentals: pd.DataFrame | None = None,
     pgr_monthly: pd.DataFrame | None = None,
+    fred_macro: pd.DataFrame | None = None,
     force_refresh: bool = False,
 ) -> pd.DataFrame:
     """
@@ -74,6 +84,9 @@ def build_feature_matrix(
         technical_indicators: DataFrame from technical_loader.load() (optional).
         fundamentals:        DataFrame from fundamentals_loader.load() (optional).
         pgr_monthly:         DataFrame from pgr_monthly_loader.load() (optional).
+        fred_macro:          Wide DataFrame from db_client.get_fred_macro() with
+                             DatetimeIndex (month-end) and one column per FRED
+                             series_id.  Optional; omitted in pre-v3.0 runs.
         force_refresh:       If True, recompute even if cached Parquet exists.
 
     Returns:
@@ -165,6 +178,45 @@ def build_feature_matrix(
                 df = df.drop(columns=[col])
 
     # ------------------------------------------------------------------
+    # FRED macro features (v3.0+) — derived from the fred_macro DataFrame.
+    # Each feature is forward-filled from the FRED month-end observations
+    # to align with the feature matrix dates.  If a required FRED series
+    # is absent, the corresponding feature column is skipped silently so
+    # that pre-v3.0 runs remain unaffected.
+    # ------------------------------------------------------------------
+    if fred_macro is not None and not fred_macro.empty:
+        # Reindex to the feature matrix dates; forward-fill end-of-month gaps
+        fred_aligned = fred_macro.reindex(monthly_dates, method="ffill")
+
+        # yield_slope: 10Y-2Y spread (direct series)
+        if "T10Y2Y" in fred_aligned.columns:
+            df["yield_slope"] = fred_aligned["T10Y2Y"]
+
+        # yield_curvature: butterfly = 2×GS5 − GS2 − GS10
+        if all(s in fred_aligned.columns for s in ("GS5", "GS2", "GS10")):
+            df["yield_curvature"] = (
+                2.0 * fred_aligned["GS5"]
+                - fred_aligned["GS2"]
+                - fred_aligned["GS10"]
+            )
+
+        # real_rate_10y: nominal 10Y minus breakeven inflation
+        if all(s in fred_aligned.columns for s in ("GS10", "T10YIE")):
+            df["real_rate_10y"] = fred_aligned["GS10"] - fred_aligned["T10YIE"]
+
+        # credit_spread_ig: Moody's Baa minus 10Y Treasury
+        if "BAA10Y" in fred_aligned.columns:
+            df["credit_spread_ig"] = fred_aligned["BAA10Y"]
+
+        # credit_spread_hy: ICE BofA HY OAS
+        if "BAMLH0A0HYM2" in fred_aligned.columns:
+            df["credit_spread_hy"] = fred_aligned["BAMLH0A0HYM2"]
+
+        # nfci: Chicago Fed National Financial Conditions Index
+        if "NFCI" in fred_aligned.columns:
+            df["nfci"] = fred_aligned["NFCI"]
+
+    # ------------------------------------------------------------------
     # Target variable: 6-month forward DRIP total return
     # ------------------------------------------------------------------
     from src.processing.total_return import build_monthly_returns
@@ -242,12 +294,17 @@ def build_feature_matrix_from_db(
     edgar_raw = db_client.get_pgr_edgar_monthly(conn)
     pgr_monthly = edgar_raw if not edgar_raw.empty else None
 
+    # v3.0: load FRED macro series if the table is populated
+    fred_raw = db_client.get_fred_macro(conn, config.FRED_SERIES_MACRO)
+    fred_macro = fred_raw if not fred_raw.empty else None
+
     return build_feature_matrix(
         price_history=prices,
         dividend_history=dividends,
         split_history=splits,          # may be empty DataFrame with DatetimeIndex
         fundamentals=fundamentals,
         pgr_monthly=pgr_monthly,
+        fred_macro=fred_macro,
         force_refresh=True,            # always recompute from DB; never use stale Parquet
     )
 

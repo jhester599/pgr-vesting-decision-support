@@ -49,6 +49,7 @@ from sklearn.pipeline import Pipeline
 
 import config
 from src.models.regularized_models import (
+    build_elasticnet_pipeline,
     build_lasso_pipeline,
     build_ridge_pipeline,
     get_feature_importances,
@@ -81,7 +82,7 @@ class WFOResult:
     folds: list[FoldResult] = field(default_factory=list)
     benchmark: str = ""          # ETF ticker this model was trained against (v2)
     target_horizon: int = 6      # Forward return horizon in months (v2)
-    model_type: str = "lasso"    # "lasso" or "ridge"
+    model_type: str = "lasso"    # "lasso", "ridge", or "elasticnet"
 
     @property
     def y_true_all(self) -> np.ndarray:
@@ -133,16 +134,21 @@ class WFOResult:
 def run_wfo(
     X: pd.DataFrame,
     y: pd.Series,
-    model_type: Literal["lasso", "ridge"] = "lasso",
+    model_type: Literal["lasso", "ridge", "elasticnet"] = "elasticnet",
     target_horizon_months: int = 6,
     benchmark: str = "",
+    purge_buffer: int | None = None,
 ) -> WFOResult:
     """
     Run Walk-Forward Optimization on the feature matrix.
 
-    The embargo (gap between training end and test start) is set equal to
-    ``target_horizon_months`` to eliminate autocorrelation leakage from
-    overlapping forward return windows.
+    The embargo (gap between training end and test start) is:
+        gap = target_horizon_months + purge_buffer
+
+    The ``purge_buffer`` provides additional separation beyond the target
+    horizon to account for serial autocorrelation in monthly data (v3.0+).
+    Default values (from config) are 2 months for 6M targets and 3 months
+    for 12M targets, giving total gaps of 8 and 15 months respectively.
 
     Args:
         X:                     Feature DataFrame (no NaN in price-derived
@@ -150,14 +156,21 @@ def run_wfo(
         y:                     Target Series (forward total return or relative
                                return). Must have no NaN — call
                                get_X_y(drop_na_target=True) first.
-        model_type:            ``"lasso"`` (default; L1 feature selection) or
+        model_type:            ``"elasticnet"`` (default v3.0+; L1+L2 blend),
+                               ``"lasso"`` (L1 feature selection), or
                                ``"ridge"`` (L2 shrinkage).
-        target_horizon_months: Forward return horizon in months.  Sets the
-                               embargo gap.  Use 6 for 6M models, 12 for 12M.
-                               Default: 6.
+        target_horizon_months: Forward return horizon in months.  Contributes
+                               to the embargo gap.  Use 6 for 6M models, 12
+                               for 12M.  Default: 6.
         benchmark:             ETF ticker this model is trained against
                                (e.g. ``"VTI"``).  Stored in WFOResult for
                                identification; does not affect computation.
+        purge_buffer:          Additional months of gap beyond the target
+                               horizon.  If None, uses
+                               ``config.WFO_PURGE_BUFFER_6M`` (2) for 6M
+                               horizons and ``config.WFO_PURGE_BUFFER_12M``
+                               (3) for 12M horizons.  Pass ``0`` to reproduce
+                               v2.7 behavior (gap = target_horizon only).
 
     Returns:
         WFOResult containing per-fold FoldResults and aggregate metrics.
@@ -172,10 +185,19 @@ def run_wfo(
             "y contains NaN values. Call get_X_y(df, drop_na_target=True) first."
         )
 
+    # v3.0: resolve purge buffer — default from config based on horizon
+    if purge_buffer is None:
+        purge_buffer = (
+            config.WFO_PURGE_BUFFER_6M
+            if target_horizon_months <= 6
+            else config.WFO_PURGE_BUFFER_12M
+        )
+    total_gap = target_horizon_months + purge_buffer
+
     n = len(X)
     # Subtract the embargo from available rows to avoid requesting more folds
     # than the data can support with the new (larger) gap.
-    available = n - config.WFO_TRAIN_WINDOW_MONTHS - target_horizon_months
+    available = n - config.WFO_TRAIN_WINDOW_MONTHS - total_gap
     n_splits = max(
         1,
         available // config.WFO_TEST_WINDOW_MONTHS,
@@ -193,7 +215,7 @@ def run_wfo(
         n_splits=n_splits,
         max_train_size=config.WFO_TRAIN_WINDOW_MONTHS,
         test_size=config.WFO_TEST_WINDOW_MONTHS,
-        gap=target_horizon_months,   # v2: embargo = target horizon (not 1 month)
+        gap=total_gap,  # v3.0: gap = horizon + purge_buffer (default 8M for 6M, 15M for 12M)
     )
 
     X_arr = X.values
@@ -218,9 +240,12 @@ def run_wfo(
             X_train[np.isnan(X_train[:, col_i]), col_i] = train_medians[col_i]
             X_test[np.isnan(X_test[:, col_i]), col_i] = train_medians[col_i]
 
-        pipeline: Pipeline = (
-            build_lasso_pipeline() if model_type == "lasso" else build_ridge_pipeline()
-        )
+        if model_type == "elasticnet":
+            pipeline: Pipeline = build_elasticnet_pipeline()
+        elif model_type == "lasso":
+            pipeline = build_lasso_pipeline()
+        else:
+            pipeline = build_ridge_pipeline()
         pipeline.fit(X_train, y_train)
         y_hat = pipeline.predict(X_test)
 
@@ -255,7 +280,7 @@ def predict_current(
     y_full: pd.Series,
     X_current: pd.DataFrame,
     wfo_result: WFOResult,
-    model_type: Literal["lasso", "ridge"] = "lasso",
+    model_type: Literal["lasso", "ridge", "elasticnet"] = "elasticnet",
     train_window_months: int | None = None,
 ) -> dict:
     """
@@ -309,9 +334,12 @@ def predict_current(
     for col_i in range(X_curr_arr.shape[1]):
         X_curr_arr[np.isnan(X_curr_arr[:, col_i]), col_i] = train_medians[col_i]
 
-    pipeline: Pipeline = (
-        build_lasso_pipeline() if model_type == "lasso" else build_ridge_pipeline()
-    )
+    if model_type == "elasticnet":
+        pipeline: Pipeline = build_elasticnet_pipeline()
+    elif model_type == "lasso":
+        pipeline = build_lasso_pipeline()
+    else:
+        pipeline = build_ridge_pipeline()
     pipeline.fit(X_recent, y_recent)
     predicted = float(pipeline.predict(X_curr_arr)[0])
 

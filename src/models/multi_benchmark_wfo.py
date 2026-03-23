@@ -33,8 +33,9 @@ from src.processing.feature_engineering import get_X_y_relative
 def run_all_benchmarks(
     X: pd.DataFrame,
     relative_return_matrix: pd.DataFrame,
-    model_type: Literal["lasso", "ridge"] = "lasso",
+    model_type: Literal["lasso", "ridge", "elasticnet"] = "elasticnet",
     target_horizon_months: int = 6,
+    purge_buffer: int | None = None,
 ) -> dict[str, WFOResult]:
     """
     Train one WFO model per ETF benchmark.
@@ -92,6 +93,7 @@ def run_all_benchmarks(
                 model_type=model_type,
                 target_horizon_months=target_horizon_months,
                 benchmark=etf,
+                purge_buffer=purge_buffer,
             )
         except ValueError:
             # Dataset too small for this benchmark — skip.
@@ -119,7 +121,7 @@ def get_current_signals(
     relative_return_matrix: pd.DataFrame,
     wfo_results: dict[str, WFOResult],
     X_current: pd.DataFrame,
-    model_type: Literal["lasso", "ridge"] = "lasso",
+    model_type: Literal["lasso", "ridge", "elasticnet"] = "elasticnet",
     train_window_months: int | None = None,
 ) -> pd.DataFrame:
     """

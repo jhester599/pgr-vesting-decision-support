@@ -31,7 +31,11 @@ import numpy as np
 import pandas as pd
 
 import config
-from src.backtest.vesting_events import VestingEvent, enumerate_vesting_events
+from src.backtest.vesting_events import (
+    VestingEvent,
+    enumerate_monthly_evaluation_dates,
+    enumerate_vesting_events,
+)
 from src.database import db_client
 from src.models.wfo_engine import run_wfo, predict_current
 from src.processing.feature_engineering import (
@@ -87,10 +91,11 @@ def _sell_pct_from_signal(
 
 def run_historical_backtest(
     conn: sqlite3.Connection,
-    model_type: Literal["lasso", "ridge"] = "lasso",
+    model_type: Literal["lasso", "ridge", "elasticnet"] = "elasticnet",
     target_horizon_months: int = 6,
     start_year: int = 2014,
     end_year: int | None = None,
+    events_override: list[VestingEvent] | None = None,
 ) -> list[BacktestEventResult]:
     """
     Run walk-forward backtests for all vesting events and all ETF benchmarks.
@@ -102,12 +107,16 @@ def run_historical_backtest(
     Args:
         conn:                  Open SQLite connection with v2 schema and
                                populated price / relative return tables.
-        model_type:            ``"lasso"`` (default) or ``"ridge"``.
+        model_type:            ``"elasticnet"`` (default v3.0+), ``"lasso"``,
+                               or ``"ridge"``.
         target_horizon_months: 6 or 12.
         start_year:            First vesting year to include (default 2014).
         end_year:              Last vesting year to include.  Defaults to
                                ``current_year - 2`` (ensures 12M returns
                                are fully realized for all events).
+        events_override:       If provided, evaluate these events instead of
+                               the default vesting event calendar.  Used by
+                               ``run_monthly_stability_backtest()``.
 
     Returns:
         List of BacktestEventResult, one per (event × benchmark) pair where
@@ -120,9 +129,12 @@ def run_historical_backtest(
     feature_cols = [c for c in df_full.columns if c != "target_6m_return"]
     X_full = df_full[feature_cols]
 
-    vesting_events = enumerate_vesting_events(
-        start_year=start_year, end_year=end_year
-    )
+    if events_override is not None:
+        vesting_events = events_override
+    else:
+        vesting_events = enumerate_vesting_events(
+            start_year=start_year, end_year=end_year
+        )
 
     results: list[BacktestEventResult] = []
     embargo = target_horizon_months   # months to lag the target slice
@@ -251,9 +263,55 @@ def run_historical_backtest(
     return results
 
 
+def run_monthly_stability_backtest(
+    conn: sqlite3.Connection,
+    model_type: Literal["lasso", "ridge", "elasticnet"] = "elasticnet",
+    target_horizon_months: int = 6,
+    start_year: int = 2014,
+    end_year: int | None = None,
+) -> list[BacktestEventResult]:
+    """
+    Run walk-forward backtests across all month-end evaluation dates (v3.0+).
+
+    This expands evaluation from ~20 semi-annual vesting events to 120+
+    monthly data points, enabling statistically meaningful assessment of model
+    predictive skill.  The same temporal slicing logic as
+    ``run_historical_backtest()`` is used — no lookahead leakage.
+
+    Note on serial autocorrelation: consecutive monthly predictions with a
+    6-month forward target share 5 of their 6 return months.  Use Newey-West
+    standard errors (lag=5 for 6M, lag=11 for 12M) when computing significance
+    from the full monthly series.
+
+    Args:
+        conn:                  Open SQLite connection.
+        model_type:            ``"elasticnet"`` (default), ``"lasso"``, or
+                               ``"ridge"``.
+        target_horizon_months: 6 or 12.
+        start_year:            First year to include (default 2014).
+        end_year:              Last year to include.  Defaults to
+                               ``current_year - 2``.
+
+    Returns:
+        List of BacktestEventResult for every month-end evaluation date where
+        sufficient data exists, covering all ETF benchmarks.
+    """
+    monthly_dates = enumerate_monthly_evaluation_dates(
+        start_year=start_year, end_year=end_year
+    )
+    return run_historical_backtest(
+        conn=conn,
+        model_type=model_type,
+        target_horizon_months=target_horizon_months,
+        start_year=start_year,
+        end_year=end_year,
+        events_override=monthly_dates,
+    )
+
+
 def run_full_backtest(
     conn: sqlite3.Connection,
-    model_type: str = "lasso",
+    model_type: str = "elasticnet",
 ) -> pd.DataFrame:
     """
     Run the complete backtest for all vesting events, all benchmarks, and

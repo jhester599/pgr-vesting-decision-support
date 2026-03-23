@@ -34,6 +34,7 @@ jobs:
         env:
           AV_API_KEY: ${{ secrets.AV_API_KEY }}
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: |
           DRY_FLAG=""
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then

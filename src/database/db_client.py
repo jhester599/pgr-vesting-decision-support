@@ -431,6 +431,84 @@ def get_relative_returns(
 
 
 # ---------------------------------------------------------------------------
+# FRED macro helpers (v3.0+)
+# ---------------------------------------------------------------------------
+
+def upsert_fred_macro(conn: sqlite3.Connection, records: list[dict[str, Any]]) -> int:
+    """Bulk-insert or replace FRED macro monthly observations.
+
+    Args:
+        conn: Open connection.
+        records: List of dicts with keys ``series_id``, ``month_end``
+            (ISO date string ``"YYYY-MM-DD"``), and ``value`` (float or None).
+
+    Returns:
+        Number of rows written.
+    """
+    if not records:
+        return 0
+    sql = """
+        INSERT OR REPLACE INTO fred_macro_monthly (series_id, month_end, value)
+        VALUES (:series_id, :month_end, :value)
+    """
+    normalised = [
+        {
+            "series_id": r["series_id"],
+            "month_end": r["month_end"],
+            "value":     r.get("value"),
+        }
+        for r in records
+    ]
+    conn.executemany(sql, normalised)
+    conn.commit()
+    return len(normalised)
+
+
+def get_fred_macro(
+    conn: sqlite3.Connection,
+    series_ids: list[str] | None = None,
+) -> pd.DataFrame:
+    """Load FRED macro monthly observations as a wide DataFrame.
+
+    Args:
+        conn: Open connection.
+        series_ids: If provided, only return these series.  If None,
+            returns all series present in the table.
+
+    Returns:
+        DataFrame with DatetimeIndex (month_end) and one column per
+        ``series_id``.  Missing observations are NaN.  Sorted ascending
+        by date.
+    """
+    if series_ids:
+        placeholders = ",".join("?" * len(series_ids))
+        sql = f"""
+            SELECT series_id, month_end, value
+            FROM fred_macro_monthly
+            WHERE series_id IN ({placeholders})
+            ORDER BY month_end ASC
+        """
+        df_long = pd.read_sql_query(
+            sql, conn, params=series_ids, parse_dates=["month_end"]
+        )
+    else:
+        sql = """
+            SELECT series_id, month_end, value
+            FROM fred_macro_monthly
+            ORDER BY month_end ASC
+        """
+        df_long = pd.read_sql_query(sql, conn, parse_dates=["month_end"])
+
+    if df_long.empty:
+        return pd.DataFrame()
+
+    df_wide = df_long.pivot(index="month_end", columns="series_id", values="value")
+    df_wide.index.name = "month_end"
+    df_wide.columns.name = None
+    return df_wide
+
+
+# ---------------------------------------------------------------------------
 # API rate-limit tracking
 # ---------------------------------------------------------------------------
 

@@ -1,0 +1,89 @@
+name: Monthly Decision Report
+
+# Fires on the 20th, 21st, and 22nd of each month.
+# The script itself is idempotent: it skips if a report for this month
+# already exists.  This handles the "first business day on or after the 20th"
+# requirement without needing a custom weekend-aware cron expression.
+#
+# Schedule logic:
+#   - 20th fires first (primary target date).
+#   - If the 20th is a Saturday, the 21st run produces the report (Sunday → skip,
+#     Monday → 22nd fires).
+#   - If the 20th is a Sunday, the 21st (Monday) run produces the report.
+#   - Once the report exists, the 21st and 22nd runs are no-ops (idempotent).
+#
+# All runs are at 15:00 UTC = 11 AM ET (after morning data settlement).
+
+on:
+  schedule:
+    - cron: '0 15 20 * *'   # 20th of each month at 15:00 UTC
+    - cron: '0 15 21 * *'   # 21st (fallback if 20th was Saturday)
+    - cron: '0 15 22 * *'   # 22nd (fallback if 20th was Sunday)
+  workflow_dispatch:
+    inputs:
+      as_of_date:
+        description: 'Override as-of date (YYYY-MM-DD). Defaults to today.'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Dry run (generate outputs, skip git commit)'
+        type: boolean
+        default: false
+      skip_fred:
+        description: 'Skip FRED data fetch (use cached data)'
+        type: boolean
+        default: false
+
+jobs:
+  monthly-decision:
+    name: Generate monthly PGR decision report
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run monthly decision script
+        env:
+          AV_API_KEY: ${{ secrets.AV_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: |
+          AS_OF_FLAG=""
+          if [ -n "${{ github.event.inputs.as_of_date }}" ]; then
+            AS_OF_FLAG="--as-of ${{ github.event.inputs.as_of_date }}"
+          fi
+
+          DRY_FLAG=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_FLAG="--dry-run"
+          fi
+
+          FRED_FLAG=""
+          if [ "${{ github.event.inputs.skip_fred }}" = "true" ]; then
+            FRED_FLAG="--skip-fred"
+          fi
+
+          python scripts/monthly_decision.py $AS_OF_FLAG $DRY_FLAG $FRED_FLAG
+
+      - name: Commit results
+        # Skip commit on dry-run; only commit if there are changes
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add results/monthly_decisions/
+          git add data/pgr_financials.db
+          # Only commit if there are staged changes
+          git diff --staged --quiet || git commit -m \
+            "feat: monthly decision report $(date -u +%Y-%m) [skip ci]"
+          git push
