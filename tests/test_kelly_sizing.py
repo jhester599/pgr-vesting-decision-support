@@ -1,9 +1,9 @@
 """
-Tests for fractional Kelly sizing in src/portfolio/rebalancer.py (v3.1).
+Tests for fractional Kelly sizing in src/portfolio/rebalancer.py (v3.1 / v4.1).
 
 Verifies:
   - Kelly formula: f* = kelly_fraction × predicted_return / variance
-  - Max position cap at KELLY_MAX_POSITION (0.30)
+  - Max position cap at KELLY_MAX_POSITION (0.20 as of v4.1)
   - Zero or negative predicted return → 100% sell (f* ≤ 0)
   - Fallback to legacy logic when variance = 0
   - VestingRecommendation has new prediction_std and kelly_fraction_used fields
@@ -47,10 +47,10 @@ class TestComputeSellPctKelly:
         sell_pct, _, _ = _compute_sell_pct_kelly(
             predicted_excess_return=100.0,    # absurdly high signal
             prediction_variance=0.001,
-            max_position=0.30,
+            max_position=0.20,
         )
-        # With cap at 30%, minimum sell is 70%
-        assert sell_pct >= 1.0 - 0.30 - 1e-9
+        # With cap at 20%, minimum sell is 80%
+        assert sell_pct >= 1.0 - 0.20 - 1e-9
 
     def test_kelly_formula_math(self):
         """f* = kelly_fraction × predicted / variance; sell = 1 - f*."""
@@ -139,3 +139,7 @@ class TestVestingRecommendationFields:
 
     def test_config_kelly_max_position(self):
         assert 0.0 < config.KELLY_MAX_POSITION <= 1.0
+
+    def test_kelly_cap_at_20pct(self):
+        """Verify Kelly sizing never recommends holding more than 20% in PGR."""
+        assert config.KELLY_MAX_POSITION == 0.20

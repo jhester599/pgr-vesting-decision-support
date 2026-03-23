@@ -163,7 +163,7 @@ ETF_BENCHMARK_UNIVERSE: list[str] = [
 # v3.1 ensemble and Kelly sizing parameters
 # ---------------------------------------------------------------------------
 KELLY_FRACTION: float = 0.25          # quarter-Kelly to control risk
-KELLY_MAX_POSITION: float = 0.30      # cap single-stock allocation at 30%
+KELLY_MAX_POSITION: float = 0.20      # v4.1: reduced from 0.30 (Meulbroek 2005: 25% employer stock = 42% CE loss)
 ENSEMBLE_MODELS: list[str] = ["elasticnet", "ridge", "bayesian_ridge"]
 
 # ---------------------------------------------------------------------------
@@ -228,4 +228,32 @@ ETF_LAUNCH_DATES: dict[str, str] = {}
 # Empty because all current benchmark ETFs have sufficient pre-2014 history.
 # ---------------------------------------------------------------------------
 ETF_PROXY_MAP: dict[str, str] = {}
+
+# ---------------------------------------------------------------------------
+# v4.1 — Data Integrity: Publication Lag Guards
+# ---------------------------------------------------------------------------
+# FRED publication lag (months). Prevents look-ahead bias from revised data.
+# The feature matrix applies these lags when reading FRED data from the DB,
+# so that month-T features only use data that was publicly available at month T.
+FRED_DEFAULT_LAG_MONTHS: int = 1  # default for any series not in FRED_SERIES_LAGS
+FRED_SERIES_LAGS: dict = {
+    "NFCI":              2,   # weekly; revised for ~8 weeks after release
+    "TRFVOLUSM227NFWA":  2,   # VMT NSA; 2-month publication delay
+    "CUSR0000SETC01":    1,   # Motor vehicle insurance CPI; monthly release
+    "BAA10Y":            1,
+    "BAMLH0A0HYM2":      1,
+    "T10Y2Y":            1,
+    "GS5":               1,
+    "GS2":               1,
+    "GS10":              1,
+    "T10YIE":            1,
+    "VIXCLS":            1,
+}
+
+# EDGAR filing lag (months from period-end to public availability).
+# PGR 10-Q is filed ~45 days after quarter end; 10-K ~60 days.
+# Using 2 months as a conservative guard across all EDGAR quarterly data.
+# Monthly 8-K data (combined ratio, PIF) is filed within the same month —
+# however, applying the same lag is conservative and prevents any edge case.
+EDGAR_FILING_LAG_MONTHS: int = 2
 

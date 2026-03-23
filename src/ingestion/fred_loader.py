@@ -119,6 +119,7 @@ def fetch_all_fred_macro(
     series_ids: list[str],
     observation_start: str = "2008-01-01",
     dry_run: bool = False,
+    apply_publication_lags: bool = True,
 ) -> pd.DataFrame:
     """
     Fetch multiple FRED series and join them into a single month-end DataFrame.
@@ -129,12 +130,17 @@ def fetch_all_fred_macro(
     last calendar day of the month (e.g. daily yield curve data).
 
     Args:
-        series_ids:        List of FRED series identifiers.  Typically
-                           ``config.FRED_SERIES_MACRO`` or
-                           ``config.FRED_SERIES_PGR``.
-        observation_start: ISO date string passed to each ``fetch_fred_series``
-                           call.
-        dry_run:           If True, return an empty DataFrame without HTTP calls.
+        series_ids:              List of FRED series identifiers.  Typically
+                                 ``config.FRED_SERIES_MACRO`` or
+                                 ``config.FRED_SERIES_PGR``.
+        observation_start:       ISO date string passed to each ``fetch_fred_series``
+                                 call.
+        dry_run:                 If True, return an empty DataFrame without HTTP calls.
+        apply_publication_lags:  If True (default), shift each series by its
+                                 configured publication lag from
+                                 ``config.FRED_SERIES_LAGS`` /
+                                 ``config.FRED_DEFAULT_LAG_MONTHS`` to prevent
+                                 look-ahead bias from FRED data revisions (v4.1).
 
     Returns:
         DataFrame with a DatetimeIndex (month-end, last calendar day) and one
@@ -166,6 +172,14 @@ def fetch_all_fred_macro(
 
     combined = pd.concat(frames, axis=1)
     combined = combined.sort_index()
+
+    # v4.1: apply per-series publication lags to prevent look-ahead bias
+    if apply_publication_lags:
+        for sid in combined.columns:
+            lag = config.FRED_SERIES_LAGS.get(sid, config.FRED_DEFAULT_LAG_MONTHS)
+            if lag > 0:
+                combined[sid] = combined[sid].shift(lag)
+
     return combined
 
 

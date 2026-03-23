@@ -1,7 +1,8 @@
 """
-Tests for src/ingestion/fred_loader.py (v3.0).
+Tests for src/ingestion/fred_loader.py (v3.0 / v4.1).
 
 Tests mock the HTTP layer so no real FRED API key is required.
+v4.1 additions: publication lag guard tests.
 """
 
 from __future__ import annotations
@@ -209,3 +210,43 @@ class TestUpsertFredToDb:
         count = conn.execute("SELECT COUNT(*) FROM fred_macro_monthly").fetchone()[0]
         assert count == 1
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# v4.1 — Publication lag guard tests
+# ---------------------------------------------------------------------------
+
+class TestPublicationLagGuards:
+    def test_publication_lag_applied_to_nfci(self):
+        """NFCI at month T should use the value from month T-2 after lag is applied."""
+        from src.processing.feature_engineering import _apply_fred_lags
+
+        # Create synthetic FRED data: 5 month-end dates
+        dates = pd.date_range("2020-01-31", periods=5, freq="ME")
+        df = pd.DataFrame({"NFCI": [1.0, 2.0, 3.0, 4.0, 5.0]}, index=dates)
+
+        result = _apply_fred_lags(df)
+
+        # NFCI has lag=2, so March (index 2) should have the January value (1.0)
+        assert pd.isna(result["NFCI"].iloc[0])  # Jan: no data (shifted out)
+        assert pd.isna(result["NFCI"].iloc[1])  # Feb: no data (shifted out)
+        assert result["NFCI"].iloc[2] == pytest.approx(1.0)  # Mar uses Jan value
+
+    def test_default_lag_applied_to_unlisted_series(self):
+        """Series not in FRED_SERIES_LAGS should get FRED_DEFAULT_LAG_MONTHS=1 shift."""
+        from src.processing.feature_engineering import _apply_fred_lags
+
+        dates = pd.date_range("2020-01-31", periods=4, freq="ME")
+        df = pd.DataFrame({"SOME_UNLISTED_SERIES": [10.0, 20.0, 30.0, 40.0]}, index=dates)
+
+        result = _apply_fred_lags(df)
+
+        # Default lag=1, so Feb (index 1) should have Jan value (10.0)
+        assert pd.isna(result["SOME_UNLISTED_SERIES"].iloc[0])
+        assert result["SOME_UNLISTED_SERIES"].iloc[1] == pytest.approx(10.0)
+
+    def test_no_lag_when_series_not_in_lag_dict_uses_default(self):
+        """Verify FRED_DEFAULT_LAG_MONTHS=1 is the fallback."""
+        assert config.FRED_DEFAULT_LAG_MONTHS == 1
+        assert "NFCI" in config.FRED_SERIES_LAGS
+        assert config.FRED_SERIES_LAGS["NFCI"] == 2

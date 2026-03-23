@@ -120,7 +120,9 @@ class TestBuildBlWeights:
             assert abs(total - 1.0) < 0.05, f"Weights sum to {total}, expected ~1.0"
 
     def test_each_weight_at_most_max_position(self):
-        tickers = ["VTI", "BND", "GLD", "VGT"]
+        # Use 6 tickers so equal weight (1/6 ≈ 0.167) is below KELLY_MAX_POSITION=0.20;
+        # this ensures the cap test is valid even when the fallback equal-weight path is taken.
+        tickers = ["VTI", "BND", "GLD", "VGT", "VHT", "VFH"]
         returns = _make_returns(tickers)
         signals = {t: _make_ensemble_result(t) for t in tickers}
         weights = build_bl_weights(signals, returns)

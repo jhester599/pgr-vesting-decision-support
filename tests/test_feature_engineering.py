@@ -7,6 +7,7 @@ Critical tests:
   3. target_6m_return is NaN for the final 6 months of the dataset.
   4. Gainshare columns are dropped when insufficient observations exist.
   5. get_X_y correctly splits features from the target.
+  6. (v4.1) EDGAR filing lag is applied before features are built.
 """
 
 import pytest
@@ -17,6 +18,7 @@ from src.processing.feature_engineering import (
     build_feature_matrix,
     get_feature_columns,
     get_X_y,
+    _apply_edgar_lag,
 )
 
 
@@ -204,3 +206,48 @@ class TestGetXY:
         feature_cols = get_feature_columns(feature_matrix)
         assert "target_6m_return" not in feature_cols
         assert len(feature_cols) == len(feature_matrix.columns) - 1
+
+
+# ---------------------------------------------------------------------------
+# v4.1 — EDGAR filing lag
+# ---------------------------------------------------------------------------
+
+class TestEdgarLag:
+    def test_edgar_lag_applied_in_feature_engineering(self):
+        """EDGAR data should be shifted by EDGAR_FILING_LAG_MONTHS before use in features.
+
+        _apply_edgar_lag uses a frequency-based index shift (shift(n, freq='MS')),
+        which moves each row's index date forward by n months rather than inserting
+        NaN rows.  After the lag, the row originally at 2020-01-31 (Jan period-end)
+        is accessible at 2020-03-31 (2 months later, the approximate filing date),
+        and the original Jan and Feb dates have no entries.
+        """
+        import config
+
+        # Create synthetic EDGAR data (monthly, period-end dates)
+        dates = pd.date_range("2020-01-31", periods=6, freq="ME")
+        df = pd.DataFrame(
+            {"combined_ratio_ttm": [95.0, 96.0, 97.0, 98.0, 99.0, 100.0]},
+            index=dates,
+        )
+
+        result = _apply_edgar_lag(df)
+
+        lag = config.EDGAR_FILING_LAG_MONTHS  # should be 2
+        # The original Jan 31 row should now be at Mar 31 (shifted 2 months forward)
+        first_orig_date = dates[0]  # 2020-01-31
+        shifted_date = (first_orig_date + pd.offsets.DateOffset(months=lag))
+        shifted_date_end = shifted_date + pd.offsets.MonthEnd(0)
+        # Result index should start at shifted_date_end (2020-03-31)
+        assert shifted_date_end in result.index, (
+            f"Expected {shifted_date_end} in result index after {lag}-month lag; "
+            f"got {result.index.tolist()}"
+        )
+        # The value at the shifted date should be the original first value
+        assert result.loc[shifted_date_end, "combined_ratio_ttm"] == pytest.approx(95.0)
+        # The original first `lag` dates should not be present in the shifted result
+        for i in range(lag):
+            original_date = dates[i]
+            assert original_date not in result.index, (
+                f"Date {original_date} should not be in shifted result index"
+            )
