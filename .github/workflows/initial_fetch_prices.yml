@@ -1,6 +1,7 @@
 name: Initial Fetch — Day 1 (Prices)
 
-# Scheduled for Mon 2026-03-23 at 06:00 AM EDT (10:00 AM UTC).
+# Scheduled for Tue 2026-03-24 at 06:00 AM EDT (10:00 AM UTC).
+# Rescheduled +24h after AV rate limit was hit on 2026-03-23.
 # workflow_dispatch lets you trigger it manually at any time (e.g. to test).
 #
 # AV budget: 23 calls (one per ticker).  Run this on Day 1; run
@@ -8,8 +9,8 @@ name: Initial Fetch — Day 1 (Prices)
 
 on:
   schedule:
-    # 06:00 AM EDT = 10:00 AM UTC  |  date: Mon 2026-03-23
-    - cron: '0 10 23 3 *'
+    # 06:00 AM EDT = 10:00 AM UTC  |  date: Tue 2026-03-24
+    - cron: '0 10 24 3 *'
   workflow_dispatch:
     inputs:
       dry_run:

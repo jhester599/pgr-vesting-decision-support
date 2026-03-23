@@ -1,6 +1,7 @@
 name: Initial Fetch — Day 2 (Dividends)
 
-# Scheduled for Tue 2026-03-24 at 06:00 AM EDT (10:00 AM UTC).
+# Scheduled for Wed 2026-03-25 at 06:00 AM EDT (10:00 AM UTC).
+# Rescheduled +24h after AV rate limit was hit on 2026-03-23 (prices Day 1 moved to 2026-03-24).
 # Run this the day after initial_fetch_prices.yml so both fetches stay
 # within the 25 AV calls/day free-tier limit.
 #
@@ -8,8 +9,8 @@ name: Initial Fetch — Day 2 (Dividends)
 
 on:
   schedule:
-    # 06:00 AM EDT = 10:00 AM UTC  |  date: Tue 2026-03-24
-    - cron: '0 10 24 3 *'
+    # 06:00 AM EDT = 10:00 AM UTC  |  date: Wed 2026-03-25
+    - cron: '0 10 25 3 *'
   workflow_dispatch:
     inputs:
       dry_run:
