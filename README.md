@@ -1,4 +1,4 @@
-# PGR Vesting Decision Support · v4.0
+# PGR Vesting Decision Support · v4.1
 
 A quantitative decision-support engine for systematically unwinding a concentrated
 Progressive Corporation (PGR) RSU position held in a taxable brokerage account.
@@ -59,13 +59,31 @@ quantification, fractional Kelly position sizing (0.25×, 30% cap), PGR-specific
 FRED features (motor vehicle insurance CPI, vehicle miles traveled), and
 4-quadrant bull/bear × low/high-vol regime breakdown reports.
 
-### v4.0 — Production Validation + Portfolio Optimization + TLH (current)
+### v4.0 — Production Validation + Portfolio Optimization + TLH (complete)
 
 Combinatorial Purged Cross-Validation (CPCV) for overfitting detection,
 Black-Litterman portfolio construction with view confidence scaled by CV RMSE²,
 tax-loss harvesting with wash-sale replacement ETF suggestions, fractional
 differentiation for stationarity-preserving feature transforms, and
 per-benchmark signal weighting by historical IC × hit rate.
+
+### v4.1 — Data Integrity + Lag Guards (current)
+
+Three pre-bootstrap fixes to eliminate look-ahead bias and reduce employer-stock
+concentration risk, deployed before the 2026-03-25 initial ML training label
+construction:
+
+- **FRED publication lag**: `FRED_DEFAULT_LAG_MONTHS = 1`; NFCI and VMT shifted
+  2 months, all other FRED series shifted 1 month. Enforced in
+  `feature_engineering._apply_fred_lags()` (authoritative DB path) and
+  `fred_loader.fetch_all_fred_macro(apply_publication_lags=True)`.
+- **EDGAR filing date lag**: `EDGAR_FILING_LAG_MONTHS = 2`. PGR's 10-Q for Q4
+  (period ending Dec 31) is filed ~late February; using report period as the
+  index created a ~2-month look-ahead. Enforced in
+  `feature_engineering._apply_edgar_lag()` and `pgr_monthly_loader.load()`.
+- **Kelly position cap**: `KELLY_MAX_POSITION` reduced from 0.30 to 0.20.
+  Meulbroek (2005) shows 25% in employer stock yields a ~42% certainty-equivalent
+  loss when human capital correlation is included.
 
 ---
 
@@ -239,7 +257,7 @@ pgr-vesting-decision-support/
 │                                    #   + generate_regime_breakdown() (4-quadrant)
 ```
 
-### v4.0 modules (current)
+### v4.0 modules (complete)
 
 ```
 ├── src/
@@ -253,7 +271,7 @@ pgr-vesting-decision-support/
 │   │   │                            #   _ledoit_wolf_covariance() (sklearn LedoitWolf)
 │   │   │                            #   compute_equilibrium_returns() (π = δΣw)
 │   │   │                            #   Views: predicted excess return per ETF
-│   │   │                            #   Ω_ii = CV RMSE² × confidence scalar
+│   │   │                            #   Ω_ii = MAE² × confidence scalar
 │   │   └── rebalancer.py            # + compute_benchmark_weights()
 │   │                                #   weight = IC × hit_rate, normalized; IC≤0 → 0
 │   │
@@ -268,6 +286,33 @@ pgr-vesting-decision-support/
 │                                    #   + _fracdiff_weights() — numpy/scipy FFD weights
 │                                    #   Finds min d* preserving ≥90% memory correlation
 │                                    #   while achieving ADF stationarity
+```
+
+### v4.1 modules (current)
+
+```
+├── config.py                        # + FRED_DEFAULT_LAG_MONTHS = 1
+│                                    #   + FRED_SERIES_LAGS dict (NFCI=2, VMT=2, others=1)
+│                                    #   + EDGAR_FILING_LAG_MONTHS = 2
+│                                    #   + KELLY_MAX_POSITION: 0.30 → 0.20
+│
+├── src/
+│   ├── ingestion/
+│   │   ├── fred_loader.py           # + apply_publication_lags param in fetch_all_fred_macro()
+│   │   │                            #   Shifts each FRED series by configured lag at fetch time
+│   │   └── pgr_monthly_loader.py   # + apply_filing_lag param in load()
+│   │                                #   Shifts EDGAR index forward by EDGAR_FILING_LAG_MONTHS
+│   │
+│   └── processing/
+│       └── feature_engineering.py  # + _apply_fred_lags() — authoritative lag enforcement
+│                                    #   + _apply_edgar_lag() — EDGAR point-in-time guard
+│                                    #   Both called in build_feature_matrix_from_db()
+│                                    #   immediately after loading raw DB values
+│
+└── tests/
+    ├── test_fred_loader.py          # + 3 publication-lag tests
+    ├── test_feature_engineering.py  # + EDGAR lag test; updated feature count
+    └── test_kelly_sizing.py         # + cap assertion updated to 0.20
 ```
 
 ---
@@ -285,16 +330,19 @@ pgr-vesting-decision-support/
 
 ### FRED Series
 
-| Category | Series | Feature |
-|----------|--------|---------|
-| Yield curve | T10Y2Y | `yield_slope` |
-| Yield curve | GS2, GS5, GS10 | `yield_curvature`, `real_rate_10y` |
-| Inflation | T10YIE | `real_rate_10y` |
-| Credit spreads | BAA10Y, BAMLH0A0HYM2 | `credit_spread_ig`, `credit_spread_hy` |
-| Financial conditions | NFCI | `nfci` |
-| Volatility | VIXCLS | `vix` |
-| PGR-specific | CUSR0000SETC01 | `insurance_cpi_mom3m` (3M momentum) |
-| PGR-specific | TRFVOLUSM227NFWA | `vmt_yoy` (YoY change) |
+All FRED series are shifted by a publication lag before entering the feature matrix
+(`feature_engineering._apply_fred_lags()`), preventing look-ahead bias from revised data.
+
+| Category | Series | Feature | Lag |
+|----------|--------|---------|-----|
+| Yield curve | T10Y2Y | `yield_slope` | 1 month |
+| Yield curve | GS2, GS5, GS10 | `yield_curvature`, `real_rate_10y` | 1 month |
+| Inflation | T10YIE | `real_rate_10y` | 1 month |
+| Credit spreads | BAA10Y, BAMLH0A0HYM2 | `credit_spread_ig`, `credit_spread_hy` | 1 month |
+| Financial conditions | NFCI | `nfci` | 2 months (weekly; revised ~8 weeks) |
+| Volatility | VIXCLS | `vix` | 1 month |
+| PGR-specific | CUSR0000SETC01 | `insurance_cpi_mom3m` (3M momentum) | 1 month |
+| PGR-specific | TRFVOLUSM227NFWA | `vmt_yoy` (YoY change) | 2 months (revised ~60 days) |
 
 ### v2 ETF Benchmark Universe (20 ETFs)
 
@@ -392,9 +440,10 @@ signals overfitting even when mean IC appears strong.
 ```
 π = δ × Σ × w_mkt          # equilibrium returns (reverse optimization)
 Q = ensemble predicted excess returns per ETF
-Ω_ii = CV_RMSE²_i × scalar # diagonal uncertainty matrix
+Ω_ii = MAE²_i × scalar     # diagonal uncertainty matrix (v4.0)
+                            # → BayesianRidge predictive variance planned (v4.2)
 → PyPortfolioOpt BlackLittermanModel → EfficientFrontier.max_sharpe
-→ weights clipped at KELLY_MAX_POSITION = 0.30
+→ weights clipped at KELLY_MAX_POSITION = 0.20
 ```
 
 Ledoit-Wolf shrinkage is applied to the sample covariance matrix to ensure
@@ -406,8 +455,11 @@ positive semi-definiteness with limited history.
 f* = KELLY_FRACTION × predicted_excess_return / prediction_variance
 position_fraction = min(max(f*, 0.0), KELLY_MAX_POSITION)
 sell_pct = 1.0 - position_fraction
-# KELLY_FRACTION = 0.25 (quarter-Kelly for personal portfolio risk tolerance)
-# KELLY_MAX_POSITION = 0.30 (maximum single position)
+# KELLY_FRACTION = 0.25 (quarter-Kelly — MacLean et al. 2010: 99.8% prob of doubling
+#                        before halving; Baker & McHale 2013: shrinkage-equivalent)
+# KELLY_MAX_POSITION = 0.20 (v4.1: reduced from 0.30; Meulbroek 2005: employer stock
+#                            concentration + human capital correlation ≈ 42% CE loss
+#                            at 25% concentration; financial advisor consensus ≤15–20%)
 ```
 
 ### Fractional Differentiation
@@ -617,13 +669,13 @@ pytest -m integration      # integration smoke tests only
 pytest -m "not integration" # fast unit tests only
 ```
 
-**477 tests across 28 modules, all passing** (as of v4.0):
+**482 tests across 28 modules, all passing** (as of v4.1):
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
 | `test_corporate_actions.py` | 17 | Split application, known split validation, cumulative multiplier |
 | `test_total_return.py` | 13 | DRIP share accumulation, portfolio value, no negative prices |
-| `test_feature_engineering.py` | 10 | No-leakage guarantee, target NaN in final 6M, Gainshare threshold |
+| `test_feature_engineering.py` | 12 | No-leakage guarantee, target NaN in final 6M, Gainshare threshold, FRED/EDGAR lag guards (v4.1) |
 | `test_capital_gains.py` | 14 | LTCG/STCG rate selection, lot priority, oversell validation |
 | `test_db_client.py` | 37 | Schema idempotency, upsert/replace semantics, budget enforcement, proxy_fill |
 | `test_multi_ticker_loader.py` | 34 | Price/dividend parsers, MultiTickerLoader, MultiDividendLoader, scheduler |
@@ -633,7 +685,7 @@ pytest -m "not integration" # fast unit tests only
 | `test_backtest_engine.py` | 32 | Date enumeration, business-day snap, forward windows, signal/sell-pct logic |
 | `test_reporting.py` | 27 | Pivot tables, print summary, CSV export, plot functions |
 | `test_integration.py` | 11 | End-to-end smoke test: synthetic DB → schema → features → WFO → signals |
-| `test_fred_loader.py` | 13 | Mock HTTP, monthly resampling, NaN handling, dry_run, missing key raises |
+| `test_fred_loader.py` | 16 | Mock HTTP, monthly resampling, NaN handling, dry_run, missing key raises, publication lag guards (v4.1) |
 | `test_fred_db.py` | 10 | Schema creation, upsert idempotence, get_fred_macro() column alignment |
 | `test_fred_features.py` | 5 | 6 derived FRED features present in feature matrix; no future leakage |
 | `test_elasticnet.py` | 11 | Pipeline builds, l1_ratio grid, StandardScaler temporal isolation |
@@ -641,7 +693,7 @@ pytest -m "not integration" # fast unit tests only
 | `test_monthly_backtest.py` | 11 | 120+ evaluation dates; vesting-date intersection invariant; no-lookahead |
 | `test_oos_r2.py` | 22 | OOS R²=0 when predicted=historical mean; BHY FDR ≤ 5%; Newey-West finite p |
 | `test_bayesian_ridge.py` | 14 | predict_with_std() finite; temporal isolation; ensemble averaging correct |
-| `test_kelly_sizing.py` | 16 | Kelly formula; max position cap; zero-prediction → 100% sell |
+| `test_kelly_sizing.py` | 17 | Kelly formula; max position cap (0.20 v4.1); zero-prediction → 100% sell |
 | `test_pgr_fred_features.py` | 7 | insurance_cpi_mom3m, vmt_yoy, vix present in feature matrix |
 | `test_regime_breakdown.py` | 10 | 4 quadrants populated; OOS R² in valid range; rolling IC window=24 |
 | `test_cpcv.py` | 17 | C(6,2)=15 splits; 5 paths; train/test disjoint; all obs appear in test sets |
@@ -663,6 +715,9 @@ Critical invariants enforced by tests:
 - CPCV: within every split, train and test index sets are disjoint
 - BL covariance matrix is positive semi-definite (all eigenvalues ≥ −1e-10)
 - TLH wash-sale clear date is exactly `harvest_date + TLH_WASH_SALE_DAYS`
+- FRED NFCI at feature-matrix time T uses data from T−2 (publication lag, v4.1)
+- EDGAR combined_ratio at time T is NaN until T + EDGAR_FILING_LAG_MONTHS (v4.1)
+- `KELLY_MAX_POSITION = 0.20`; no recommendation may hold > 20% in PGR (v4.1)
 
 ---
 
@@ -673,7 +728,9 @@ Critical invariants enforced by tests:
   dates are matched to the nearest weekly close.
 - **Both lots are STCG at vest**: Shares vest with zero holding period, so both
   tranches are classified as short-term at the moment of vest-day sale. LTCG status
-  accrues if shares are held at least 366 days post-vest.
+  accrues if shares are held at least 366 days post-vest. STCG-to-LTCG tax boundary
+  guard (planned v4.4) will flag 6M HOLD signals where expected alpha does not clear
+  the ~17–22pp STCG penalty differential.
 - **BNDX history**: Vanguard Total International Bond (BNDX) launched June 2013,
   roughly 7 months before the earliest backtested vesting event (Jan 2014). The
   BNDX model will have slightly fewer early training observations than other benchmarks.
@@ -682,9 +739,17 @@ Critical invariants enforced by tests:
   mathematical behavior.
 - **CPCV compute cost**: C(6,2)=15 splits × 20 benchmarks = 300 model fits per
   CPCV run. Used as a periodic diagnostic, not in the weekly cron.
+- **Black-Litterman Ω calibration**: Diagonal Ω currently uses MAE² as a view
+  uncertainty proxy; τ does not cancel as in the He & Litterman (1999) default,
+  making BL_TAU a critical tuning parameter. Planned v4.2 switches to per-prediction
+  BayesianRidge posterior variance for more principled uncertainty scaling.
 - **Black-Litterman views require live predictions**: `build_bl_weights()` derives
   ETF views from ensemble model y_hat. If fewer than 12 months of returns data are
   available for a benchmark, that benchmark falls back to equal-weight allocation.
+- **FRED vintage data**: The DB stores latest-vintage FRED values (not ALFRED
+  point-in-time vintages). Publication lags (v4.1) mitigate but do not fully
+  eliminate revision bias for series like VMT and NFCI. Full ALFRED vintage support
+  is a future enhancement.
 
 ---
 

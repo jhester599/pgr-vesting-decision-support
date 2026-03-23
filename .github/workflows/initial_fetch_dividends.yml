@@ -5,7 +5,7 @@ name: Initial Fetch — Day 2 (Dividends)
 # Run this the day after initial_fetch_prices.yml so both fetches stay
 # within the 25 AV calls/day free-tier limit.
 #
-# AV budget: 23 calls (one per ticker).
+# AV budget: 22 calls (one per ticker: PGR + 21 ETFs incl. KIE added v4.5).
 
 on:
   schedule:
@@ -24,7 +24,7 @@ on:
 
 jobs:
   fetch-dividends:
-    name: Fetch full dividend history (23 AV calls)
+    name: Fetch full dividend history (22 AV calls)
     runs-on: ubuntu-latest
 
     steps:
@@ -90,7 +90,7 @@ jobs:
           python - <<'EOF'
           import sqlite3, sys
           conn = sqlite3.connect("data/pgr_financials.db")
-          for ticker in ["PGR", "VTI"]:
+          for ticker in ["PGR", "VTI", "KIE"]:
               n = conn.execute(
                   "SELECT COUNT(*) FROM daily_dividends WHERE ticker=?", (ticker,)
               ).fetchone()[0]

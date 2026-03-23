@@ -52,7 +52,7 @@ def _find_col(df: pd.DataFrame, canonical: str) -> str | None:
     return None
 
 
-def load(force_refresh: bool = False) -> pd.DataFrame:
+def load(force_refresh: bool = False, apply_filing_lag: bool = True) -> pd.DataFrame:
     """
     Return normalized PGR monthly fundamentals from the EDGAR cache CSV.
 
@@ -60,7 +60,11 @@ def load(force_refresh: bool = False) -> pd.DataFrame:
     the canonical columns so downstream modules degrade gracefully.
 
     Args:
-        force_refresh: If True, re-parse the CSV even if the Parquet exists.
+        force_refresh:     If True, re-parse the CSV even if the Parquet exists.
+        apply_filing_lag:  If True (default), shift the DataFrame forward by
+                           ``config.EDGAR_FILING_LAG_MONTHS`` months to prevent
+                           look-ahead bias from EDGAR period-end vs filing dates
+                           (v4.1).
 
     Returns:
         DataFrame indexed by month-end date (DatetimeIndex, ascending) with
@@ -139,6 +143,11 @@ def load(force_refresh: bool = False) -> pd.DataFrame:
     df["gainshare_estimate"] = (0.5 * cr_score + 0.5 * pif_score)
 
     df = df.astype("float64")
+
+    # v4.1: shift index forward by EDGAR_FILING_LAG_MONTHS to prevent look-ahead bias
+    if apply_filing_lag:
+        df = df.shift(config.EDGAR_FILING_LAG_MONTHS, freq="MS")
+        df.index = df.index + pd.offsets.MonthEnd(0)
 
     os.makedirs(config.DATA_PROCESSED_DIR, exist_ok=True)
     df.to_parquet(_PROCESSED_PATH)

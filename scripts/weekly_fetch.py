@@ -45,6 +45,7 @@ from src.database import db_client
 from src.ingestion.fetch_scheduler import get_all_price_tickers
 from src.ingestion.multi_dividend_loader import MultiDividendLoader
 from src.ingestion.multi_ticker_loader import MultiTickerLoader
+from src.processing.multi_total_return import build_relative_return_targets
 
 
 # ---------------------------------------------------------------------------
@@ -205,6 +206,19 @@ def main(dry_run: bool = False, skip_fred: bool = False) -> None:
         _fetch_fred_step(conn, dry_run=dry_run)
     else:
         print("\nSkipping FRED fetch (--skip-fred).")
+
+    # --- Relative return targets (derived; no API calls) ---
+    # Refresh monthly_relative_returns after new prices/dividends are upserted
+    # so the WFO models always train on the latest targets.
+    print("\nRefreshing relative return targets (6M and 12M)...")
+    if dry_run:
+        print("  [DRY RUN] Skipping relative return computation.")
+    else:
+        for horizon in (6, 12):
+            df = build_relative_return_targets(conn, forward_months=horizon, upsert=True)
+            n_rows = df.shape[0] * df.shape[1] if not df.empty else 0
+            print(f"  {horizon}M: {n_rows} rows upserted across "
+                  f"{df.shape[1] if not df.empty else 0} benchmarks")
 
     # --- Budget summary ---
     today_str = today.isoformat()

@@ -51,6 +51,57 @@ import config
 
 _PROCESSED_PATH = os.path.join(config.DATA_PROCESSED_DIR, "feature_matrix.parquet")
 
+
+# ---------------------------------------------------------------------------
+# v4.1 — Publication lag helpers (authoritative enforcement point)
+# ---------------------------------------------------------------------------
+
+def _apply_fred_lags(fred_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Shift each FRED series by its configured publication lag.
+
+    This prevents look-ahead bias from FRED data revisions. The DB stores
+    the latest-vintage values fetched on the bootstrap date; this function
+    applies point-in-time publication lags so that month-T features only
+    use data that was publicly available at time T.
+
+    Args:
+        fred_df: DataFrame indexed by month-end dates, columns are FRED series IDs.
+
+    Returns:
+        DataFrame with each series shifted by its lag from config.FRED_SERIES_LAGS.
+    """
+    result = fred_df.copy()
+    for sid in result.columns:
+        lag = config.FRED_SERIES_LAGS.get(sid, config.FRED_DEFAULT_LAG_MONTHS)
+        if lag > 0:
+            result[sid] = result[sid].shift(lag)
+    return result
+
+
+def _apply_edgar_lag(edgar_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Shift EDGAR fundamental data by the filing lag to prevent look-ahead bias.
+
+    PGR's 10-Q for Q4 (period ending Dec 31) is filed ~late February.
+    Using report_period as the index means Q4 data would appear in January
+    features — 2 months before it was publicly available.
+
+    Args:
+        edgar_df: DataFrame indexed by month-end dates (report period end dates).
+
+    Returns:
+        DataFrame shifted forward by config.EDGAR_FILING_LAG_MONTHS months.
+    """
+    lag = config.EDGAR_FILING_LAG_MONTHS
+    if lag <= 0:
+        return edgar_df
+    result = edgar_df.shift(lag, freq="MS")
+    # Snap back to month-end after the MonthStart shift
+    result.index = result.index + pd.offsets.MonthEnd(0)
+    return result
+
+
 # Nominal trading days for each momentum lookback
 _MOMENTUM_WINDOWS: dict[str, int] = {
     "mom_3m": 63,
@@ -316,11 +367,17 @@ def build_feature_matrix_from_db(
     fundamentals = fundamentals_raw if not fundamentals_raw.empty else None
 
     edgar_raw = db_client.get_pgr_edgar_monthly(conn)
+    if not edgar_raw.empty:
+        # Apply filing lag to prevent EDGAR period-end vs filing date look-ahead bias (v4.1)
+        edgar_raw = _apply_edgar_lag(edgar_raw)
     pgr_monthly = edgar_raw if not edgar_raw.empty else None
 
     # v3.0+: load FRED macro + v3.1 PGR-specific series if the table is populated
     all_fred_series = list(config.FRED_SERIES_MACRO) + list(config.FRED_SERIES_PGR)
     fred_raw = db_client.get_fred_macro(conn, all_fred_series)
+    if not fred_raw.empty:
+        # Apply publication lags to prevent FRED revision look-ahead bias (v4.1)
+        fred_raw = _apply_fred_lags(fred_raw)
     fred_macro = fred_raw if not fred_raw.empty else None
 
     return build_feature_matrix(
