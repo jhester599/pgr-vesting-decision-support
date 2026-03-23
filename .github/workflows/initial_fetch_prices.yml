@@ -1,15 +1,17 @@
 name: Initial Fetch — Day 1 (Prices)
 
-# Scheduled for Mon 2026-03-23 at 06:00 AM EDT (10:00 AM UTC).
+# Scheduled for Tue 2026-03-24 at 06:00 AM EDT (10:00 AM UTC).
+# Rescheduled +1 day from original 2026-03-23 after initial run failure.
 # workflow_dispatch lets you trigger it manually at any time (e.g. to test).
 #
-# AV budget: 23 calls (one per ticker).  Run this on Day 1; run
-# initial_fetch_dividends.yml on Day 2 so the two fetches don't share a day.
+# AV budget: 22 calls (one per ticker: PGR + 21 ETFs incl. KIE added v4.5).
+# Run this on Day 1; run initial_fetch_dividends.yml on Day 2 so the two
+# fetches stay within the 25 calls/day free-tier limit.
 
 on:
   schedule:
-    # 06:00 AM EDT = 10:00 AM UTC  |  date: Mon 2026-03-23
-    - cron: '0 10 23 3 *'
+    # 06:00 AM EDT = 10:00 AM UTC  |  date: Tue 2026-03-24
+    - cron: '0 10 24 3 *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -23,7 +25,7 @@ on:
 
 jobs:
   fetch-prices:
-    name: Fetch full price history (23 AV calls)
+    name: Fetch full price history (22 AV calls)
     runs-on: ubuntu-latest
 
     steps:
@@ -75,7 +77,7 @@ jobs:
           python - <<'EOF'
           import sqlite3, sys
           conn = sqlite3.connect("data/pgr_financials.db")
-          for ticker in ["PGR", "VTI"]:
+          for ticker in ["PGR", "VTI", "KIE"]:
               n = conn.execute(
                   "SELECT COUNT(*) FROM daily_prices WHERE ticker=?", (ticker,)
               ).fetchone()[0]

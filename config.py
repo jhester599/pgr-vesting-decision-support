@@ -50,9 +50,12 @@ FRED_SERIES_MACRO: list[str] = [
     "VIXCLS",            # CBOE Volatility Index (VIX) — for regime classification
 ]
 # v3.1: PGR-specific insurance and claims frequency features (defined here, fetched in v3.1)
+# v4.5: added used car CPI and medical CPI as direct claims severity predictors
 FRED_SERIES_PGR: list[str] = [
     "CUSR0000SETC01",    # Motor vehicle insurance CPI (rate adequacy proxy)
     "TRFVOLUSM227NFWA",  # Vehicle miles traveled NSA (claims frequency proxy)
+    "CUSR0000SETA02",    # Used car & truck CPI (auto total-loss severity; v4.5)
+    "CUSR0000SAM2",      # Medical care CPI (bodily injury / PIP severity; v4.5)
 ]
 
 # ---------------------------------------------------------------------------
@@ -141,6 +144,8 @@ ETF_BENCHMARK_UNIVERSE: list[str] = [
     "VIS",              # Vanguard Industrials
     "VDE",              # Vanguard Energy
     "VPU",              # Vanguard Utilities
+    # Insurance Industry (1) — v4.5: also used for pgr_vs_kie_6m relative strength feature
+    "KIE",              # SPDR S&P Insurance ETF (pure-play insurance; inception 2005-11-08)
     # International (3)
     "VXUS",             # Vanguard Total International Stock
     "VEA",              # Vanguard Developed Markets ex-US
@@ -157,6 +162,19 @@ ETF_BENCHMARK_UNIVERSE: list[str] = [
     "VNQ",              # Vanguard Real Estate
     "GLD",              # SPDR Gold Shares (no Vanguard equivalent)
     "DBC",              # Invesco DB Commodity Index (no Vanguard equivalent)
+]
+
+# ---------------------------------------------------------------------------
+# v6.0 Peer ticker universe — insurance company peers for cross-asset signals
+# (PGR vs. peer composite, residual momentum baseline).
+# Not fetched during initial bootstrap; added to weekly_fetch when v6.0
+# development begins in Q4 2026.
+# ---------------------------------------------------------------------------
+PEER_TICKER_UNIVERSE: list[str] = [
+    "ALL",   # Allstate — closest business model comp (personal auto + home)
+    "TRV",   # Travelers — large commercial + personal lines
+    "CB",    # Chubb — global P&C, diversified
+    "HIG",   # Hartford — personal + commercial + employee benefits
 ]
 
 # ---------------------------------------------------------------------------
@@ -193,6 +211,7 @@ TLH_REPLACEMENT_MAP: dict[str, str] = {
     "VNQ":  "IYR",    # iShares US Real Estate
     "GLD":  "IAU",    # iShares Gold Trust
     "DBC":  "PDBC",   # Invesco Optimum Yield Diversified Commodity
+    "KIE":  "IAK",    # iShares U.S. Insurance ETF (diff. index: DJ vs S&P; v4.5)
 }
 
 # v4.0 CPCV parameters
@@ -218,8 +237,11 @@ FRACDIFF_ADF_ALPHA: float = 0.05        # Stationarity significance level
 # All ETFs in ETF_BENCHMARK_UNIVERSE have pre-2014 history; no proxies are
 # currently required.  BNDX (launched 2013-06-03) pre-dates all backtested
 # vesting events (earliest: Jan 2014) by a sufficient margin.
+# KIE (launched 2005-11-08) has ~20 years of history; no proxy needed.
 # ---------------------------------------------------------------------------
-ETF_LAUNCH_DATES: dict[str, str] = {}
+ETF_LAUNCH_DATES: dict[str, str] = {
+    "KIE": "2005-11-08",    # SPDR S&P Insurance ETF; ~20 years history (v4.5)
+}
 
 # ---------------------------------------------------------------------------
 # Proxy map for pre-launch / limited-data tickers
@@ -240,6 +262,8 @@ FRED_SERIES_LAGS: dict = {
     "NFCI":              2,   # weekly; revised for ~8 weeks after release
     "TRFVOLUSM227NFWA":  2,   # VMT NSA; 2-month publication delay
     "CUSR0000SETC01":    1,   # Motor vehicle insurance CPI; monthly release
+    "CUSR0000SETA02":    1,   # Used car CPI; monthly BLS release (v4.5)
+    "CUSR0000SAM2":      1,   # Medical care CPI; monthly BLS release (v4.5)
     "BAA10Y":            1,
     "BAMLH0A0HYM2":      1,
     "T10Y2Y":            1,

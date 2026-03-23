@@ -1,16 +1,21 @@
 name: Post-Initial Bootstrap
 
-# Runs one hour after the Day 2 dividends workflow (Wed 2026-03-25 at 11:00 UTC)
+# Runs one hour after the Day 2 dividends workflow (Thu 2026-03-26 at 11:00 UTC)
 # to build derived data and generate the first monthly decision report.
+# Rescheduled +1 day from original 2026-03-25 after Day 1 run failure.
 #
 # What this workflow does
 # -----------------------
-# 1. Build relative return targets (6M + 12M) for all 20 ETF benchmarks.
+# 1. Build relative return targets (6M + 12M) for all 21 ETF benchmarks
+#    (20 original + KIE added v4.5).
 #    Populates the monthly_relative_returns table that the WFO engine reads.
 #    This is the critical derived step that must happen before monthly_decision
 #    can train models — prices + dividends alone are not enough.
 #
-# 2. Run monthly_decision.py to produce the first recommendation report in
+# 2. Fetch FRED macro series including new v4.5 additions (CUSR0000SETA02,
+#    CUSR0000SAM2) — full history back to 1953 is retrieved in one call.
+#
+# 3. Run monthly_decision.py to produce the first recommendation report in
 #    results/monthly_decisions/YYYY-MM/.
 #
 # Prerequisites
@@ -24,8 +29,8 @@ name: Post-Initial Bootstrap
 
 on:
   schedule:
-    # 11:00 AM UTC = 07:00 AM EDT  |  date: Wed 2026-03-25
-    - cron: '0 11 25 3 *'
+    # 11:00 AM UTC = 07:00 AM EDT  |  date: Thu 2026-03-26
+    - cron: '0 11 26 3 *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -109,6 +114,6 @@ jobs:
               print("ERROR: monthly_relative_returns is empty — bootstrap may have failed.")
               sys.exit(1)
           if n_benchmarks < 2:
-              print(f"WARNING: only {n_benchmarks} benchmark(s) found; expected ~20.")
+              print(f"WARNING: only {n_benchmarks} benchmark(s) found; expected ~21.")
           print("Verification passed.")
           EOF
