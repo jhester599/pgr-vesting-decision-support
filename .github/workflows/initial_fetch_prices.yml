@@ -1,6 +1,7 @@
 name: Initial Fetch — Day 1 (Prices)
 
-# Scheduled for Mon 2026-03-23 at 06:00 AM EDT (10:00 AM UTC).
+# Scheduled for Tue 2026-03-24 at 06:00 AM EDT (10:00 AM UTC).
+# Rescheduled +24h after AV rate limit was hit on 2026-03-23.
 # workflow_dispatch lets you trigger it manually at any time (e.g. to test).
 #
 # AV budget: 23 calls (one per ticker).  Run this on Day 1; run
@@ -8,8 +9,8 @@ name: Initial Fetch — Day 1 (Prices)
 
 on:
   schedule:
-    # 06:00 AM EDT = 10:00 AM UTC  |  date: Mon 2026-03-23
-    - cron: '0 10 23 3 *'
+    # 06:00 AM EDT = 10:00 AM UTC  |  date: Tue 2026-03-24
+    - cron: '0 10 24 3 *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -42,8 +43,9 @@ jobs:
       - name: Run initial price fetch
         id: fetch
         env:
-          AV_API_KEY:  ${{ secrets.AV_API_KEY }}
-          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          AV_API_KEY:   ${{ secrets.AV_API_KEY }}
+          FMP_API_KEY:  ${{ secrets.FMP_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: |
           DRY_FLAG=""
           FORCE_FLAG=""
@@ -53,7 +55,7 @@ jobs:
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
             FORCE_FLAG="--force"
           fi
-          python scripts/initial_fetch.py --prices $DRY_FLAG $FORCE_FLAG \
+          python scripts/initial_fetch.py --prices --fred $DRY_FLAG $FORCE_FLAG \
             --status-file data/fetch_status.md
 
       - name: Commit database and status report

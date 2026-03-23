@@ -20,6 +20,7 @@ import requests
 
 import config
 from src.database import db_client
+from src.ingestion.exceptions import AVRateLimitError
 
 _AV_BASE = config.AV_BASE_URL
 _AV_FUNCTION = "DIVIDENDS"
@@ -108,7 +109,13 @@ def _av_dividend_request(
     if "Error Message" in data:
         raise ValueError(f"Alpha Vantage dividend error for {ticker}: {data['Error Message']}")
     if "Note" in data:
-        raise RuntimeError(f"Alpha Vantage rate-limit note for {ticker}: {data['Note']}")
+        raise AVRateLimitError(
+            f"Alpha Vantage rate-limit note for {ticker}: {data['Note']}"
+        )
+    if "Information" in data:
+        raise AVRateLimitError(
+            f"Alpha Vantage info message for {ticker}: {data['Information']}"
+        )
 
     return data
 
@@ -163,7 +170,7 @@ class MultiDividendLoader:
         tickers: list[str],
         dry_run: bool = False,
         sleep_between: float = _MIN_SECONDS_BETWEEN_CALLS,
-    ) -> dict[str, int]:
+    ) -> dict[str, int | None]:
         """Fetch dividends for multiple tickers.
 
         Args:
@@ -172,12 +179,17 @@ class MultiDividendLoader:
             sleep_between: Seconds between requests.
 
         Returns:
-            Dict mapping each ticker to rows upserted (0 if skipped).
+            Dict mapping each ticker to rows upserted (int) or None if the
+            ticker was not attempted because the AV server-side rate limit was
+            hit earlier in the batch.  Tickers skipped as already-fresh map
+            to 0.
 
         Raises:
-            RuntimeError: If the daily AV budget is exhausted mid-batch.
+            RuntimeError: If the local DB daily budget is exhausted before the
+                batch starts (distinct from an AV server-side rate-limit hit
+                mid-batch, which returns partial results without raising).
         """
-        results: dict[str, int] = {}
+        results: dict[str, int | None] = {}
         for i, ticker in enumerate(tickers):
             if i > 0 and not dry_run:
                 time.sleep(sleep_between)
@@ -187,6 +199,16 @@ class MultiDividendLoader:
                     results[ticker] = 0
                 else:
                     results[ticker] = self.fetch_dividends(ticker)
+            except AVRateLimitError as exc:
+                # AV server-side throttle — stop gracefully and return partial results.
+                results[ticker] = None
+                for remaining in tickers[i + 1:]:
+                    results[remaining] = None
+                print(
+                    f"  [rate-limit] AV throttled at '{ticker}' — "
+                    f"{len(tickers) - i} tickers deferred to next run. {exc}"
+                )
+                return results
             except RuntimeError as exc:
                 raise RuntimeError(
                     f"Stopped at ticker '{ticker}': {exc}"
