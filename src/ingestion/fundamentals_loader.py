@@ -1,87 +1,68 @@
 """
-Load quarterly fundamental data for PGR from FMP.
+Load quarterly fundamental data for PGR from SEC EDGAR XBRL.
 
-Retrieves income statement and key financial metrics. On the FMP free tier
-this data is available for approximately the most recent 5 years. Older
-observations will appear as NaN in the feature matrix and are handled
-gracefully by feature_engineering.py.
+Replaces FMP as the data source.  Retrieves income-statement and
+balance-sheet metrics via the EDGAR companyfacts API (free, no API key
+required).  Data is available for all 10-Q and 10-K filings on record,
+which covers PGR back to the mid-1990s.
 
-Point-in-time integrity: FMP serves data keyed by the fiscal period end
-date, which is used as the feature observation date. No future information
-is introduced.
+Point-in-time integrity: EDGAR data is keyed by fiscal period-end date,
+which is used as the feature observation date.  No future information is
+introduced.  A filing lag of ``config.EDGAR_FILING_LAG_MONTHS`` is applied
+by feature_engineering.py when constructing the feature matrix.
 """
 
 import os
 
 import pandas as pd
 
-from src.ingestion import fmp_client
+from src.ingestion import edgar_client
 import config
 
 
 _PROCESSED_PATH = os.path.join(
     config.DATA_PROCESSED_DIR, "fundamentals_quarterly.parquet"
 )
-_FUNDAMENTALS_CACHE_HOURS = 168  # 7 days
 
 
 def load(force_refresh: bool = False) -> pd.DataFrame:
     """
-    Return quarterly fundamentals for PGR (P/E, P/B, ROE, EPS).
+    Return quarterly fundamentals for PGR (ROE, EPS, revenue, net income).
 
     Args:
-        force_refresh: If True, bypass cache and re-fetch from FMP.
+        force_refresh: If True, bypass cache and re-fetch from SEC EDGAR.
 
     Returns:
         DataFrame indexed by period end date (DatetimeIndex, ascending) with
         columns: pe_ratio, pb_ratio, roe, eps, revenue, net_income.
         All values are float64; missing data appears as NaN.
+
+        Note: pe_ratio and pb_ratio are always NaN — they require market
+        price data that is not available from XBRL.  They can be computed
+        downstream by joining with daily_prices.
     """
     if not force_refresh and os.path.exists(_PROCESSED_PATH):
         return pd.read_parquet(_PROCESSED_PATH)
 
-    # Fetch key metrics (P/E, P/B, ROE)
-    km_raw = fmp_client.get(
-        f"/v3/key-metrics/{config.TICKER}",
-        params={"period": "quarter", "limit": 40},
-        cache_hours=_FUNDAMENTALS_CACHE_HOURS,
-    )
-    # Fetch income statement (revenue, net income, EPS)
-    is_raw = fmp_client.get(
-        f"/v3/income-statement/{config.TICKER}",
-        params={"period": "quarter", "limit": 40},
-        cache_hours=_FUNDAMENTALS_CACHE_HOURS,
+    records = edgar_client.fetch_pgr_fundamentals_quarterly(
+        force_refresh=force_refresh
     )
 
-    def _parse(records: list, cols: list[str]) -> pd.DataFrame:
-        df = pd.DataFrame(records)
-        df["date"] = pd.to_datetime(df["date"])
-        available = [c for c in cols if c in df.columns]
-        df = df[["date"] + available].copy()
-        df = df.sort_values("date").set_index("date")
-        return df
+    if not records:
+        empty = pd.DataFrame(
+            columns=["pe_ratio", "pb_ratio", "roe", "eps", "revenue", "net_income"]
+        )
+        empty.index = pd.DatetimeIndex([], name="date")
+        return empty
 
-    km_df = _parse(
-        km_raw,
-        ["peRatio", "pbRatio", "roe"],
-    )
-    is_df = _parse(
-        is_raw,
-        ["eps", "revenue", "netIncome"],
-    )
+    df = pd.DataFrame(records)
+    df["period_end"] = pd.to_datetime(df["period_end"])
+    df = df.sort_values("period_end").set_index("period_end")
+    df.index.name = "date"
 
-    df = km_df.join(is_df, how="outer")
-    df = df.rename(
-        columns={
-            "peRatio": "pe_ratio",
-            "pbRatio": "pb_ratio",
-            "roe": "roe",
-            "eps": "eps",
-            "revenue": "revenue",
-            "netIncome": "net_income",
-        }
-    )
-    df = df.astype("float64")
+    # Select only the columns expected by feature_engineering.py.
+    cols = ["pe_ratio", "pb_ratio", "roe", "eps", "revenue", "net_income"]
+    df = df.reindex(columns=cols).astype("float64")
 
     os.makedirs(config.DATA_PROCESSED_DIR, exist_ok=True)
     df.to_parquet(_PROCESSED_PATH)

@@ -48,7 +48,10 @@ CREATE TABLE IF NOT EXISTS split_history (
 );
 
 -- ---------------------------------------------------------------------------
--- PGR quarterly fundamental metrics from FMP
+-- PGR quarterly fundamental metrics from SEC EDGAR XBRL (via edgar_client.py)
+-- Sourced from 10-Q and 10-K filings; free, authoritative, no API key needed.
+-- Previously sourced from FMP (deprecated 2025-08-31 for free-tier accounts).
+-- pe_ratio, pb_ratio: NULL (require market price data; not available from XBRL)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS pgr_fundamentals_quarterly (
     period_end  TEXT    NOT NULL,

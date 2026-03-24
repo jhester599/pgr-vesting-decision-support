@@ -16,6 +16,9 @@ load_dotenv()
 # environments without a .env file. The API clients will raise a clear
 # error if a key is None at the moment an actual HTTP call is made.
 # ---------------------------------------------------------------------------
+# FMP_API_KEY: DEPRECATED — FMP v3 endpoints (free tier) were retired on
+# 2025-08-31. Quarterly fundamentals are now sourced from SEC EDGAR XBRL,
+# which is free, authoritative, and requires no API key.
 FMP_API_KEY: str | None = os.getenv("FMP_API_KEY")
 AV_API_KEY: str | None = os.getenv("AV_API_KEY")
 FRED_API_KEY: str | None = os.getenv("FRED_API_KEY")
@@ -23,16 +26,25 @@ FRED_API_KEY: str | None = os.getenv("FRED_API_KEY")
 # ---------------------------------------------------------------------------
 # API base URLs
 # ---------------------------------------------------------------------------
+# FMP_BASE_URL: retained for fmp_client.py backward-compatibility only.
 FMP_BASE_URL: str = "https://financialmodelingprep.com/api"
 AV_BASE_URL: str = "https://www.alphavantage.co/query"
 FRED_BASE_URL: str = "https://api.stlouisfed.org/fred/series/observations"
 
+# SEC EDGAR XBRL — free, authoritative, no API key required.
+# Required User-Agent header: "Jeff Hester jeffrey.r.hester@gmail.com"
+# Rate limit: 10 requests/second (enforced server-side).
+EDGAR_BASE_URL: str = "https://data.sec.gov"
+EDGAR_PGR_CIK: str = "CIK0000080661"
+
 # ---------------------------------------------------------------------------
 # Rate limits (requests per day)
 # ---------------------------------------------------------------------------
+# FMP_DAILY_LIMIT: retained for the api_request_log schema but no longer
+# consumed — FMP fundamentals fetches were replaced by EDGAR XBRL.
 FMP_DAILY_LIMIT: int = 250
 AV_DAILY_LIMIT: int = 25
-# FRED is a free public API with no enforced daily limit; no budget tracking needed.
+# EDGAR and FRED are free public APIs with no enforced daily limit.
 
 # ---------------------------------------------------------------------------
 # FRED series lists
