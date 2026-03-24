@@ -19,6 +19,7 @@ from typing import Any
 import requests
 
 import config
+from src.ingestion.exceptions import FMPEndpointDeprecatedError
 
 
 # ---------------------------------------------------------------------------
@@ -114,6 +115,17 @@ def get(
             "FMP_API_KEY is not set. Add it to your .env file."
         )
     response = requests.get(url, params=full_params, timeout=30)
+    if response.status_code == 403:
+        body = response.json() if response.content else {}
+        msg = body.get("Error Message", "") if isinstance(body, dict) else ""
+        if "Legacy Endpoint" in msg or "legacy" in msg.lower():
+            raise FMPEndpointDeprecatedError(
+                f"FMP endpoint '{endpoint}' is no longer accessible on this account tier. "
+                "FMP deprecated all v3/stable endpoints for non-legacy accounts on "
+                "2025-08-31. Upgrade your FMP subscription (Starter+) or switch to "
+                "an alternative data source (SEC EDGAR XBRL, SimFin, yfinance). "
+                f"Full message: {msg}"
+            )
     response.raise_for_status()
     data = response.json()
 

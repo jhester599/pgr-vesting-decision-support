@@ -42,6 +42,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config
 from src.database import db_client
+from src.ingestion.exceptions import FMPEndpointDeprecatedError
 from src.ingestion.fetch_scheduler import get_all_price_tickers
 from src.ingestion.multi_dividend_loader import MultiDividendLoader
 from src.ingestion.multi_ticker_loader import MultiTickerLoader
@@ -198,8 +199,12 @@ def main(dry_run: bool = False, skip_fred: bool = False) -> None:
 
     # --- FMP fundamentals (2 FMP calls) ---
     print("\nRefreshing PGR quarterly fundamentals from FMP...")
-    n = _refresh_pgr_fundamentals(conn, dry_run=dry_run)
-    print(f"  PGR fundamentals: {n} rows upserted")
+    try:
+        n = _refresh_pgr_fundamentals(conn, dry_run=dry_run)
+        print(f"  PGR fundamentals: {n} rows upserted")
+    except FMPEndpointDeprecatedError as exc:
+        print(f"  WARNING: FMP fundamentals skipped — endpoint deprecated: {exc}")
+        print("  ACTION REQUIRED: Upgrade FMP subscription or replace with SEC EDGAR XBRL.")
 
     # --- FRED macro series (v3.0+, no AV/FMP budget impact) ---
     if not skip_fred:

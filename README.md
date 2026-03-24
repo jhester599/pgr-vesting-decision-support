@@ -323,10 +323,29 @@ pgr-vesting-decision-support/
 |--------|------|------|
 | Alpha Vantage `TIME_SERIES_WEEKLY` | Weekly OHLCV — PGR + 20 ETF benchmarks (~25 years) | Free |
 | Alpha Vantage `DIVIDENDS` | Ex-dividend history — PGR + 20 ETF benchmarks | Free (25 req/day) |
-| FMP `/v3/key-metrics` + `/v3/income-statement` | PGR quarterly PE, PB, ROE, EPS, revenue | Free |
+| FMP `/v3/key-metrics` + `/v3/income-statement` | PGR quarterly PE, PB, ROE, EPS, revenue | **⚠ DEPRECATED** — see note below |
 | FRED public REST API | 9 macro series + 3 PGR-specific series (no budget impact) | Free |
 | EDGAR cache CSV | 256 months of combined ratio, PIF, EPS | User-provided |
 | `config.PGR_KNOWN_SPLITS` | 3 historical splits (1992, 2002, 2006) | Hardcoded |
+
+### FMP Deprecation Notice (2025-08-31)
+
+> **Action required if FMP fundamentals are needed.**
+
+FMP deprecated all `/v3/` REST endpoints on 2025-08-31 for accounts without a pre-existing
+legacy subscription. As of that date, calls to `/v3/income-statement` and `/v3/key-metrics`
+return HTTP 403. The weekly fetch now catches `FMPEndpointDeprecatedError` and prints a
+warning rather than crashing.
+
+**Resolution options (pick one):**
+1. **Upgrade FMP subscription** — A Starter or higher plan re-enables these endpoints via
+   `/stable/income-statement` and `/stable/key-metrics` (update `fmp_client.py` endpoint paths).
+2. **Switch to SEC EDGAR XBRL** — The free EDGAR company-concept API (`data.sec.gov/api/xbrl`)
+   provides quarterly income statement and balance sheet data directly from 10-Q/10-K filings.
+3. **Use `yfinance`** — Limited but free; covers the last ~5 years of quarterly fundamentals.
+
+Until resolved, FMP fundamentals rows in `pgr_fundamentals_quarterly` will not be refreshed;
+existing cached rows remain usable for backtesting.
 
 ### FRED Series
 
