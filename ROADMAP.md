@@ -1,5 +1,8 @@
 # PGR Vesting Decision Support — Version Roadmap
 
+Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
+afternoon bootstrap). Development starts Day 3.
+
 ## Version History
 
 ### v2.7 (complete)
@@ -73,7 +76,7 @@
 
 ---
 
-### v4.1 (current)
+### v4.1 (complete)
 **Released:** March 2026
 **Theme:** Data Integrity + Look-Ahead Bias Guards
 
@@ -129,8 +132,8 @@ Changes in this hotfix:
 
 - **All 6 workflows** — Added `permissions: contents: write` at the job level.
 - **Bootstrap schedule** — Day 1 moved to Wed 2026-03-25 14:00 UTC, Day 2 to
-  Thu 2026-03-26 14:00 UTC, Day 3 to Fri 2026-03-27 14:00 UTC.  The 14:00 UTC
-  (10 AM ET) slot is off-peak for GH Actions runners.
+  Thu 2026-03-26 14:00 UTC, bootstrap moved to Thu 2026-03-26 18:00 UTC (same day
+  as Day 2, 4 hours later — no AV calls needed, only DB reads).
 - **Daily workflow** (`daily_data_fetch.yml`) — removed from repo in master prior
   to this hotfix; reference removed from documentation.
 - **FRED bootstrap** — 12 FRED series (4 967 rows, 1990–2026-03) pre-populated
@@ -145,9 +148,17 @@ Changes in this hotfix:
 
 ## Planned Versions
 
+Day references below are relative to Day 1 = 2026-03-25 (first bootstrap day).
+Week+ targets are only used where genuine data accumulation or external dependencies
+require them (noted explicitly).
+
+---
+
 ### v4.2 — Signal Quality + Confidence Layer
-**Target:** Week of 2026-03-25 (post-bootstrap)
+**Target:** Day 3 (2026-03-27)
 **Theme:** Surface BayesianRidge uncertainty in reports; fix BL Ω; reduce feature redundancy
+
+No data accumulation needed — all changes are pure code against the already-populated DB.
 
 - `src/models/multi_benchmark_wfo.py` — `get_confidence_tier(y_hat, y_std)` via
   `norm.cdf(y_hat / y_std)`; `confidence_tier` and `prob_outperform` columns in
@@ -174,7 +185,9 @@ COMPOSITE SIGNAL: OUTPERFORM (MODERATE CONFIDENCE)
 ---
 
 ### v4.3 — Diagnostic OOS Evaluation Report
-**Target:** Week 2 of April 2026
+**Target:** Day 5 (2026-03-29)
+
+Pure code addition — surfaces already-computed diagnostics into a sidecar report.
 
 - `scripts/monthly_decision.py` — `_write_diagnostic_report()` calling existing
   `compute_oos_r_squared()`, `compute_newey_west_ic()`, `generate_regime_breakdown()`;
@@ -195,7 +208,9 @@ COMPOSITE SIGNAL: OUTPERFORM (MODERATE CONFIDENCE)
 ---
 
 ### v4.4 — STCG Tax Boundary Guard
-**Target:** Week 3 of April 2026
+**Target:** Day 7 (2026-04-01)
+
+Small focused addition; no data dependencies.
 
 - `src/portfolio/rebalancer.py` — `_check_stcg_boundary()`: warns when lots in the
   6–12 month STCG zone and predicted alpha < STCG-to-LTCG penalty (~17–22pp)
@@ -206,26 +221,27 @@ COMPOSITE SIGNAL: OUTPERFORM (MODERATE CONFIDENCE)
 ---
 
 ### v4.5 — New Predictor Variables
-**Target:** Week 4 of April 2026
-
-Highest-value additions with direct mechanistic links to PGR P&L (peer review §4):
+**Target:** Day 10 (2026-04-04)
+*Note: KIE ticker and new FRED series (CUSR0000SETA02, CUSR0000SAM2) added in v4.5-prep
+(2026-03-24). Remaining work is feature engineering and the `pgr_vs_kie_6m` signal.*
 
 | Feature | FRED Series / Source | Mechanism |
 |---------|----------------------|-----------|
 | `used_car_cpi_yoy` | `CUSR0000SETA02` | Auto total-loss severity; 2021–22 spike was a major PGR headwind |
 | `medical_cpi_yoy` | `CUSR0000SAM2` | Bodily injury / PIP claim severity |
 | `cr_acceleration` | EDGAR (existing data) | 3-period diff of `combined_ratio_ttm`; second derivative of underwriting margins |
-| `pgr_vs_kie_6m` | AV: KIE prices | PGR return minus KIE 6M return; insurance-sector idiosyncratic alpha |
+| `pgr_vs_kie_6m` | AV: KIE prices (already in DB) | PGR return minus KIE 6M return; insurance-sector idiosyncratic alpha |
 
-- `config.py` — Add `CUSR0000SETA02`, `CUSR0000SAM2` to FRED series list;
-  `RS_BENCHMARK_TICKER = "KIE"`
 - `src/processing/feature_engineering.py` — 4 new feature computations
-- `src/ingestion/multi_ticker_loader.py` — Add KIE to ticker universe
+- KIE prices already being fetched (v4.5-prep); no additional AV calls needed
 
 ---
 
 ### v5.0 — CPCV Upgrade + Ensemble Diversity
-**Target:** Q2 2026
+**Target:** Day 14 (2026-04-08)
+
+Code-only changes against the existing training history (300+ monthly observations
+already in DB after bootstrap). No accumulation wait.
 
 - **CPCV**: C(6,2)=15 → C(8,2)=28 paths (`CPCV_N_FOLDS = 8`); Monte Carlo
   permutation test for null IC distribution; `_check_cpcv_feasibility()` guard
@@ -238,7 +254,11 @@ Highest-value additions with direct mechanistic links to PGR P&L (peer review §
 ---
 
 ### v5.1 — Phase 2 Calibration Validation
-**Target:** Q3 2026
+**Target:** Day 21 (2026-04-15)
+
+The expanding-window calibration uses WFO OOS predictions — these are produced
+from the 300+ month backtest history already in the DB on Day 2. No live data
+accumulation needed; can start immediately after v5.0.
 
 - **New file:** `src/models/calibration.py` — expanding-window Platt scaling
   (logistic regression on raw_prob → binary outcome); switches to isotonic regression
@@ -250,7 +270,9 @@ Highest-value additions with direct mechanistic links to PGR P&L (peer review §
 ---
 
 ### v5.2 — MAPIE Conformal Prediction
-**Target:** Q3 2026
+**Target:** Day 28 (2026-04-22)
+
+Pure code addition on top of v5.1. No additional data needed.
 
 - `src/models/regularized_models.py` — `build_conformal_pipeline(base_model_type,
   coverage=0.80)`; marginal coverage guarantees of 1-α ± O(1/n)
@@ -261,11 +283,17 @@ Highest-value additions with direct mechanistic links to PGR P&L (peer review §
 ---
 
 ### v6.0 — Cross-Asset Signals + BLP Aggregation
-**Target:** Q4 2026
+**Target:** Day 42 (2026-05-06)
+
+Peer price history (ALL, TRV, CB, HIG) is available immediately via yfinance;
+no accumulation wait. BLP parameter fitting needs ~12 months of live OOS
+predictions — delay this sub-feature to Week 8+ (2026-05-20) while the rest
+of v6.0 ships on Day 42.
 
 - **Beta-Transformed Linear Pool (BLP)**: Replaces naive equal-weight ensemble
   averaging (Ranjan & Gneiting 2010: any linear pool of calibrated forecasts is
   necessarily uncalibrated); 5-parameter BLP fit via negative log-likelihood
+  *(requires ~12 months of live OOS predictions; BLP sub-feature ships Week 8)*
 - **Residual momentum**: Regress PGR returns on Fama-French 3-factor over trailing
   36M window; cumulate factor-neutral residuals from t-12 to t-1 (Blitz et al. 2011:
   2× alpha of raw momentum, greater consistency)

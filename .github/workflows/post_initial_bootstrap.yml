@@ -1,9 +1,15 @@
 name: Post-Initial Bootstrap
 
-# Runs the day after the Day 2 dividends workflow (Fri 2026-03-27 at 14:00 UTC).
-# Originally 2026-03-25; rescheduled to 2026-03-26 after Day 1 AV rate-limit failure;
-# rescheduled again to 2026-03-27 after Day 1 403 git-push failure on 2026-03-24.
-# Root cause was missing permissions: contents: write — now fixed in all workflows.
+# Runs the same day as the Day 2 dividends workflow (Thu 2026-03-26 at 18:00 UTC),
+# 4 hours after Day 2 starts at 14:00 UTC. Day 2 completes in ~15 minutes, so the
+# 4-hour gap is ample buffer for the DB commit to land before this workflow checks it out.
+#
+# Why not Day 3?
+# --------------
+# This workflow makes ZERO Alpha Vantage API calls — it only reads from the already-
+# populated DB, computes derived tables, and runs monthly_decision.py. The only real
+# prerequisite is that Day 2's git push has completed. A same-day 18:00 UTC slot
+# satisfies that constraint without burning an extra 24-hour calendar day.
 #
 # What this workflow does
 # -----------------------
@@ -31,8 +37,8 @@ name: Post-Initial Bootstrap
 
 on:
   schedule:
-    # 10:00 AM ET = 14:00 UTC  |  date: Fri 2026-03-27
-    - cron: '0 14 27 3 *'
+    # 2:00 PM ET = 18:00 UTC  |  date: Thu 2026-03-26  (same day as Day 2, 4h later)
+    - cron: '0 18 26 3 *'
   workflow_dispatch:
     inputs:
       dry_run:

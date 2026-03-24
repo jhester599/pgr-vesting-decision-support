@@ -573,7 +573,7 @@ python scripts/weekly_fetch.py --dry-run --skip-fred
 |----------|----------|---------|
 | `initial_fetch_prices.yml` | One-time: Wed 2026-03-25 at 14:00 UTC | Bootstrap Day 1 — full price history (22 AV calls) |
 | `initial_fetch_dividends.yml` | One-time: Thu 2026-03-26 at 14:00 UTC | Bootstrap Day 2 — full dividend history (22 AV calls) |
-| `post_initial_bootstrap.yml` | One-time: Fri 2026-03-27 at 14:00 UTC | Bootstrap Day 3 — build relative returns + first decision |
+| `post_initial_bootstrap.yml` | One-time: Thu 2026-03-26 at 18:00 UTC | Bootstrap Day 2 (afternoon) — build relative returns + first decision |
 | `weekly_data_fetch.yml` | Fridays at 22:00 UTC (6 PM ET) | Full weekly refresh + FRED macro update |
 | `monthly_decision.yml` | 20th–22nd of each month at 15:00 UTC | Automated sell/hold recommendation report |
 
