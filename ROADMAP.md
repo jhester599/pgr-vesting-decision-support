@@ -310,7 +310,7 @@ of v6.0 ships on Day 42.
 - **Never finalize a module without a passing pytest suite** (CLAUDE.md mandate)
 - **No K-Fold cross-validation** — `TimeSeriesSplit` with embargo + purge buffer only
 - **No StandardScaler across full dataset** — scaler isolated within each WFO fold Pipeline
-- **No yfinance for fundamentals** — FMP and FRED REST APIs only
+- **No yfinance for fundamentals** — SEC EDGAR XBRL and FRED REST APIs only
 - **Python 3.10+**, strict PEP 8, full type hinting
 - **Approved libraries:** pandas, numpy, scikit-learn, matplotlib, xgboost, requests,
   statsmodels (v3.0+), skfolio/PyPortfolioOpt (v4.0+)

@@ -35,7 +35,7 @@ jobs:
       - name: Run weekly fetch
         env:
           AV_API_KEY: ${{ secrets.AV_API_KEY }}
-          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          # FMP_API_KEY removed: FMP v3 deprecated 2025-08-31; replaced by SEC EDGAR XBRL
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: |
           DRY_FLAG=""
