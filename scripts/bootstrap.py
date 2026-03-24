@@ -74,14 +74,24 @@ def _build_relative_returns(conn, dry_run: bool = False) -> dict[int, int]:
 # Monthly decision
 # ---------------------------------------------------------------------------
 
-def _run_monthly_decision(as_of: str | None, dry_run: bool = False) -> int:
-    """Invoke monthly_decision.main() and return its exit code."""
+def _run_monthly_decision(
+    as_of: str | None,
+    dry_run: bool = False,
+    skip_fred: bool = True,
+) -> int:
+    """Invoke monthly_decision.main() and return its exit code.
+
+    skip_fred defaults to True because FRED data is pre-populated into the DB
+    before the bootstrap runs (see scripts/weekly_fetch.py or the local FRED
+    fetch done during initial setup on 2026-03-24).  The weekly_data_fetch
+    GitHub Action keeps FRED current on an ongoing basis.
+    """
     from scripts import monthly_decision  # noqa: PLC0415 (local import)
     try:
         monthly_decision.main(
             as_of_date_str=as_of,
             dry_run=dry_run,
-            skip_fred=False,
+            skip_fred=skip_fred,
         )
         return 0
     except SystemExit as exc:
@@ -99,6 +109,7 @@ def main(
     dry_run: bool = False,
     skip_decision: bool = False,
     as_of: str | None = None,
+    skip_fred: bool = True,
 ) -> int:
     today = date.today()
     prefix = "[DRY RUN] " if dry_run else ""
@@ -144,7 +155,7 @@ def main(
         return 0
 
     print("\n=== Step 2/2: Generating first monthly decision report ===")
-    rc = _run_monthly_decision(as_of, dry_run=dry_run)
+    rc = _run_monthly_decision(as_of, dry_run=dry_run, skip_fred=skip_fred)
     if rc != 0:
         print(f"\nWARNING: monthly_decision exited with code {rc}.")
 
@@ -162,9 +173,14 @@ if __name__ == "__main__":
                         help="Build relative returns only; skip the monthly decision run.")
     parser.add_argument("--as-of", metavar="YYYY-MM-DD", default=None,
                         help="Override as-of date for the monthly decision.")
+    parser.add_argument("--fetch-fred", action="store_true",
+                        help="Fetch live FRED data before monthly decision "
+                             "(default: use cached DB data; FRED is kept current "
+                             "by weekly_data_fetch.yml).")
     args = parser.parse_args()
     sys.exit(main(
         dry_run=args.dry_run,
         skip_decision=args.skip_decision,
         as_of=args.as_of,
+        skip_fred=not args.fetch_fred,
     ))

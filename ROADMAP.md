@@ -41,8 +41,10 @@
 - `src/models/regularized_models.py` — `UncertaintyPipeline` + `build_bayesian_ridge_pipeline()`
 - `src/models/multi_benchmark_wfo.py` — `EnsembleWFOResult` + equal-weight 3-model ensemble
 - `src/portfolio/rebalancer.py` — `_compute_sell_pct_kelly()` (0.25× Kelly, 30% cap)
-- `src/ingestion/fred_loader.py` — PGR-specific: motor vehicle insurance CPI + VMT
-- `src/processing/feature_engineering.py` — `insurance_cpi_mom3m`, `vmt_yoy`, `vix` features
+- `src/ingestion/fred_loader.py` — PGR-specific: VMT (TRFVOLUSM227NFWA) — note:
+  `CUSR0000SETC01` (motor vehicle insurance CPI) added here but removed in v4.1.1
+  because the series does not exist in FRED's observations API
+- `src/processing/feature_engineering.py` — `vmt_yoy`, `vix` features
 - `src/reporting/backtest_report.py` — Rolling 24M IC series, 4-quadrant regime breakdown
 - `config.py` — `KELLY_FRACTION=0.25`, `KELLY_MAX_POSITION=0.30`, VIXCLS in FRED series
 - **New tests:** test_bayesian_ridge (14), test_kelly_sizing (16),
@@ -104,6 +106,40 @@ contaminating the first training dataset.
 - *Kelly cap*: Meulbroek (2005) shows 25% employer-stock concentration yields ~42%
   certainty-equivalent loss when human capital correlation is included. Cap at 20% is
   consistent with financial advisor consensus for employer stock specifically.
+
+---
+
+### v4.1.1 (hotfix — 2026-03-24)
+**Released:** 2026-03-24
+**Theme:** GitHub Actions permissions fix + FRED data bootstrap + schedule adjustment
+
+Root cause analysis of two consecutive bootstrap failures:
+
+1. **2026-03-23 failure** — AV rate limit hit at 14/22 tickers. Workflow was scheduled
+   at 11:00 UTC; the free-tier 25 calls/day cap was exhausted mid-run.  Reschedule
+   to a quieter slot (+1 day) mitigated runner contention but did not fix permissions.
+
+2. **2026-03-24 failure** — AV price fetch succeeded (22/22 tickers, 22 AV calls,
+   284 s), but `git push` exited 403.  **Root cause:** all 6 GitHub Actions workflows
+   were missing `permissions: contents: write`.  The `GITHUB_TOKEN` defaults to
+   read-only; without an explicit `contents: write` grant the `git push` step is
+   rejected by the GitHub REST API.
+
+Changes in this hotfix:
+
+- **All 6 workflows** — Added `permissions: contents: write` at the job level.
+- **Bootstrap schedule** — Day 1 moved to Wed 2026-03-25 14:00 UTC, Day 2 to
+  Thu 2026-03-26 14:00 UTC, Day 3 to Fri 2026-03-27 14:00 UTC.  The 14:00 UTC
+  (10 AM ET) slot is off-peak for GH Actions runners.
+- **Daily workflow** (`daily_data_fetch.yml`) — removed from repo in master prior
+  to this hotfix; reference removed from documentation.
+- **FRED bootstrap** — 12 FRED series (4 967 rows, 1990–2026-03) pre-populated
+  locally and committed to `data/pgr_financials.db`.  Removed invalid series
+  `CUSR0000SETC01` (motor vehicle insurance CPI) — FRED returns 400 for this ID;
+  the BLS publishes it under series code SETE but FRED does not index it directly.
+- **`scripts/bootstrap.py`** — `skip_fred` parameter added (default `True`);
+  `_run_monthly_decision()` now skips live FRED fetch since data is pre-populated.
+  Pass `--fetch-fred` to force a live refresh.
 
 ---
 

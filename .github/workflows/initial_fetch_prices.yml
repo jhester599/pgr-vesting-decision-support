@@ -1,7 +1,9 @@
 name: Initial Fetch — Day 1 (Prices)
 
-# Scheduled for Tue 2026-03-24 at 06:00 AM EDT (10:00 AM UTC).
-# Rescheduled +24h after AV rate limit was hit on 2026-03-23.
+# Scheduled for Wed 2026-03-25 at 10:00 AM ET (14:00 UTC).
+# Originally 2026-03-23; rescheduled +1 day after AV rate-limit failure on first run.
+# Rescheduled again +1 day (to 2026-03-25) after 403 git-push failure on 2026-03-24
+# caused by missing permissions: contents: write — now fixed.
 # workflow_dispatch lets you trigger it manually at any time (e.g. to test).
 #
 # AV budget: 22 calls (one per ticker: PGR + 21 ETFs incl. KIE added v4.5).
@@ -10,8 +12,8 @@ name: Initial Fetch — Day 1 (Prices)
 
 on:
   schedule:
-    # 06:00 AM EDT = 10:00 AM UTC  |  date: Tue 2026-03-24
-    - cron: '0 10 24 3 *'
+    # 10:00 AM ET = 14:00 UTC  |  date: Wed 2026-03-25
+    - cron: '0 14 25 3 *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -27,6 +29,8 @@ jobs:
   fetch-prices:
     name: Fetch full price history (22 AV calls)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required for git push back to the repo
 
     steps:
       - name: Check out repository

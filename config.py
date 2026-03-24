@@ -49,10 +49,13 @@ FRED_SERIES_MACRO: list[str] = [
     "NFCI",              # Chicago Fed National Financial Conditions Index
     "VIXCLS",            # CBOE Volatility Index (VIX) — for regime classification
 ]
-# v3.1: PGR-specific insurance and claims frequency features (defined here, fetched in v3.1)
+# v3.1: PGR-specific insurance and claims frequency features
 # v4.5: added used car CPI and medical CPI as direct claims severity predictors
+# NOTE: CUSR0000SETC01 (motor vehicle insurance CPI) was removed on 2026-03-24 —
+#       the series does not exist in FRED's observations endpoint (400 Bad Request).
+#       The BLS publishes this data under series code SETE but FRED does not index it.
+#       Re-add when a valid FRED ID is identified.
 FRED_SERIES_PGR: list[str] = [
-    "CUSR0000SETC01",    # Motor vehicle insurance CPI (rate adequacy proxy)
     "TRFVOLUSM227NFWA",  # Vehicle miles traveled NSA (claims frequency proxy)
     "CUSR0000SETA02",    # Used car & truck CPI (auto total-loss severity; v4.5)
     "CUSR0000SAM2",      # Medical care CPI (bodily injury / PIP severity; v4.5)

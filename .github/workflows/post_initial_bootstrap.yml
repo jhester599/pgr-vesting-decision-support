@@ -1,8 +1,9 @@
 name: Post-Initial Bootstrap
 
-# Runs one hour after the Day 2 dividends workflow (Thu 2026-03-26 at 11:00 UTC)
-# to build derived data and generate the first monthly decision report.
-# Rescheduled +1 day from original 2026-03-25 after Day 1 run failure.
+# Runs the day after the Day 2 dividends workflow (Fri 2026-03-27 at 14:00 UTC).
+# Originally 2026-03-25; rescheduled to 2026-03-26 after Day 1 AV rate-limit failure;
+# rescheduled again to 2026-03-27 after Day 1 403 git-push failure on 2026-03-24.
+# Root cause was missing permissions: contents: write — now fixed in all workflows.
 #
 # What this workflow does
 # -----------------------
@@ -12,8 +13,9 @@ name: Post-Initial Bootstrap
 #    This is the critical derived step that must happen before monthly_decision
 #    can train models — prices + dividends alone are not enough.
 #
-# 2. Fetch FRED macro series including new v4.5 additions (CUSR0000SETA02,
-#    CUSR0000SAM2) — full history back to 1953 is retrieved in one call.
+# 2. FRED macro data is pre-populated locally (no rate limits) and committed
+#    to the DB. The bootstrap script reads it from the DB; no live FRED fetch
+#    is needed here.
 #
 # 3. Run monthly_decision.py to produce the first recommendation report in
 #    results/monthly_decisions/YYYY-MM/.
@@ -29,8 +31,8 @@ name: Post-Initial Bootstrap
 
 on:
   schedule:
-    # 11:00 AM UTC = 07:00 AM EDT  |  date: Thu 2026-03-26
-    - cron: '0 11 26 3 *'
+    # 10:00 AM ET = 14:00 UTC  |  date: Fri 2026-03-27
+    - cron: '0 14 27 3 *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -49,6 +51,8 @@ jobs:
   bootstrap:
     name: Build relative returns + first monthly decision
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required for git push back to the repo
 
     steps:
       - name: Check out repository

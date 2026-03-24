@@ -38,6 +38,8 @@ jobs:
   monthly-decision:
     name: Generate monthly PGR decision report
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required for git push back to the repo
 
     steps:
       - name: Check out repository

@@ -324,7 +324,7 @@ pgr-vesting-decision-support/
 | Alpha Vantage `TIME_SERIES_WEEKLY` | Weekly OHLCV — PGR + 20 ETF benchmarks (~25 years) | Free |
 | Alpha Vantage `DIVIDENDS` | Ex-dividend history — PGR + 20 ETF benchmarks | Free (25 req/day) |
 | FMP `/v3/key-metrics` + `/v3/income-statement` | PGR quarterly PE, PB, ROE, EPS, revenue | Free |
-| FRED public REST API | 8 macro series + 2 PGR-specific series (no budget impact) | Free |
+| FRED public REST API | 9 macro series + 3 PGR-specific series (no budget impact) | Free |
 | EDGAR cache CSV | 256 months of combined ratio, PIF, EPS | User-provided |
 | `config.PGR_KNOWN_SPLITS` | 3 historical splits (1992, 2002, 2006) | Hardcoded |
 
@@ -341,8 +341,10 @@ All FRED series are shifted by a publication lag before entering the feature mat
 | Credit spreads | BAA10Y, BAMLH0A0HYM2 | `credit_spread_ig`, `credit_spread_hy` | 1 month |
 | Financial conditions | NFCI | `nfci` | 2 months (weekly; revised ~8 weeks) |
 | Volatility | VIXCLS | `vix` | 1 month |
-| PGR-specific | CUSR0000SETC01 | `insurance_cpi_mom3m` (3M momentum) | 1 month |
 | PGR-specific | TRFVOLUSM227NFWA | `vmt_yoy` (YoY change) | 2 months (revised ~60 days) |
+| PGR-specific (v4.5) | CUSR0000SETA02 | `used_car_cpi_yoy` (auto total-loss severity) | 1 month |
+| PGR-specific (v4.5) | CUSR0000SAM2 | `medical_cpi_yoy` (bodily injury / PIP severity) | 1 month |
+| ~~PGR-specific~~ | ~~CUSR0000SETC01~~ | ~~`insurance_cpi_mom3m`~~ | Removed 2026-03-24 — series not in FRED |
 
 ### v2 ETF Benchmark Universe (20 ETFs)
 
@@ -359,9 +361,9 @@ All FRED series are shifted by a publication lag before entering the feature mat
 
 | Script | AV calls | FMP calls | FRED calls | Notes |
 |--------|----------|-----------|------------|-------|
-| `initial_fetch.py --prices` | 23 | 0 | 0 | Day 1 bootstrap |
-| `initial_fetch.py --dividends` | 23 | 0 | 0 | Day 2 bootstrap |
-| `weekly_fetch.py` | 24 | 2 | ~10 | Weekly cron (FRED is free, unlimited) |
+| `initial_fetch.py --prices` | 22 | 0 | 0 | Day 1 bootstrap (22 tickers: PGR + 21 ETFs) |
+| `initial_fetch.py --dividends` | 22 | 0 | 0 | Day 2 bootstrap |
+| `weekly_fetch.py` | 23 | 2 | 12 | Weekly cron (FRED is free, no rate limit) |
 
 ---
 
@@ -567,10 +569,26 @@ python scripts/weekly_fetch.py --dry-run --skip-fred
 
 ### GitHub Actions
 
-The weekly cron (`weekly_data_fetch.yml`) runs every Friday at 10 PM UTC.
-The monthly decision cron (`monthly_decision.yml`) runs on the 20th of each month.
+| Workflow | Schedule | Purpose |
+|----------|----------|---------|
+| `initial_fetch_prices.yml` | One-time: Wed 2026-03-25 at 14:00 UTC | Bootstrap Day 1 — full price history (22 AV calls) |
+| `initial_fetch_dividends.yml` | One-time: Thu 2026-03-26 at 14:00 UTC | Bootstrap Day 2 — full dividend history (22 AV calls) |
+| `post_initial_bootstrap.yml` | One-time: Fri 2026-03-27 at 14:00 UTC | Bootstrap Day 3 — build relative returns + first decision |
+| `weekly_data_fetch.yml` | Fridays at 22:00 UTC (6 PM ET) | Full weekly refresh + FRED macro update |
+| `monthly_decision.yml` | 20th–22nd of each month at 15:00 UTC | Automated sell/hold recommendation report |
 
-Both workflows require repository secrets:
+**Schedule note (2026-03-24):** Bootstrap workflows were rescheduled +1 day after two failures:
+1. *2026-03-23* — Alpha Vantage 25-call/day rate limit hit mid-run (14/22 tickers).
+2. *2026-03-24* — AV fetch succeeded (22/22) but `git push` failed with 403 — all
+   workflows were missing `permissions: contents: write`. Fixed in this release.
+
+**FRED data note:** FRED macro data (12 series, 4 967 rows back to 1990) was
+pre-populated locally on 2026-03-24 and committed to the DB. The `weekly_data_fetch`
+workflow keeps it current on an ongoing basis. The series `CUSR0000SETC01` (motor
+vehicle insurance CPI) was removed — it does not exist in FRED's observations
+endpoint; re-add when a valid series ID is confirmed.
+
+All workflows require repository secrets:
 
 | Secret | Description |
 |--------|-------------|
