@@ -102,9 +102,10 @@ pgr-vesting-decision-support/
 │   │   ├── dividend_loader.py        # AV DIVIDENDS → ex-div dates + amounts (PGR)
 │   │   ├── split_loader.py           # Hardcoded from config (3 known PGR splits)
 │   │   ├── pgr_monthly_loader.py     # EDGAR cache CSV → combined ratio, PIF
-│   │   ├── fundamentals_loader.py    # FMP quarterly key metrics (optional)
+│   │   ├── edgar_client.py           # SEC EDGAR XBRL quarterly fundamentals (no key)
+│   │   ├── fundamentals_loader.py    # Quarterly key metrics (optional)
 │   │   ├── technical_loader.py       # AV SMA/RSI/MACD/BBANDS (optional)
-│   │   ├── fmp_client.py             # Cache-first FMP REST wrapper
+│   │   ├── fmp_client.py             # FMP REST wrapper (deprecated — retained for ref)
 │   │   └── av_client.py              # Cache-first Alpha Vantage wrapper
 │   │
 │   ├── processing/
@@ -323,29 +324,32 @@ pgr-vesting-decision-support/
 |--------|------|------|
 | Alpha Vantage `TIME_SERIES_WEEKLY` | Weekly OHLCV — PGR + 20 ETF benchmarks (~25 years) | Free |
 | Alpha Vantage `DIVIDENDS` | Ex-dividend history — PGR + 20 ETF benchmarks | Free (25 req/day) |
-| FMP `/v3/key-metrics` + `/v3/income-statement` | PGR quarterly PE, PB, ROE, EPS, revenue | **⚠ DEPRECATED** — see note below |
+| SEC EDGAR XBRL (`data.sec.gov/api/xbrl`) | PGR quarterly EPS, revenue, net income (10-Q/10-K) | Free — no API key required |
 | FRED public REST API | 9 macro series + 3 PGR-specific series (no budget impact) | Free |
 | EDGAR cache CSV | 256 months of combined ratio, PIF, EPS | User-provided |
 | `config.PGR_KNOWN_SPLITS` | 3 historical splits (1992, 2002, 2006) | Hardcoded |
 
-### FMP Deprecation Notice (2025-08-31)
+### SEC EDGAR XBRL (quarterly fundamentals)
 
-> **Action required if FMP fundamentals are needed.**
+PGR quarterly fundamentals (EPS, revenue, net income) are fetched from the SEC EDGAR
+XBRL Company-Concept API via `src/ingestion/edgar_client.py`.  No API key is required;
+the SEC only asks for a descriptive `User-Agent` header per their
+[fair-use policy](https://www.sec.gov/developer).
 
-FMP deprecated all `/v3/` REST endpoints on 2025-08-31 for accounts without a pre-existing
-legacy subscription. As of that date, calls to `/v3/income-statement` and `/v3/key-metrics`
-return HTTP 403. The weekly fetch now catches `FMPEndpointDeprecatedError` and prints a
-warning rather than crashing.
+**Key limitations:**
+- **Quarterly cadence only** — data aligns with 10-Q/10-K filing dates (~45–60 days after
+  period-end).  The `EDGAR_FILING_LAG_MONTHS = 2` guard in `feature_engineering.py`
+  prevents look-ahead bias.
+- **No PE/PB/ROE** — market-ratio metrics are not available in XBRL;  those columns are
+  `None` for all EDGAR-sourced rows and are handled gracefully by the WFO engine.
+- **No monthly 8-K data** — PGR monthly combined-ratio and PIF figures appear in PDF
+  attachments on 8-K filings and are not tagged in XBRL.  These continue to be sourced
+  from the user-provided CSV cache (`pgr_monthly_loader.py`).
 
-**Resolution options (pick one):**
-1. **Upgrade FMP subscription** — A Starter or higher plan re-enables these endpoints via
-   `/stable/income-statement` and `/stable/key-metrics` (update `fmp_client.py` endpoint paths).
-2. **Switch to SEC EDGAR XBRL** — The free EDGAR company-concept API (`data.sec.gov/api/xbrl`)
-   provides quarterly income statement and balance sheet data directly from 10-Q/10-K filings.
-3. **Use `yfinance`** — Limited but free; covers the last ~5 years of quarterly fundamentals.
-
-Until resolved, FMP fundamentals rows in `pgr_fundamentals_quarterly` will not be refreshed;
-existing cached rows remain usable for backtesting.
+> **FMP deprecation (historical note):** FMP deprecated all `/v3/` REST endpoints on
+> 2025-08-31.  The project switched to EDGAR XBRL in v4.1.2 (2026-03-24).
+> `src/ingestion/fmp_client.py` is retained for reference; `FMPEndpointDeprecatedError`
+> surfaces a clear warning if the old client is ever invoked.
 
 ### FRED Series
 
