@@ -16,6 +16,8 @@ jobs:
   fetch:
     name: Fetch weekly market data
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required for git push back to the repo
 
     steps:
       - name: Check out repository

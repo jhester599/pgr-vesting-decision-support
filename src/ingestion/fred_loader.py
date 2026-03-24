@@ -18,9 +18,12 @@ Series fetched in v3.0 (FRED_SERIES_MACRO from config.py):
   NFCI           — Chicago Fed NFCI (weekly, Fridays)
   VIXCLS         — CBOE VIX (daily, business days)
 
-Series to be added in v3.1 (FRED_SERIES_PGR from config.py):
-  CUSR0000SETC01     — Motor vehicle insurance CPI (monthly)
+Series added in v3.1 / v4.5 (FRED_SERIES_PGR from config.py):
   TRFVOLUSM227NFWA   — Vehicle miles traveled NSA (monthly)
+  CUSR0000SETA02     — Used car & truck CPI (auto total-loss severity; v4.5)
+  CUSR0000SAM2       — Medical care CPI (bodily injury / PIP severity; v4.5)
+  NOTE: CUSR0000SETC01 (motor vehicle insurance CPI) removed 2026-03-24 —
+        series does not exist in FRED (400 Bad Request). Re-add when valid ID found.
 
 All series are resampled to month-end frequency using the last available
 observation in the month.  Forward-fill is applied for up to 5 business days

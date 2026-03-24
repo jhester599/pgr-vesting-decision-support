@@ -1,7 +1,9 @@
 name: Initial Fetch — Day 2 (Dividends)
 
-# Scheduled for Wed 2026-03-25 at 06:00 AM EDT (10:00 AM UTC).
-# Rescheduled +24h after AV rate limit was hit on 2026-03-23 (prices Day 1 moved to 2026-03-24).
+# Scheduled for Thu 2026-03-26 at 10:00 AM ET (14:00 UTC).
+# Originally 2026-03-24; rescheduled +1 day (to 2026-03-25) after Day 1 AV rate-limit
+# failure; rescheduled again +1 day (to 2026-03-26) after Day 1 403 git-push failure
+# on 2026-03-24 — permissions: contents: write was missing, now fixed.
 # Run this the day after initial_fetch_prices.yml so both fetches stay
 # within the 25 AV calls/day free-tier limit.
 #
@@ -9,8 +11,8 @@ name: Initial Fetch — Day 2 (Dividends)
 
 on:
   schedule:
-    # 06:00 AM EDT = 10:00 AM UTC  |  date: Wed 2026-03-25
-    - cron: '0 10 25 3 *'
+    # 10:00 AM ET = 14:00 UTC  |  date: Thu 2026-03-26
+    - cron: '0 14 26 3 *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -26,6 +28,8 @@ jobs:
   fetch-dividends:
     name: Fetch full dividend history (22 AV calls)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required for git push back to the repo
 
     steps:
       - name: Check out repository
