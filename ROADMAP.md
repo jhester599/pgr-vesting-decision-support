@@ -147,6 +147,37 @@ Changes in this hotfix:
 ---
 
 ### v4.1.2 — FMP → SEC EDGAR XBRL replacement (complete)
+
+---
+
+### v4.1.3 (patch — 2026-03-25)
+**Released:** 2026-03-25
+**Theme:** Day 1 bootstrap confirmed successful; Day 2 timing adjusted for AV rate-limit safety
+
+Day 1 results (2026-03-25):
+
+- **`initial_fetch_prices.yml`** — ✅ SUCCESS. Ran at 15:01 UTC (61-min scheduler lag),
+  completed in 5m 30s. All 22 AV calls succeeded (22/22 tickers). DB committed to master.
+- **`monthly_8k_fetch.yml` Pass 2** — ✅ SUCCESS. Ran at 14:51 UTC (51-min scheduler lag),
+  completed in 1m 4s. No new rows (idempotent — March data already present from Pass 1
+  on the 20th).
+
+Timing adjustment for Day 2 (2026-03-26):
+
+- **Root cause concern:** GitHub Actions scheduler consistently fires 51–61 minutes late
+  (free-tier runner queue). Day 1 prices completed at ~15:06 UTC. Day 2 dividends were
+  scheduled at 14:00 UTC — only ~23 hours later. AV's 25 calls/day limit may reset on
+  a rolling 24-hour window rather than at UTC midnight; if so, 22 new calls at 14:00 UTC
+  tomorrow would land within the prior 24-hour window and exhaust the budget mid-run
+  (repeating the 2026-03-23 failure).
+- **Fix:** `initial_fetch_dividends.yml` cron shifted **14:00 → 15:00 UTC**;
+  `post_initial_bootstrap.yml` shifted **18:00 → 19:00 UTC** (preserves 4-hour gap).
+  With typical scheduler lag, Day 2 will actually execute ~16:00–16:15 UTC — well past
+  the 24-hour mark from Day 1's ~15:06 UTC completion.
+
+---
+
+### v4.2 — 8-K Retry/Recheck + Historical Backfill (complete)
 **Released:** 2026-03-24
 **Theme:** Remove FMP dependency; free, no-key-required quarterly fundamentals
 
