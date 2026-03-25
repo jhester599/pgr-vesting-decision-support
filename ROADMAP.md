@@ -146,6 +146,34 @@ Changes in this hotfix:
 
 ---
 
+### v4.2 — 8-K Retry/Recheck + Historical Backfill (complete)
+**Released:** 2026-03-24
+**Theme:** Harden monthly 8-K fetch against late filings; seed `pgr_edgar_monthly` from committed CSV
+
+- **`scripts/edgar_8k_fetcher.py`** — NEW script:
+  - Fetches PGR 8-K (item 7.01) filings from EDGAR `submissions/CIK0000080661.json`
+    and all paginated overflow files (`-submissions-001.json`, etc.)
+  - Parses HTML exhibits for `combined_ratio` and `pif_total` per filing
+  - Computes `pif_growth_yoy` and `gainshare_estimate` over the full time series
+  - Catches per-filing parse exceptions (one bad filing never aborts the run)
+  - `--backfill-years N` CLI flag (default: 2; use 15 for full EDGAR backfill to 2010)
+  - `--load-from-csv PATH` flag: seeds DB from `data/processed/pgr_edgar_cache.csv`
+    (256 rows, 2004–2026-01) without any network calls — recommended bootstrap path
+  - Staleness guard: warns if newest DB row is more than 45 days old
+  - Fully idempotent: uses `db_client.upsert_pgr_edgar_monthly` (`INSERT OR REPLACE`)
+- **`.github/workflows/monthly_8k_fetch.yml`** — NEW workflow:
+  - Two-pass schedule: 20th of each month (primary) + 25th (fallback/retry)
+  - Both passes are safe to run in the same month (`INSERT OR REPLACE`)
+  - `workflow_dispatch` inputs: `backfill_years`, `dry_run`
+- **`tests/test_edgar_8k_fetcher.py`** — NEW test file: 40 tests covering
+  filtering, parsing, derived field math, staleness warning, idempotent upsert,
+  and CSV loader
+- **Existing data confirmed:** `data/processed/pgr_edgar_cache.csv` contains
+  256 rows of pre-extracted 8-K data back to August 2004 with complete
+  `combined_ratio` (256/256) and near-complete `pif_total` (252/256) coverage
+
+---
+
 ## Planned Versions
 
 Day references below are relative to Day 1 = 2026-03-25 (first bootstrap day).
@@ -154,7 +182,7 @@ require them (noted explicitly).
 
 ---
 
-### v4.2 — Signal Quality + Confidence Layer
+### v4.3 — Signal Quality + Confidence Layer
 **Target:** Day 3 (2026-03-27)
 **Theme:** Surface BayesianRidge uncertainty in reports; fix BL Ω; reduce feature redundancy
 

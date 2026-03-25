@@ -1,0 +1,80 @@
+# monthly_8k_fetch.yml — PGR Monthly 8-K Operating Metrics
+#
+# Two-pass schedule (idempotent — safe to run twice per month):
+#
+#   Pass 1 (20th at 14:00 UTC):
+#     PGR typically files its monthly Regulation FD supplement (item 7.01)
+#     in the first 2–3 weeks of the following month.  The 20th reliably
+#     captures the vast majority of on-time filings.
+#
+#   Pass 2 (25th at 14:00 UTC):
+#     Fallback for months where PGR files late (holiday weeks, earnings
+#     overlap, or SEC review delays).  Also auto-retries any transient
+#     failure from the 20th (network timeout, EDGAR rate-limit spike,
+#     GitHub Actions outage).
+#
+#   Because edgar_8k_fetcher.py uses INSERT OR REPLACE (idempotent upsert),
+#   running it twice in the same month is safe:
+#     - If PGR has not filed yet on the 20th → no new rows; DB unchanged.
+#     - If PGR filed between the 20th and 25th → new row upserted on 25th.
+#     - If both runs see the same data → second run is a no-op.
+
+name: Monthly 8-K Fetch (PGR Operating Metrics)
+
+on:
+  schedule:
+    # Pass 1: 20th of each month at 14:00 UTC (primary trigger)
+    - cron: '0 14 20 * *'
+    # Pass 2: 25th of each month at 14:00 UTC (fallback / late-filing retry)
+    - cron: '0 14 25 * *'
+  workflow_dispatch:
+    inputs:
+      backfill_years:
+        description: 'Years to backfill (default: 2; use 15 for full history)'
+        required: false
+        default: '2'
+      dry_run:
+        description: 'Dry run — parse filings but skip DB write (true/false)'
+        required: false
+        default: 'false'
+
+jobs:
+  fetch_8k:
+    name: Fetch PGR monthly 8-K data
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required for git push back to the repo
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch PGR 8-K operating metrics
+        run: |
+          BACKFILL="${{ github.event.inputs.backfill_years || '2' }}"
+          DRY_FLAG=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_FLAG="--dry-run"
+          fi
+          python scripts/edgar_8k_fetcher.py --backfill-years "$BACKFILL" $DRY_FLAG
+
+      - name: Commit updated database
+        # Only commit if the DB changed (skip for dry-run)
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/pgr_financials.db
+          # Only commit if there are staged changes
+          git diff --staged --quiet || git commit -m \
+            "chore: 8-K monthly fetch $(date -u +%Y-%m-%d) [skip ci]"
+          git push
