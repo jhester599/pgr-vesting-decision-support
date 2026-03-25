@@ -189,7 +189,7 @@ require them (noted explicitly).
 
 ---
 
-### v4.2 — Signal Quality + Confidence Layer
+### v4.3 — Signal Quality + Confidence Layer
 **Target:** Day 3 (2026-03-27)
 **Theme:** Surface BayesianRidge uncertainty in reports; fix BL Ω; reduce feature redundancy
 

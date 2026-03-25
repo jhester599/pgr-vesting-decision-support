@@ -85,6 +85,40 @@ construction:
   Meulbroek (2005) shows 25% in employer stock yields a ~42% certainty-equivalent
   loss when human capital correlation is included.
 
+### v4.2 — 8-K Retry/Recheck + Historical Backfill (current)
+
+Monthly 8-K fetch hardened against late PGR filings, with full historical
+bootstrap from the committed CSV:
+
+- **Two-pass schedule** (`monthly_8k_fetch.yml`): primary trigger on the 20th
+  of each month, fallback on the 25th.  Because the fetcher uses
+  `INSERT OR REPLACE`, running both passes in the same month is safe — a second
+  run with the same data is a no-op; a second run with new data overwrites the
+  existing row.
+- **Staleness guard**: after each run, warns if the most recent row in
+  `pgr_edgar_monthly` is more than 45 days old.
+- **`--load-from-csv PATH`**: seeds the full historical dataset (2004–present)
+  from `data/processed/pgr_edgar_cache.csv` without any network calls.  This
+  is the recommended bootstrap path; use it once to populate the DB, then let
+  the monthly workflow handle incremental updates.
+- **`--backfill-years N`**: controls how far back the EDGAR HTTP fetcher reaches
+  (default: 2 years).  Use `--backfill-years 15` to attempt a full EDGAR-based
+  fetch back to 2010 if the CSV is unavailable.
+
+```bash
+# Bootstrap full history from committed CSV (no network calls):
+python scripts/edgar_8k_fetcher.py --load-from-csv
+
+# Fetch only the last 2 years from EDGAR (default):
+python scripts/edgar_8k_fetcher.py
+
+# Full EDGAR backfill (15 years, ~180 HTTP requests):
+python scripts/edgar_8k_fetcher.py --backfill-years 15
+
+# Dry run — parse/read without writing to DB:
+python scripts/edgar_8k_fetcher.py --load-from-csv --dry-run
+```
+
 ---
 
 ## Architecture
@@ -179,7 +213,8 @@ pgr-vesting-decision-support/
 │   └── pgr_financials.db            # SQLite accumulation DB (committed; auto-updated)
 │
 └── .github/workflows/
-    └── weekly_data_fetch.yml        # Cron: Friday 10 PM UTC; commits DB update
+    ├── weekly_data_fetch.yml        # Cron: Friday 10 PM UTC; commits DB update
+    └── monthly_8k_fetch.yml         # Cron: 20th + 25th of each month; PGR 8-K metrics
 ```
 
 ### v3.0 modules (complete)
@@ -604,6 +639,7 @@ python scripts/weekly_fetch.py --dry-run --skip-fred
 | `initial_fetch_dividends.yml` | One-time: Thu 2026-03-26 at 14:00 UTC | Bootstrap Day 2 — full dividend history (22 AV calls) |
 | `post_initial_bootstrap.yml` | One-time: Thu 2026-03-26 at 18:00 UTC | Bootstrap Day 2 (afternoon) — build relative returns + first decision |
 | `weekly_data_fetch.yml` | Fridays at 22:00 UTC (6 PM ET) | Full weekly refresh + FRED macro update |
+| `monthly_8k_fetch.yml` | 20th + 25th of each month at 14:00 UTC | PGR 8-K operating metrics (two-pass; idempotent upsert) |
 | `monthly_decision.yml` | 20th–22nd of each month at 15:00 UTC | Automated sell/hold recommendation report |
 
 **Schedule note (2026-03-24):** Bootstrap workflows were rescheduled +1 day after two failures:
