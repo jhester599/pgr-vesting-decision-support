@@ -146,31 +146,38 @@ Changes in this hotfix:
 
 ---
 
-### v4.2 — 8-K Retry/Recheck + Historical Backfill (complete)
+### v4.1.2 — FMP → SEC EDGAR XBRL replacement (complete)
 **Released:** 2026-03-24
-**Theme:** Harden monthly 8-K fetch against late filings; seed `pgr_edgar_monthly` from committed CSV
+**Theme:** Remove FMP dependency; free, no-key-required quarterly fundamentals
 
-- **`scripts/edgar_8k_fetcher.py`** — NEW script:
-  - Fetches PGR 8-K (item 7.01) filings from EDGAR `submissions/CIK0000080661.json`
-    and all paginated overflow files (`-submissions-001.json`, etc.)
-  - Parses HTML exhibits for `combined_ratio` and `pif_total` per filing
-  - Computes `pif_growth_yoy` and `gainshare_estimate` over the full time series
-  - Catches per-filing parse exceptions (one bad filing never aborts the run)
-  - `--backfill-years N` CLI flag (default: 2; use 15 for full EDGAR backfill to 2010)
-  - `--load-from-csv PATH` flag: seeds DB from `data/processed/pgr_edgar_cache.csv`
-    (256 rows, 2004–2026-01) without any network calls — recommended bootstrap path
-  - Staleness guard: warns if newest DB row is more than 45 days old
-  - Fully idempotent: uses `db_client.upsert_pgr_edgar_monthly` (`INSERT OR REPLACE`)
-- **`.github/workflows/monthly_8k_fetch.yml`** — NEW workflow:
-  - Two-pass schedule: 20th of each month (primary) + 25th (fallback/retry)
-  - Both passes are safe to run in the same month (`INSERT OR REPLACE`)
-  - `workflow_dispatch` inputs: `backfill_years`, `dry_run`
-- **`tests/test_edgar_8k_fetcher.py`** — NEW test file: 40 tests covering
-  filtering, parsing, derived field math, staleness warning, idempotent upsert,
-  and CSV loader
-- **Existing data confirmed:** `data/processed/pgr_edgar_cache.csv` contains
-  256 rows of pre-extracted 8-K data back to August 2004 with complete
-  `combined_ratio` (256/256) and near-complete `pif_total` (252/256) coverage
+FMP deprecated all `/v3/` REST endpoints on 2025-08-31.  This sprint replaces
+the FMP fundamentals pipeline with the SEC EDGAR XBRL Company-Concept API
+(`data.sec.gov/api/xbrl/companyconcept/{cik}/us-gaap/{concept}.json`).
+
+- `src/ingestion/edgar_client.py` — **NEW**: EDGAR XBRL client; fetches
+  `EarningsPerShareDiluted`, `Revenues`, `NetIncomeLoss` from 10-Q/10-K filings
+  for PGR (CIK 0000080661).  No API key required.  Quarterly cadence only —
+  PGR monthly 8-K earnings supplements are PDF attachments not in XBRL.
+  Returns records compatible with `db_client.upsert_pgr_fundamentals()`.
+  `pe_ratio`, `pb_ratio`, `roe` are `None` (not available via XBRL).
+- `src/ingestion/fmp_client.py` — retained for reference; `FMPEndpointDeprecatedError`
+  already surfaces clean warnings; no further changes.
+- `src/database/db_client.py` — `upsert_pgr_fundamentals` `source` column now
+  stores `"edgar_xbrl"` (schema unchanged; `source` column already existed).
+- `tests/test_edgar_client.py` — **NEW**: 20 passing tests (all mocked, no
+  network calls): `_filter_quarterly` deduplication (6), full fetch shape/types
+  (11), `fetch_pgr_latest_quarter` convenience wrapper (3).
+
+**Data availability notes:**
+- EDGAR XBRL provides quarterly data aligned with 10-Q/10-K filing dates.
+  Publication lag of ~45 days (10-Q) / ~60 days (10-K) after period-end; the
+  existing `EDGAR_FILING_LAG_MONTHS = 2` guard in feature engineering remains
+  correct.
+- `pe_ratio`, `pb_ratio`, `roe` will be `None` for all EDGAR-sourced rows.
+  These columns were sparsely populated even under FMP; the WFO engine already
+  handles `NaN` gracefully via `WFO_MIN_OBS` guards.
+- PGR monthly combined-ratio and PIF data continue to come from the user-provided
+  CSV cache (`pgr_monthly_loader.py`); EDGAR XBRL does not expose those metrics.
 
 ---
 
