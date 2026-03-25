@@ -146,6 +146,41 @@ Changes in this hotfix:
 
 ---
 
+### v4.1.2 — FMP → SEC EDGAR XBRL replacement (complete)
+**Released:** 2026-03-24
+**Theme:** Remove FMP dependency; free, no-key-required quarterly fundamentals
+
+FMP deprecated all `/v3/` REST endpoints on 2025-08-31.  This sprint replaces
+the FMP fundamentals pipeline with the SEC EDGAR XBRL Company-Concept API
+(`data.sec.gov/api/xbrl/companyconcept/{cik}/us-gaap/{concept}.json`).
+
+- `src/ingestion/edgar_client.py` — **NEW**: EDGAR XBRL client; fetches
+  `EarningsPerShareDiluted`, `Revenues`, `NetIncomeLoss` from 10-Q/10-K filings
+  for PGR (CIK 0000080661).  No API key required.  Quarterly cadence only —
+  PGR monthly 8-K earnings supplements are PDF attachments not in XBRL.
+  Returns records compatible with `db_client.upsert_pgr_fundamentals()`.
+  `pe_ratio`, `pb_ratio`, `roe` are `None` (not available via XBRL).
+- `src/ingestion/fmp_client.py` — retained for reference; `FMPEndpointDeprecatedError`
+  already surfaces clean warnings; no further changes.
+- `src/database/db_client.py` — `upsert_pgr_fundamentals` `source` column now
+  stores `"edgar_xbrl"` (schema unchanged; `source` column already existed).
+- `tests/test_edgar_client.py` — **NEW**: 20 passing tests (all mocked, no
+  network calls): `_filter_quarterly` deduplication (6), full fetch shape/types
+  (11), `fetch_pgr_latest_quarter` convenience wrapper (3).
+
+**Data availability notes:**
+- EDGAR XBRL provides quarterly data aligned with 10-Q/10-K filing dates.
+  Publication lag of ~45 days (10-Q) / ~60 days (10-K) after period-end; the
+  existing `EDGAR_FILING_LAG_MONTHS = 2` guard in feature engineering remains
+  correct.
+- `pe_ratio`, `pb_ratio`, `roe` will be `None` for all EDGAR-sourced rows.
+  These columns were sparsely populated even under FMP; the WFO engine already
+  handles `NaN` gracefully via `WFO_MIN_OBS` guards.
+- PGR monthly combined-ratio and PIF data continue to come from the user-provided
+  CSV cache (`pgr_monthly_loader.py`); EDGAR XBRL does not expose those metrics.
+
+---
+
 ## Planned Versions
 
 Day references below are relative to Day 1 = 2026-03-25 (first bootstrap day).
