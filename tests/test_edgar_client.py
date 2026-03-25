@@ -1,235 +1,395 @@
 """
-Tests for src/ingestion/edgar_client.py
+Tests for src/ingestion/edgar_client.py.
 
-Covers:
-  - _filter_quarterly deduplication logic (unit tests, no network)
-  - fetch_pgr_quarterly_fundamentals output shape and types (mocked HTTP)
-  - start_date filtering
-  - graceful handling of missing unit keys
-  - fetch_pgr_latest_quarter convenience wrapper
+Validates:
+  - _extract_flow_concept: correct quarter filtering, deduplication, empty fallback
+  - _extract_instant_concept: correct instant item handling
+  - fetch_pgr_fundamentals_quarterly: field mapping, ROE derivation, NULL fields,
+    output schema matches pgr_fundamentals_quarterly DB columns
+
+All tests use synthetic in-memory companyfacts dicts; no HTTP calls are made.
 """
 
 from __future__ import annotations
 
-import json
-from unittest.mock import MagicMock, patch
+import math
 
 import pytest
 
 from src.ingestion.edgar_client import (
-    _filter_quarterly,
-    fetch_pgr_latest_quarter,
-    fetch_pgr_quarterly_fundamentals,
+    _extract_flow_concept,
+    _extract_instant_concept,
+    fetch_pgr_fundamentals_quarterly,
 )
 
 
 # ---------------------------------------------------------------------------
-# Fixtures
+# Fixtures — minimal synthetic companyfacts structures
 # ---------------------------------------------------------------------------
 
-def _make_row(
-    end: str,
-    val: float,
-    form: str = "10-Q",
-    filed: str = "2023-11-14",
-) -> dict:
-    return {"end": end, "val": val, "form": form, "filed": filed}
+def _make_facts(taxonomy: str, concept: str, unit: str, records: list) -> dict:
+    """Build a minimal companyfacts dict for one concept."""
+    return {
+        "facts": {
+            taxonomy: {
+                concept: {
+                    "units": {
+                        unit: records
+                    }
+                }
+            }
+        }
+    }
 
 
-def _concept_payload(rows: list[dict], unit_key: str = "USD") -> dict:
-    return {"units": {unit_key: rows}}
+# Single 10-Q quarterly revenue record (3-month period).
+_Q1_REVENUE = {
+    "start": "2023-01-01",
+    "end": "2023-03-31",
+    "val": 15_000_000_000,
+    "accn": "0000080661-23-000001",
+    "filed": "2023-05-01",
+    "form": "10-Q",
+    "fp": "Q1",
+}
 
+# 10-K full-year revenue record.
+_FY_REVENUE = {
+    "start": "2022-01-01",
+    "end": "2022-12-31",
+    "val": 55_000_000_000,
+    "accn": "0000080661-23-000002",
+    "filed": "2023-02-15",
+    "form": "10-K",
+    "fp": "FY",
+}
 
-def _make_requests_get_side_effect(concept_payloads: dict[str, dict]):
-    """Return a side_effect callable that dispatches by URL concept name."""
+# YTD 6-month revenue record (Q2, cumulative) — should be excluded.
+_Q2_YTD_REVENUE = {
+    "start": "2023-01-01",
+    "end": "2023-06-30",
+    "val": 30_500_000_000,
+    "accn": "0000080661-23-000003",
+    "filed": "2023-08-01",
+    "form": "10-Q",
+    "fp": "Q2",
+}
 
-    def side_effect(url: str, **kwargs):
-        mock_resp = MagicMock()
-        mock_resp.raise_for_status = MagicMock()
-        for concept, payload in concept_payloads.items():
-            if concept in url:
-                mock_resp.json.return_value = payload
-                return mock_resp
-        mock_resp.json.return_value = {"units": {}}
-        return mock_resp
+# Amended Q1 10-Q: same period, filed later — should replace the original.
+_Q1_REVENUE_AMENDED = {
+    "start": "2023-01-01",
+    "end": "2023-03-31",
+    "val": 15_100_000_000,  # restated value
+    "accn": "0000080661-23-000099",
+    "filed": "2023-06-15",   # filed after original
+    "form": "10-Q",
+    "fp": "Q1",
+}
 
-    return side_effect
+# Equity (instant balance-sheet item — no "start" key).
+_Q1_EQUITY = {
+    "end": "2023-03-31",
+    "val": 20_000_000_000,
+    "accn": "0000080661-23-000001",
+    "filed": "2023-05-01",
+    "form": "10-Q",
+    "fp": "Q1",
+}
 
-
-# ---------------------------------------------------------------------------
-# Unit tests: _filter_quarterly
-# ---------------------------------------------------------------------------
-
-class TestFilterQuarterly:
-    def test_keeps_10q_and_10k(self):
-        rows = [
-            _make_row("2023-09-30", 1.0, form="10-Q"),
-            _make_row("2023-12-31", 2.0, form="10-K"),
-        ]
-        result = _filter_quarterly(rows)
-        ends = {r["end"] for r in result}
-        assert ends == {"2023-09-30", "2023-12-31"}
-
-    def test_drops_other_form_types(self):
-        rows = [
-            _make_row("2023-09-30", 1.0, form="8-K"),
-            _make_row("2023-06-30", 2.0, form="10-Q/A"),
-        ]
-        result = _filter_quarterly(rows)
-        assert result == []
-
-    def test_deduplicates_on_end_date_keeps_latest_filed(self):
-        rows = [
-            _make_row("2023-09-30", 1.0, form="10-Q", filed="2023-11-01"),
-            _make_row("2023-09-30", 1.05, form="10-Q", filed="2023-12-15"),  # amendment
-        ]
-        result = _filter_quarterly(rows)
-        assert len(result) == 1
-        assert result[0]["val"] == pytest.approx(1.05)
-
-    def test_drops_rows_without_end_date(self):
-        rows = [{"val": 1.0, "form": "10-Q", "filed": "2023-11-01"}]
-        result = _filter_quarterly(rows)
-        assert result == []
-
-    def test_empty_input(self):
-        assert _filter_quarterly([]) == []
-
-    def test_mixed_input_returns_only_valid(self):
-        rows = [
-            _make_row("2023-09-30", 1.0, form="10-Q"),
-            {"val": 2.0, "form": "10-Q"},          # missing end
-            _make_row("2023-06-30", 3.0, form="DEF 14A"),
-        ]
-        result = _filter_quarterly(rows)
-        assert len(result) == 1
-        assert result[0]["end"] == "2023-09-30"
-
-
-# ---------------------------------------------------------------------------
-# Integration-style tests with mocked HTTP
-# ---------------------------------------------------------------------------
-
-_EPS_ROWS = [
-    _make_row("2022-09-30", 4.29, form="10-Q"),
-    _make_row("2022-12-31", 5.10, form="10-K"),
-    _make_row("2023-03-31", 3.88, form="10-Q"),
-]
-_REVENUE_ROWS = [
-    _make_row("2022-09-30", 15_800_000_000.0, form="10-Q"),
-    _make_row("2022-12-31", 17_200_000_000.0, form="10-K"),
-    _make_row("2023-03-31", 16_100_000_000.0, form="10-Q"),
-]
-_NI_ROWS = [
-    _make_row("2022-09-30", 750_000_000.0, form="10-Q"),
-    _make_row("2022-12-31", 900_000_000.0, form="10-K"),
-    _make_row("2023-03-31", 680_000_000.0, form="10-Q"),
-]
-
-_MOCK_PAYLOADS = {
-    "EarningsPerShareDiluted": _concept_payload(_EPS_ROWS, unit_key="USD/shares"),
-    "Revenues": _concept_payload(_REVENUE_ROWS),
-    "NetIncomeLoss": _concept_payload(_NI_ROWS),
+# EPS record.
+_Q1_EPS = {
+    "start": "2023-01-01",
+    "end": "2023-03-31",
+    "val": 3.25,
+    "accn": "0000080661-23-000001",
+    "filed": "2023-05-01",
+    "form": "10-Q",
+    "fp": "Q1",
 }
 
 
-@patch("src.ingestion.edgar_client.time.sleep")
-@patch("src.ingestion.edgar_client.requests.get")
-class TestFetchPgrQuarterlyFundamentals:
-    def test_returns_list_of_dicts(self, mock_get, mock_sleep):
-        mock_get.side_effect = _make_requests_get_side_effect(_MOCK_PAYLOADS)
-        result = fetch_pgr_quarterly_fundamentals()
-        assert isinstance(result, list)
-        assert len(result) > 0
+# ---------------------------------------------------------------------------
+# Tests: _extract_flow_concept
+# ---------------------------------------------------------------------------
 
-    def test_record_has_required_keys(self, mock_get, mock_sleep):
-        mock_get.side_effect = _make_requests_get_side_effect(_MOCK_PAYLOADS)
-        result = fetch_pgr_quarterly_fundamentals()
-        required = {"period_end", "eps", "revenue", "net_income",
-                    "pe_ratio", "pb_ratio", "roe", "source"}
-        for record in result:
-            assert required <= record.keys(), f"Missing keys in {record}"
+class TestExtractFlowConcept:
+    def test_single_quarter_extracted(self):
+        """A standard 10-Q Q1 record with ~90-day period is kept."""
+        facts = _make_facts("us-gaap", "Revenues", "USD", [_Q1_REVENUE])
+        series = _extract_flow_concept(facts, "us-gaap", "Revenues")
+        assert not series.empty
+        assert "2023-03-31" in series.index
+        assert series["2023-03-31"] == pytest.approx(15_000_000_000)
 
-    def test_source_is_edgar_xbrl(self, mock_get, mock_sleep):
-        mock_get.side_effect = _make_requests_get_side_effect(_MOCK_PAYLOADS)
-        result = fetch_pgr_quarterly_fundamentals()
-        assert all(r["source"] == "edgar_xbrl" for r in result)
+    def test_ytd_period_excluded(self):
+        """A 6-month YTD 10-Q record (180 days) must be excluded."""
+        facts = _make_facts("us-gaap", "Revenues", "USD", [_Q2_YTD_REVENUE])
+        series = _extract_flow_concept(facts, "us-gaap", "Revenues")
+        assert series.empty
 
-    def test_market_ratio_fields_are_none(self, mock_get, mock_sleep):
-        """pe_ratio, pb_ratio, roe not available from XBRL — must be None."""
-        mock_get.side_effect = _make_requests_get_side_effect(_MOCK_PAYLOADS)
-        result = fetch_pgr_quarterly_fundamentals()
-        for r in result:
-            assert r["pe_ratio"] is None
-            assert r["pb_ratio"] is None
-            assert r["roe"] is None
+    def test_annual_10k_included(self):
+        """A 10-K annual record (~365 days) is kept."""
+        facts = _make_facts("us-gaap", "Revenues", "USD", [_FY_REVENUE])
+        series = _extract_flow_concept(facts, "us-gaap", "Revenues")
+        assert not series.empty
+        assert "2022-12-31" in series.index
+        assert series["2022-12-31"] == pytest.approx(55_000_000_000)
 
-    def test_sorted_ascending_by_period_end(self, mock_get, mock_sleep):
-        mock_get.side_effect = _make_requests_get_side_effect(_MOCK_PAYLOADS)
-        result = fetch_pgr_quarterly_fundamentals()
-        ends = [r["period_end"] for r in result]
-        assert ends == sorted(ends)
-
-    def test_start_date_filter_excludes_older_rows(self, mock_get, mock_sleep):
-        mock_get.side_effect = _make_requests_get_side_effect(_MOCK_PAYLOADS)
-        result = fetch_pgr_quarterly_fundamentals(start_date="2023-01-01")
-        assert all(r["period_end"] >= "2023-01-01" for r in result)
-
-    def test_start_date_filter_keeps_newer_rows(self, mock_get, mock_sleep):
-        mock_get.side_effect = _make_requests_get_side_effect(_MOCK_PAYLOADS)
-        result_all = fetch_pgr_quarterly_fundamentals()
-        result_filtered = fetch_pgr_quarterly_fundamentals(start_date="2023-01-01")
-        assert len(result_filtered) <= len(result_all)
-
-    def test_eps_value_correct(self, mock_get, mock_sleep):
-        mock_get.side_effect = _make_requests_get_side_effect(_MOCK_PAYLOADS)
-        result = fetch_pgr_quarterly_fundamentals()
-        q1_2023 = next(r for r in result if r["period_end"] == "2023-03-31")
-        assert q1_2023["eps"] == pytest.approx(3.88)
-
-    def test_empty_concept_data_returns_empty_list(self, mock_get, mock_sleep):
-        mock_get.side_effect = _make_requests_get_side_effect(
-            {"EarningsPerShareDiluted": {"units": {}},
-             "Revenues": {"units": {}},
-             "NetIncomeLoss": {"units": {}}}
+    def test_amendment_replaces_original(self):
+        """When the same period_end appears twice, the later-filed value wins."""
+        facts = _make_facts(
+            "us-gaap", "Revenues", "USD", [_Q1_REVENUE, _Q1_REVENUE_AMENDED]
         )
-        result = fetch_pgr_quarterly_fundamentals()
-        assert result == []
+        series = _extract_flow_concept(facts, "us-gaap", "Revenues")
+        assert len(series) == 1
+        assert series["2023-03-31"] == pytest.approx(15_100_000_000)
 
-    def test_http_error_propagates(self, mock_get, mock_sleep):
-        mock_resp = MagicMock()
-        mock_resp.raise_for_status.side_effect = Exception("HTTP 429")
-        mock_get.return_value = mock_resp
-        with pytest.raises(Exception, match="HTTP 429"):
-            fetch_pgr_quarterly_fundamentals()
+    def test_missing_concept_returns_empty(self):
+        """If the concept is absent from the facts dict, return an empty Series."""
+        facts = {"facts": {"us-gaap": {}}}
+        series = _extract_flow_concept(facts, "us-gaap", "Revenues")
+        assert series.empty
 
-    def test_inter_request_sleep_called(self, mock_get, mock_sleep):
-        mock_get.side_effect = _make_requests_get_side_effect(_MOCK_PAYLOADS)
-        fetch_pgr_quarterly_fundamentals()
-        assert mock_sleep.call_count == len(_MOCK_PAYLOADS)
+    def test_non_10q_10k_forms_excluded(self):
+        """Records with form='8-K' or form='DEF 14A' must be excluded."""
+        rec = {**_Q1_REVENUE, "form": "8-K"}
+        facts = _make_facts("us-gaap", "Revenues", "USD", [rec])
+        series = _extract_flow_concept(facts, "us-gaap", "Revenues")
+        assert series.empty
+
+    def test_series_name_is_concept(self):
+        facts = _make_facts("us-gaap", "Revenues", "USD", [_Q1_REVENUE])
+        series = _extract_flow_concept(facts, "us-gaap", "Revenues")
+        assert series.name == "Revenues"
 
 
 # ---------------------------------------------------------------------------
-# Tests for fetch_pgr_latest_quarter
+# Tests: _extract_instant_concept
 # ---------------------------------------------------------------------------
 
-@patch("src.ingestion.edgar_client.time.sleep")
-@patch("src.ingestion.edgar_client.requests.get")
-class TestFetchPgrLatestQuarter:
-    def test_returns_most_recent_record(self, mock_get, mock_sleep):
-        mock_get.side_effect = _make_requests_get_side_effect(_MOCK_PAYLOADS)
-        result = fetch_pgr_latest_quarter()
-        assert result is not None
-        assert result["period_end"] == "2023-03-31"
+class TestExtractInstantConcept:
+    def test_instant_item_extracted(self):
+        """Balance-sheet instant items (no 'start') are extracted correctly."""
+        facts = _make_facts("us-gaap", "StockholdersEquity", "USD", [_Q1_EQUITY])
+        series = _extract_instant_concept(facts, "us-gaap", "StockholdersEquity")
+        assert not series.empty
+        assert "2023-03-31" in series.index
+        assert series["2023-03-31"] == pytest.approx(20_000_000_000)
 
-    def test_returns_none_when_no_data(self, mock_get, mock_sleep):
-        mock_get.side_effect = _make_requests_get_side_effect(
-            {k: {"units": {}} for k in _MOCK_PAYLOADS}
+    def test_missing_concept_returns_empty(self):
+        facts = {"facts": {"us-gaap": {}}}
+        series = _extract_instant_concept(facts, "us-gaap", "StockholdersEquity")
+        assert series.empty
+
+    def test_non_quarterly_forms_excluded(self):
+        rec = {**_Q1_EQUITY, "form": "8-K"}
+        facts = _make_facts("us-gaap", "StockholdersEquity", "USD", [rec])
+        series = _extract_instant_concept(facts, "us-gaap", "StockholdersEquity")
+        assert series.empty
+
+
+# ---------------------------------------------------------------------------
+# Tests: fetch_pgr_fundamentals_quarterly (with mocked companyfacts)
+# ---------------------------------------------------------------------------
+
+def _make_full_facts() -> dict:
+    """Build a multi-concept companyfacts dict for integration tests."""
+    net_income_rec = {
+        "start": "2023-01-01",
+        "end": "2023-03-31",
+        "val": 1_500_000_000,
+        "accn": "0000080661-23-000001",
+        "filed": "2023-05-01",
+        "form": "10-Q",
+    }
+    return {
+        "facts": {
+            "us-gaap": {
+                "Revenues": {
+                    "units": {"USD": [_Q1_REVENUE]}
+                },
+                "NetIncomeLoss": {
+                    "units": {"USD": [net_income_rec]}
+                },
+                "EarningsPerShareBasic": {
+                    "units": {"USD/shares": [_Q1_EPS]}
+                },
+                "StockholdersEquity": {
+                    "units": {"USD": [_Q1_EQUITY]}
+                },
+            }
+        }
+    }
+
+
+class TestFetchPGRFundamentalsQuarterly:
+    def test_returns_list_of_dicts(self, monkeypatch):
+        monkeypatch.setattr(
+            "src.ingestion.edgar_client.fetch_companyfacts",
+            lambda **_: _make_full_facts(),
         )
-        result = fetch_pgr_latest_quarter()
-        assert result is None
+        records = fetch_pgr_fundamentals_quarterly()
+        assert isinstance(records, list)
+        assert len(records) == 1
 
-    def test_result_has_source_edgar_xbrl(self, mock_get, mock_sleep):
-        mock_get.side_effect = _make_requests_get_side_effect(_MOCK_PAYLOADS)
-        result = fetch_pgr_latest_quarter()
-        assert result["source"] == "edgar_xbrl"
+    def test_required_db_keys_present(self, monkeypatch):
+        monkeypatch.setattr(
+            "src.ingestion.edgar_client.fetch_companyfacts",
+            lambda **_: _make_full_facts(),
+        )
+        rec = fetch_pgr_fundamentals_quarterly()[0]
+        expected_keys = {
+            "period_end", "pe_ratio", "pb_ratio", "roe",
+            "eps", "revenue", "net_income", "source",
+        }
+        assert expected_keys.issubset(rec.keys())
+
+    def test_period_end_is_iso_string(self, monkeypatch):
+        monkeypatch.setattr(
+            "src.ingestion.edgar_client.fetch_companyfacts",
+            lambda **_: _make_full_facts(),
+        )
+        rec = fetch_pgr_fundamentals_quarterly()[0]
+        assert rec["period_end"] == "2023-03-31"
+
+    def test_revenue_and_net_income_correct(self, monkeypatch):
+        monkeypatch.setattr(
+            "src.ingestion.edgar_client.fetch_companyfacts",
+            lambda **_: _make_full_facts(),
+        )
+        rec = fetch_pgr_fundamentals_quarterly()[0]
+        assert rec["revenue"] == pytest.approx(15_000_000_000)
+        assert rec["net_income"] == pytest.approx(1_500_000_000)
+
+    def test_eps_correct(self, monkeypatch):
+        monkeypatch.setattr(
+            "src.ingestion.edgar_client.fetch_companyfacts",
+            lambda **_: _make_full_facts(),
+        )
+        rec = fetch_pgr_fundamentals_quarterly()[0]
+        assert rec["eps"] == pytest.approx(3.25)
+
+    def test_roe_annualised(self, monkeypatch):
+        """ROE = (quarterly net_income × 4) / equity."""
+        monkeypatch.setattr(
+            "src.ingestion.edgar_client.fetch_companyfacts",
+            lambda **_: _make_full_facts(),
+        )
+        rec = fetch_pgr_fundamentals_quarterly()[0]
+        expected_roe = (1_500_000_000 * 4) / 20_000_000_000   # = 0.30
+        assert rec["roe"] == pytest.approx(expected_roe)
+
+    def test_pe_pb_are_nan(self, monkeypatch):
+        """pe_ratio and pb_ratio must be NaN (not available from XBRL alone)."""
+        monkeypatch.setattr(
+            "src.ingestion.edgar_client.fetch_companyfacts",
+            lambda **_: _make_full_facts(),
+        )
+        rec = fetch_pgr_fundamentals_quarterly()[0]
+        assert math.isnan(rec["pe_ratio"])
+        assert math.isnan(rec["pb_ratio"])
+
+    def test_source_is_edgar(self, monkeypatch):
+        monkeypatch.setattr(
+            "src.ingestion.edgar_client.fetch_companyfacts",
+            lambda **_: _make_full_facts(),
+        )
+        rec = fetch_pgr_fundamentals_quarterly()[0]
+        assert rec["source"] == "edgar"
+
+    def test_empty_facts_returns_empty_list(self, monkeypatch):
+        monkeypatch.setattr(
+            "src.ingestion.edgar_client.fetch_companyfacts",
+            lambda **_: {"facts": {"us-gaap": {}}},
+        )
+        records = fetch_pgr_fundamentals_quarterly()
+        assert records == []
+
+    def test_revenue_fallback_to_premiums(self, monkeypatch):
+        """If Revenues is absent, fall back to PremiumsEarnedNet."""
+        premiums_rec = {
+            "start": "2023-01-01",
+            "end": "2023-03-31",
+            "val": 14_000_000_000,
+            "accn": "0000080661-23-000001",
+            "filed": "2023-05-01",
+            "form": "10-Q",
+        }
+        facts = {
+            "facts": {
+                "us-gaap": {
+                    "PremiumsEarnedNet": {
+                        "units": {"USD": [premiums_rec]}
+                    }
+                }
+            }
+        }
+        monkeypatch.setattr(
+            "src.ingestion.edgar_client.fetch_companyfacts",
+            lambda **_: facts,
+        )
+        records = fetch_pgr_fundamentals_quarterly()
+        assert len(records) == 1
+        assert records[0]["revenue"] == pytest.approx(14_000_000_000)
+
+    def test_equity_fallback_to_attributable(self, monkeypatch):
+        """If StockholdersEquity absent, fall back to StockholdersEquityAttributableToParent."""
+        net_income_rec = {
+            "start": "2023-01-01", "end": "2023-03-31",
+            "val": 1_000_000_000, "filed": "2023-05-01", "form": "10-Q",
+            "accn": "x",
+        }
+        attr_equity = {
+            "end": "2023-03-31",
+            "val": 10_000_000_000,
+            "filed": "2023-05-01",
+            "form": "10-Q",
+            "accn": "x",
+        }
+        facts = {
+            "facts": {
+                "us-gaap": {
+                    "Revenues": {"units": {"USD": [_Q1_REVENUE]}},
+                    "NetIncomeLoss": {"units": {"USD": [net_income_rec]}},
+                    "StockholdersEquityAttributableToParent": {
+                        "units": {"USD": [attr_equity]}
+                    },
+                }
+            }
+        }
+        monkeypatch.setattr(
+            "src.ingestion.edgar_client.fetch_companyfacts",
+            lambda **_: facts,
+        )
+        records = fetch_pgr_fundamentals_quarterly()
+        assert len(records) >= 1
+        rec = records[0]
+        # ROE derived from attributable equity fallback
+        expected_roe = (1_000_000_000 * 4) / 10_000_000_000
+        assert rec["roe"] == pytest.approx(expected_roe)
+
+    def test_multiple_quarters_returned(self, monkeypatch):
+        """Multiple quarters produce one record per period_end."""
+        q2_revenue = {
+            "start": "2023-04-01", "end": "2023-06-30",
+            "val": 16_000_000_000, "filed": "2023-08-01", "form": "10-Q",
+            "accn": "0000080661-23-000004",
+        }
+        facts = {
+            "facts": {
+                "us-gaap": {
+                    "Revenues": {
+                        "units": {"USD": [_Q1_REVENUE, q2_revenue]}
+                    }
+                }
+            }
+        }
+        monkeypatch.setattr(
+            "src.ingestion.edgar_client.fetch_companyfacts",
+            lambda **_: facts,
+        )
+        records = fetch_pgr_fundamentals_quarterly()
+        period_ends = [r["period_end"] for r in records]
+        assert "2023-03-31" in period_ends
+        assert "2023-06-30" in period_ends
+        assert len(records) == 2

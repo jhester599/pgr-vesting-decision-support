@@ -102,10 +102,10 @@ pgr-vesting-decision-support/
 │   │   ├── dividend_loader.py        # AV DIVIDENDS → ex-div dates + amounts (PGR)
 │   │   ├── split_loader.py           # Hardcoded from config (3 known PGR splits)
 │   │   ├── pgr_monthly_loader.py     # EDGAR cache CSV → combined ratio, PIF
-│   │   ├── edgar_client.py           # SEC EDGAR XBRL quarterly fundamentals (no key)
-│   │   ├── fundamentals_loader.py    # Quarterly key metrics (optional)
+│   │   ├── fundamentals_loader.py    # EDGAR XBRL quarterly fundamentals (ROE, EPS, revenue)
+│   │   ├── edgar_client.py           # SEC EDGAR companyfacts XBRL client (free, no key needed)
 │   │   ├── technical_loader.py       # AV SMA/RSI/MACD/BBANDS (optional)
-│   │   ├── fmp_client.py             # FMP REST wrapper (deprecated — retained for ref)
+│   │   ├── fmp_client.py             # FMP REST wrapper (retained; endpoints deprecated 2025-08-31)
 │   │   └── av_client.py              # Cache-first Alpha Vantage wrapper
 │   │
 │   ├── processing/
@@ -173,7 +173,7 @@ pgr-vesting-decision-support/
 │
 ├── scripts/
 │   ├── initial_fetch.py             # One-time full history bootstrap
-│   └── weekly_fetch.py              # Weekly cron: prices + dividends + FMP fundamentals
+│   └── weekly_fetch.py              # Weekly cron: prices + dividends + EDGAR fundamentals
 │
 ├── data/
 │   └── pgr_financials.db            # SQLite accumulation DB (committed; auto-updated)
@@ -324,32 +324,38 @@ pgr-vesting-decision-support/
 |--------|------|------|
 | Alpha Vantage `TIME_SERIES_WEEKLY` | Weekly OHLCV — PGR + 20 ETF benchmarks (~25 years) | Free |
 | Alpha Vantage `DIVIDENDS` | Ex-dividend history — PGR + 20 ETF benchmarks | Free (25 req/day) |
-| SEC EDGAR XBRL (`data.sec.gov/api/xbrl`) | PGR quarterly EPS, revenue, net income (10-Q/10-K) | Free — no API key required |
+| SEC EDGAR XBRL (`data.sec.gov/api/xbrl`) | PGR quarterly ROE, EPS, revenue, net income (10-Q/10-K) | **Free — no API key** |
 | FRED public REST API | 9 macro series + 3 PGR-specific series (no budget impact) | Free |
-| EDGAR cache CSV | 256 months of combined ratio, PIF, EPS | User-provided |
+| EDGAR 8-K cache CSV | 256 months of combined ratio, PIF (PDF supplements) | User-provided |
 | `config.PGR_KNOWN_SPLITS` | 3 historical splits (1992, 2002, 2006) | Hardcoded |
 
-### SEC EDGAR XBRL (quarterly fundamentals)
+### SEC EDGAR XBRL (Quarterly Fundamentals)
 
-PGR quarterly fundamentals (EPS, revenue, net income) are fetched from the SEC EDGAR
-XBRL Company-Concept API via `src/ingestion/edgar_client.py`.  No API key is required;
-the SEC only asks for a descriptive `User-Agent` header per their
-[fair-use policy](https://www.sec.gov/developer).
+Quarterly fundamentals are sourced from the SEC EDGAR XBRL companyfacts API:
 
-**Key limitations:**
-- **Quarterly cadence only** — data aligns with 10-Q/10-K filing dates (~45–60 days after
-  period-end).  The `EDGAR_FILING_LAG_MONTHS = 2` guard in `feature_engineering.py`
-  prevents look-ahead bias.
-- **No PE/PB/ROE** — market-ratio metrics are not available in XBRL;  those columns are
-  `None` for all EDGAR-sourced rows and are handled gracefully by the WFO engine.
-- **No monthly 8-K data** — PGR monthly combined-ratio and PIF figures appear in PDF
-  attachments on 8-K filings and are not tagged in XBRL.  These continue to be sourced
-  from the user-provided CSV cache (`pgr_monthly_loader.py`).
+```
+https://data.sec.gov/api/xbrl/companyfacts/CIK0000080661.json
+```
 
-> **FMP deprecation (historical note):** FMP deprecated all `/v3/` REST endpoints on
-> 2025-08-31.  The project switched to EDGAR XBRL in v4.1.2 (2026-03-24).
-> `src/ingestion/fmp_client.py` is retained for reference; `FMPEndpointDeprecatedError`
-> surfaces a clear warning if the old client is ever invoked.
+This single endpoint returns all XBRL facts from PGR's 10-Q and 10-K filings. The client
+(`edgar_client.py`) caches the response for 7 days, so most weekly runs make **zero** HTTP
+requests.
+
+**XBRL concept → DB column mapping:**
+
+| XBRL Concept (us-gaap) | DB Column | Notes |
+|------------------------|-----------|-------|
+| `Revenues` | `revenue` | Falls back to `PremiumsEarnedNet` if absent |
+| `NetIncomeLoss` | `net_income` | |
+| `EarningsPerShareBasic` | `eps` | `USD/shares` unit |
+| Derived: `NetIncomeLoss × 4 / StockholdersEquity` | `roe` | Annualised quarterly |
+| — | `pe_ratio` | **NULL** — requires market price; computable downstream |
+| — | `pb_ratio` | **NULL** — requires market price; computable downstream |
+
+**Monthly operating metrics (combined ratio, PIF) are NOT available via XBRL.**
+PGR files these in monthly 8-K PDF/HTML supplements, not as structured XBRL data.
+The `pgr_edgar_monthly` table is populated separately from the user-provided CSV cache
+(`pgr_edgar_cache.csv`) via `pgr_monthly_loader.py`.
 
 ### FRED Series
 
@@ -382,11 +388,11 @@ All FRED series are shifted by a publication lag before entering the feature mat
 
 ### API Budget
 
-| Script | AV calls | FMP calls | FRED calls | Notes |
-|--------|----------|-----------|------------|-------|
+| Script | AV calls | EDGAR calls | FRED calls | Notes |
+|--------|----------|-------------|------------|-------|
 | `initial_fetch.py --prices` | 22 | 0 | 0 | Day 1 bootstrap (22 tickers: PGR + 21 ETFs) |
 | `initial_fetch.py --dividends` | 22 | 0 | 0 | Day 2 bootstrap |
-| `weekly_fetch.py` | 23 | 2 | 12 | Weekly cron (FRED is free, no rate limit) |
+| `weekly_fetch.py` | 23 | 0–1 | 12 | EDGAR uses 7-day cache; most runs = 0 EDGAR calls |
 
 ---
 
@@ -555,9 +561,9 @@ pip install -r requirements.txt
 Create a `.env` file in the project root (never committed):
 
 ```
-FMP_API_KEY=your_fmp_key
 AV_API_KEY=your_alphavantage_key
 FRED_API_KEY=your_fred_key      # free at fred.stlouisfed.org/docs/api/api_key.html
+# FMP_API_KEY not needed — quarterly fundamentals now sourced from SEC EDGAR XBRL (free)
 LTCG_RATE=0.20
 STCG_RATE=0.37
 ```
@@ -616,8 +622,8 @@ All workflows require repository secrets:
 | Secret | Description |
 |--------|-------------|
 | `AV_API_KEY` | Alpha Vantage free-tier key |
-| `FMP_API_KEY` | Financial Modeling Prep free-tier key |
 | `FRED_API_KEY` | FRED public API key (free) |
+| ~~`FMP_API_KEY`~~ | No longer required — FMP v3 deprecated 2025-08-31; replaced by EDGAR XBRL |
 
 ---
 
