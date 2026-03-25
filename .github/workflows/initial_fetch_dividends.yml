@@ -1,9 +1,13 @@
 name: Initial Fetch — Day 2 (Dividends)
 
-# Scheduled for Thu 2026-03-26 at 10:00 AM ET (14:00 UTC).
+# Scheduled for Thu 2026-03-26 at 11:00 AM ET (15:00 UTC).
 # Originally 2026-03-24; rescheduled +1 day (to 2026-03-25) after Day 1 AV rate-limit
 # failure; rescheduled again +1 day (to 2026-03-26) after Day 1 403 git-push failure
 # on 2026-03-24 — permissions: contents: write was missing, now fixed.
+# Pushed back from 14:00 → 15:00 UTC on 2026-03-25: Day 1 prices ran at 15:01 UTC
+# today (61-min GitHub scheduler lag). If AV enforces a rolling 24-hour rate-limit
+# window (rather than resetting at UTC midnight), 14:00 UTC tomorrow would be only
+# ~23 hours after Day 1 completed. The extra hour provides a safe buffer.
 # Run this the day after initial_fetch_prices.yml so both fetches stay
 # within the 25 AV calls/day free-tier limit.
 #
@@ -11,8 +15,8 @@ name: Initial Fetch — Day 2 (Dividends)
 
 on:
   schedule:
-    # 10:00 AM ET = 14:00 UTC  |  date: Thu 2026-03-26
-    - cron: '0 14 26 3 *'
+    # 11:00 AM ET = 15:00 UTC  |  date: Thu 2026-03-26
+    - cron: '0 15 26 3 *'
   workflow_dispatch:
     inputs:
       dry_run:

@@ -635,9 +635,9 @@ python scripts/weekly_fetch.py --dry-run --skip-fred
 
 | Workflow | Schedule | Purpose |
 |----------|----------|---------|
-| `initial_fetch_prices.yml` | One-time: Wed 2026-03-25 at 14:00 UTC | Bootstrap Day 1 — full price history (22 AV calls) |
-| `initial_fetch_dividends.yml` | One-time: Thu 2026-03-26 at 14:00 UTC | Bootstrap Day 2 — full dividend history (22 AV calls) |
-| `post_initial_bootstrap.yml` | One-time: Thu 2026-03-26 at 18:00 UTC | Bootstrap Day 2 (afternoon) — build relative returns + first decision |
+| `initial_fetch_prices.yml` | ✅ One-time: Wed 2026-03-25 (ran 15:01 UTC) | Bootstrap Day 1 — full price history (22 AV calls) |
+| `initial_fetch_dividends.yml` | One-time: Thu 2026-03-26 at 15:00 UTC | Bootstrap Day 2 — full dividend history (22 AV calls) |
+| `post_initial_bootstrap.yml` | One-time: Thu 2026-03-26 at 19:00 UTC | Bootstrap Day 2 (afternoon) — build relative returns + first decision |
 | `weekly_data_fetch.yml` | Fridays at 22:00 UTC (6 PM ET) | Full weekly refresh + FRED macro update |
 | `monthly_8k_fetch.yml` | 20th + 25th of each month at 14:00 UTC | PGR 8-K operating metrics (two-pass; idempotent upsert) |
 | `monthly_decision.yml` | 20th–22nd of each month at 15:00 UTC | Automated sell/hold recommendation report |
@@ -646,6 +646,13 @@ python scripts/weekly_fetch.py --dry-run --skip-fred
 1. *2026-03-23* — Alpha Vantage 25-call/day rate limit hit mid-run (14/22 tickers).
 2. *2026-03-24* — AV fetch succeeded (22/22) but `git push` failed with 403 — all
    workflows were missing `permissions: contents: write`. Fixed in this release.
+
+**Schedule note (2026-03-25):** Day 1 price fetch and monthly 8-K Pass 2 both completed
+successfully. GitHub Actions scheduler lag was 51–61 minutes (typical free-tier runner
+contention). Day 2 bootstrap pushed from 14:00 → **15:00 UTC** and the post-bootstrap
+from 18:00 → **19:00 UTC** as a precautionary buffer: if AV enforces a rolling 24-hour
+rate-limit window, the 14:00 UTC slot would fall only ~23 hours after today's 22 AV
+calls completed. The extra hour eliminates that risk regardless of AV's reset mechanism.
 
 **FRED data note:** FRED macro data (12 series, 4 967 rows back to 1990) was
 pre-populated locally on 2026-03-24 and committed to the DB. The `weekly_data_fetch`

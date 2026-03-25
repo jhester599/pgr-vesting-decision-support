@@ -1,8 +1,10 @@
 name: Post-Initial Bootstrap
 
-# Runs the same day as the Day 2 dividends workflow (Thu 2026-03-26 at 18:00 UTC),
-# 4 hours after Day 2 starts at 14:00 UTC. Day 2 completes in ~15 minutes, so the
+# Runs the same day as the Day 2 dividends workflow (Thu 2026-03-26 at 19:00 UTC),
+# 4 hours after Day 2 starts at 15:00 UTC. Day 2 completes in ~15 minutes, so the
 # 4-hour gap is ample buffer for the DB commit to land before this workflow checks it out.
+# Time shifted from 18:00 → 19:00 UTC on 2026-03-25 to track the Day 2 shift
+# (14:00 → 15:00 UTC) and preserve the same 4-hour separation.
 #
 # Why not Day 3?
 # --------------
@@ -37,8 +39,8 @@ name: Post-Initial Bootstrap
 
 on:
   schedule:
-    # 2:00 PM ET = 18:00 UTC  |  date: Thu 2026-03-26  (same day as Day 2, 4h later)
-    - cron: '0 18 26 3 *'
+    # 3:00 PM ET = 19:00 UTC  |  date: Thu 2026-03-26  (same day as Day 2, 4h later)
+    - cron: '0 19 26 3 *'
   workflow_dispatch:
     inputs:
       dry_run:
