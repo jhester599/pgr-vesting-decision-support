@@ -155,3 +155,38 @@ Results will be appended below automatically after each run.
 | `VTI` | prices | 0 | ⏭️ DRY-RUN | no HTTP call made |
 | `VWO` | prices | 0 | ⏭️ DRY-RUN | no HTTP call made |
 | `VXUS` | prices | 0 | ⏭️ DRY-RUN | no HTTP call made |
+
+## 2026-03-25 15:02 UTC — `prices + FRED`  ✅ SUCCESS
+
+- **AV calls used:** 22 / 25
+- **Duration:** 280s
+- **Tickers attempted:** 22
+- **Loaded new data:** 18
+- **Skipped (no new data):** 4
+
+- **Errors:** 0
+
+| Ticker | Mode | Rows | Status | Detail |
+|--------|------|-----:|--------|--------|
+| `BND` | prices | 989 | ✅ OK | 989 rows upserted |
+| `BNDX` | prices | 668 | ✅ OK | 668 rows upserted |
+| `DBC` | prices | 1,050 | ✅ OK | 1050 rows upserted |
+| `GLD` | prices | 0 | ⏭️ SKIPPED | already fresh or no new data |
+| `KIE` | prices | 1,062 | ✅ OK | 1062 rows upserted |
+| `PGR` | prices | 1,377 | ✅ OK | 1377 rows upserted |
+| `SCHD` | prices | 0 | ⏭️ SKIPPED | already fresh or no new data |
+| `VCIT` | prices | 852 | ✅ OK | 852 rows upserted |
+| `VDE` | prices | 1,121 | ✅ OK | 1121 rows upserted |
+| `VEA` | prices | 0 | ⏭️ SKIPPED | already fresh or no new data |
+| `VFH` | prices | 1,156 | ✅ OK | 1156 rows upserted |
+| `VGT` | prices | 1,156 | ✅ OK | 1156 rows upserted |
+| `VHT` | prices | 1,156 | ✅ OK | 1156 rows upserted |
+| `VIG` | prices | 0 | ⏭️ SKIPPED | already fresh or no new data |
+| `VIS` | prices | 1,121 | ✅ OK | 1121 rows upserted |
+| `VMBS` | prices | 852 | ✅ OK | 852 rows upserted |
+| `VNQ` | prices | 1,121 | ✅ OK | 1121 rows upserted |
+| `VOO` | prices | 811 | ✅ OK | 811 rows upserted |
+| `VPU` | prices | 1,156 | ✅ OK | 1156 rows upserted |
+| `VTI` | prices | 1,295 | ✅ OK | 1295 rows upserted |
+| `VWO` | prices | 1,098 | ✅ OK | 1098 rows upserted |
+| `VXUS` | prices | 791 | ✅ OK | 791 rows upserted |
