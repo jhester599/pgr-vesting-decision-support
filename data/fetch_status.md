@@ -190,3 +190,38 @@ Results will be appended below automatically after each run.
 | `VTI` | prices | 1,295 | ✅ OK | 1295 rows upserted |
 | `VWO` | prices | 1,098 | ✅ OK | 1098 rows upserted |
 | `VXUS` | prices | 791 | ✅ OK | 791 rows upserted |
+
+## 2026-03-26 16:07 UTC — `dividends`  ✅ SUCCESS
+
+- **AV calls used:** 22 / 25
+- **Duration:** 278s
+- **Tickers attempted:** 22
+- **Loaded new data:** 21
+- **Skipped (no new data):** 1
+
+- **Errors:** 0
+
+| Ticker | Mode | Rows | Status | Detail |
+|--------|------|-----:|--------|--------|
+| `BND` | dividends | 227 | ✅ OK | 227 rows upserted |
+| `BNDX` | dividends | 153 | ✅ OK | 153 rows upserted |
+| `DBC` | dividends | 9 | ✅ OK | 9 rows upserted |
+| `GLD` | dividends | 0 | ⏭️ SKIPPED | already fresh or no new data |
+| `KIE` | dividends | 82 | ✅ OK | 82 rows upserted |
+| `PGR` | dividends | 76 | ✅ OK | 76 rows upserted |
+| `SCHD` | dividends | 58 | ✅ OK | 58 rows upserted |
+| `VCIT` | dividends | 196 | ✅ OK | 196 rows upserted |
+| `VDE` | dividends | 54 | ✅ OK | 54 rows upserted |
+| `VEA` | dividends | 65 | ✅ OK | 65 rows upserted |
+| `VFH` | dividends | 86 | ✅ OK | 86 rows upserted |
+| `VGT` | dividends | 54 | ✅ OK | 54 rows upserted |
+| `VHT` | dividends | 54 | ✅ OK | 54 rows upserted |
+| `VIG` | dividends | 79 | ✅ OK | 79 rows upserted |
+| `VIS` | dividends | 54 | ✅ OK | 54 rows upserted |
+| `VMBS` | dividends | 196 | ✅ OK | 196 rows upserted |
+| `VNQ` | dividends | 86 | ✅ OK | 86 rows upserted |
+| `VOO` | dividends | 62 | ✅ OK | 62 rows upserted |
+| `VPU` | dividends | 86 | ✅ OK | 86 rows upserted |
+| `VTI` | dividends | 99 | ✅ OK | 99 rows upserted |
+| `VWO` | dividends | 61 | ✅ OK | 61 rows upserted |
+| `VXUS` | dividends | 56 | ✅ OK | 56 rows upserted |
