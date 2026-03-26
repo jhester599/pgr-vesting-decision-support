@@ -15,7 +15,7 @@ Each run produces a dated subfolder under `results/monthly_decisions/YYYY-MM/` c
 
 | As-Of Date | Run Date | Consensus Signal | Sell % | Predicted 6M Return | Mean IC | Hit Rate | Notes |
 |------------|----------|-----------------|--------|---------------------|---------|----------|-------|
-| *(first entry will appear here after the first automated run)* | | | | | | | |
+| 2026-03-26 | 2026-03-26 | NEUTRAL | 50% | +7.33% | -0.0113 | 57.4% |  | | | | | | | |
 
 ---
 
