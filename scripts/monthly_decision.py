@@ -46,7 +46,10 @@ import pandas as pd
 
 import config
 from src.database import db_client
-from src.models.multi_benchmark_wfo import get_current_signals, run_all_benchmarks
+from src.models.multi_benchmark_wfo import (
+    get_ensemble_signals,
+    run_ensemble_benchmarks,
+)
 from src.processing.feature_engineering import (
     build_feature_matrix_from_db,
     get_feature_columns,
@@ -129,14 +132,18 @@ def _fetch_fred_step(conn, dry_run: bool = False, skip_fred: bool = False) -> No
 def _generate_signals(
     conn,
     as_of: date,
-    model_type: str = "elasticnet",
     target_horizon_months: int = 6,
 ) -> pd.DataFrame:
     """
-    Build feature matrix (sliced to as_of), train WFO models, return signals.
+    Build feature matrix (sliced to as_of), train ensemble WFO models, return signals.
 
-    Returns a DataFrame with one row per benchmark and columns:
-      benchmark, predicted_relative_return, ic, hit_rate, signal, top_feature.
+    Uses the v3.1 ElasticNet + Ridge + BayesianRidge ensemble per benchmark.
+    BayesianRidge posterior variance drives the ``confidence_tier`` and
+    ``prob_outperform`` columns in the output.
+
+    Returns a DataFrame indexed by benchmark with columns:
+      predicted_relative_return, ic, hit_rate, signal,
+      prediction_std, prob_outperform, confidence_tier.
     """
     as_of_ts = pd.Timestamp(as_of)
 
@@ -162,22 +169,27 @@ def _generate_signals(
 
     rel_matrix = pd.DataFrame(rel_matrix_cols)
 
-    # Train all benchmarks
-    wfo_results = run_all_benchmarks(
+    # Train 3-model ensemble per benchmark (ElasticNet + Ridge + BayesianRidge)
+    ensemble_results = run_ensemble_benchmarks(
         X_event,
         rel_matrix,
-        model_type=model_type,
         target_horizon_months=target_horizon_months,
     )
 
-    # Generate current signals
-    signals = get_current_signals(
+    # Generate ensemble signals (includes prob_outperform and confidence_tier)
+    signals = get_ensemble_signals(
         X_full=X_event,
         relative_return_matrix=rel_matrix,
-        wfo_results=wfo_results,
+        ensemble_results=ensemble_results,
         X_current=X_current,
-        model_type=model_type,
     )
+
+    # Normalize column names for downstream consumers (consensus, report writer)
+    signals = signals.rename(columns={
+        "point_prediction": "predicted_relative_return",
+        "mean_ic":          "ic",
+        "mean_hit_rate":    "hit_rate",
+    })
 
     return signals
 
@@ -186,23 +198,31 @@ def _generate_signals(
 # Consensus signal
 # ---------------------------------------------------------------------------
 
-def _consensus_signal(signals: pd.DataFrame) -> tuple[str, float, float, float]:
+def _consensus_signal(
+    signals: pd.DataFrame,
+) -> tuple[str, float, float, float, float, str]:
     """
     Derive a consensus signal from per-benchmark signals.
 
     Returns:
-        (consensus_signal, mean_predicted_return, mean_ic, mean_hit_rate)
+        (consensus_signal, mean_predicted_return, mean_ic, mean_hit_rate,
+         mean_prob_outperform, composite_confidence_tier)
     """
     if signals.empty:
-        return "NEUTRAL", 0.0, 0.0, 0.0
+        return "NEUTRAL", 0.0, 0.0, 0.0, 0.5, "LOW"
 
     mean_pred = float(signals["predicted_relative_return"].mean())
     mean_ic = float(signals["ic"].mean())
     mean_hr = float(signals["hit_rate"].mean())
 
+    # Ensemble confidence columns (present when ensemble path is used)
+    if "prob_outperform" in signals.columns:
+        mean_prob = float(signals["prob_outperform"].mean())
+    else:
+        mean_prob = 0.5
+
     outperform_count = (signals["signal"] == "OUTPERFORM").sum()
     underperform_count = (signals["signal"] == "UNDERPERFORM").sum()
-    neutral_count = (signals["signal"] == "NEUTRAL").sum()
 
     total = len(signals)
     if outperform_count > total / 2:
@@ -212,7 +232,15 @@ def _consensus_signal(signals: pd.DataFrame) -> tuple[str, float, float, float]:
     else:
         consensus = "NEUTRAL"
 
-    return consensus, mean_pred, mean_ic, mean_hr
+    # Composite tier mirrors get_confidence_tier thresholds
+    if mean_prob >= 0.70 or mean_prob <= 0.30:
+        confidence_tier = "HIGH"
+    elif mean_prob >= 0.60 or mean_prob <= 0.40:
+        confidence_tier = "MODERATE"
+    else:
+        confidence_tier = "LOW"
+
+    return consensus, mean_pred, mean_ic, mean_hr, mean_prob, confidence_tier
 
 
 def _sell_pct_from_consensus(
@@ -249,17 +277,21 @@ def _write_recommendation_md(
     mean_hr: float,
     sell_pct: float,
     dry_run: bool,
+    mean_prob_outperform: float = 0.5,
+    composite_confidence_tier: str = "LOW",
 ) -> None:
     """Write the human-readable recommendation report."""
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / "recommendation.md"
+
+    has_confidence = "prob_outperform" in signals.columns
 
     lines = [
         f"# PGR Monthly Decision Report — {as_of.strftime('%B %Y')}",
         "",
         f"**As-of Date:** {as_of}  ",
         f"**Run Date:** {run_date}  ",
-        f"**Model Version:** v3.0 (ElasticNet WFO, 20 ETF benchmarks)  ",
+        f"**Model Version:** v4.3 (Ensemble WFO, 20 ETF benchmarks, BayesianRidge confidence)  ",
         "",
         "---",
         "",
@@ -267,14 +299,23 @@ def _write_recommendation_md(
         "",
         f"| Field | Value |",
         f"|-------|-------|",
-        f"| Signal | **{consensus}** |",
+        f"| Signal | **{consensus} ({composite_confidence_tier} CONFIDENCE)** |",
         f"| Recommended Sell % | **{sell_pct:.0%}** |",
         f"| Predicted 6M Relative Return | {mean_predicted:+.2%} |",
+    ]
+
+    if has_confidence:
+        lines.append(f"| P(Outperform) | {mean_prob_outperform:.1%} |")
+
+    lines += [
         f"| Mean IC (across benchmarks) | {mean_ic:.4f} |",
         f"| Mean Hit Rate | {mean_hr:.1%} |",
         "",
         "> **Note:** The sell % recommendation is used only at actual vesting events",
         "> (January and July).  Monthly reports are monitoring tools, not trade signals.",
+        ">",
+        "> **Calibration:** Phase 1 — P(outperform) uses uncalibrated BayesianRidge posteriors.",
+        "> Platt scaling will be introduced in v5.1 once ≥ 60 OOS predictions accumulate.",
         "",
         "---",
         "",
@@ -282,42 +323,66 @@ def _write_recommendation_md(
         "",
     ]
 
+    n_outperform = (signals["signal"] == "OUTPERFORM").sum() if not signals.empty else 0
+    n_total = len(signals)
+    outperform_frac = f"{n_outperform}/{n_total} ({n_outperform / n_total:.0%})" if n_total else "0/0"
+
     if consensus == "OUTPERFORM":
         lines += [
-            f"The model has {'moderate' if mean_ic < 0.10 else 'high'} conviction that PGR "
-            f"will outperform a diversified portfolio of ETF benchmarks over the next 6 months.",
+            f"The ensemble has **{composite_confidence_tier.lower()} conviction** that PGR "
+            f"will outperform a diversified ETF portfolio over the next 6 months.  "
+            f"{outperform_frac} benchmarks favour outperformance.",
             "",
             f"Recommended action at next vesting event: **HOLD {1 - sell_pct:.0%}** of vesting RSUs.",
         ]
     elif consensus == "UNDERPERFORM":
         lines += [
-            "The model predicts PGR will underperform the benchmark portfolio over the next 6 months.",
+            f"The ensemble predicts PGR will underperform the benchmark portfolio over the next "
+            f"6 months ({composite_confidence_tier.lower()} conviction).  "
+            f"Only {outperform_frac} benchmarks favour outperformance.",
             "",
-            "Recommended action at next vesting event: **SELL {:.0%}** of vesting RSUs and diversify.".format(sell_pct),
+            f"Recommended action at next vesting event: **SELL {sell_pct:.0%}** of vesting RSUs and diversify.",
         ]
     else:
         lines += [
-            "Model signal is weak (mean IC below threshold or mixed directional signals).",
+            f"Model signal is weak (mean IC below threshold or mixed directional signals).  "
+            f"{outperform_frac} benchmarks favour outperformance.",
             "",
             "Recommended action at next vesting event: **DEFAULT 50% SALE** for risk management.",
         ]
 
+    # Per-benchmark table — include confidence columns when available
     lines += [
         "",
         "---",
         "",
         "## Per-Benchmark Signals",
         "",
-        "| Benchmark | Predicted Return | IC | Hit Rate | Signal |",
-        "|-----------|----------------|----|----------|--------|",
     ]
+
+    if has_confidence:
+        lines += [
+            "| Benchmark | Predicted Return | IC | Hit Rate | P(Outperform) | Confidence | Signal |",
+            "|-----------|----------------|----|----------|---------------|------------|--------|",
+        ]
+    else:
+        lines += [
+            "| Benchmark | Predicted Return | IC | Hit Rate | Signal |",
+            "|-----------|----------------|----|----------|--------|",
+        ]
 
     if not signals.empty:
         for ticker, row in signals.iterrows():
             pred = f"{row['predicted_relative_return']:+.2%}" if not pd.isna(row.get("predicted_relative_return")) else "n/a"
             ic_val = f"{row['ic']:.4f}" if not pd.isna(row.get("ic")) else "n/a"
             hr_val = f"{row['hit_rate']:.1%}" if not pd.isna(row.get("hit_rate")) else "n/a"
-            lines.append(f"| {ticker} | {pred} | {ic_val} | {hr_val} | {row.get('signal', 'N/A')} |")
+            sig = row.get("signal", "N/A")
+            if has_confidence:
+                prob = f"{row['prob_outperform']:.1%}" if not pd.isna(row.get("prob_outperform")) else "n/a"
+                tier = row.get("confidence_tier", "n/a")
+                lines.append(f"| {ticker} | {pred} | {ic_val} | {hr_val} | {prob} | {tier} | {sig} |")
+            else:
+                lines.append(f"| {ticker} | {pred} | {ic_val} | {hr_val} | {sig} |")
 
     lines += [
         "",
@@ -335,9 +400,10 @@ def _write_signals_csv(out_dir: Path, signals: pd.DataFrame) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / "signals.csv"
     if signals.empty:
-        pd.DataFrame(
-            columns=["benchmark", "predicted_relative_return", "ic", "hit_rate", "signal", "top_feature"]
-        ).to_csv(path, index=False)
+        pd.DataFrame(columns=[
+            "benchmark", "predicted_relative_return", "ic", "hit_rate",
+            "signal", "prob_outperform", "confidence_tier",
+        ]).to_csv(path, index=False)
     else:
         signals.reset_index().to_csv(path, index=False)
     print(f"  Wrote {path}")
@@ -412,16 +478,17 @@ def main(
     # Step 1: Refresh FRED data
     _fetch_fred_step(conn, dry_run=dry_run, skip_fred=skip_fred)
 
-    # Step 2: Generate signals
-    print(f"\nGenerating signals (as-of {as_of})...")
-    signals = _generate_signals(conn, as_of, model_type="elasticnet", target_horizon_months=6)
+    # Step 2: Generate signals (ensemble: ElasticNet + Ridge + BayesianRidge)
+    print(f"\nGenerating ensemble signals (as-of {as_of})...")
+    signals = _generate_signals(conn, as_of, target_horizon_months=6)
 
     # Step 3: Compute consensus
-    consensus, mean_pred, mean_ic, mean_hr = _consensus_signal(signals)
+    consensus, mean_pred, mean_ic, mean_hr, mean_prob, confidence_tier = _consensus_signal(signals)
     sell_pct = _sell_pct_from_consensus(consensus, mean_pred, mean_ic)
 
-    print(f"\n  Consensus signal: {consensus}")
+    print(f"\n  Consensus signal: {consensus} ({confidence_tier} CONFIDENCE)")
     print(f"  Predicted 6M relative return: {mean_pred:+.2%}")
+    print(f"  P(outperform): {mean_prob:.1%}")
     print(f"  Mean IC: {mean_ic:.4f}  |  Mean hit rate: {mean_hr:.1%}")
     print(f"  Sell %: {sell_pct:.0%}")
 
@@ -430,6 +497,8 @@ def main(
     _write_recommendation_md(
         out_dir, as_of, run_date, signals,
         consensus, mean_pred, mean_ic, mean_hr, sell_pct, dry_run,
+        mean_prob_outperform=mean_prob,
+        composite_confidence_tier=confidence_tier,
     )
     _write_signals_csv(out_dir, signals)
     _append_decision_log(

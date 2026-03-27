@@ -248,6 +248,20 @@ FRACDIFF_CORR_THRESHOLD: float = 0.90   # Minimum correlation with original seri
 FRACDIFF_ADF_ALPHA: float = 0.05        # Stationarity significance level
 
 # ---------------------------------------------------------------------------
+# v4.3 — Signal Quality + Confidence Layer
+# ---------------------------------------------------------------------------
+# Redundant features dropped from the final feature matrix to improve the
+# obs/feature ratio from ~3.5:1 to ~4:1.
+#   vol_21d:          highly correlated with vol_63d (same signal, shorter window)
+#   credit_spread_ig: subset of credit_spread_hy (HY spread contains the IG
+#                     signal plus the distress premium; IG is redundant)
+FEATURES_TO_DROP: list[str] = ["vol_21d", "credit_spread_ig"]
+
+# Use BayesianRidge posterior variance (σ²_pred) as the Ω diagonal in the
+# Black-Litterman model instead of MAE².
+BL_USE_BAYESIAN_VARIANCE: bool = True
+
+# ---------------------------------------------------------------------------
 # ETF launch dates — tickers with limited history need proxy backfill.
 # All ETFs in ETF_BENCHMARK_UNIVERSE have pre-2014 history; no proxies are
 # currently required.  BNDX (launched 2013-06-03) pre-dates all backtested

@@ -307,6 +307,11 @@ def build_feature_matrix(
     price_feature_cols = list(_MOMENTUM_WINDOWS.keys()) + list(_VOL_WINDOWS.keys())
     df = df.dropna(subset=price_feature_cols, how="all")
 
+    # v4.3: drop redundant features to improve obs/feature ratio (~3.5:1 → ~4:1)
+    for col in getattr(config, "FEATURES_TO_DROP", []):
+        if col in df.columns:
+            df = df.drop(columns=[col])
+
     os.makedirs(config.DATA_PROCESSED_DIR, exist_ok=True)
     df.to_parquet(_PROCESSED_PATH)
     return df

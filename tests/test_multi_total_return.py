@@ -471,7 +471,7 @@ class TestBuildFeatureMatrixFromDb:
         )
         db_client.upsert_prices(conn, _price_records("PGR", n_weeks=300))
         df = build_feature_matrix_from_db(conn)
-        for col in ["mom_3m", "mom_6m", "vol_21d", "vol_63d"]:
+        for col in ["mom_3m", "mom_6m", "vol_63d"]:  # vol_21d dropped by config.FEATURES_TO_DROP (v4.3)
             assert col in df.columns, f"Expected column '{col}' missing"
 
     def test_has_target_column(self, conn, tmp_path, monkeypatch):

@@ -144,9 +144,26 @@ class TestBuildFeatureMatrix:
         )
         burn_in_end = price_history.index.min() + pd.DateOffset(months=14)
         after_burnin = df.loc[df.index > burn_in_end]
-        for col in ["mom_12m", "vol_21d", "vol_63d"]:
+        # vol_21d is dropped by config.FEATURES_TO_DROP (v4.3); check remaining cols
+        for col in ["mom_12m", "vol_63d"]:
             assert after_burnin[col].notna().all(), (
                 f"Column {col} has NaN values after burn-in period."
+            )
+
+    def test_features_to_drop_absent(
+        self, price_history, dividend_history, split_history, tmp_path, monkeypatch
+    ):
+        """Columns in config.FEATURES_TO_DROP must not appear in the final matrix."""
+        import config, src.processing.feature_engineering as fe
+        monkeypatch.setattr(config, "DATA_PROCESSED_DIR", str(tmp_path))
+        monkeypatch.setattr(fe, "_PROCESSED_PATH", str(tmp_path / "fm4_drop.parquet"))
+        df = build_feature_matrix(
+            price_history, dividend_history, split_history, force_refresh=True
+        )
+        for col in config.FEATURES_TO_DROP:
+            assert col not in df.columns, (
+                f"Column '{col}' should be dropped per config.FEATURES_TO_DROP "
+                f"but is still present in the feature matrix."
             )
 
     def test_gainshare_dropped_when_insufficient(
