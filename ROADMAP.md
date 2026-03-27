@@ -371,6 +371,44 @@ of v6.0 ships on Day 42.
 
 ---
 
+---
+
+### v6.1 — Monthly Decision Email Notification
+**Target:** Implement alongside or shortly after v6.0
+**Theme:** Automated email delivery of monthly prediction report
+
+Add a GitHub Actions step to `monthly_decision.yml` that emails the
+`recommendation.md` output to the owner immediately after each successful
+monthly run.
+
+**Implementation notes:**
+
+- Add a new step at the end of the `monthly-decision` job (after the existing
+  `git push` step) using a standard SMTP action (e.g., `dawidd6/action-send-mail`
+  or a small inline Python script using `smtplib`).
+- The email body should be the rendered content of
+  `results/monthly_decisions/YYYY-MM/recommendation.md`, converted to plain text
+  or HTML.  Subject line format: `PGR Monthly Decision — {MONTH YYYY}: {SIGNAL} ({CONFIDENCE})`.
+- All credentials are stored as **repository secrets** (already configured):
+
+| Secret | Purpose |
+|--------|---------|
+| `SMTP_SERVER` | Outbound SMTP hostname |
+| `SMTP_PORT` | SMTP port (typically 465 for SSL or 587 for STARTTLS) |
+| `SMTP_USERNAME` | SMTP authentication username |
+| `SMTP_PASSWORD` | SMTP authentication password |
+| `PREDICTION_EMAIL_FROM` | Sender address shown in the From header |
+| `PREDICTION_EMAIL_TO` | Recipient address |
+
+- The step should be conditional on the monthly decision actually producing a
+  new report (i.e., skip if the idempotency check determined this month already
+  ran).  Use the existing `recommendation.md` existence check or a job output
+  variable set earlier in the workflow.
+- On send failure, log a warning but do **not** fail the workflow — data
+  collection and DB commit are more critical than the notification.
+
+---
+
 ## Development Principles
 
 - **Never finalize a module without a passing pytest suite** (CLAUDE.md mandate)
