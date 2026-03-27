@@ -75,9 +75,10 @@ class TestFredFeaturesInMatrix:
             force_refresh=True,
         )
 
+        # credit_spread_ig is dropped by config.FEATURES_TO_DROP (v4.3: redundant with HY spread)
         expected_features = [
             "yield_slope", "yield_curvature", "real_rate_10y",
-            "credit_spread_ig", "credit_spread_hy", "nfci",
+            "credit_spread_hy", "nfci",
         ]
         for feat in expected_features:
             assert feat in df.columns, f"Missing FRED feature: {feat}"
@@ -96,7 +97,7 @@ class TestFredFeaturesInMatrix:
         )
 
         fred_features = ["yield_slope", "yield_curvature", "real_rate_10y",
-                         "credit_spread_ig", "credit_spread_hy", "nfci"]
+                         "credit_spread_hy", "nfci"]
         for feat in fred_features:
             assert feat not in df.columns, f"FRED feature present without data: {feat}"
 

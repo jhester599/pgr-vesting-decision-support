@@ -27,6 +27,7 @@ from typing import Literal
 
 import numpy as np
 import pandas as pd
+from scipy.stats import norm as _norm
 
 from src.models.wfo_engine import WFOResult, run_wfo, predict_current
 from src.processing.feature_engineering import get_X_y_relative
@@ -304,6 +305,10 @@ def get_ensemble_signals(
         else:
             signal = _SIGNAL_UNDERPERFORM
 
+        confidence_tier, prob_outperform = get_confidence_tier(
+            point_prediction, prediction_std
+        )
+
         rows.append({
             "benchmark":        etf,
             "point_prediction": point_prediction,
@@ -312,15 +317,59 @@ def get_ensemble_signals(
             "mean_ic":          ens_result.mean_ic,
             "mean_hit_rate":    ens_result.mean_hit_rate,
             "signal":           signal,
+            "prob_outperform":  prob_outperform,
+            "confidence_tier":  confidence_tier,
         })
 
     if not rows:
         return pd.DataFrame(columns=[
             "benchmark", "point_prediction", "prediction_std",
             "signal_to_noise", "mean_ic", "mean_hit_rate", "signal",
+            "prob_outperform", "confidence_tier",
         ])
 
     return pd.DataFrame(rows).set_index("benchmark")
+
+
+# ---------------------------------------------------------------------------
+# v4.3 Confidence tier
+# ---------------------------------------------------------------------------
+
+def get_confidence_tier(y_hat: float, y_std: float) -> tuple[str, float]:
+    """
+    Compute a confidence tier and P(outperform) from a BayesianRidge prediction.
+
+    Uses the standard-normal CDF to convert the signal-to-noise ratio into a
+    probability that the predicted relative return is positive.  This is the
+    uncalibrated Phase 1 estimate — posterior σ² from BayesianRidge without
+    Platt scaling or isotonic regression calibration.
+
+    Tier thresholds:
+      - HIGH:     P(outperform) ≥ 0.70 or ≤ 0.30 (strong directional conviction)
+      - MODERATE: P(outperform) ≥ 0.60 or ≤ 0.40
+      - LOW:      otherwise (signal near 50/50)
+
+    Args:
+        y_hat: Point prediction (predicted relative return).
+        y_std: Posterior standard deviation from BayesianRidge (σ_pred).
+
+    Returns:
+        ``(confidence_tier, prob_outperform)`` where ``prob_outperform`` is
+        P(relative return > 0) ∈ [0, 1].
+    """
+    if y_std <= 0.0:
+        prob = 0.5
+    else:
+        prob = float(_norm.cdf(y_hat / y_std))
+
+    if prob >= 0.70 or prob <= 0.30:
+        tier = "HIGH"
+    elif prob >= 0.60 or prob <= 0.40:
+        tier = "MODERATE"
+    else:
+        tier = "LOW"
+
+    return tier, prob
 
 
 # ---------------------------------------------------------------------------

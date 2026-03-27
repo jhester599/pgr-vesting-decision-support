@@ -14,7 +14,11 @@ import pandas as pd
 import pytest
 
 import config
-from src.models.multi_benchmark_wfo import run_all_benchmarks, get_current_signals
+from src.models.multi_benchmark_wfo import (
+    get_confidence_tier,
+    get_current_signals,
+    run_all_benchmarks,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -233,6 +237,66 @@ class TestGetCurrentSignals:
         )
         assert signals.empty
 
+# ---------------------------------------------------------------------------
+# get_confidence_tier tests (v4.3)
+# ---------------------------------------------------------------------------
+
+class TestGetConfidenceTier:
+    def test_returns_tuple_of_str_and_float(self):
+        tier, prob = get_confidence_tier(0.05, 0.10)
+        assert isinstance(tier, str)
+        assert isinstance(prob, float)
+
+    def test_prob_in_unit_interval(self):
+        for y_hat in [-0.20, -0.05, 0.0, 0.05, 0.20]:
+            for y_std in [0.01, 0.10, 0.50]:
+                _, prob = get_confidence_tier(y_hat, y_std)
+                assert 0.0 <= prob <= 1.0, f"prob={prob} out of [0,1] for y_hat={y_hat}, y_std={y_std}"
+
+    def test_zero_std_returns_50pct(self):
+        _, prob = get_confidence_tier(0.10, 0.0)
+        assert prob == 0.5
+
+    def test_negative_std_returns_50pct(self):
+        _, prob = get_confidence_tier(0.10, -1.0)
+        assert prob == 0.5
+
+    def test_high_positive_signal_gives_high_tier(self):
+        # Large positive y_hat relative to y_std → P(outperform) near 1 → HIGH tier
+        tier, prob = get_confidence_tier(1.0, 0.1)
+        assert tier == "HIGH"
+        assert prob >= 0.70
+
+    def test_high_negative_signal_gives_high_tier(self):
+        # Large negative y_hat → P(outperform) near 0 → HIGH tier (bearish conviction)
+        tier, prob = get_confidence_tier(-1.0, 0.1)
+        assert tier == "HIGH"
+        assert prob <= 0.30
+
+    def test_neutral_signal_gives_low_tier(self):
+        # y_hat ≈ 0 relative to y_std → P(outperform) ≈ 0.5 → LOW tier
+        tier, prob = get_confidence_tier(0.001, 1.0)
+        assert tier == "LOW"
+        assert 0.40 < prob < 0.60
+
+    def test_moderate_tier_boundary(self):
+        # Construct y_hat/y_std so norm.cdf ≈ 0.65 → MODERATE
+        from scipy.stats import norm
+        # norm.ppf(0.65) ≈ 0.385 → y_hat/y_std = 0.385
+        snr = norm.ppf(0.65)
+        tier, prob = get_confidence_tier(snr, 1.0)
+        assert tier == "MODERATE"
+        assert 0.60 <= prob < 0.70
+
+    def test_valid_tier_strings(self):
+        valid_tiers = {"HIGH", "MODERATE", "LOW"}
+        test_cases = [(0.5, 0.1), (0.05, 0.1), (0.001, 0.5), (-0.5, 0.1), (0.0, 0.0)]
+        for y_hat, y_std in test_cases:
+            tier, _ = get_confidence_tier(y_hat, y_std)
+            assert tier in valid_tiers, f"Unexpected tier '{tier}' for y_hat={y_hat}, y_std={y_std}"
+
+
+class TestNeutralWhenIcBelowThreshold:
     def test_neutral_when_ic_below_threshold(
         self, synthetic_feature_matrix, small_relative_return_matrix
     ):

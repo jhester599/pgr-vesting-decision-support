@@ -168,7 +168,7 @@ class TestIntegrationPipeline:
         df = build_feature_matrix_from_db(integration_db, force_refresh=True)
         assert not df.empty
         assert "mom_3m" in df.columns
-        assert "vol_21d" in df.columns
+        assert "vol_63d" in df.columns  # vol_21d dropped by config.FEATURES_TO_DROP (v4.3)
         assert "target_6m_return" in df.columns
         assert isinstance(df.index, pd.DatetimeIndex)
 
