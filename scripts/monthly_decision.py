@@ -55,7 +55,10 @@ from src.processing.feature_engineering import (
     get_feature_columns,
 )
 from src.processing.multi_total_return import load_relative_return_matrix
+import numpy as np
+
 from src.reporting.backtest_report import (
+    compute_newey_west_ic,
     compute_oos_r_squared,
     export_backtest_to_csv,
     generate_rolling_ic_series,
@@ -133,7 +136,7 @@ def _generate_signals(
     conn,
     as_of: date,
     target_horizon_months: int = 6,
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, dict]:
     """
     Build feature matrix (sliced to as_of), train ensemble WFO models, return signals.
 
@@ -141,9 +144,11 @@ def _generate_signals(
     BayesianRidge posterior variance drives the ``confidence_tier`` and
     ``prob_outperform`` columns in the output.
 
-    Returns a DataFrame indexed by benchmark with columns:
-      predicted_relative_return, ic, hit_rate, signal,
-      prediction_std, prob_outperform, confidence_tier.
+    Returns:
+        (signals, ensemble_results) where signals is a DataFrame indexed by benchmark
+        with columns predicted_relative_return, ic, hit_rate, signal, prediction_std,
+        prob_outperform, confidence_tier; and ensemble_results is the dict returned by
+        ``run_ensemble_benchmarks`` (ETF ticker → EnsembleWFOResult).
     """
     as_of_ts = pd.Timestamp(as_of)
 
@@ -154,7 +159,7 @@ def _generate_signals(
     # Strict temporal cutoff: only data available on or before as_of
     X_event = X_full.loc[X_full.index <= as_of_ts]
     if X_event.empty:
-        return pd.DataFrame()
+        return pd.DataFrame(), {}
 
     X_current = X_event.iloc[[-1]]
 
@@ -165,7 +170,7 @@ def _generate_signals(
         if not rel_series.empty:
             rel_matrix_cols[etf] = rel_series
     if not rel_matrix_cols:
-        return pd.DataFrame()
+        return pd.DataFrame(), {}
 
     rel_matrix = pd.DataFrame(rel_matrix_cols)
 
@@ -191,7 +196,7 @@ def _generate_signals(
         "mean_hit_rate":    "hit_rate",
     })
 
-    return signals
+    return signals, ensemble_results
 
 
 # ---------------------------------------------------------------------------
@@ -453,6 +458,225 @@ def _append_decision_log(
 
 
 # ---------------------------------------------------------------------------
+# Diagnostic OOS evaluation report (v4.3.1)
+# ---------------------------------------------------------------------------
+
+def _flag(value: float, good: float, marginal: float, higher_is_better: bool = True) -> str:
+    """Return ✅ / ⚠️ / ❌ based on value vs. thresholds."""
+    if higher_is_better:
+        if value >= good:
+            return "✅"
+        if value >= marginal:
+            return "⚠️"
+        return "❌"
+    # lower is better (e.g. MAE)
+    if value <= good:
+        return "✅"
+    if value <= marginal:
+        return "⚠️"
+    return "❌"
+
+
+def _write_diagnostic_report(
+    out_dir: Path,
+    as_of: date,
+    ensemble_results: dict,
+    target_horizon_months: int = 6,
+) -> None:
+    """
+    Write diagnostic.md alongside recommendation.md.
+
+    Aggregates OOS predictions and realized returns across all benchmarks from
+    the elasticnet WFO model (primary signal source), then computes:
+
+    - Campbell-Thompson OOS R² (model vs. naive historical mean)
+    - Newey-West HAC-adjusted Spearman IC (accounts for overlapping return windows)
+    - Per-benchmark health table (IC, hit rate, n_obs, status flag)
+
+    CPCV positive-path count is deferred to Phase 2 (v5.0) — running CPCV
+    inside the monthly workflow would require ~15× additional model fits.
+
+    Args:
+        out_dir:                Output directory (YYYY-MM folder).
+        as_of:                  As-of date for the report header.
+        ensemble_results:       Dict of ETF ticker → EnsembleWFOResult from
+                                ``run_ensemble_benchmarks()``.
+        target_horizon_months:  Forward return horizon used during training.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / "diagnostic.md"
+
+    nw_lags = target_horizon_months - 1  # Newey-West overlap lags (5 for 6M)
+
+    # ------------------------------------------------------------------
+    # Aggregate y_true / y_hat across benchmarks (elasticnet is primary)
+    # ------------------------------------------------------------------
+    all_dates: list[pd.Timestamp] = []
+    all_y_true: list[float] = []
+    all_y_hat: list[float] = []
+
+    per_benchmark_rows: list[dict] = []
+
+    for etf, ens_result in ensemble_results.items():
+        # Prefer elasticnet; fall back to first available model
+        model_result = ens_result.model_results.get(
+            "elasticnet",
+            next(iter(ens_result.model_results.values()), None),
+        )
+        if model_result is None or len(model_result.folds) == 0:
+            continue
+
+        y_true = model_result.y_true_all
+        y_hat = model_result.y_hat_all
+        dates = model_result.test_dates_all
+
+        if len(y_true) < 2:
+            continue
+
+        all_dates.extend(dates.tolist())
+        all_y_true.extend(y_true.tolist())
+        all_y_hat.extend(y_hat.tolist())
+
+        # Per-benchmark IC and hit rate
+        from scipy.stats import spearmanr as _spearmanr
+        ic_val, _ = _spearmanr(y_true, y_hat)
+        hit = float(np.mean(np.sign(y_true) == np.sign(y_hat)))
+        n_obs = len(y_true)
+
+        ic_flag = _flag(ic_val, config.DIAG_MIN_IC, 0.03)
+        hr_flag = _flag(hit, config.DIAG_MIN_HIT_RATE, 0.52)
+        per_benchmark_rows.append({
+            "benchmark": etf,
+            "n_obs": n_obs,
+            "ic": ic_val,
+            "hit_rate": hit,
+            "ic_flag": ic_flag,
+            "hr_flag": hr_flag,
+        })
+
+    # ------------------------------------------------------------------
+    # Aggregate metrics
+    # ------------------------------------------------------------------
+    if len(all_y_true) < 4:
+        # Not enough data — write a minimal report
+        lines = [
+            f"# PGR Diagnostic Report — {as_of.strftime('%B %Y')}",
+            "",
+            "> ⚠️ Insufficient OOS observations for aggregate diagnostics "
+            "(need ≥ 4, got {len(all_y_true)}).",
+            "",
+            "*Generated by `scripts/monthly_decision.py`*",
+        ]
+        path.write_text("\n".join(lines), encoding="utf-8")
+        print(f"  Wrote {path} (insufficient data)")
+        return
+
+    agg_predicted = pd.Series(all_y_hat, index=pd.DatetimeIndex(all_dates))
+    agg_realized = pd.Series(all_y_true, index=pd.DatetimeIndex(all_dates))
+    agg_predicted, agg_realized = agg_predicted.align(agg_realized, join="inner")
+
+    oos_r2 = compute_oos_r_squared(agg_predicted, agg_realized)
+    nw_ic, nw_pval = compute_newey_west_ic(agg_predicted, agg_realized, lags=nw_lags)
+    agg_hit = float(np.mean(
+        np.sign(agg_realized.values) == np.sign(agg_predicted.values)
+    ))
+    n_agg = len(agg_realized)
+
+    r2_flag = _flag(oos_r2, config.DIAG_MIN_OOS_R2, 0.005)
+    ic_flag_agg = _flag(nw_ic, config.DIAG_MIN_IC, 0.03)
+    hr_flag_agg = _flag(agg_hit, config.DIAG_MIN_HIT_RATE, 0.52)
+    sig_marker = "✅ p < 0.05" if (not np.isnan(nw_pval) and nw_pval < 0.05) else (
+        "⚠️ p < 0.10" if (not np.isnan(nw_pval) and nw_pval < 0.10) else "❌ not sig."
+    )
+
+    # ------------------------------------------------------------------
+    # Build markdown
+    # ------------------------------------------------------------------
+    lines = [
+        f"# PGR Diagnostic Report — {as_of.strftime('%B %Y')}",
+        "",
+        f"**As-of Date:** {as_of}  ",
+        f"**Horizon:** {target_horizon_months}M  ",
+        f"**OOS observations (aggregate):** {n_agg}  ",
+        f"**Newey-West lags:** {nw_lags} (accounts for {target_horizon_months - 1}-month "
+        "return-window overlap)  ",
+        "",
+        "---",
+        "",
+        "## Aggregate Model Health",
+        "",
+        "| Metric | Value | Status | Threshold (Good) |",
+        "|--------|-------|--------|-----------------|",
+        f"| OOS R² (Campbell-Thompson) | {oos_r2:.4f} ({oos_r2:.2%}) | {r2_flag} | ≥ 2.00% |",
+        f"| IC (Newey-West HAC) | {nw_ic:.4f} | {ic_flag_agg} | ≥ 0.07 |",
+        f"| IC significance | {nw_pval:.4f} | {sig_marker} | p < 0.05 |",
+        f"| Hit Rate | {agg_hit:.1%} | {hr_flag_agg} | ≥ 55.0% |",
+        f"| CPCV Positive Paths | N/A (Phase 1) | — | ≥ {config.DIAG_CPCV_MIN_POSITIVE_PATHS}/15 |",
+        "",
+        "> **CPCV note:** Combinatorial Purged CV path analysis is deferred to v5.0.",
+        "> Running CPCV inside the monthly workflow would require ~15× additional model fits.",
+        "> The DIAG_CPCV_MIN_POSITIVE_PATHS threshold (≥ 10/15) is defined in `config.py`",
+        "> for use once CPCV is wired into the monthly pipeline.",
+        "",
+        "---",
+        "",
+        "## Calibration Phase",
+        "",
+        "| Phase | Description | Status |",
+        "|-------|-------------|--------|",
+        "| Phase 1 | Raw BayesianRidge posterior (uncalibrated) | ✅ Active |",
+        "| Phase 2 | Platt scaling (logistic regression on OOS probs → binary outcome) | ⏳ v5.1 (≥60 OOS obs) |",
+        "| Phase 3 | Isotonic regression (non-parametric, n > 60) | ⏳ v5.1 |",
+        "",
+        "---",
+        "",
+        "## Per-Benchmark Health",
+        "",
+        f"| Benchmark | N OOS | IC | IC | Hit Rate | HR |",
+        f"|-----------|-------|----|----|-----------|----|",
+    ]
+
+    for row in sorted(per_benchmark_rows, key=lambda r: r["benchmark"]):
+        lines.append(
+            f"| {row['benchmark']} | {row['n_obs']} "
+            f"| {row['ic']:.4f} | {row['ic_flag']} "
+            f"| {row['hit_rate']:.1%} | {row['hr_flag']} |"
+        )
+
+    # Summary counts
+    n_ok_ic = sum(1 for r in per_benchmark_rows if r["ic_flag"] == "✅")
+    n_warn_ic = sum(1 for r in per_benchmark_rows if r["ic_flag"] == "⚠️")
+    n_fail_ic = sum(1 for r in per_benchmark_rows if r["ic_flag"] == "❌")
+    n_ok_hr = sum(1 for r in per_benchmark_rows if r["hr_flag"] == "✅")
+
+    lines += [
+        "",
+        f"**IC summary:** {n_ok_ic} ✅  {n_warn_ic} ⚠️  {n_fail_ic} ❌  "
+        f"(of {len(per_benchmark_rows)} benchmarks)  ",
+        f"**Hit rate ✅:** {n_ok_hr}/{len(per_benchmark_rows)} benchmarks above 55% threshold  ",
+        "",
+        "---",
+        "",
+        "## Threshold Reference",
+        "",
+        "| Metric | Good | Marginal | Failing | Source |",
+        "|--------|------|----------|---------|--------|",
+        "| OOS R² | > 2% | 0.5–2% | < 0% | Campbell & Thompson (2008) |",
+        "| Mean IC | > 0.07 | 0.03–0.07 | < 0.03 | Harvey et al. (2016) |",
+        "| Hit Rate | > 55% | 52–55% | < 52% | Industry consensus |",
+        "| CPCV +paths | ≥ 13/15 | 10–12/15 | < 10/15 | López de Prado (2018) |",
+        "| PBO | < 15% | 15–40% | > 40% | Bailey et al. (2014) |",
+        "",
+        "---",
+        "",
+        "*Generated by `scripts/monthly_decision.py`*",
+    ]
+
+    path.write_text("\n".join(lines), encoding="utf-8")
+    print(f"  Wrote {path}")
+
+
+# ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
 
@@ -480,7 +704,7 @@ def main(
 
     # Step 2: Generate signals (ensemble: ElasticNet + Ridge + BayesianRidge)
     print(f"\nGenerating ensemble signals (as-of {as_of})...")
-    signals = _generate_signals(conn, as_of, target_horizon_months=6)
+    signals, ensemble_results = _generate_signals(conn, as_of, target_horizon_months=6)
 
     # Step 3: Compute consensus
     consensus, mean_pred, mean_ic, mean_hr, mean_prob, confidence_tier = _consensus_signal(signals)
@@ -504,6 +728,10 @@ def main(
     _append_decision_log(
         as_of, run_date, consensus, sell_pct, mean_pred, mean_ic, mean_hr, dry_run,
     )
+
+    # Step 5: Write diagnostic OOS evaluation report
+    print("\nWriting diagnostic report...")
+    _write_diagnostic_report(out_dir, as_of, ensemble_results, target_horizon_months=6)
 
     conn.close()
     print(f"\nDone. Results written to {out_dir}/")

@@ -262,6 +262,20 @@ FEATURES_TO_DROP: list[str] = ["vol_21d", "credit_spread_ig"]
 BL_USE_BAYESIAN_VARIANCE: bool = True
 
 # ---------------------------------------------------------------------------
+# v4.3.1 — Diagnostic OOS Evaluation Report thresholds
+# Used in _write_diagnostic_report() to flag model health vs. peer-review
+# benchmarks (Harvey et al. 2016; Campbell & Thompson 2008; Gu et al. 2020).
+# ---------------------------------------------------------------------------
+# Campbell-Thompson OOS R²: >2% = good, 0.5–2% = marginal, <0% = failing.
+DIAG_MIN_OOS_R2: float = 0.02
+# Newey-West HAC-adjusted Spearman IC: >0.07 = good, 0.03–0.07 = marginal.
+DIAG_MIN_IC: float = 0.07
+# Hit rate (directional accuracy): >55% = good, 52–55% = marginal.
+DIAG_MIN_HIT_RATE: float = 0.55
+# CPCV positive paths (out of C(6,2)=15): ≥13 = good, 10–12 = marginal.
+DIAG_CPCV_MIN_POSITIVE_PATHS: int = 10
+
+# ---------------------------------------------------------------------------
 # ETF launch dates — tickers with limited history need proxy backfill.
 # All ETFs in ETF_BENCHMARK_UNIVERSE have pre-2014 history; no proxies are
 # currently required.  BNDX (launched 2013-06-03) pre-dates all backtested

@@ -312,6 +312,13 @@ def build_feature_matrix(
         if col in df.columns:
             df = df.drop(columns=[col])
 
+    # Coerce all columns to float64.  EDGAR XBRL returns None for pe_ratio /
+    # pb_ratio (not available via XBRL); reindexing these Series produces
+    # object-dtype columns.  numpy ≥ 2.0 rejects object arrays in nanmedian,
+    # so we normalise here — the authoritative enforcement point — rather than
+    # patching every downstream consumer.
+    df = df.apply(pd.to_numeric, errors="coerce")
+
     os.makedirs(config.DATA_PROCESSED_DIR, exist_ok=True)
     df.to_parquet(_PROCESSED_PATH)
     return df
