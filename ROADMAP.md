@@ -409,6 +409,41 @@ monthly run.
 
 ---
 
+### Housekeeping — AV "Information" vs "Note" Response Handling
+**Target:** Low priority; address in any future ingestion sprint
+**Theme:** Improve weekly fetch resilience against benign AV advisories
+
+The AV free-tier API returns two distinct response types that the current code
+treats identically:
+
+| AV Key | Meaning | Correct action |
+|--------|---------|----------------|
+| `"Note"` | Hard daily quota (25 calls) exhausted | Stop immediately; defer remaining tickers |
+| `"Information"` | Advisory nudge ("spread out requests") | Log warning; **continue fetching** |
+
+**Current behaviour:** `multi_ticker_loader.py` and `multi_dividend_loader.py` both
+raise `AVRateLimitError` on either key, causing the weekly run to defer the remaining
+ticker(s) even when the advisory is benign.  Observed 2026-03-27: PGR dividend call
+was deferred despite 2/25 daily quota slots remaining.
+
+**Root cause context:** The advisory fires when a free-tier session uses ~22–23 of its
+25 daily calls in one run.  The 13-second inter-call delay already exceeds AV's stated
+1-request/second limit; increasing the delay would not suppress the advisory and would
+add ~2.5 minutes to every weekly run with no benefit.  As the DB matures and more
+tickers return 0 new rows (already-fresh data), the total calls-per-run will decrease
+naturally and the advisory will stop appearing.
+
+**Proposed fix (when scheduled):**
+- `src/ingestion/multi_ticker_loader.py` — In the response-inspection block, check
+  `"Note"` key for the hard stop; check `"Information"` key for log-and-continue.
+- `src/ingestion/multi_dividend_loader.py` — Same pattern.
+- `src/ingestion/exceptions.py` — Consider a separate `AVRateLimitAdvisory` exception
+  class (vs. `AVRateLimitError`) so callers can distinguish the two cases cleanly.
+- Add regression tests confirming that an `"Information"` payload does **not** raise
+  `AVRateLimitError`.
+
+---
+
 ## Development Principles
 
 - **Never finalize a module without a passing pytest suite** (CLAUDE.md mandate)
