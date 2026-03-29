@@ -268,3 +268,72 @@ class TestEdgarLag:
             assert original_date not in result.index, (
                 f"Date {original_date} should not be in shifted result index"
             )
+
+
+# ---------------------------------------------------------------------------
+# v4.3.1 — dtype coercion (object columns from EDGAR XBRL None values)
+# ---------------------------------------------------------------------------
+
+def test_feature_matrix_all_columns_numeric() -> None:
+    """
+    All columns in the feature matrix must be float64, not object.
+
+    EDGAR XBRL returns None for pe_ratio / pb_ratio; reindexing produces
+    object-dtype Series.  numpy >= 2.0 rejects object arrays in nanmedian,
+    so feature_engineering must coerce to float64 before returning.
+    """
+    prices = _make_prices(6)
+    div = _make_dividends()
+
+    # Inject object-dtype fundamentals (simulates EDGAR XBRL None values)
+    fund_dates = pd.date_range("2019-01-31", periods=24, freq="ME")
+    fundamentals = pd.DataFrame(
+        {
+            "eps_diluted": [1.0] * 24,
+            "revenue": [1e9] * 24,
+            "net_income": [5e8] * 24,
+            "pe_ratio": [None] * 24,    # object dtype — EDGAR XBRL can't provide this
+            "pb_ratio": [None] * 24,    # object dtype — EDGAR XBRL can't provide this
+            "roe": [None] * 24,
+        },
+        index=fund_dates,
+    )
+
+    splits = _make_splits()
+    df = build_feature_matrix(prices, div, splits, fundamentals=fundamentals)
+    feature_cols = get_feature_columns(df)
+
+    object_cols = [c for c in feature_cols if df[c].dtype == object]
+    assert object_cols == [], (
+        f"Feature columns must be float64, not object.  "
+        f"Object-dtype columns found: {object_cols}"
+    )
+
+
+def test_feature_matrix_pe_ratio_object_becomes_nan() -> None:
+    """
+    pe_ratio object column (None values from EDGAR XBRL) coerces to NaN float64,
+    not raised as an error.
+    """
+    prices = _make_prices(6)
+    div = _make_dividends()
+    splits = _make_splits()
+
+    fund_dates = pd.date_range("2019-01-31", periods=24, freq="ME")
+    fundamentals = pd.DataFrame(
+        {
+            "eps_diluted": [1.5] * 24,
+            "revenue": [2e9] * 24,
+            "net_income": [4e8] * 24,
+            "pe_ratio": [None] * 24,
+            "pb_ratio": [None] * 24,
+            "roe": [None] * 24,
+        },
+        index=fund_dates,
+    )
+
+    df = build_feature_matrix(prices, div, splits, fundamentals=fundamentals)
+
+    if "pe_ratio" in df.columns:
+        assert df["pe_ratio"].dtype == float, "pe_ratio should be float64 after coercion"
+        assert df["pe_ratio"].isna().all(), "pe_ratio from None should be all-NaN"
