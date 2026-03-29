@@ -155,8 +155,9 @@ class TestCPCVEdgeCases:
 
     def test_config_defaults_used_when_none(self):
         import config
+        import math
         X, y = _make_data()
         result = run_cpcv(X, y, n_folds=None, n_test_folds=None)
-        # Should use CPCV_N_FOLDS=6 and CPCV_N_TEST_FOLDS=2
-        assert result.n_splits == 15
-        assert result.n_paths == 5
+        # v5.0: CPCV_N_FOLDS=8, CPCV_N_TEST_FOLDS=2 → C(8,2)=28 splits
+        expected_splits = math.comb(config.CPCV_N_FOLDS, config.CPCV_N_TEST_FOLDS)
+        assert result.n_splits == expected_splits

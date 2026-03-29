@@ -24,6 +24,7 @@ is part of a Pipeline object that is fit exclusively on X_train.
 from __future__ import annotations
 
 import numpy as np
+from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.linear_model import BayesianRidge, ElasticNetCV, LassoCV, RidgeCV
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.pipeline import Pipeline
@@ -129,6 +130,46 @@ def build_elasticnet_pipeline(
     return Pipeline([("scaler", StandardScaler()), ("model", enet)])
 
 
+def build_gbt_pipeline(
+    max_depth: int = 2,
+    n_estimators: int = 50,
+    learning_rate: float = 0.1,
+    subsample: float = 0.8,
+    random_state: int = 42,
+) -> Pipeline:
+    """
+    Return a sklearn Pipeline of [StandardScaler → GradientBoostingRegressor].
+
+    v5.0: Shallow GBT added as the 4th ensemble member.  Depth-2 trees capture
+    non-linear feature interactions (e.g. high VIX + inverted yield curve) while
+    the small ensemble size (50 trees) and high regularisation (subsample=0.8)
+    keep the variance low — consistent with the "high-bias / low-variance"
+    mandate for Small N regimes (CLAUDE.md §2).
+
+    StandardScaler is retained in the pipeline for interface consistency even
+    though tree-based models are scale-invariant; it is a no-op in practice.
+
+    Args:
+        max_depth:      Maximum depth of each constituent tree (default: 2).
+        n_estimators:   Number of boosting stages (default: 50).
+        learning_rate:  Shrinkage factor applied to each tree (default: 0.1).
+        subsample:      Fraction of samples drawn per tree — adds stochasticity
+                        and reduces overfitting (default: 0.8).
+        random_state:   Random seed for reproducibility.
+
+    Returns:
+        Unfitted sklearn Pipeline.
+    """
+    gbt = GradientBoostingRegressor(
+        max_depth=max_depth,
+        n_estimators=n_estimators,
+        learning_rate=learning_rate,
+        subsample=subsample,
+        random_state=random_state,
+    )
+    return Pipeline([("scaler", StandardScaler()), ("model", gbt)])
+
+
 class UncertaintyPipeline(Pipeline):
     """
     Pipeline subclass that exposes ``predict_with_std()`` for models that
@@ -204,18 +245,27 @@ def build_bayesian_ridge_pipeline(
 
 def get_feature_importances(pipeline: Pipeline, feature_names: list[str]) -> dict[str, float]:
     """
-    Extract feature coefficients from a fitted Lasso or Ridge pipeline.
+    Extract feature importances from a fitted pipeline model step.
+
+    Supports linear models (``coef_`` attribute) and tree-based models
+    (``feature_importances_`` attribute, e.g. GradientBoostingRegressor).
+    Returns an empty dict if neither attribute is present.
 
     Args:
         pipeline:      Fitted sklearn Pipeline with a 'model' step.
         feature_names: List of feature column names in the same order as X.
 
     Returns:
-        Dict mapping feature name to its coefficient magnitude, sorted
+        Dict mapping feature name to its importance magnitude, sorted
         descending by absolute value.
     """
     model = pipeline.named_steps["model"]
-    coefs = model.coef_
+    if hasattr(model, "coef_"):
+        importances = model.coef_
+    elif hasattr(model, "feature_importances_"):
+        importances = model.feature_importances_
+    else:
+        return {}
 
-    result = {name: float(coef) for name, coef in zip(feature_names, coefs)}
+    result = {name: float(val) for name, val in zip(feature_names, importances)}
     return dict(sorted(result.items(), key=lambda x: abs(x[1]), reverse=True))

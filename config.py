@@ -204,7 +204,8 @@ PEER_TICKER_UNIVERSE: list[str] = [
 # ---------------------------------------------------------------------------
 KELLY_FRACTION: float = 0.25          # quarter-Kelly to control risk
 KELLY_MAX_POSITION: float = 0.20      # v4.1: reduced from 0.30 (Meulbroek 2005: 25% employer stock = 42% CE loss)
-ENSEMBLE_MODELS: list[str] = ["elasticnet", "ridge", "bayesian_ridge"]
+# v5.0: added shallow GBT as 4th ensemble member (max_depth=2, n_estimators=50)
+ENSEMBLE_MODELS: list[str] = ["elasticnet", "ridge", "bayesian_ridge", "gbt"]
 
 # ---------------------------------------------------------------------------
 # v4.4 — STCG Tax Boundary Guard
@@ -257,9 +258,9 @@ TLH_REPLACEMENT_MAP: dict[str, str] = {
     "KIE":  "IAK",    # iShares U.S. Insurance ETF (diff. index: DJ vs S&P; v4.5)
 }
 
-# v4.0 CPCV parameters
-CPCV_N_FOLDS: int = 6         # Number of folds for CombinatorialPurgedCV
-CPCV_N_TEST_FOLDS: int = 2    # Test folds per split; yields C(6,2)=15 splits, 5 paths
+# v4.0 CPCV parameters — v5.0: upgraded from C(6,2)=15 paths to C(8,2)=28 paths
+CPCV_N_FOLDS: int = 8         # Number of folds for CombinatorialPurgedCV (v5.0: was 6)
+CPCV_N_TEST_FOLDS: int = 2    # Test folds per split; yields C(8,2)=28 paths (v5.0)
 
 # v4.0 Black-Litterman parameters
 BL_RISK_AVERSION: float = 2.5           # Moderate risk aversion (1=aggressive, 5=conservative)
@@ -300,8 +301,9 @@ DIAG_MIN_OOS_R2: float = 0.02
 DIAG_MIN_IC: float = 0.07
 # Hit rate (directional accuracy): >55% = good, 52–55% = marginal.
 DIAG_MIN_HIT_RATE: float = 0.55
-# CPCV positive paths (out of C(6,2)=15): ≥13 = good, 10–12 = marginal.
-DIAG_CPCV_MIN_POSITIVE_PATHS: int = 10
+# CPCV positive paths (out of C(8,2)=28): ≥19 = good (~67%), 14–18 = marginal.
+# v5.0: updated from C(6,2)=15 thresholds (was: ≥13/15 good, 10–12 marginal).
+DIAG_CPCV_MIN_POSITIVE_PATHS: int = 19
 
 # ---------------------------------------------------------------------------
 # ETF launch dates — tickers with limited history need proxy backfill.

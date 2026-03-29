@@ -175,7 +175,8 @@ class TestConfigConstants:
         assert config.DIAG_MIN_HIT_RATE == pytest.approx(0.55)
 
     def test_diag_cpcv_min_positive_paths(self) -> None:
-        assert config.DIAG_CPCV_MIN_POSITIVE_PATHS == 10
+        # v5.0: upgraded to 19 (≥19/28 ≈ 67% positive paths; was 10/15 under C(6,2))
+        assert config.DIAG_CPCV_MIN_POSITIVE_PATHS == 19
 
     def test_constants_are_numeric(self) -> None:
         for attr in (
