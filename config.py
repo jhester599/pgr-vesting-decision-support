@@ -71,6 +71,13 @@ FRED_SERIES_PGR: list[str] = [
     "TRFVOLUSM227NFWA",  # Vehicle miles traveled NSA (claims frequency proxy)
     "CUSR0000SETA02",    # Used car & truck CPI (auto total-loss severity; v4.5)
     "CUSR0000SAM2",      # Medical care CPI (bodily injury / PIP severity; v4.5)
+    # v4.5: PPI for Private Passenger Auto Insurance — replaces the originally
+    # planned CUSR0000SETC01 (motor vehicle insurance CPI) which is not
+    # available via FRED's observations endpoint.  The PPI series captures
+    # cost-based pricing dynamics upstream of the CPI; validated 2026-03-29:
+    # partial IC=0.353 (p<0.0001), standalone hit-rate 76.1%, 96.6% of
+    # rolling 36M windows positive.  Monthly BLS release; ~1 month lag.
+    "PCU5241265241261",  # PPI: Private Passenger Auto Insurance (v4.5)
 ]
 
 # ---------------------------------------------------------------------------
@@ -328,6 +335,7 @@ FRED_SERIES_LAGS: dict = {
     "CUSR0000SETC01":    1,   # Motor vehicle insurance CPI; monthly release
     "CUSR0000SETA02":    1,   # Used car CPI; monthly BLS release (v4.5)
     "CUSR0000SAM2":      1,   # Medical care CPI; monthly BLS release (v4.5)
+    "PCU5241265241261":  1,   # PPI: Private Passenger Auto Insurance (v4.5)
     "BAA10Y":            1,
     "BAMLH0A0HYM2":      1,
     "T10Y2Y":            1,

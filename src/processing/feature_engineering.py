@@ -225,6 +225,14 @@ def build_feature_matrix(
                 monthly_dates, method="ffill"
             )
 
+        # cr_acceleration: 3-period second difference of combined_ratio_ttm.
+        # Captures the rate-of-change in underwriting margin deterioration or
+        # improvement.  A positive cr_acceleration means the combined ratio is
+        # worsening faster (bearish); negative means it is improving faster (bullish).
+        # Requires combined_ratio_ttm to be already computed above.
+        if "combined_ratio_ttm" in df.columns:
+            df["cr_acceleration"] = df["combined_ratio_ttm"].diff(3)
+
     # Drop optional Gainshare columns if insufficient observations
     for col in ["combined_ratio_ttm", "pif_growth_yoy", "gainshare_est"]:
         if col in df.columns:
@@ -290,6 +298,39 @@ def build_feature_matrix(
         if "TRFVOLUSM227NFWA" in fred_aligned.columns:
             vmt = fred_aligned["TRFVOLUSM227NFWA"]
             df["vmt_yoy"] = vmt.pct_change(periods=12)
+
+        # ------------------------------------------------------------------
+        # v4.5 PGR-specific severity and pricing features
+        # ------------------------------------------------------------------
+
+        # used_car_cpi_yoy: YoY % change in used car & truck CPI (CUSR0000SETA02).
+        # Rising used car prices drive higher total-loss settlement costs, a direct
+        # headwind to PGR's combined ratio; the 2021–22 spike was a major headwind.
+        if "CUSR0000SETA02" in fred_aligned.columns:
+            df["used_car_cpi_yoy"] = fred_aligned["CUSR0000SETA02"].pct_change(12)
+
+        # medical_cpi_yoy: YoY % change in medical care CPI (CUSR0000SAM2).
+        # Bodily injury and PIP claim severity tracks medical inflation directly.
+        if "CUSR0000SAM2" in fred_aligned.columns:
+            df["medical_cpi_yoy"] = fred_aligned["CUSR0000SAM2"].pct_change(12)
+
+        # ppi_auto_ins_yoy: YoY % change in PPI for Private Passenger Auto Insurance
+        # (PCU5241265241261).  Replaces the originally planned CUSR0000SETC01 (motor
+        # vehicle insurance CPI) which is unavailable via FRED.  The PPI captures
+        # cost-based pricing pressure upstream of the consumer CPI; rising PPI signals
+        # that carriers have pricing power and are raising premiums.
+        # Validated 2026-03-29: partial IC=0.353 (p<0.0001), hit-rate 76.1%.
+        if "PCU5241265241261" in fred_aligned.columns:
+            df["ppi_auto_ins_yoy"] = fred_aligned["PCU5241265241261"].pct_change(12)
+
+        # pgr_vs_kie_6m: PGR trailing 6M return minus KIE trailing 6M return.
+        # Captures PGR's idiosyncratic alpha vs. the broad insurance sector (KIE =
+        # SPDR S&P Insurance ETF).  High recent relative strength signals continued
+        # momentum or mean-reversion depending on macro context.
+        # Pre-computed in build_feature_matrix_from_db() and injected as a synthetic
+        # FRED column so it flows through the same lag-guarded pipeline.
+        if "pgr_vs_kie_6m" in fred_aligned.columns:
+            df["pgr_vs_kie_6m"] = fred_aligned["pgr_vs_kie_6m"]
 
     # ------------------------------------------------------------------
     # Target variable: 6-month forward DRIP total return
@@ -384,12 +425,39 @@ def build_feature_matrix_from_db(
         edgar_raw = _apply_edgar_lag(edgar_raw)
     pgr_monthly = edgar_raw if not edgar_raw.empty else None
 
-    # v3.0+: load FRED macro + v3.1 PGR-specific series if the table is populated
+    # v3.0+: load FRED macro + v3.1/v4.5 PGR-specific series if the table is populated
     all_fred_series = list(config.FRED_SERIES_MACRO) + list(config.FRED_SERIES_PGR)
     fred_raw = db_client.get_fred_macro(conn, all_fred_series)
     if not fred_raw.empty:
         # Apply publication lags to prevent FRED revision look-ahead bias (v4.1)
         fred_raw = _apply_fred_lags(fred_raw)
+
+    # v4.5: pgr_vs_kie_6m — PGR trailing 6M return minus KIE trailing 6M return.
+    # Computed from DB prices and injected as a synthetic column so it passes through
+    # the same lag-guarded FRED pipeline in build_feature_matrix().
+    try:
+        pgr_prices_raw = db_client.get_prices(conn, "PGR")
+        kie_prices_raw = db_client.get_prices(conn, "KIE")
+        if not pgr_prices_raw.empty and not kie_prices_raw.empty:
+            def _monthly_close(price_df: pd.DataFrame) -> pd.Series:
+                """Resample daily prices to month-end close."""
+                close = price_df["close"].copy()
+                close.index = pd.to_datetime(close.index)
+                return close.resample("ME").last()
+
+            pgr_m = _monthly_close(pgr_prices_raw)
+            kie_m = _monthly_close(kie_prices_raw)
+            pgr_6m = pgr_m.pct_change(6)
+            kie_6m = kie_m.pct_change(6)
+            pgr_vs_kie = (pgr_6m - kie_6m).rename("pgr_vs_kie_6m")
+            pgr_vs_kie.index = pgr_vs_kie.index + pd.offsets.MonthEnd(0)
+            if fred_raw.empty:
+                fred_raw = pgr_vs_kie.to_frame()
+            else:
+                fred_raw = fred_raw.join(pgr_vs_kie, how="left")
+    except Exception:  # noqa: BLE001
+        pass  # KIE not yet in DB — feature silently absent until data accumulates
+
     fred_macro = fred_raw if not fred_raw.empty else None
 
     return build_feature_matrix(
