@@ -56,6 +56,9 @@ class VestingRecommendation:
     # is available from the ensemble runner)
     prediction_std: float = 0.0          # BayesianRidge posterior std (0 if unavailable)
     kelly_fraction_used: float = 0.0     # Effective Kelly fraction applied
+    # v4.4 STCG boundary guard (None when no lots are in the 6–12M zone, or
+    # when predicted alpha exceeds the breakeven threshold)
+    stcg_warning: str | None = None
 
 
 def generate_recommendation(
@@ -148,6 +151,9 @@ def generate_recommendation(
             for etf, res in multi_benchmark_results.items()
         }
 
+    # --- v4.4: STCG boundary guard ---
+    stcg_warning = _check_stcg_boundary(lots, vest_date, predicted_return, current_price)
+
     return VestingRecommendation(
         vest_date=vest_date,
         rsu_type=rsu_type,
@@ -165,7 +171,106 @@ def generate_recommendation(
         signal_rationale=rationale,
         benchmark_signals=benchmark_signals,
         target_horizon=target_horizon,
+        stcg_warning=stcg_warning,
     )
+
+
+def _check_stcg_boundary(
+    lots: list[TaxLot],
+    sell_date: date,
+    predicted_alpha: float,
+    current_price: float,
+    breakeven_threshold: float | None = None,
+    zone_min_days: int | None = None,
+    zone_max_days: int | None = None,
+) -> str | None:
+    """
+    Warn when lots in the 6–12 month STCG zone would be better held for LTCG.
+
+    Identifies lots held between ``zone_min_days`` and ``zone_max_days`` at the
+    time of ``sell_date``.  These lots are in the "STCG boundary zone": they
+    have incurred short-term capital gains treatment but are close enough to the
+    365-day LTCG threshold that the tax savings from waiting may exceed the
+    expected alpha from diversifying now.
+
+    The breakeven logic:
+        Selling STCG vs. LTCG costs ~17–22pp in effective tax rate for most
+        high-income earners (37% ordinary − 20% LTCG = 17pp; add 3.8% NIIT
+        for an upper bound near 21pp; mid-point ≈ 18pp = ``STCG_BREAKEVEN_THRESHOLD``).
+        If ``predicted_alpha < breakeven_threshold``, the warning fires.
+
+    Args:
+        lots:                 All available tax lots.
+        sell_date:            Proposed sale date (typically the vesting date).
+        predicted_alpha:      Model's predicted 6M PGR excess return.
+        current_price:        Current PGR share price (for gain estimation).
+        breakeven_threshold:  Override for config.STCG_BREAKEVEN_THRESHOLD.
+        zone_min_days:        Override for config.STCG_ZONE_MIN_DAYS (default 180).
+        zone_max_days:        Override for config.STCG_ZONE_MAX_DAYS (default 365).
+
+    Returns:
+        A human-readable warning string if boundary lots exist AND
+        ``predicted_alpha < breakeven_threshold``; otherwise ``None``.
+    """
+    if breakeven_threshold is None:
+        breakeven_threshold = config.STCG_BREAKEVEN_THRESHOLD
+    if zone_min_days is None:
+        zone_min_days = config.STCG_ZONE_MIN_DAYS
+    if zone_max_days is None:
+        zone_max_days = config.STCG_ZONE_MAX_DAYS
+
+    boundary_lots = []
+    for lot in lots:
+        if lot.shares_remaining is None or lot.shares_remaining <= 0:
+            continue
+        holding_days = (sell_date - lot.vest_date).days
+        if zone_min_days < holding_days <= zone_max_days:
+            days_to_ltcg = zone_max_days - holding_days
+            gain_per_share = current_price - lot.cost_basis_per_share
+            boundary_lots.append({
+                "lot": lot,
+                "holding_days": holding_days,
+                "days_to_ltcg": days_to_ltcg,
+                "gain_per_share": gain_per_share,
+                "embedded_gain": lot.shares_remaining * gain_per_share,
+            })
+
+    if not boundary_lots:
+        return None
+
+    if predicted_alpha >= breakeven_threshold:
+        return None
+
+    # Build warning message
+    total_boundary_shares = sum(
+        info["lot"].shares_remaining for info in boundary_lots
+    )
+    closest = min(boundary_lots, key=lambda x: x["days_to_ltcg"])
+    days_to_ltcg_min = closest["days_to_ltcg"]
+    total_embedded_gain = sum(info["embedded_gain"] for info in boundary_lots)
+
+    lot_lines = []
+    for info in sorted(boundary_lots, key=lambda x: x["days_to_ltcg"]):
+        lot = info["lot"]
+        lot_lines.append(
+            f"  • {lot.vest_date} lot: {lot.shares_remaining:.1f} shares, "
+            f"{info['holding_days']}d held, "
+            f"{info['days_to_ltcg']}d to LTCG, "
+            f"gain/share ${info['gain_per_share']:+.2f}"
+        )
+
+    warning = (
+        f"⚠️  STCG BOUNDARY WARNING: {len(boundary_lots)} lot(s) "
+        f"({total_boundary_shares:.1f} shares, "
+        f"total embedded gain ${total_embedded_gain:+,.2f}) "
+        f"are in the 6–12 month STCG zone. "
+        f"The nearest lot qualifies for LTCG in {days_to_ltcg_min} day(s).\n"
+        f"  Predicted alpha ({predicted_alpha:+.1%}) is below the STCG-to-LTCG "
+        f"breakeven threshold ({breakeven_threshold:.0%}). "
+        f"Consider delaying sale of boundary lots until LTCG qualification.\n"
+        + "\n".join(lot_lines)
+    )
+    return warning
 
 
 def _compute_sell_pct(
@@ -292,6 +397,9 @@ def print_recommendation(rec: VestingRecommendation) -> None:
         print("  Recommended Reallocation:")
         for ticker, amount in sorted(rec.etf_allocation.items()):
             print(f"    {ticker:<10} ${amount:>12,.2f}")
+    if rec.stcg_warning:
+        print()
+        print(rec.stcg_warning)
     print(separator)
 
 

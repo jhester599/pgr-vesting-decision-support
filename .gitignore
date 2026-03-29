@@ -54,3 +54,6 @@ htmlcov/
 
 # Archives
 *.zip
+
+# Git worktree scratch directories (created by Claude Code agent isolation)
+.clone/

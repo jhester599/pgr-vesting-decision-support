@@ -31,6 +31,8 @@ Each run produces a dated subfolder under `results/monthly_decisions/YYYY-MM/` c
 | Mean IC | Average information coefficient across active benchmarks |
 | Hit Rate | Average directional accuracy across active benchmarks |
 | Notes | Any anomalies, data gaps, or model warnings for this run |
+| 2026-03-27 | 2026-03-29 | NEUTRAL | 50% | +4.65% | 0.0185 | 55.7% | [DRY RUN] |
+| 2026-03-27 | 2026-03-29 | NEUTRAL | 50% | +4.65% | 0.0185 | 55.7% | [DRY RUN] |
 
 ---
 

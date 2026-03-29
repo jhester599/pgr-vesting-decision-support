@@ -71,6 +71,13 @@ FRED_SERIES_PGR: list[str] = [
     "TRFVOLUSM227NFWA",  # Vehicle miles traveled NSA (claims frequency proxy)
     "CUSR0000SETA02",    # Used car & truck CPI (auto total-loss severity; v4.5)
     "CUSR0000SAM2",      # Medical care CPI (bodily injury / PIP severity; v4.5)
+    # v4.5: PPI for Private Passenger Auto Insurance — replaces the originally
+    # planned CUSR0000SETC01 (motor vehicle insurance CPI) which is not
+    # available via FRED's observations endpoint.  The PPI series captures
+    # cost-based pricing dynamics upstream of the CPI; validated 2026-03-29:
+    # partial IC=0.353 (p<0.0001), standalone hit-rate 76.1%, 96.6% of
+    # rolling 36M windows positive.  Monthly BLS release; ~1 month lag.
+    "PCU5241265241261",  # PPI: Private Passenger Auto Insurance (v4.5)
 ]
 
 # ---------------------------------------------------------------------------
@@ -200,6 +207,27 @@ KELLY_MAX_POSITION: float = 0.20      # v4.1: reduced from 0.30 (Meulbroek 2005:
 ENSEMBLE_MODELS: list[str] = ["elasticnet", "ridge", "bayesian_ridge"]
 
 # ---------------------------------------------------------------------------
+# v4.4 — STCG Tax Boundary Guard
+# ---------------------------------------------------------------------------
+# Minimum predicted 6M alpha required to justify selling a lot still in the
+# STCG zone (held 6–12 months) rather than waiting for LTCG qualification.
+#
+# Rationale: selling STCG vs. LTCG costs ~17–22pp in effective tax rate for
+# most high-income earners (37% ordinary − 20% LTCG = 17pp; add 3.8% NIIT
+# and state taxes for an upper bound near 22pp).  0.18 is the mid-range
+# breakeven: if the model predicts less than 18% alpha, the tax savings from
+# waiting a few weeks/months to cross the 365-day threshold likely exceed the
+# opportunity cost of holding the concentrated position slightly longer.
+#
+# The 6–12 month zone is defined as: 180 < holding_days_at_vest <= 365.
+# Lots held < 180 days have too long to wait; lots > 365 days are LTCG.
+STCG_BREAKEVEN_THRESHOLD: float = 0.18
+# Lower bound of the STCG boundary zone (days held, exclusive).
+STCG_ZONE_MIN_DAYS: int = 180
+# Upper bound of the STCG boundary zone — day 365 triggers LTCG.
+STCG_ZONE_MAX_DAYS: int = 365
+
+# ---------------------------------------------------------------------------
 # v4.0 Tax-Loss Harvesting replacement map
 # Maps tickers to a correlated-but-not-substantially-identical substitute.
 # Wash-sale rule: must wait ≥ 31 days before repurchasing the original.
@@ -307,6 +335,7 @@ FRED_SERIES_LAGS: dict = {
     "CUSR0000SETC01":    1,   # Motor vehicle insurance CPI; monthly release
     "CUSR0000SETA02":    1,   # Used car CPI; monthly BLS release (v4.5)
     "CUSR0000SAM2":      1,   # Medical care CPI; monthly BLS release (v4.5)
+    "PCU5241265241261":  1,   # PPI: Private Passenger Auto Insurance (v4.5)
     "BAA10Y":            1,
     "BAMLH0A0HYM2":      1,
     "T10Y2Y":            1,
