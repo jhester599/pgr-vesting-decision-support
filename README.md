@@ -486,7 +486,7 @@ pgr-vesting-decision-support/
                                     #   isotonic two-stage, calibrate_prediction, integration
 ```
 
-### v5.2 modules (current)
+### v5.2 modules (complete)
 
 ```
 ├── config.py                        # + CONFORMAL_COVERAGE = 0.80
@@ -515,6 +515,33 @@ pgr-vesting-decision-support/
                                     #   finite-sample correction, dispatch, error handling,
                                     #   config constants
 ```
+
+### v6.0 peer data infrastructure (current — data accumulation phase)
+
+```
+├── config.py                        # PEER_TICKER_UNIVERSE = ["ALL", "TRV", "CB", "HIG"]
+│                                    #   weekly fetch active (Sunday 04:00 UTC cron)
+│
+├── scripts/
+│   └── peer_fetch.py               # NEW: fetches prices + dividends for PEER_TICKER_UNIVERSE
+│                                    #   4 price AV calls + 4 dividend AV calls = 8 total
+│                                    #   --dry-run: logs projected calls, no HTTP
+│
+├── src/
+│   └── ingestion/
+│       └── fetch_scheduler.py      # + get_peer_price_tickers() → list[str]
+│                                    #   + get_peer_dividend_tickers() → list[str]
+│
+└── .github/workflows/
+    ├── peer_bootstrap.yml          # NEW: workflow_dispatch — one-time full history bootstrap
+    │                               #   ran 2026-03-30; seeded ALL, TRV, CB, HIG history
+    └── peer_data_fetch.yml         # NEW: Sunday 04:00 UTC weekly cron (30h after Friday)
+                                    #   8 AV calls; 17 calls of margin against 25/day limit
+```
+
+Feature engineering for v6.0 (`pgr_vs_peers_6m`, residual momentum) will be
+implemented once ~12 months of live peer data have accumulated alongside the
+live OOS predictions needed for BLP calibration.
 
 ---
 
@@ -576,24 +603,44 @@ All FRED series are shifted by a publication lag before entering the feature mat
 | PGR-specific (v4.5) | PPIFIS | `ppi_auto_ins_yoy` (auto insurance PPI; leading CR indicator; IC +0.185) | 1 month |
 | ~~PGR-specific~~ | ~~CUSR0000SETC01~~ | ~~`insurance_cpi_mom3m`~~ | Removed 2026-03-24 — series not in FRED |
 
-### v2 ETF Benchmark Universe (20 ETFs)
+### ETF Benchmark Universe (21 ETFs, v5.0+)
 
 | Category | Tickers | Notes |
 |----------|---------|-------|
 | US Broad Market | VTI, VOO | Total market + S&P 500 |
 | US Sectors | VGT, VHT, VFH, VIS, VDE, VPU | Tech, Health, Financials, Industrials, Energy, Utilities |
+| Insurance | KIE | S&P Insurance Index (added v4.5) |
 | International | VXUS, VEA, VWO | Total intl, Developed ex-US, Emerging |
 | Dividend | VIG, SCHD | Dividend growth (Vanguard) vs high yield (Schwab) |
 | Fixed Income | BND, BNDX, VCIT, VMBS | Total bond, Intl bond, Corporate, Mortgage-backed |
 | Real Assets | VNQ, GLD, DBC | REIT, Gold, Commodities |
 
+### Insurance Peer Universe (4 tickers, v6.0)
+
+Price and dividend history fetched weekly via Alpha Vantage (`peer_data_fetch.yml`,
+Sunday 04:00 UTC).  Used for `pgr_vs_peers_6m` composite momentum and residual
+momentum baseline.  **Not** in the ETF benchmark universe — not used as targets,
+only as feature inputs.
+
+| Ticker | Company | Notes |
+|--------|---------|-------|
+| ALL | Allstate | Closest business model (personal auto + home) |
+| TRV | Travelers | Large commercial + personal lines |
+| CB | Chubb | Global P&C, diversified |
+| HIG | Hartford | Personal + commercial + employee benefits |
+
 ### API Budget
 
-| Script | AV calls | EDGAR calls | FRED calls | Notes |
-|--------|----------|-------------|------------|-------|
-| `initial_fetch.py --prices` | 22 | 0 | 0 | Day 1 bootstrap (22 tickers: PGR + 21 ETFs) |
-| `initial_fetch.py --dividends` | 22 | 0 | 0 | Day 2 bootstrap |
-| `weekly_fetch.py` | 23 | 0–1 | 12 | EDGAR uses 7-day cache; most runs = 0 EDGAR calls |
+| Script | AV calls | EDGAR | FRED | Day | Notes |
+|--------|----------|-------|------|-----|-------|
+| `initial_fetch.py --prices` | 22 | 0 | 0 | One-time | Bootstrap Day 1 (PGR + 21 ETFs) |
+| `initial_fetch.py --dividends` | 22 | 0 | 0 | One-time | Bootstrap Day 2 |
+| `peer_fetch.py` (bootstrap) | 8 | 0 | 0 | One-time | 4 peer prices + 4 peer dividends |
+| `weekly_fetch.py` | 24 | 0–1 | 12 | **Friday 22:00 UTC** | 23 prices + 1 PGR dividend; EDGAR 7-day cache |
+| `peer_fetch.py` (weekly) | 8 | 0 | 0 | **Sunday 04:00 UTC** | 4 peer prices + 4 peer dividends; 17 calls margin |
+
+AV free-tier limit: **25 calls/day**.  Friday and Sunday fetches run on separate calendar
+days (30-hour gap) so they never compete for the same daily budget.
 
 ---
 
@@ -815,11 +862,15 @@ The SQLite database is committed to the repository and updated weekly by GitHub
 Actions. To populate it locally for the first time:
 
 ```bash
-# Day 1: fetch full price history for all 23 tickers (23 AV calls)
+# Day 1: fetch full price history for all 23 tickers (22 AV calls)
 python scripts/initial_fetch.py --prices
 
-# Day 2: fetch full dividend history for all 23 tickers (23 AV calls)
+# Day 2: fetch full dividend history for all 23 tickers (22 AV calls)
 python scripts/initial_fetch.py --dividends
+
+# Day 3 (or any subsequent day): bootstrap peer price + dividend history (8 AV calls)
+# ALL, TRV, CB, HIG — v6.0 cross-asset signals data source
+python scripts/peer_fetch.py
 ```
 
 To verify without consuming API budget:
@@ -827,18 +878,21 @@ To verify without consuming API budget:
 ```bash
 python scripts/weekly_fetch.py --dry-run
 python scripts/weekly_fetch.py --dry-run --skip-fred
+python scripts/peer_fetch.py --dry-run
 ```
 
 ### GitHub Actions
 
-| Workflow | Schedule | Purpose |
-|----------|----------|---------|
-| `initial_fetch_prices.yml` | ✅ One-time: Wed 2026-03-25 (ran 15:01 UTC) | Bootstrap Day 1 — full price history (22 AV calls) |
-| `initial_fetch_dividends.yml` | One-time: Thu 2026-03-26 at 15:00 UTC | Bootstrap Day 2 — full dividend history (22 AV calls) |
-| `post_initial_bootstrap.yml` | One-time: Thu 2026-03-26 at 19:00 UTC | Bootstrap Day 2 (afternoon) — build relative returns + first decision |
-| `weekly_data_fetch.yml` | Fridays at 22:00 UTC (6 PM ET) | Full weekly refresh + FRED macro update |
-| `monthly_8k_fetch.yml` | 20th + 25th of each month at 14:00 UTC | PGR 8-K operating metrics (two-pass; idempotent upsert) |
-| `monthly_decision.yml` | 20th–22nd of each month at 15:00 UTC | Automated sell/hold recommendation report |
+| Workflow | Schedule | AV calls | Purpose |
+|----------|----------|----------|---------|
+| `initial_fetch_prices.yml` | ✅ One-time: Wed 2026-03-25 | 22 | Bootstrap Day 1 — full price history (PGR + 21 ETFs) |
+| `initial_fetch_dividends.yml` | ✅ One-time: Thu 2026-03-26 | 22 | Bootstrap Day 2 — full dividend history |
+| `post_initial_bootstrap.yml` | ✅ One-time: Thu 2026-03-26 | 0 | Build relative returns + first decision |
+| `peer_bootstrap.yml` | ✅ One-time: manual dispatch 2026-03-30 | 8 | Peer bootstrap — ALL, TRV, CB, HIG prices + dividends |
+| `weekly_data_fetch.yml` | Fridays 22:00 UTC | 24 | PGR + 21 ETF prices, PGR dividends, FRED macro |
+| `peer_data_fetch.yml` | **Sundays 04:00 UTC** | 8 | Peer prices + dividends (ALL, TRV, CB, HIG) |
+| `monthly_8k_fetch.yml` | 20th + 25th of month 14:00 UTC | 0 | PGR 8-K operating metrics (two-pass idempotent) |
+| `monthly_decision.yml` | 20th–22nd of month 15:00 UTC | 0 | Automated sell/hold recommendation report |
 
 **Schedule note (2026-03-24):** Bootstrap workflows were rescheduled +1 day after two failures:
 1. *2026-03-23* — Alpha Vantage 25-call/day rate limit hit mid-run (14/22 tickers).
@@ -964,7 +1018,7 @@ pytest -m integration      # integration smoke tests only
 pytest -m "not integration" # fast unit tests only
 ```
 
-**793 tests across 30 modules, all passing** (as of v5.2):
+**819 tests across 31 modules, all passing** (as of v6.0 peer data):
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
@@ -998,6 +1052,7 @@ pytest -m "not integration" # fast unit tests only
 | `test_benchmark_weights.py` | 11 | Weights sum to 1; IC≤0 → zero weight; IC×HR normalization correct |
 | `test_calibration.py` | 33 | ECE formula, block bootstrap CI, Platt fitting, isotonic two-stage, per-benchmark calibration, ECE ≤ raw on training data (v5.1) |
 | `test_conformal.py` | 46 | Coverage guarantee across distributions, ACI adaptation direction, finite-sample correction, dispatch, error handling, config constants (v5.2) |
+| `test_peer_fetch.py` | 26 | PEER_TICKER_UNIVERSE contents, no ETF/PGR overlap, budget separation invariant (Friday ≤25 + Sunday ≤25), 30-hour cron gap, dry-run mock (v6.0) |
 
 Critical invariants enforced by tests:
 
@@ -1018,6 +1073,8 @@ Critical invariants enforced by tests:
 - Calibrated ECE on training data ≤ raw ECE (calibration improves reliability) (v5.1)
 - `split_conformal_interval` empirical coverage ≥ nominal coverage on calibration set (v5.2)
 - ACI with γ=0 produces identical CI width to split conformal (no adaptation) (v5.2)
+- `get_peer_price_tickers()` returns no overlap with `get_all_price_tickers()` (v6.0)
+- Friday AV calls ≤ 25 and Sunday AV calls ≤ 25 independently (v6.0)
 
 ---
 

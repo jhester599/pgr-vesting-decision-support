@@ -189,8 +189,10 @@ ETF_BENCHMARK_UNIVERSE: list[str] = [
 # ---------------------------------------------------------------------------
 # v6.0 Peer ticker universe — insurance company peers for cross-asset signals
 # (PGR vs. peer composite, residual momentum baseline).
-# Not fetched during initial bootstrap; added to weekly_fetch when v6.0
-# development begins in Q4 2026.
+# Fetched weekly by scripts/peer_fetch.py (Sunday 04:00 UTC cron — 30 hours
+# after the main Friday 22:00 UTC weekly_fetch.py cron, to keep both runs
+# within the 25 calls/day AV free-tier limit: Friday=24 calls, Sunday=8 calls).
+# Bootstrap: run peer_bootstrap.yml once (workflow_dispatch) to load full history.
 # ---------------------------------------------------------------------------
 PEER_TICKER_UNIVERSE: list[str] = [
     "ALL",   # Allstate — closest business model comp (personal auto + home)
