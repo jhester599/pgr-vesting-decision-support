@@ -59,6 +59,9 @@ class VestingRecommendation:
     # v4.4 STCG boundary guard (None when no lots are in the 6–12M zone, or
     # when predicted alpha exceeds the breakeven threshold)
     stcg_warning: str | None = None
+    # v5.1 calibrated P(outperform) from Platt / isotonic regression.
+    # None when insufficient OOS data (n < CALIBRATION_MIN_OBS_PLATT).
+    calibrated_prob_outperform: float | None = None
 
 
 def generate_recommendation(

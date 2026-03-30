@@ -57,6 +57,11 @@ from src.processing.feature_engineering import (
 from src.processing.multi_total_return import load_relative_return_matrix
 import numpy as np
 
+from src.models.calibration import (
+    CalibrationResult,
+    calibrate_prediction,
+    fit_calibration_model,
+)
 from src.reporting.backtest_report import (
     compute_newey_west_ic,
     compute_oos_r_squared,
@@ -234,6 +239,183 @@ def _generate_signals(
 # Consensus signal
 # ---------------------------------------------------------------------------
 
+def _reconstruct_ensemble_oos(
+    ens_result,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Reconstruct the inverse-variance ensemble OOS predictions for one benchmark.
+
+    Combines per-model WFO fold y_hat values using the same 1/MAE² weights
+    that ``get_ensemble_signals()`` uses for live prediction, giving a faithful
+    approximation of what the ensemble would have predicted at each historical
+    OOS observation.
+
+    Args:
+        ens_result: EnsembleWFOResult for a single benchmark.
+
+    Returns:
+        ``(y_hat_ensemble, y_true)`` — aligned arrays across all folds.
+    """
+    model_results = ens_result.model_results
+    if not model_results:
+        return np.array([], dtype=float), np.array([], dtype=float)
+
+    weights: dict[str, float] = {}
+    for mtype, result in model_results.items():
+        mae = result.mean_absolute_error
+        weights[mtype] = 1.0 / (mae ** 2) if mae > 1e-9 else 1.0
+    total_w = sum(weights.values())
+
+    ref_result = next(iter(model_results.values()))
+    n_folds = len(ref_result.folds)
+
+    all_y_hat: list[float] = []
+    all_y_true: list[float] = []
+
+    for fold_idx in range(n_folds):
+        fold_y_true: np.ndarray | None = None
+        weighted_y_hat: np.ndarray | None = None
+
+        for mtype, result in model_results.items():
+            if fold_idx >= len(result.folds):
+                continue
+            fold = result.folds[fold_idx]
+            w = weights[mtype] / total_w
+            if fold_y_true is None:
+                fold_y_true = fold.y_true
+                weighted_y_hat = np.zeros(len(fold.y_true), dtype=float)
+            weighted_y_hat = weighted_y_hat + w * fold.y_hat  # type: ignore[operator]
+
+        if fold_y_true is not None and weighted_y_hat is not None:
+            all_y_hat.extend(weighted_y_hat.tolist())
+            all_y_true.extend(fold_y_true.tolist())
+
+    return np.array(all_y_hat, dtype=float), np.array(all_y_true, dtype=float)
+
+
+def _calibrate_signals(
+    signals: pd.DataFrame,
+    ensemble_results: dict,
+    target_horizon_months: int = 6,
+) -> tuple[pd.DataFrame, CalibrationResult]:
+    """
+    Calibrate per-benchmark P(outperform) using per-benchmark Platt scaling.
+
+    Fits one Platt (logistic regression) model per ETF benchmark on that
+    benchmark's own OOS fold history.  Each benchmark's current live
+    ``predicted_relative_return`` is then passed through its own sigmoid to
+    produce a calibrated probability.
+
+    Using a single global calibration model would conflate 21 asset classes
+    with very different return distributions (e.g., GLD vs BND vs VGT), causing
+    the isotonic regression to return a single plateau value for all benchmarks.
+    Per-benchmark calibration preserves cross-benchmark discrimination.
+
+    Isotonic regression is intentionally disabled here.  With n=78–260 OOS
+    observations per benchmark (as of 2026), the isotonic step function produces
+    degenerate plateaus on out-of-sample inputs.  Isotonic will be re-evaluated
+    when each benchmark accumulates ≥500 OOS observations (roughly 2028+).
+
+    Adds a ``calibrated_prob_outperform`` column to the signals DataFrame.
+    The raw ``prob_outperform`` column is preserved for diagnostic comparison.
+
+    Args:
+        signals:               Per-benchmark signals from ``_generate_signals()``.
+        ensemble_results:      Dict of ETF ticker → EnsembleWFOResult.
+        target_horizon_months: Prediction horizon (used as block_len for ECE CI).
+
+    Returns:
+        ``(updated_signals, CalibrationResult)`` where CalibrationResult is an
+        aggregate summary (pooled ECE computed after per-benchmark calibration).
+    """
+    if signals.empty:
+        return signals, CalibrationResult(
+            n_obs=0, method="uncalibrated", ece=0.0,
+            ece_ci_lower=0.0, ece_ci_upper=1.0,
+        )
+
+    pred_col = "predicted_relative_return"
+    if pred_col not in signals.columns:
+        return signals, CalibrationResult(
+            n_obs=0, method="uncalibrated", ece=0.0,
+            ece_ci_lower=0.0, ece_ci_upper=1.0,
+        )
+
+    signals = signals.copy()
+    calibrated_probs: list[float] = []
+
+    # For aggregate ECE reporting — pool calibrated probs and outcomes post-fit
+    all_cal_probs: list[float] = []
+    all_outcomes_pool: list[int] = []
+    n_total = 0
+    methods_used: list[str] = []
+
+    for ticker in signals.index:
+        ens_result = ensemble_results.get(str(ticker))
+        if ens_result is None:
+            calibrated_probs.append(0.5)
+            continue
+
+        y_hat_bm, y_true_bm = _reconstruct_ensemble_oos(ens_result)
+        if len(y_hat_bm) == 0:
+            calibrated_probs.append(0.5)
+            continue
+
+        # Platt-only per benchmark (isotonic disabled — see docstring)
+        bm_model, bm_result = fit_calibration_model(
+            y_hat_bm,
+            (y_true_bm > 0).astype(int),
+            min_obs_platt=config.CALIBRATION_MIN_OBS_PLATT,
+            min_obs_isotonic=10_000,   # effectively disables isotonic
+            n_bins=config.CALIBRATION_N_BINS,
+            block_len=target_horizon_months,
+            n_bootstrap=max(50, config.CALIBRATION_BOOTSTRAP_REPS // 10),
+        )
+
+        current_pred = float(signals.at[ticker, pred_col])
+        cal_prob = calibrate_prediction(bm_model, current_pred)
+        calibrated_probs.append(cal_prob)
+        methods_used.append(bm_result.method)
+        n_total += bm_result.n_obs
+
+        # Collect calibrated training probs for aggregate ECE
+        if bm_model is not None and len(y_hat_bm) >= config.CALIBRATION_MIN_OBS_PLATT:
+            from src.models.calibration import calibrate_prediction as _cal
+            train_cal_probs = [_cal(bm_model, float(y)) for y in y_hat_bm]
+            all_cal_probs.extend(train_cal_probs)
+            all_outcomes_pool.extend((y_true_bm > 0).astype(int).tolist())
+
+    signals["calibrated_prob_outperform"] = calibrated_probs
+
+    # ------------------------------------------------------------------
+    # Aggregate CalibrationResult for reporting
+    # ------------------------------------------------------------------
+    from src.models.calibration import compute_ece, block_bootstrap_ece_ci
+
+    if len(all_cal_probs) >= 4:
+        agg_probs = np.array(all_cal_probs, dtype=float)
+        agg_outcomes = np.array(all_outcomes_pool, dtype=int)
+        agg_ece = compute_ece(agg_probs, agg_outcomes, n_bins=config.CALIBRATION_N_BINS)
+        ci_lo, ci_hi = block_bootstrap_ece_ci(
+            agg_probs, agg_outcomes,
+            n_bins=config.CALIBRATION_N_BINS,
+            block_len=target_horizon_months,
+            n_bootstrap=config.CALIBRATION_BOOTSTRAP_REPS,
+        )
+        dominant_method = "platt" if "platt" in methods_used else "uncalibrated"
+    else:
+        agg_ece, ci_lo, ci_hi = 0.0, 0.0, 1.0
+        dominant_method = "uncalibrated"
+
+    return signals, CalibrationResult(
+        n_obs=n_total,
+        method=dominant_method,
+        ece=agg_ece,
+        ece_ci_lower=ci_lo,
+        ece_ci_upper=ci_hi,
+    )
+
+
 def _consensus_signal(
     signals: pd.DataFrame,
 ) -> tuple[str, float, float, float, float, str]:
@@ -315,6 +497,7 @@ def _write_recommendation_md(
     dry_run: bool,
     mean_prob_outperform: float = 0.5,
     composite_confidence_tier: str = "LOW",
+    cal_result: CalibrationResult | None = None,
 ) -> None:
     """Write the human-readable recommendation report."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -340,8 +523,17 @@ def _write_recommendation_md(
         f"| Predicted 6M Relative Return | {mean_predicted:+.2%} |",
     ]
 
+    has_calibrated = (
+        "calibrated_prob_outperform" in signals.columns
+        and not signals.empty
+        and cal_result is not None
+        and cal_result.method != "uncalibrated"
+    )
     if has_confidence:
-        lines.append(f"| P(Outperform) | {mean_prob_outperform:.1%} |")
+        lines.append(f"| P(Outperform, raw) | {mean_prob_outperform:.1%} |")
+    if has_calibrated:
+        mean_cal_prob = float(signals["calibrated_prob_outperform"].mean())
+        lines.append(f"| P(Outperform, calibrated) | {mean_cal_prob:.1%} |")
 
     lines += [
         f"| Mean IC (across benchmarks) | {mean_ic:.4f} |",
@@ -349,9 +541,26 @@ def _write_recommendation_md(
         "",
         "> **Note:** The sell % recommendation is used only at actual vesting events",
         "> (January and July).  Monthly reports are monitoring tools, not trade signals.",
-        ">",
-        "> **Calibration:** Phase 1 — P(outperform) uses uncalibrated BayesianRidge posteriors.",
-        "> Platt scaling will be introduced in v5.1 once ≥ 60 OOS predictions accumulate.",
+    ]
+
+    # Calibration status note
+    if cal_result is None or cal_result.method == "uncalibrated":
+        lines += [
+            ">",
+            "> **Calibration:** Phase 1 — P(outperform) uses uncalibrated BayesianRidge posteriors.",
+            f"> Platt scaling activates at n ≥ {config.CALIBRATION_MIN_OBS_PLATT} OOS observations.",
+        ]
+    else:
+        method_label = "Platt scaling" if cal_result.method == "platt" else "Platt → Isotonic"
+        lines += [
+            ">",
+            f"> **Calibration:** Phase 2 — {method_label} active "
+            f"(n={cal_result.n_obs:,} OOS obs).  "
+            f"ECE = {cal_result.ece:.1%} "
+            f"[95% CI: {cal_result.ece_ci_lower:.1%}–{cal_result.ece_ci_upper:.1%}].",
+        ]
+
+    lines += [
         "",
         "---",
         "",
@@ -396,7 +605,14 @@ def _write_recommendation_md(
         "",
     ]
 
-    if has_confidence:
+    show_cal_col = has_calibrated and "calibrated_prob_outperform" in signals.columns
+
+    if has_confidence and show_cal_col:
+        lines += [
+            "| Benchmark | Description | Predicted Return | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |",
+            "|-----------|-------------|----------------|----|----------|--------|--------|------------|--------|",
+        ]
+    elif has_confidence:
         lines += [
             "| Benchmark | Description | Predicted Return | IC | Hit Rate | P(Outperform) | Confidence | Signal |",
             "|-----------|-------------|----------------|----|----------|---------------|------------|--------|",
@@ -414,7 +630,12 @@ def _write_recommendation_md(
             ic_val = f"{row['ic']:.4f}" if not pd.isna(row.get("ic")) else "n/a"
             hr_val = f"{row['hit_rate']:.1%}" if not pd.isna(row.get("hit_rate")) else "n/a"
             sig = row.get("signal", "N/A")
-            if has_confidence:
+            if has_confidence and show_cal_col:
+                prob_raw = f"{row['prob_outperform']:.1%}" if not pd.isna(row.get("prob_outperform")) else "n/a"
+                prob_cal = f"{row['calibrated_prob_outperform']:.1%}" if not pd.isna(row.get("calibrated_prob_outperform")) else "n/a"
+                tier = row.get("confidence_tier", "n/a")
+                lines.append(f"| {ticker} | {desc} | {pred} | {ic_val} | {hr_val} | {prob_raw} | {prob_cal} | {tier} | {sig} |")
+            elif has_confidence:
                 prob = f"{row['prob_outperform']:.1%}" if not pd.isna(row.get("prob_outperform")) else "n/a"
                 tier = row.get("confidence_tier", "n/a")
                 lines.append(f"| {ticker} | {desc} | {pred} | {ic_val} | {hr_val} | {prob} | {tier} | {sig} |")
@@ -514,6 +735,7 @@ def _write_diagnostic_report(
     as_of: date,
     ensemble_results: dict,
     target_horizon_months: int = 6,
+    cal_result: CalibrationResult | None = None,
 ) -> None:
     """
     Write diagnostic.md alongside recommendation.md.
@@ -656,9 +878,32 @@ def _write_diagnostic_report(
         "",
         "| Phase | Description | Status |",
         "|-------|-------------|--------|",
-        "| Phase 1 | Raw BayesianRidge posterior (uncalibrated) | ✅ Active |",
-        "| Phase 2 | Platt scaling (logistic regression on OOS probs → binary outcome) | ⏳ v5.1 (≥60 OOS obs) |",
-        "| Phase 3 | Isotonic regression (non-parametric, n > 60) | ⏳ v5.1 |",
+    ]
+
+    # Determine which phase is active based on cal_result
+    if cal_result is None or cal_result.method == "uncalibrated":
+        phase1_status = "✅ Active"
+        phase2_status = f"⏳ Activates at n ≥ {config.CALIBRATION_MIN_OBS_PLATT}"
+        phase3_status = f"⏳ Activates at n ≥ {config.CALIBRATION_MIN_OBS_ISOTONIC}"
+    elif cal_result.method == "platt":
+        phase1_status = "⬛ Superseded"
+        phase2_status = (
+            f"✅ Active (n={cal_result.n_obs:,}  ECE={cal_result.ece:.1%} "
+            f"[{cal_result.ece_ci_lower:.1%}–{cal_result.ece_ci_upper:.1%}])"
+        )
+        phase3_status = f"⏳ Activates at n ≥ {config.CALIBRATION_MIN_OBS_ISOTONIC}"
+    else:  # isotonic
+        phase1_status = "⬛ Superseded"
+        phase2_status = "⬛ Superseded by Phase 3"
+        phase3_status = (
+            f"✅ Active (n={cal_result.n_obs:,}  ECE={cal_result.ece:.1%} "
+            f"[{cal_result.ece_ci_lower:.1%}–{cal_result.ece_ci_upper:.1%}])"
+        )
+
+    lines += [
+        f"| Phase 1 | Raw BayesianRidge posterior (uncalibrated) | {phase1_status} |",
+        f"| Phase 2 | Platt scaling (logistic regression on OOS scores → binary) | {phase2_status} |",
+        f"| Phase 3 | Platt → Isotonic (non-parametric; monotone reliability) | {phase3_status} |",
         "",
         "---",
         "",
@@ -735,9 +980,17 @@ def main(
     # Step 1: Refresh FRED data
     _fetch_fred_step(conn, dry_run=dry_run, skip_fred=skip_fred)
 
-    # Step 2: Generate signals (ensemble: ElasticNet + Ridge + BayesianRidge)
+    # Step 2: Generate signals (ensemble: ElasticNet + Ridge + BayesianRidge + GBT)
     print(f"\nGenerating ensemble signals (as-of {as_of})...")
     signals, ensemble_results = _generate_signals(conn, as_of, target_horizon_months=6)
+
+    # Step 2.5: Calibrate P(outperform) using Platt / isotonic on OOS fold history
+    print("  Calibrating probabilities...")
+    signals, cal_result = _calibrate_signals(signals, ensemble_results, target_horizon_months=6)
+    print(
+        f"  Calibration: {cal_result.method} "
+        f"(n={cal_result.n_obs:,} OOS obs, ECE={cal_result.ece:.1%})"
+    )
 
     # Step 3: Compute consensus
     consensus, mean_pred, mean_ic, mean_hr, mean_prob, confidence_tier = _consensus_signal(signals)
@@ -745,7 +998,10 @@ def main(
 
     print(f"\n  Consensus signal: {consensus} ({confidence_tier} CONFIDENCE)")
     print(f"  Predicted 6M relative return: {mean_pred:+.2%}")
-    print(f"  P(outperform): {mean_prob:.1%}")
+    print(f"  P(outperform, raw): {mean_prob:.1%}")
+    if "calibrated_prob_outperform" in signals.columns and not signals.empty:
+        mean_cal = float(signals["calibrated_prob_outperform"].mean())
+        print(f"  P(outperform, calibrated): {mean_cal:.1%}")
     print(f"  Mean IC: {mean_ic:.4f}  |  Mean hit rate: {mean_hr:.1%}")
     print(f"  Sell %: {sell_pct:.0%}")
 
@@ -756,6 +1012,7 @@ def main(
         consensus, mean_pred, mean_ic, mean_hr, sell_pct, dry_run,
         mean_prob_outperform=mean_prob,
         composite_confidence_tier=confidence_tier,
+        cal_result=cal_result,
     )
     _write_signals_csv(out_dir, signals)
     _append_decision_log(
@@ -764,7 +1021,10 @@ def main(
 
     # Step 5: Write diagnostic OOS evaluation report
     print("\nWriting diagnostic report...")
-    _write_diagnostic_report(out_dir, as_of, ensemble_results, target_horizon_months=6)
+    _write_diagnostic_report(
+        out_dir, as_of, ensemble_results,
+        target_horizon_months=6, cal_result=cal_result,
+    )
 
     conn.close()
     print(f"\nDone. Results written to {out_dir}/")

@@ -1,8 +1,8 @@
 # PGR Monthly Decision Report — March 2026
 
 **As-of Date:** 2026-03-27  
-**Run Date:** 2026-03-29  
-**Model Version:** v4.3 (Ensemble WFO, 20 ETF benchmarks, BayesianRidge confidence)  
+**Run Date:** 2026-03-30  
+**Model Version:** v5.0 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, inverse-variance weighting, C(8,2)=28 CPCV paths)  
 
 ---
 
@@ -10,24 +10,24 @@
 
 | Field | Value |
 |-------|-------|
-| Signal | **NEUTRAL (MODERATE CONFIDENCE)** |
+| Signal | **NEUTRAL (LOW CONFIDENCE)** |
 | Recommended Sell % | **50%** |
-| Predicted 6M Relative Return | +4.65% |
-| P(Outperform) | 63.5% |
-| Mean IC (across benchmarks) | 0.0185 |
-| Mean Hit Rate | 55.7% |
+| Predicted 6M Relative Return | +1.75% |
+| P(Outperform, raw) | 54.9% |
+| P(Outperform, calibrated) | 67.3% |
+| Mean IC (across benchmarks) | 0.0421 |
+| Mean Hit Rate | 54.4% |
 
 > **Note:** The sell % recommendation is used only at actual vesting events
 > (January and July).  Monthly reports are monitoring tools, not trade signals.
 >
-> **Calibration:** Phase 1 — P(outperform) uses uncalibrated BayesianRidge posteriors.
-> Platt scaling will be introduced in v5.1 once ≥ 60 OOS predictions accumulate.
+> **Calibration:** Phase 2 — Platt scaling active (n=3,270 OOS obs).  ECE = 2.1% [95% CI: 1.1%–4.9%].
 
 ---
 
 ## Interpretation
 
-Model signal is weak (mean IC below threshold or mixed directional signals).  6/21 (29%) benchmarks favour outperformance.
+Model signal is weak (mean IC below threshold or mixed directional signals).  8/21 (38%) benchmarks favour outperformance.
 
 Recommended action at next vesting event: **DEFAULT 50% SALE** for risk management.
 
@@ -35,29 +35,29 @@ Recommended action at next vesting event: **DEFAULT 50% SALE** for risk manageme
 
 ## Per-Benchmark Signals
 
-| Benchmark | Predicted Return | IC | Hit Rate | P(Outperform) | Confidence | Signal |
-|-----------|----------------|----|----------|---------------|------------|--------|
-| VTI | +3.46% | -0.0559 | 47.4% | 59.8% | LOW | NEUTRAL |
-| VOO | +2.72% | -0.0420 | 42.0% | 57.7% | LOW | NEUTRAL |
-| VGT | +1.35% | -0.0189 | 48.4% | 52.9% | LOW | NEUTRAL |
-| VHT | +4.24% | 0.1417 | 57.3% | 61.6% | MODERATE | OUTPERFORM |
-| VFH | +11.35% | 0.0995 | 50.2% | 84.7% | HIGH | OUTPERFORM |
-| VIS | +2.75% | 0.1245 | 51.5% | 58.0% | LOW | OUTPERFORM |
-| VDE | -1.67% | -0.0050 | 57.4% | 46.5% | LOW | NEUTRAL |
-| VPU | -1.62% | 0.2002 | 58.8% | 45.0% | LOW | UNDERPERFORM |
-| KIE | +6.22% | 0.1351 | 56.9% | 72.8% | HIGH | OUTPERFORM |
-| VXUS | +5.74% | -0.0672 | 52.6% | 66.8% | MODERATE | NEUTRAL |
-| VEA | +5.27% | -0.0439 | 54.9% | 65.4% | MODERATE | NEUTRAL |
-| VWO | +7.03% | -0.0182 | 56.7% | 69.6% | MODERATE | NEUTRAL |
-| VIG | +4.34% | 0.0334 | 51.9% | 62.8% | MODERATE | NEUTRAL |
-| SCHD | -0.57% | -0.2834 | 55.9% | 49.0% | LOW | NEUTRAL |
-| BND | +11.32% | 0.0006 | 63.3% | 80.8% | HIGH | NEUTRAL |
-| BNDX | +12.00% | -0.0002 | 60.3% | 82.1% | HIGH | NEUTRAL |
-| VCIT | +10.62% | -0.0804 | 64.4% | 79.3% | HIGH | NEUTRAL |
-| VMBS | +10.95% | -0.0327 | 65.3% | 80.5% | HIGH | NEUTRAL |
-| VNQ | +5.26% | 0.1454 | 57.0% | 65.8% | MODERATE | OUTPERFORM |
-| GLD | -4.77% | 0.0776 | 55.2% | 37.9% | MODERATE | UNDERPERFORM |
-| DBC | +1.74% | 0.0787 | 61.3% | 54.2% | LOW | OUTPERFORM |
+| Benchmark | Description | Predicted Return | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |
+|-----------|-------------|----------------|----|----------|--------|--------|------------|--------|
+| VTI | Total Stock Market | -1.72% | 0.0159 | 49.8% | 45.5% | 60.0% | LOW | NEUTRAL |
+| VOO | S&P 500 | +0.82% | -0.1014 | 42.6% | 52.1% | 67.3% | LOW | NEUTRAL |
+| VGT | Information Technology | -3.10% | 0.0688 | 51.6% | 44.0% | 53.9% | LOW | UNDERPERFORM |
+| VHT | Health Care | +4.54% | 0.1010 | 56.5% | 61.2% | 64.0% | MODERATE | OUTPERFORM |
+| VFH | Financials | +5.58% | -0.0229 | 48.0% | 68.0% | 59.9% | MODERATE | NEUTRAL |
+| VIS | Industrials | +0.81% | -0.0004 | 47.5% | 52.2% | 63.3% | LOW | NEUTRAL |
+| VDE | Energy | +7.61% | -0.0265 | 52.8% | 65.2% | 63.2% | MODERATE | NEUTRAL |
+| VPU | Utilities | +6.07% | 0.1745 | 56.2% | 66.9% | 67.3% | MODERATE | OUTPERFORM |
+| KIE | S&P Insurance | +2.55% | 0.0718 | 50.4% | 59.8% | 65.0% | LOW | OUTPERFORM |
+| VXUS | Total International Stock | -2.96% | -0.0876 | 56.4% | 41.6% | 74.9% | LOW | NEUTRAL |
+| VEA | Developed Markets ex-US | -1.03% | -0.0702 | 57.6% | 47.1% | 72.9% | LOW | NEUTRAL |
+| VWO | Emerging Markets | -0.73% | 0.0185 | 55.9% | 48.0% | 73.4% | LOW | NEUTRAL |
+| VIG | Dividend Appreciation | +1.04% | 0.0737 | 51.4% | 53.0% | 64.8% | LOW | OUTPERFORM |
+| SCHD | US Dividend Equity | +10.61% | -0.1305 | 50.8% | 65.2% | 65.3% | MODERATE | NEUTRAL |
+| BND | Total Bond Market | +6.36% | 0.1156 | 61.0% | 68.5% | 75.3% | MODERATE | OUTPERFORM |
+| BNDX | Total International Bond | +6.92% | 0.1648 | 60.6% | 70.3% | 73.1% | HIGH | OUTPERFORM |
+| VCIT | Intermediate-Term Corporate Bond | +4.48% | 0.0703 | 59.6% | 63.2% | 75.0% | MODERATE | OUTPERFORM |
+| VMBS | Mortgage-Backed Securities | +6.60% | 0.1144 | 62.7% | 69.4% | 75.8% | MODERATE | OUTPERFORM |
+| VNQ | Real Estate | +0.88% | 0.1030 | 53.9% | 52.6% | 61.7% | LOW | NEUTRAL |
+| GLD | Gold Shares | -17.25% | 0.1381 | 57.6% | 12.7% | 61.8% | HIGH | UNDERPERFORM |
+| DBC | DB Commodity Index | -1.43% | 0.0932 | 60.3% | 46.7% | 74.9% | LOW | UNDERPERFORM |
 
 ---
 

@@ -303,35 +303,47 @@ Small focused addition; no data dependencies.
 
 ---
 
-### v5.0 — CPCV Upgrade + Ensemble Diversity
-**Target:** Day 14 (2026-04-08)
+### v5.0 — CPCV Upgrade + Ensemble Diversity (complete)
+**Released:** March 2026
 
-Code-only changes against the existing training history (300+ monthly observations
-already in DB after bootstrap). No accumulation wait.
-
-- **CPCV**: C(6,2)=15 → C(8,2)=28 paths (`CPCV_N_FOLDS = 8`); Monte Carlo
-  permutation test for null IC distribution; `_check_cpcv_feasibility()` guard
-- **Inverse-variance ensemble**: Replace equal-weight mean with `1/σ²`-weighted
-  average in `get_ensemble_signals()`; `ENSEMBLE_USE_INVERSE_VARIANCE_WEIGHTS = True`
+- **CPCV**: C(6,2)=15 → C(8,2)=28 paths (`CPCV_N_FOLDS = 8`)
+- **Inverse-variance ensemble**: `1/MAE²`-weighted average in `get_ensemble_signals()`;
+  GBT (MAE=0.156) and ElasticNet (MAE=0.165) receive ~75% of total weight
 - **Shallow GBT**: `build_gbt_pipeline()` — `GradientBoostingRegressor(max_depth=2,
-  n_estimators=50, learning_rate=0.1)`; genuine ensemble diversity per Krogh &
-  Vedelsby (1994) ambiguity decomposition
+  n_estimators=50, learning_rate=0.1)`; mean IC +0.148 vs +0.081 ElasticNet across
+  8 representative benchmarks; largest gains on VHT (+0.262), VNQ (+0.184), VPU (+0.192)
+- **ETF descriptions**: `_ETF_DESCRIPTIONS` dict wired into per-benchmark signal
+  table in `recommendation.md` and `diagnostic.md`
+- **config.py**: `ENSEMBLE_MODELS` updated to 4 members; `DIAG_CPCV_MIN_POSITIVE_PATHS`
+  updated to 19/28; `CPCV_N_FOLDS = 8`
+- **459 new tests** in `test_v50_ensemble.py`; total: 675 passed, 1 skipped
 
 ---
 
-### v5.1 — Phase 2 Calibration Validation
-**Target:** Day 21 (2026-04-15)
+### v5.1 — Per-Benchmark Platt Calibration (complete)
+**Released:** March 2026
 
-The expanding-window calibration uses WFO OOS predictions — these are produced
-from the 300+ month backtest history already in the DB on Day 2. No live data
-accumulation needed; can start immediately after v5.0.
-
-- **New file:** `src/models/calibration.py` — expanding-window Platt scaling
-  (logistic regression on raw_prob → binary outcome); switches to isotonic regression
-  at n > 60 OOS observations
-- Reliability diagrams, Expected Calibration Error (ECE) with block bootstrap
-  confidence intervals (block length = prediction horizon)
-- `VestingRecommendation` — add `calibrated_prob_outperform` and `ece` fields
+- **New file `src/models/calibration.py`**: `CalibrationResult` dataclass,
+  `compute_ece()`, `block_bootstrap_ece_ci()` (circular block bootstrap, block_len
+  = prediction horizon), `fit_calibration_model()` (Platt at n≥20, isotonic at
+  n≥500), `calibrate_prediction()`
+- **Per-benchmark design**: one Platt model fitted per ETF benchmark on that
+  benchmark's own OOS fold history.  Global pooled calibration was evaluated and
+  rejected — pooling 21 asset classes with different return scales caused isotonic
+  regression to return a single constant for all benchmarks (plateau collapse).
+  With n=78–260 OOS obs per benchmark (2026), isotonic threshold raised to
+  `CALIBRATION_MIN_OBS_ISOTONIC = 500`; re-evaluate ~2028.
+- **Calibration pipeline**: `_calibrate_signals()` reconstructs inverse-variance
+  ensemble OOS fold predictions per benchmark, fits per-benchmark Platt, adds
+  `calibrated_prob_outperform` column.  ECE = 2.1% (aggregate, block bootstrap)
+  on 3,270 pooled OOS observations.
+- **Report updates**: `recommendation.md` shows P(raw) and P(calibrated) side-by-side;
+  calibration note replaced with live ECE and 95% CI; `diagnostic.md` calibration
+  phase table is data-driven (reads `cal_result.method` at runtime)
+- **`VestingRecommendation`**: `calibrated_prob_outperform: float | None` field added
+- **config.py**: `CALIBRATION_MIN_OBS_PLATT=20`, `CALIBRATION_MIN_OBS_ISOTONIC=500`,
+  `CALIBRATION_N_BINS=10`, `CALIBRATION_BOOTSTRAP_REPS=500`
+- **33 new tests** in `test_calibration.py`; total: 747 passed, 1 skipped
 
 ---
 
