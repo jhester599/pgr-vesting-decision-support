@@ -355,3 +355,16 @@ FRED_SERIES_LAGS: dict = {
 # however, applying the same lag is conservative and prevents any edge case.
 EDGAR_FILING_LAG_MONTHS: int = 2
 
+# ---------------------------------------------------------------------------
+# v5.1 — Probability Calibration
+# ---------------------------------------------------------------------------
+# Minimum OOS observations required before activating each calibration tier.
+# At n < CALIBRATION_MIN_OBS_PLATT the raw BayesianRidge posterior is returned.
+# At n >= CALIBRATION_MIN_OBS_ISOTONIC the two-stage Platt → Isotonic model
+# is used, which is non-parametric and benefits from larger samples.
+CALIBRATION_MIN_OBS_PLATT: int = 20     # Activate Platt scaling above this n
+CALIBRATION_MIN_OBS_ISOTONIC: int = 60  # Switch to isotonic regression above this n
+# ECE computation parameters
+CALIBRATION_N_BINS: int = 10            # Equal-width probability bins for ECE
+CALIBRATION_BOOTSTRAP_REPS: int = 500   # Block bootstrap replications for ECE CI
+
