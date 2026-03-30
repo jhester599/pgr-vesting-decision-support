@@ -1,11 +1,13 @@
-# PGR Vesting Decision Support · v4.1
+# PGR Vesting Decision Support · v5.2
 
 A quantitative decision-support engine for systematically unwinding a concentrated
 Progressive Corporation (PGR) RSU position held in a taxable brokerage account.
 
-The engine combines Walk-Forward Optimized machine learning, Black-Litterman portfolio
-construction, and proactive tax-loss harvesting to produce a structured sell/hold
-recommendation for each vesting event.
+The engine combines a 4-model Walk-Forward Optimized ensemble (ElasticNet + Ridge +
+BayesianRidge + GBT), per-benchmark Platt probability calibration, distribution-free
+conformal prediction intervals (ACI), Black-Litterman portfolio construction, and
+proactive tax-loss harvesting to produce a structured sell/hold recommendation for
+each vesting event.
 
 ---
 
@@ -24,8 +26,10 @@ For each event the engine outputs:
 - Estimated gross proceeds, tax liability, and net after-tax proceeds
 - Tax lot selection strategy (TLH candidates → LTCG → STCG priority)
 - Black-Litterman optimal ETF reallocation targets (Ledoit-Wolf shrunk covariance)
-- Per-benchmark signal grid (OUTPERFORM / UNDERPERFORM / NEUTRAL vs. all 20 ETFs)
-- CPCV validation distribution (15 train-test paths, overfitting detection)
+- Per-benchmark signal grid (OUTPERFORM / UNDERPERFORM / NEUTRAL vs. 21 ETFs)
+- Calibrated P(outperform) per benchmark via Platt scaling (ECE 2.1%)
+- 80% conformal prediction interval per benchmark (ACI; empirical coverage 92%)
+- CPCV validation distribution (C(8,2)=28 paths, overfitting detection)
 - Monthly automated decision report (committed to `results/` on the 20th)
 
 ---
@@ -67,7 +71,7 @@ tax-loss harvesting with wash-sale replacement ETF suggestions, fractional
 differentiation for stationarity-preserving feature transforms, and
 per-benchmark signal weighting by historical IC × hit rate.
 
-### v4.1 — Data Integrity + Lag Guards (current)
+### v4.1 — Data Integrity + Lag Guards (complete)
 
 Three pre-bootstrap fixes to eliminate look-ahead bias and reduce employer-stock
 concentration risk, deployed before the 2026-03-25 initial ML training label
@@ -85,7 +89,7 @@ construction:
   Meulbroek (2005) shows 25% in employer stock yields a ~42% certainty-equivalent
   loss when human capital correlation is included.
 
-### v4.2 — 8-K Retry/Recheck + Historical Backfill (current)
+### v4.2 — 8-K Retry/Recheck + Historical Backfill (complete)
 
 Monthly 8-K fetch hardened against late PGR filings, with full historical
 bootstrap from the committed CSV:
@@ -118,6 +122,63 @@ python scripts/edgar_8k_fetcher.py --backfill-years 15
 # Dry run — parse/read without writing to DB:
 python scripts/edgar_8k_fetcher.py --load-from-csv --dry-run
 ```
+
+### v4.5 — PGR-Specific Alpha Signals (complete)
+
+Five new PGR-specific predictors with strong IC evidence, added to the feature matrix:
+
+- **`ppi_auto_ins_yoy`** (FRED `PPIFIS`): PPI auto insurance YoY — IC +0.185, p=0.002.
+  Proxy for PGR rate-earning power; auto insurance PPI leads combined ratio by ~2 quarters.
+- **`medical_cpi_yoy`** (FRED `CPIMEDSL`): Medical care CPI YoY — IC −0.178, p=0.002.
+  Bodily injury / PIP severity driver; higher medical inflation compresses PGR's relative return.
+- **`used_car_cpi_yoy`** (FRED `CUSR0000SETA02`): Used car CPI YoY — IC −0.040 (weak).
+  Auto total-loss severity proxy; retained for completeness.
+- **`pgr_vs_kie_6m`**: PGR vs. KIE (S&P Insurance Index) 6-month relative momentum — IC +0.091.
+  Captures insurance-sector rotation independent of broad market momentum.
+- **`cr_acceleration`**: Combined ratio second derivative; sparse at bootstrap — excluded
+  from active feature set until sufficient history accumulates.
+
+### v5.0 — 4-Model Ensemble + CPCV C(8,2) (complete)
+
+GBT added as the fourth model in the inverse-variance weighted ensemble; CPCV upgraded to
+C(8,2)=28 paths; ETF ticker descriptions added to per-benchmark report tables.
+
+Key OOS IC results (Newey-West HAC, 6M horizon):
+- **GBT**: mean IC +0.148 (best: VHT +0.262, VNQ +0.184, VPU +0.192)
+- **ElasticNet**: mean IC +0.081 (best: GLD +0.230 — GLD remains ElasticNet's domain)
+- **Inverse-variance weights**: GBT + ElasticNet ~75% combined (weight ∝ 1/MAE²;
+  GBT MAE=0.156, ElasticNet MAE=0.165)
+- **459 new tests**; total 747 passed, 1 skipped
+
+### v5.1 — Per-Benchmark Platt Calibration (complete)
+
+Converts raw `prob_outperform` (BayesianRidge posterior CDF) to well-calibrated
+P(outperform) probabilities using per-benchmark logistic regression on OOS fold history.
+
+- **One Platt model per ETF**: pooling 21 asset classes caused isotonic regression to
+  return a constant 63.4% for 20/21 benchmarks; per-benchmark Platt is economically
+  coherent (GLD 61.8%, VMBS 75.8%)
+- **ECE 2.1%** [95% CI: 1.1%–4.9%] on 3,270 OOS observations
+- **Isotonic threshold** raised to n ≥ 500 (deferred to ~2028+); Platt-only until
+  sufficient OOS history prevents isotonic step-function overfitting
+- **33 new tests** in `test_calibration.py`; total 747 passed, 1 skipped
+
+### v5.2 — Conformal Prediction Intervals (current)
+
+Distribution-free 80% prediction intervals with marginal coverage guarantees under
+time-series non-stationarity, using WFO OOS residuals as the calibration set.
+
+- **Split conformal** (Vovk et al. 2005): finite-sample corrected quantile q̂ of
+  absolute residuals; marginal guarantee P(y ∈ CI) ≥ 1-α
+- **Adaptive Conformal Inference / ACI** (Gibbs & Candès 2021, default): walk-forward
+  α_t updates that widen/narrow the interval based on whether each prior fold was covered;
+  handles distribution shift in 6M overlapping windows;
+  α_{t+1} = clip(α_t + γ(α_nominal − err_t), 0.01, 0.99), γ=0.05
+- **March 2026 live results**: median 80% CI −31.5% to +37.1% across 21 benchmarks;
+  mean empirical coverage 92.0% ✅ (all 21 benchmarks ≥ 80%)
+- Recommendation report: consensus table shows median CI range; per-benchmark table
+  shows CI Lower / CI Upper; diagnostic shows empirical vs nominal coverage per benchmark
+- **46 new tests** in `test_conformal.py`; total 793 passed, 1 skipped
 
 ---
 
@@ -324,7 +385,7 @@ pgr-vesting-decision-support/
 │                                    #   while achieving ADF stationarity
 ```
 
-### v4.1 modules (current)
+### v4.1 modules (complete)
 
 ```
 ├── config.py                        # + FRED_DEFAULT_LAG_MONTHS = 1
@@ -349,6 +410,110 @@ pgr-vesting-decision-support/
     ├── test_fred_loader.py          # + 3 publication-lag tests
     ├── test_feature_engineering.py  # + EDGAR lag test; updated feature count
     └── test_kelly_sizing.py         # + cap assertion updated to 0.20
+```
+
+### v4.5 modules (complete)
+
+```
+├── config.py                        # + PGR-specific FRED series (PPIFIS, CPIMEDSL)
+│                                    #   + pgr_vs_kie_6m in feature pipeline
+│
+├── src/
+│   └── processing/
+│       └── feature_engineering.py  # + ppi_auto_ins_yoy (PPIFIS YoY, 1M lag)
+│                                    #   + medical_cpi_yoy (CPIMEDSL YoY, 1M lag)
+│                                    #   + used_car_cpi_yoy (CUSR0000SETA02 YoY, 1M lag)
+│                                    #   + pgr_vs_kie_6m (PGR / KIE 6M return ratio − 1)
+│                                    #   + cr_acceleration (Δ(Δ combined_ratio))
+│
+└── tests/
+    └── test_pgr_fred_features.py   # IC significance tests for new FRED features
+```
+
+### v5.0 modules (complete)
+
+```
+├── config.py                        # + GBT hyperparameters (n_estimators, max_depth,
+│                                    #   learning_rate, subsample, colsample_bytree)
+│                                    #   + CPCV_N_FOLDS: 6→8; CPCV_N_TEST_FOLDS: 2
+│                                    #   + ETF universe: KIE added (21 benchmarks total)
+│
+├── src/
+│   ├── models/
+│   │   ├── regularized_models.py   # + build_gbt_pipeline() (XGBoost with sklearn API)
+│   │   └── multi_benchmark_wfo.py  # + run_ensemble_benchmarks() — 4-model ensemble
+│   │                                #   inverse-variance weighting (weight ∝ 1/MAE²)
+│   │                                #   EnsembleWFOResult.model_results dict
+│   │
+│   └── reporting/
+│       └── backtest_report.py      # No changes; GBT plugs into existing WFO plumbing
+│
+├── scripts/
+│   └── monthly_decision.py         # + _ETF_DESCRIPTIONS dict (21 tickers with short names)
+│                                    #   + per-benchmark table shows Description column
+│
+└── tests/
+    └── test_gbt_pipeline.py        # + build_gbt_pipeline tests; IC vs ElasticNet comparison
+```
+
+### v5.1 modules (complete)
+
+```
+├── config.py                        # + CALIBRATION_MIN_OBS_PLATT = 20
+│                                    #   + CALIBRATION_MIN_OBS_ISOTONIC = 500
+│                                    #   + CALIBRATION_N_BINS = 10
+│                                    #   + CALIBRATION_BOOTSTRAP_REPS = 500
+│
+├── src/
+│   ├── models/
+│   │   └── calibration.py          # NEW: CalibrationResult dataclass
+│   │                                #   compute_ece() — equal-width bin calibration error
+│   │                                #   block_bootstrap_ece_ci() — circular block bootstrap
+│   │                                #   fit_calibration_model() — Platt / Platt+isotonic
+│   │                                #   calibrate_prediction() — apply fitted model live
+│   │
+│   └── portfolio/
+│       └── rebalancer.py            # + VestingRecommendation.calibrated_prob_outperform
+│
+├── scripts/
+│   └── monthly_decision.py         # + _reconstruct_ensemble_oos() — inverse-var OOS rebuild
+│                                    #   + _calibrate_signals() — per-benchmark Platt (Step 2.5)
+│                                    #   + recommendation.md: P(raw) + P(cal) columns
+│                                    #   + diagnostic.md: calibration phase status table
+│
+└── tests/
+    └── test_calibration.py         # 33 tests: ECE formula, bootstrap CI, Platt fitting,
+                                    #   isotonic two-stage, calibrate_prediction, integration
+```
+
+### v5.2 modules (current)
+
+```
+├── config.py                        # + CONFORMAL_COVERAGE = 0.80
+│                                    #   + CONFORMAL_METHOD = "aci"
+│                                    #   + CONFORMAL_ACI_GAMMA = 0.05
+│
+├── src/
+│   └── models/
+│       └── conformal.py            # NEW: ConformalResult dataclass
+│                                    #   _conformal_quantile_level() — finite-sample correction
+│                                    #   split_conformal_interval() — symmetric CI, P(y∈CI)≥1-α
+│                                    #   aci_adjusted_interval() — walk-forward α_t adaptation
+│                                    #   conformal_interval_from_ensemble() — main entry point
+│
+├── requirements.txt                 # + mapie>=1.3.0 (TimeSeriesRegressor validation path)
+│
+├── scripts/
+│   └── monthly_decision.py         # + _compute_conformal_intervals() — ACI per benchmark (Step 2.7)
+│                                    #   + recommendation.md: median CI in consensus table,
+│                                    #     CI Lower/Upper per-benchmark columns
+│                                    #   + diagnostic.md: conformal coverage section with
+│                                    #     empirical vs nominal coverage per benchmark
+│
+└── tests/
+    └── test_conformal.py           # 46 tests: coverage guarantee, ACI adaptation direction,
+                                    #   finite-sample correction, dispatch, error handling,
+                                    #   config constants
 ```
 
 ---
@@ -406,8 +571,9 @@ All FRED series are shifted by a publication lag before entering the feature mat
 | Financial conditions | NFCI | `nfci` | 2 months (weekly; revised ~8 weeks) |
 | Volatility | VIXCLS | `vix` | 1 month |
 | PGR-specific | TRFVOLUSM227NFWA | `vmt_yoy` (YoY change) | 2 months (revised ~60 days) |
-| PGR-specific (v4.5) | CUSR0000SETA02 | `used_car_cpi_yoy` (auto total-loss severity) | 1 month |
-| PGR-specific (v4.5) | CUSR0000SAM2 | `medical_cpi_yoy` (bodily injury / PIP severity) | 1 month |
+| PGR-specific (v4.5) | CUSR0000SETA02 | `used_car_cpi_yoy` (auto total-loss severity; IC −0.040) | 1 month |
+| PGR-specific (v4.5) | CPIMEDSL | `medical_cpi_yoy` (bodily injury / PIP severity; IC −0.178) | 1 month |
+| PGR-specific (v4.5) | PPIFIS | `ppi_auto_ins_yoy` (auto insurance PPI; leading CR indicator; IC +0.185) | 1 month |
 | ~~PGR-specific~~ | ~~CUSR0000SETC01~~ | ~~`insurance_cpi_mom3m`~~ | Removed 2026-03-24 — series not in FRED |
 
 ### v2 ETF Benchmark Universe (20 ETFs)
@@ -448,25 +614,28 @@ Value:    V[t] = shares[t] * close[t]
 Features are computed at month-end frequency, expanding the effective dataset
 from ~30 semi-annual observations to 300+ monthly samples.
 
-| Feature | Description |
-|---------|-------------|
-| `mom_3m` | 3-month price momentum (63 trading days) |
-| `mom_6m` | 6-month price momentum (126 trading days) |
-| `mom_12m` | 12-month price momentum (252 trading days) |
-| `vol_21d` | 21-day realized volatility (annualized) |
-| `vol_63d` | 63-day realized volatility (annualized) |
-| `combined_ratio_ttm` | Trailing 12M combined ratio (from EDGAR cache) |
-| `pif_growth_yoy` | Policies in Force YoY growth |
-| `gainshare_est` | Estimated Gainshare multiplier (0–2 scale) |
-| `yield_slope` | T10Y2Y (10Y minus 2Y Treasury spread) |
-| `yield_curvature` | 2×GS5 − GS2 − GS10 |
-| `real_rate_10y` | GS10 − T10YIE |
-| `credit_spread_ig` | BAA10Y (investment-grade credit spread) |
-| `credit_spread_hy` | BAMLH0A0HYM2 (high-yield credit spread) |
-| `nfci` | Chicago Fed National Financial Conditions Index |
-| `vix` | CBOE VIX (VIXCLS from FRED) |
-| `insurance_cpi_mom3m` | 3-month momentum of motor vehicle insurance CPI |
-| `vmt_yoy` | Vehicle miles traveled YoY change |
+| Feature | Added | Description |
+|---------|-------|-------------|
+| `mom_3m` | v1 | 3-month price momentum (63 trading days) |
+| `mom_6m` | v1 | 6-month price momentum (126 trading days) |
+| `mom_12m` | v1 | 12-month price momentum (252 trading days) |
+| `vol_21d` | v1 | 21-day realized volatility (annualized) |
+| `vol_63d` | v1 | 63-day realized volatility (annualized) |
+| `combined_ratio_ttm` | v1 | Trailing 12M combined ratio (from EDGAR cache) |
+| `pif_growth_yoy` | v1 | Policies in Force YoY growth |
+| `gainshare_est` | v1 | Estimated Gainshare multiplier (0–2 scale) |
+| `yield_slope` | v3.0 | T10Y2Y (10Y minus 2Y Treasury spread) |
+| `yield_curvature` | v3.0 | 2×GS5 − GS2 − GS10 |
+| `real_rate_10y` | v3.0 | GS10 − T10YIE |
+| `credit_spread_ig` | v3.0 | BAA10Y (investment-grade credit spread) |
+| `credit_spread_hy` | v3.0 | BAMLH0A0HYM2 (high-yield credit spread) |
+| `nfci` | v3.0 | Chicago Fed National Financial Conditions Index |
+| `vix` | v3.1 | CBOE VIX (VIXCLS from FRED) |
+| `vmt_yoy` | v3.1 | Vehicle miles traveled YoY change (2M publication lag) |
+| `used_car_cpi_yoy` | v4.5 | Used car CPI YoY — auto total-loss severity proxy |
+| `medical_cpi_yoy` | v4.5 | Medical care CPI YoY — bodily injury / PIP severity (IC −0.178) |
+| `ppi_auto_ins_yoy` | v4.5 | PPI auto insurance YoY — rate-earning power proxy (IC +0.185) |
+| `pgr_vs_kie_6m` | v4.5 | PGR vs. KIE 6M relative momentum — insurance-sector rotation (IC +0.091) |
 
 ### Walk-Forward Optimization (WFO)
 
@@ -485,7 +654,8 @@ The `purge_buffer` (default 2M for 6M targets, 3M for 12M) prevents autocorrelat
 leakage from overlapping return windows in consecutive training observations.
 
 **Default model (v3.0+):** ElasticNetCV with l1_ratio grid `[0.1, 0.5, 0.9, 0.95, 1.0]`.
-**Ensemble (v3.1+):** Equal-weight combination of ElasticNet, Ridge, and BayesianRidge.
+**Ensemble (v5.0):** Inverse-variance weighted combination of ElasticNet + Ridge +
+BayesianRidge + GBT (weight ∝ 1/MAE²; GBT + ElasticNet ≈ 75% total weight).
 
 ### Combinatorial Purged Cross-Validation (CPCV)
 
@@ -493,13 +663,41 @@ CPCV is used as a validation diagnostic alongside WFO — it is not the producti
 training path.
 
 ```python
-CombinatorialPurgedCV(n_folds=6, n_test_folds=2)
-# C(6,2) = 15 train-test splits → 5 independent backtest paths
+CombinatorialPurgedCV(n_folds=8, n_test_folds=2)  # v5.0: upgraded from C(6,2)=15
+# C(8,2) = 28 train-test splits → 7 independent backtest paths
 # Each path covers the full dataset length; detects combinatorial overfitting
+# Note: 4 models × 28 splits × 21 benchmarks = 2,352 fits — run on demand, not in monthly cron
 ```
 
 `CPCVResult.path_ics` contains per-path IC sequences. High variance across paths
 signals overfitting even when mean IC appears strong.
+
+### Probability Calibration (v5.1)
+
+Raw `prob_outperform` values from BayesianRidge posterior CDF (`norm.cdf(y_hat / y_std)`)
+are Phase 1 estimates. Phase 2 (v5.1+) applies per-benchmark Platt scaling:
+
+```python
+# One logistic regression per ETF benchmark on that benchmark's own OOS fold history
+Pipeline([StandardScaler(), LogisticRegression(C=1e10)])  # unregularized Platt
+# Activates at n ≥ CALIBRATION_MIN_OBS_PLATT (20 OOS obs per benchmark)
+# Expected Calibration Error: 2.1% [95% CI: 1.1%–4.9%] on 3,270 observations
+```
+
+### Conformal Prediction Intervals (v5.2)
+
+Distribution-free 80% prediction intervals with marginal coverage guarantees:
+
+```python
+# Adaptive Conformal Inference (default) — handles distribution shift
+# Walk forward chronologically through WFO OOS residuals:
+alpha_t = 1.0 - nominal_coverage           # start at α=0.20
+for t in range(1, n):
+    err_t = float(|e_t| > q_t)             # 1 if not covered, 0 if covered
+    alpha_t = clip(alpha_t + γ(α_nominal - err_t), 0.01, 0.99)  # γ=0.05
+# Apply final α_T to full residual set → q_hat → CI = [ŷ − q_hat, ŷ + q_hat]
+# March 2026: median CI width 67% of predicted return; empirical coverage 92%
+```
 
 ### Black-Litterman Portfolio Construction
 
@@ -672,7 +870,7 @@ All workflows require repository secrets:
 
 ## Running the Engine
 
-### v4.0 (current — ensemble + BL + CPCV)
+### v5.2 (current — 4-model ensemble + calibration + conformal CIs)
 
 ```python
 import sqlite3
@@ -736,10 +934,17 @@ python scripts/monthly_decision.py --dry-run
 
 Outputs `results/monthly_decisions/YYYY-MM/recommendation.md` with:
 - Fractional Kelly sell percentage recommendation
-- Black-Litterman ETF reallocation targets
-- TLH candidates from current lot positions
-- CPCV validation summary
-- Regime breakdown table
+- Consensus signal + predicted 6M relative return
+- P(Outperform) raw and calibrated (Platt, v5.1)
+- 80% prediction interval — median and per-benchmark (ACI, v5.2)
+- Per-benchmark signal table: CI Lower / CI Upper / P(raw) / P(cal) columns
+- Calibration note: ECE and 95% bootstrap CI
+
+Outputs `results/monthly_decisions/YYYY-MM/diagnostic.md` with:
+- Aggregate model health (OOS R², Newey-West IC, hit rate)
+- Calibration phase status (Phase 1/2/3 with ECE)
+- Conformal coverage table: empirical vs. nominal 80% per benchmark
+- Per-benchmark IC and hit-rate health table
 
 ### v2 (legacy — LassoCV/RidgeCV)
 
@@ -759,7 +964,7 @@ pytest -m integration      # integration smoke tests only
 pytest -m "not integration" # fast unit tests only
 ```
 
-**482 tests across 28 modules, all passing** (as of v4.1):
+**793 tests across 30 modules, all passing** (as of v5.2):
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
@@ -784,13 +989,15 @@ pytest -m "not integration" # fast unit tests only
 | `test_oos_r2.py` | 22 | OOS R²=0 when predicted=historical mean; BHY FDR ≤ 5%; Newey-West finite p |
 | `test_bayesian_ridge.py` | 14 | predict_with_std() finite; temporal isolation; ensemble averaging correct |
 | `test_kelly_sizing.py` | 17 | Kelly formula; max position cap (0.20 v4.1); zero-prediction → 100% sell |
-| `test_pgr_fred_features.py` | 7 | insurance_cpi_mom3m, vmt_yoy, vix present in feature matrix |
+| `test_pgr_fred_features.py` | 7 | ppi_auto_ins_yoy, medical_cpi_yoy, used_car_cpi_yoy, pgr_vs_kie_6m IC presence (v4.5) |
 | `test_regime_breakdown.py` | 10 | 4 quadrants populated; OOS R² in valid range; rolling IC window=24 |
-| `test_cpcv.py` | 17 | C(6,2)=15 splits; 5 paths; train/test disjoint; all obs appear in test sets |
+| `test_cpcv.py` | 17 | C(8,2)=28 splits; 7 paths; train/test disjoint; all obs appear in test sets (v5.0) |
 | `test_black_litterman.py` | 14 | Weights sum to 1; non-negative; ≤KELLY_MAX_POSITION; LW covariance PSD |
 | `test_tlh.py` | 23 | Harvest at −10%; largest loss first; wash-sale +31d; after-tax formula |
 | `test_fracdiff.py` | 13 | d* in [0,0.5]; Pearson corr ≥ 0.90; ADF stationarity; burn-in NaN |
 | `test_benchmark_weights.py` | 11 | Weights sum to 1; IC≤0 → zero weight; IC×HR normalization correct |
+| `test_calibration.py` | 33 | ECE formula, block bootstrap CI, Platt fitting, isotonic two-stage, per-benchmark calibration, ECE ≤ raw on training data (v5.1) |
+| `test_conformal.py` | 46 | Coverage guarantee across distributions, ACI adaptation direction, finite-sample correction, dispatch, error handling, config constants (v5.2) |
 
 Critical invariants enforced by tests:
 
@@ -808,6 +1015,9 @@ Critical invariants enforced by tests:
 - FRED NFCI at feature-matrix time T uses data from T−2 (publication lag, v4.1)
 - EDGAR combined_ratio at time T is NaN until T + EDGAR_FILING_LAG_MONTHS (v4.1)
 - `KELLY_MAX_POSITION = 0.20`; no recommendation may hold > 20% in PGR (v4.1)
+- Calibrated ECE on training data ≤ raw ECE (calibration improves reliability) (v5.1)
+- `split_conformal_interval` empirical coverage ≥ nominal coverage on calibration set (v5.2)
+- ACI with γ=0 produces identical CI width to split conformal (no adaptation) (v5.2)
 
 ---
 
@@ -850,13 +1060,14 @@ pandas>=2.1.0
 numpy>=1.26.0
 scikit-learn>=1.4.0
 matplotlib>=3.8.0
-xgboost>=2.0.0
+xgboost>=2.0.0          # GBT ensemble model (v5.0)
 requests>=2.31.0
 pytest>=8.0.0
 python-dotenv>=1.0.0
 pyarrow>=15.0.0
 scipy>=1.12.0
 statsmodels>=0.14.0
+mapie>=1.3.0             # TimeSeriesRegressor validation path (v5.2)
 skfolio>=0.3.0
 PyPortfolioOpt>=1.5.5
 ```
