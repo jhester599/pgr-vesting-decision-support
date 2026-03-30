@@ -12,23 +12,23 @@
 |-------|-------|
 | Signal | **NEUTRAL (LOW CONFIDENCE)** |
 | Recommended Sell % | **50%** |
-| Predicted 6M Relative Return | +1.75% |
-| P(Outperform, raw) | 54.9% |
-| P(Outperform, calibrated) | 67.3% |
-| 80% Prediction Interval (median) | -31.47% to +37.12% |
-| Mean IC (across benchmarks) | 0.0421 |
-| Mean Hit Rate | 54.4% |
+| Predicted 6M Relative Return | +1.30% |
+| P(Outperform, raw) | 54.2% |
+| P(Outperform, calibrated) | 66.7% |
+| 80% Prediction Interval (median) | -37.84% to +38.18% |
+| Mean IC (across benchmarks) | -0.0056 |
+| Mean Hit Rate | 53.0% |
 
 > **Note:** The sell % recommendation is used only at actual vesting events
 > (January and July).  Monthly reports are monitoring tools, not trade signals.
 >
-> **Calibration:** Phase 2 — Platt scaling active (n=3,270 OOS obs).  ECE = 2.1% [95% CI: 1.1%–4.9%].
+> **Calibration:** Phase 2 — Platt scaling active (n=3,270 OOS obs).  ECE = 1.1% [95% CI: 1.0%–4.5%].
 
 ---
 
 ## Interpretation
 
-Model signal is weak (mean IC below threshold or mixed directional signals).  8/21 (38%) benchmarks favour outperformance.
+Model signal is weak (mean IC below threshold or mixed directional signals).  5/21 (24%) benchmarks favour outperformance.
 
 Recommended action at next vesting event: **DEFAULT 50% SALE** for risk management.
 
@@ -38,27 +38,27 @@ Recommended action at next vesting event: **DEFAULT 50% SALE** for risk manageme
 
 | Benchmark | Description | Predicted Return | CI Lower | CI Upper | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |
 |-----------|-------------|----------------|----------|----------|----|----------|--------|--------|------------|--------|
-| VTI | Total Stock Market | -1.72% | -45.42% | +41.98% | 0.0159 | 49.8% | 45.5% | 60.0% | LOW | NEUTRAL |
-| VOO | S&P 500 | +0.82% | -30.51% | +32.15% | -0.1014 | 42.6% | 52.1% | 67.3% | LOW | NEUTRAL |
-| VGT | Information Technology | -3.10% | -41.15% | +34.96% | 0.0688 | 51.6% | 44.0% | 53.9% | LOW | UNDERPERFORM |
-| VHT | Health Care | +4.54% | -30.37% | +39.45% | 0.1010 | 56.5% | 61.2% | 64.0% | MODERATE | OUTPERFORM |
-| VFH | Financials | +5.58% | -19.76% | +30.91% | -0.0229 | 48.0% | 68.0% | 59.9% | MODERATE | NEUTRAL |
-| VIS | Industrials | +0.81% | -36.37% | +38.00% | -0.0004 | 47.5% | 52.2% | 63.3% | LOW | NEUTRAL |
-| VDE | Energy | +7.61% | -31.76% | +46.98% | -0.0265 | 52.8% | 65.2% | 63.2% | MODERATE | NEUTRAL |
-| VPU | Utilities | +6.07% | -28.97% | +41.10% | 0.1745 | 56.2% | 66.9% | 67.3% | MODERATE | OUTPERFORM |
-| KIE | S&P Insurance | +2.55% | -22.88% | +27.98% | 0.0718 | 50.4% | 59.8% | 65.0% | LOW | OUTPERFORM |
-| VXUS | Total International Stock | -2.96% | -43.13% | +37.21% | -0.0876 | 56.4% | 41.6% | 74.9% | LOW | NEUTRAL |
-| VEA | Developed Markets ex-US | -1.03% | -43.06% | +41.00% | -0.0702 | 57.6% | 47.1% | 72.9% | LOW | NEUTRAL |
-| VWO | Emerging Markets | -0.73% | -37.69% | +36.24% | 0.0185 | 55.9% | 48.0% | 73.4% | LOW | NEUTRAL |
-| VIG | Dividend Appreciation | +1.04% | -30.24% | +32.31% | 0.0737 | 51.4% | 53.0% | 64.8% | LOW | OUTPERFORM |
-| SCHD | US Dividend Equity | +10.61% | -35.13% | +56.36% | -0.1305 | 50.8% | 65.2% | 65.3% | MODERATE | NEUTRAL |
-| BND | Total Bond Market | +6.36% | -24.40% | +37.12% | 0.1156 | 61.0% | 68.5% | 75.3% | MODERATE | OUTPERFORM |
-| BNDX | Total International Bond | +6.92% | -22.93% | +36.78% | 0.1648 | 60.6% | 70.3% | 73.1% | HIGH | OUTPERFORM |
-| VCIT | Intermediate-Term Corporate Bond | +4.48% | -29.06% | +38.02% | 0.0703 | 59.6% | 63.2% | 75.0% | MODERATE | OUTPERFORM |
-| VMBS | Mortgage-Backed Securities | +6.60% | -26.63% | +39.83% | 0.1144 | 62.7% | 69.4% | 75.8% | MODERATE | OUTPERFORM |
-| VNQ | Real Estate | +0.88% | -31.47% | +33.24% | 0.1030 | 53.9% | 52.6% | 61.7% | LOW | NEUTRAL |
-| GLD | Gold Shares | -17.25% | -52.81% | +18.30% | 0.1381 | 57.6% | 12.7% | 61.8% | HIGH | UNDERPERFORM |
-| DBC | DB Commodity Index | -1.43% | -35.02% | +32.16% | 0.0932 | 60.3% | 46.7% | 74.9% | LOW | UNDERPERFORM |
+| VTI | Total Stock Market | -2.64% | -46.05% | +40.77% | 0.0137 | 49.3% | 43.1% | 60.3% | LOW | NEUTRAL |
+| VOO | S&P 500 | +1.88% | -30.40% | +34.15% | -0.1715 | 38.4% | 54.9% | 65.2% | LOW | NEUTRAL |
+| VGT | Information Technology | -4.70% | -43.64% | +34.24% | 0.0078 | 49.6% | 40.9% | 53.7% | LOW | NEUTRAL |
+| VHT | Health Care | +6.24% | -35.86% | +48.33% | 0.0778 | 55.9% | 65.1% | 62.1% | MODERATE | OUTPERFORM |
+| VFH | Financials | +5.30% | -20.18% | +30.78% | -0.0701 | 44.9% | 67.0% | 60.2% | MODERATE | NEUTRAL |
+| VIS | Industrials | +1.51% | -37.88% | +40.89% | -0.0498 | 46.8% | 54.0% | 63.4% | LOW | NEUTRAL |
+| VDE | Energy | +10.09% | -37.84% | +58.01% | -0.0743 | 52.4% | 70.3% | 62.8% | HIGH | NEUTRAL |
+| VPU | Utilities | -0.39% | -37.36% | +36.58% | 0.0988 | 53.8% | 48.8% | 64.9% | LOW | NEUTRAL |
+| KIE | S&P Insurance | +0.65% | -25.94% | +27.25% | 0.0273 | 48.7% | 52.5% | 63.7% | LOW | NEUTRAL |
+| VXUS | Total International Stock | +2.61% | -40.62% | +45.83% | -0.1895 | 55.4% | 57.3% | 73.7% | LOW | NEUTRAL |
+| VEA | Developed Markets ex-US | +0.29% | -44.37% | +44.96% | -0.1527 | 54.9% | 50.8% | 75.3% | LOW | NEUTRAL |
+| VWO | Emerging Markets | +2.85% | -39.53% | +45.22% | -0.0552 | 53.4% | 58.0% | 71.0% | LOW | NEUTRAL |
+| VIG | Dividend Appreciation | +1.35% | -29.90% | +32.61% | 0.0024 | 51.1% | 53.9% | 64.9% | LOW | NEUTRAL |
+| SCHD | US Dividend Equity | +11.39% | -67.02% | +89.80% | -0.1837 | 46.9% | 65.6% | 63.4% | MODERATE | NEUTRAL |
+| BND | Total Bond Market | +7.10% | -24.61% | +38.81% | 0.1300 | 62.0% | 71.2% | 75.8% | HIGH | OUTPERFORM |
+| BNDX | Total International Bond | +7.18% | -20.85% | +35.21% | 0.1311 | 59.0% | 71.5% | 73.4% | HIGH | OUTPERFORM |
+| VCIT | Intermediate-Term Corporate Bond | +5.96% | -22.64% | +34.56% | 0.0700 | 61.7% | 67.9% | 75.4% | MODERATE | OUTPERFORM |
+| VMBS | Mortgage-Backed Securities | +3.78% | -30.62% | +38.18% | 0.0939 | 62.9% | 61.9% | 75.4% | MODERATE | OUTPERFORM |
+| VNQ | Real Estate | -8.01% | -46.49% | +30.48% | 0.0443 | 50.8% | 27.4% | 60.3% | HIGH | NEUTRAL |
+| GLD | Gold Shares | -25.25% | -54.07% | +3.57% | 0.1387 | 55.4% | 4.7% | 58.1% | HIGH | UNDERPERFORM |
+| DBC | DB Commodity Index | +0.13% | -39.45% | +39.70% | -0.0063 | 60.8% | 50.3% | 77.0% | LOW | NEUTRAL |
 
 ---
 

@@ -379,6 +379,7 @@ with marginal coverage guarantees under time-series non-stationarity.
 
 ### v6.0 — Cross-Asset Signals + BLP Aggregation
 **Target:** Day 42 (2026-05-06)
+**Status (2026-03-30):** Feature engineering complete; two of four planned signals shipped.
 
 **Peer data source decision (2026-03-30):** Peer price/dividend history for ALL,
 TRV, CB, HIG is sourced from Alpha Vantage — NOT yfinance.  yfinance scrapes
@@ -400,6 +401,24 @@ runs weekly from now on.
 BLP parameter fitting needs ~12 months of live OOS predictions — delay this
 sub-feature to Week 8+ (2026-05-20) while the rest of v6.0 ships on Day 42.
 
+**SHIPPED (2026-03-30):**
+- **`high_52w`**: `current_price / 52-week_high` (George & Hwang 2004).
+  Implemented in `build_feature_matrix()` as a price-derived feature using
+  `daily_close.rolling(252, min_periods=126).max()`.
+  IC=0.122 (p=0.041, n=281); 91.4% data coverage.
+- **`pgr_vs_peers_6m`**: PGR 6M DRIP return minus equal-weight peer composite
+  (ALL, TRV, CB, HIG) 6M return.  Pre-computed in `build_feature_matrix_from_db()`
+  and injected as a synthetic FRED column.  IC=0.115 (p=0.045, n=304);
+  98.7% data coverage.  Current value: −0.232 (PGR −23% vs peers over 6M).
+- **`pgr_vs_vfh_6m`**: PGR 6M return minus VFH (Vanguard Financials ETF) 6M return.
+  Broadens KIE benchmark to all US financials (banks, insurance, diversified).
+  VFH already in ETF universe — no separate bootstrap needed.
+  IC=0.088 (p=0.165, n=not significant independently); 82.1% data coverage.
+  Current value: −0.073.  Lasso regularization will select or shrink based on
+  marginal contribution in the WFO ensemble.
+- **30 new/updated tests** in `tests/test_v60_features.py`; total: **849 passed, 1 skipped**
+
+**REMAINING:**
 - **Beta-Transformed Linear Pool (BLP)**: Replaces naive equal-weight ensemble
   averaging (Ranjan & Gneiting 2010: any linear pool of calibrated forecasts is
   necessarily uncalibrated); 5-parameter BLP fit via negative log-likelihood
@@ -407,49 +426,38 @@ sub-feature to Week 8+ (2026-05-20) while the rest of v6.0 ships on Day 42.
 - **Residual momentum**: Regress PGR returns on Fama-French 3-factor over trailing
   36M window; cumulate factor-neutral residuals from t-12 to t-1 (Blitz et al. 2011:
   2× alpha of raw momentum, greater consistency)
-- **52-week high proximity**: `current_price / 52-week_high` (George & Hwang 2004:
-  dominates raw momentum; critically, does not reverse at 3–5 years — uniquely
-  valuable at the 6–12M horizon)
-- **Cross-asset signals**: KIE/VFH relative strength (insurance vs. broad financials);
-  PGR vs. peer composite (ALL, TRV, CB, HIG) — data sourced via Alpha Vantage
+- *(Cross-asset signal infrastructure complete; all planned signals shipped)*
 
 ---
 
 ---
 
 ### v6.1 — Monthly Decision Email Notification
-**Target:** Implement alongside or shortly after v6.0
+**Status: COMPLETE (2026-03-30)**
 **Theme:** Automated email delivery of monthly prediction report
 
-Add a GitHub Actions step to `monthly_decision.yml` that emails the
-`recommendation.md` output to the owner immediately after each successful
-monthly run.
+Added `Send monthly decision email` step to `.github/workflows/monthly_decision.yml`
+immediately after the `Commit results` step.
 
-**Implementation notes:**
+**Implementation:**
+- Inline Python (smtplib) — no third-party actions, no new dependencies
+- Subject: `PGR Monthly Decision — {Month YYYY}: {SIGNAL}` (signal parsed from `recommendation.md`)
+- Body: full plain-text content of `results/monthly_decisions/YYYY-MM/recommendation.md`
+- Port 465 → SMTP_SSL; port 587 → STARTTLS (auto-detected from `SMTP_PORT` secret)
+- Skips gracefully if secrets are unconfigured or report file doesn't exist
+- `continue-on-error: true` — email failure never blocks data collection or DB commit
+- Skipped on `dry_run: true` dispatches
 
-- Add a new step at the end of the `monthly-decision` job (after the existing
-  `git push` step) using a standard SMTP action (e.g., `dawidd6/action-send-mail`
-  or a small inline Python script using `smtplib`).
-- The email body should be the rendered content of
-  `results/monthly_decisions/YYYY-MM/recommendation.md`, converted to plain text
-  or HTML.  Subject line format: `PGR Monthly Decision — {MONTH YYYY}: {SIGNAL} ({CONFIDENCE})`.
-- All credentials are stored as **repository secrets** (already configured):
+**Repository secrets required:**
 
 | Secret | Purpose |
 |--------|---------|
 | `SMTP_SERVER` | Outbound SMTP hostname |
-| `SMTP_PORT` | SMTP port (typically 465 for SSL or 587 for STARTTLS) |
+| `SMTP_PORT` | SMTP port (465 for SSL, 587 for STARTTLS) |
 | `SMTP_USERNAME` | SMTP authentication username |
 | `SMTP_PASSWORD` | SMTP authentication password |
 | `PREDICTION_EMAIL_FROM` | Sender address shown in the From header |
 | `PREDICTION_EMAIL_TO` | Recipient address |
-
-- The step should be conditional on the monthly decision actually producing a
-  new report (i.e., skip if the idempotency check determined this month already
-  ran).  Use the existing `recommendation.md` existence check or a job output
-  variable set earlier in the workflow.
-- On send failure, log a warning but do **not** fail the workflow — data
-  collection and DB commit are more critical than the notification.
 
 ---
 

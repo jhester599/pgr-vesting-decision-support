@@ -11,10 +11,10 @@
 
 | Metric | Value | Status | Threshold (Good) |
 |--------|-------|--------|-----------------|
-| OOS R² (Campbell-Thompson) | -0.8472 (-84.72%) | ❌ | ≥ 2.00% |
-| IC (Newey-West HAC) | 0.0779 | ✅ | ≥ 0.07 |
-| IC significance | 0.0117 | ✅ p < 0.05 | p < 0.05 |
-| Hit Rate | 54.6% | ⚠️ | ≥ 55.0% |
+| OOS R² (Campbell-Thompson) | -1.3930 (-139.30%) | ❌ | ≥ 2.00% |
+| IC (Newey-West HAC) | 0.0417 | ⚠️ | ≥ 0.07 |
+| IC significance | 0.1627 | ❌ not sig. | p < 0.05 |
+| Hit Rate | 53.5% | ⚠️ | ≥ 55.0% |
 | CPCV Positive Paths | N/A (Phase 1) | — | ≥ 19/28 |
 
 > **CPCV note (v5.0):** C(8,2)=28 paths are configured but not run inside the monthly
@@ -29,7 +29,7 @@
 | Phase | Description | Status |
 |-------|-------------|--------|
 | Phase 1 | Raw BayesianRidge posterior (uncalibrated) | ⬛ Superseded |
-| Phase 2 | Platt scaling (logistic regression on OOS scores → binary) | ✅ Active (n=3,270  ECE=2.1% [1.1%–4.9%]) |
+| Phase 2 | Platt scaling (logistic regression on OOS scores → binary) | ✅ Active (n=3,270  ECE=1.1% [1.0%–4.5%]) |
 | Phase 3 | Platt → Isotonic (non-parametric; monotone reliability) | ⏳ Activates at n ≥ 500 |
 
 ---
@@ -39,31 +39,31 @@
 **Method:** ACI (Adaptive Conformal Inference — adjusts α_t for distribution shift)  
 **Nominal Coverage:** 80%  
 
-**Mean empirical coverage:** 92.0% (target ≥ 80%) ✅  
+**Mean empirical coverage:** 91.2% (target ≥ 80%) ✅  
 
 | Benchmark | Description | Predicted Return | CI Lower | CI Upper | CI Width | Emp. Coverage | N Cal |
 |-----------|-------------|----------------|----------|----------|----------|---------------|-------|
-| VTI | Total Stock Market | -1.72% | -45.42% | +41.98% | 87.40% | 94.6% ✅ | 222 |
-| VOO | S&P 500 | +0.82% | -30.51% | +32.15% | 62.66% | 84.3% ✅ | 108 |
-| VGT | Information Technology | -3.10% | -41.15% | +34.96% | 76.11% | 95.7% ✅ | 186 |
-| VHT | Health Care | +4.54% | -30.37% | +39.45% | 69.82% | 95.7% ✅ | 186 |
-| VFH | Financials | +5.58% | -19.76% | +30.91% | 50.67% | 83.9% ✅ | 186 |
-| VIS | Industrials | +0.81% | -36.37% | +38.00% | 74.37% | 96.7% ✅ | 180 |
-| VDE | Energy | +7.61% | -31.76% | +46.98% | 78.74% | 87.8% ✅ | 180 |
-| VPU | Utilities | +6.07% | -28.97% | +41.10% | 70.07% | 95.7% ✅ | 186 |
-| KIE | S&P Insurance | +2.55% | -22.88% | +27.98% | 50.87% | 81.5% ✅ | 168 |
-| VXUS | Total International Stock | -2.96% | -43.13% | +37.21% | 80.34% | 95.1% ✅ | 102 |
-| VEA | Developed Markets ex-US | -1.03% | -43.06% | +41.00% | 84.06% | 95.1% ✅ | 144 |
-| VWO | Emerging Markets | -0.73% | -37.69% | +36.24% | 73.93% | 92.5% ✅ | 174 |
-| VIG | Dividend Appreciation | +1.04% | -30.24% | +32.31% | 62.54% | 96.9% ✅ | 162 |
-| SCHD | US Dividend Equity | +10.61% | -35.13% | +56.36% | 91.49% | 91.7% ✅ | 96 |
-| BND | Total Bond Market | +6.36% | -24.40% | +37.12% | 61.52% | 94.7% ✅ | 150 |
-| BNDX | Total International Bond | +6.92% | -22.93% | +36.78% | 59.71% | 94.9% ✅ | 78 |
-| VCIT | Intermediate-Term Corporate Bond | +4.48% | -29.06% | +38.02% | 67.08% | 95.0% ✅ | 120 |
-| VMBS | Mortgage-Backed Securities | +6.60% | -26.63% | +39.83% | 66.46% | 95.0% ✅ | 120 |
-| VNQ | Real Estate | +0.88% | -31.47% | +33.24% | 64.71% | 90.0% ✅ | 180 |
-| GLD | Gold Shares | -17.25% | -52.81% | +18.30% | 71.11% | 86.7% ✅ | 180 |
-| DBC | DB Commodity Index | -1.43% | -35.02% | +32.16% | 67.18% | 88.9% ✅ | 162 |
+| VTI | Total Stock Market | -2.64% | -46.05% | +40.77% | 86.81% | 89.6% ✅ | 222 |
+| VOO | S&P 500 | +1.88% | -30.40% | +34.15% | 64.55% | 88.9% ✅ | 108 |
+| VGT | Information Technology | -4.70% | -43.64% | +34.24% | 77.87% | 95.7% ✅ | 186 |
+| VHT | Health Care | +6.24% | -35.86% | +48.33% | 84.19% | 95.7% ✅ | 186 |
+| VFH | Financials | +5.30% | -20.18% | +30.78% | 50.96% | 75.8% ⚠️ | 186 |
+| VIS | Industrials | +1.51% | -37.88% | +40.89% | 78.77% | 91.7% ✅ | 180 |
+| VDE | Energy | +10.09% | -37.84% | +58.01% | 95.85% | 86.7% ✅ | 180 |
+| VPU | Utilities | -0.39% | -37.36% | +36.58% | 73.94% | 93.0% ✅ | 186 |
+| KIE | S&P Insurance | +0.65% | -25.94% | +27.25% | 53.19% | 78.0% ⚠️ | 168 |
+| VXUS | Total International Stock | +2.61% | -40.62% | +45.83% | 86.45% | 99.0% ✅ | 102 |
+| VEA | Developed Markets ex-US | +0.29% | -44.37% | +44.96% | 89.33% | 99.3% ✅ | 144 |
+| VWO | Emerging Markets | +2.85% | -39.53% | +45.22% | 84.76% | 92.5% ✅ | 174 |
+| VIG | Dividend Appreciation | +1.35% | -29.90% | +32.61% | 62.51% | 96.9% ✅ | 162 |
+| SCHD | US Dividend Equity | +11.39% | -67.02% | +89.80% | 156.81% | 94.8% ✅ | 96 |
+| BND | Total Bond Market | +7.10% | -24.61% | +38.81% | 63.42% | 96.7% ✅ | 150 |
+| BNDX | Total International Bond | +7.18% | -20.85% | +35.21% | 56.05% | 89.7% ✅ | 78 |
+| VCIT | Intermediate-Term Corporate Bond | +5.96% | -22.64% | +34.56% | 57.19% | 92.5% ✅ | 120 |
+| VMBS | Mortgage-Backed Securities | +3.78% | -30.62% | +38.18% | 68.80% | 97.5% ✅ | 120 |
+| VNQ | Real Estate | -8.01% | -46.49% | +30.48% | 76.97% | 87.8% ✅ | 180 |
+| GLD | Gold Shares | -25.25% | -54.07% | +3.57% | 57.64% | 77.8% ⚠️ | 180 |
+| DBC | DB Commodity Index | +0.13% | -39.45% | +39.70% | 79.14% | 95.1% ✅ | 162 |
 
 > **Interpretation:** The CI width reflects model uncertainty — wider intervals indicate
 > larger historical prediction errors.  ACI dynamically adjusts coverage when errors
@@ -75,30 +75,30 @@
 
 | Benchmark | Description | N OOS | IC | IC | Hit Rate | HR |
 |-----------|-------------|-------|----|----|-----------|----|
-| BND | Total Bond Market | 150 | 0.1248 | ✅ | 63.3% | ✅ |
-| BNDX | Total International Bond | 78 | 0.1756 | ✅ | 59.0% | ✅ |
-| DBC | DB Commodity Index | 162 | 0.1637 | ✅ | 63.6% | ✅ |
-| GLD | Gold Shares | 180 | 0.2296 | ✅ | 61.7% | ✅ |
-| KIE | S&P Insurance | 168 | 0.1437 | ✅ | 50.0% | ❌ |
-| SCHD | US Dividend Equity | 96 | -0.1625 | ❌ | 50.0% | ❌ |
-| VCIT | Intermediate-Term Corporate Bond | 120 | 0.0713 | ✅ | 61.7% | ✅ |
-| VDE | Energy | 180 | -0.0384 | ❌ | 49.4% | ❌ |
-| VEA | Developed Markets ex-US | 144 | -0.1571 | ❌ | 61.1% | ✅ |
-| VFH | Financials | 186 | -0.1297 | ❌ | 44.1% | ❌ |
-| VGT | Information Technology | 186 | 0.0180 | ❌ | 53.2% | ⚠️ |
-| VHT | Health Care | 186 | 0.0009 | ❌ | 52.7% | ⚠️ |
-| VIG | Dividend Appreciation | 162 | 0.0489 | ⚠️ | 51.2% | ❌ |
-| VIS | Industrials | 180 | -0.0298 | ❌ | 47.8% | ❌ |
-| VMBS | Mortgage-Backed Securities | 120 | 0.1244 | ✅ | 61.7% | ✅ |
-| VNQ | Real Estate | 180 | 0.1147 | ✅ | 57.2% | ✅ |
-| VOO | S&P 500 | 108 | -0.2127 | ❌ | 34.3% | ❌ |
-| VPU | Utilities | 186 | 0.1693 | ✅ | 57.0% | ✅ |
-| VTI | Total Stock Market | 222 | -0.0078 | ❌ | 50.0% | ❌ |
-| VWO | Emerging Markets | 174 | -0.0387 | ❌ | 58.6% | ✅ |
-| VXUS | Total International Stock | 102 | -0.2023 | ❌ | 66.7% | ✅ |
+| BND | Total Bond Market | 150 | 0.1485 | ✅ | 65.3% | ✅ |
+| BNDX | Total International Bond | 78 | 0.1106 | ✅ | 52.6% | ⚠️ |
+| DBC | DB Commodity Index | 162 | -0.0315 | ❌ | 64.2% | ✅ |
+| GLD | Gold Shares | 180 | 0.2424 | ✅ | 58.9% | ✅ |
+| KIE | S&P Insurance | 168 | 0.0759 | ✅ | 50.0% | ❌ |
+| SCHD | US Dividend Equity | 96 | -0.2241 | ❌ | 39.6% | ❌ |
+| VCIT | Intermediate-Term Corporate Bond | 120 | 0.0838 | ✅ | 60.8% | ✅ |
+| VDE | Energy | 180 | -0.1271 | ❌ | 48.9% | ❌ |
+| VEA | Developed Markets ex-US | 144 | -0.2149 | ❌ | 56.9% | ✅ |
+| VFH | Financials | 186 | -0.1351 | ❌ | 39.8% | ❌ |
+| VGT | Information Technology | 186 | -0.0280 | ❌ | 51.1% | ❌ |
+| VHT | Health Care | 186 | 0.0159 | ❌ | 53.8% | ⚠️ |
+| VIG | Dividend Appreciation | 162 | 0.0422 | ⚠️ | 53.7% | ⚠️ |
+| VIS | Industrials | 180 | 0.0171 | ❌ | 51.1% | ❌ |
+| VMBS | Mortgage-Backed Securities | 120 | 0.1226 | ✅ | 62.5% | ✅ |
+| VNQ | Real Estate | 180 | 0.0928 | ✅ | 55.6% | ✅ |
+| VOO | S&P 500 | 108 | -0.2045 | ❌ | 32.4% | ❌ |
+| VPU | Utilities | 186 | 0.0682 | ⚠️ | 51.1% | ❌ |
+| VTI | Total Stock Market | 222 | 0.0488 | ⚠️ | 56.3% | ✅ |
+| VWO | Emerging Markets | 174 | -0.0865 | ❌ | 54.6% | ⚠️ |
+| VXUS | Total International Stock | 102 | -0.2808 | ❌ | 60.8% | ✅ |
 
-**IC summary:** 9 ✅  1 ⚠️  11 ❌  (of 21 benchmarks)  
-**Hit rate ✅:** 11/21 benchmarks above 55% threshold  
+**IC summary:** 7 ✅  3 ⚠️  11 ❌  (of 21 benchmarks)  
+**Hit rate ✅:** 9/21 benchmarks above 55% threshold  
 
 ---
 

@@ -25,6 +25,9 @@ Feature groups:
     - combined_ratio_ttm, pif_growth_yoy, gainshare_est
     Dropped entirely if fewer than WFO_MIN_GAINSHARE_OBS non-NaN rows.
 
+  Price-derived (v6.0):
+    - high_52w              (current price / 52-week high; George & Hwang 2004)
+
   FRED macro features (v3.0+, from fred_macro_monthly table):
     - yield_slope           (T10Y2Y — 10Y-2Y spread)
     - yield_curvature       (2×GS5 − GS2 − GS10)
@@ -37,6 +40,12 @@ Feature groups:
     - insurance_cpi_mom3m   (3-month momentum of motor vehicle insurance CPI)
     - vmt_yoy               (year-over-year change in vehicle miles traveled)
     Dropped silently if FRED data is absent (backward-compatible with pre-v3.0 runs).
+
+  Synthetic FRED-injected features (v6.0, computed from DB prices):
+    - pgr_vs_peers_6m       (PGR 6M DRIP return minus equal-weight peer composite
+                             return; peers = ALL, TRV, CB, HIG)
+    - pgr_vs_vfh_6m         (PGR 6M return minus VFH broad-financials ETF 6M return;
+                             wider lens than KIE — includes banks, diversified financials)
 
 """
 
@@ -186,6 +195,21 @@ def build_feature_matrix(
         df[col] = rolling_vol.reindex(monthly_dates, method="ffill")
 
     # ------------------------------------------------------------------
+    # v6.0 — 52-week high ratio (George & Hwang 2004)
+    # ------------------------------------------------------------------
+    # Ratio of the current month-end close to the rolling 252-trading-day
+    # high (inclusive of the current day).  A value near 1.0 means the
+    # stock is trading at the top of its 52-week range; anchoring theory
+    # predicts that investors are more reluctant to push prices through
+    # round-number / 52-week-high ceilings, creating a predictable
+    # momentum signal.  min_periods=126 requires at least 6 months of
+    # daily history before publishing a non-NaN value.
+    rolling_52w_high = daily_close.rolling(window=252, min_periods=126).max()
+    df["high_52w"] = (
+        monthly_close / rolling_52w_high.reindex(monthly_dates, method="ffill")
+    )
+
+    # ------------------------------------------------------------------
     # Technical indicators (Alpha Vantage)
     # ------------------------------------------------------------------
     if technical_indicators is not None and not technical_indicators.empty:
@@ -332,6 +356,25 @@ def build_feature_matrix(
         if "pgr_vs_kie_6m" in fred_aligned.columns:
             df["pgr_vs_kie_6m"] = fred_aligned["pgr_vs_kie_6m"]
 
+        # pgr_vs_peers_6m: PGR trailing 6M return minus equal-weight peer composite
+        # (ALL, TRV, CB, HIG) 6M return.  Captures PGR's idiosyncratic alpha vs.
+        # its direct insurance-line competitors — a tighter peer group than KIE
+        # (which includes diversified financials and non-P&C lines).
+        # Pre-computed in build_feature_matrix_from_db() and injected as a synthetic
+        # FRED column so it flows through the same lag-guarded pipeline.
+        if "pgr_vs_peers_6m" in fred_aligned.columns:
+            df["pgr_vs_peers_6m"] = fred_aligned["pgr_vs_peers_6m"]
+
+        # pgr_vs_vfh_6m: PGR trailing 6M return minus VFH (Vanguard Financials ETF)
+        # 6M return.  KIE benchmarks PGR against the pure insurance sub-sector;
+        # VFH broadens the lens to all US financials (banks, insurance, diversified).
+        # The spread captures whether PGR is gaining or losing vs. the wider financial
+        # sector, independent of pure insurance-sector dynamics.
+        # Pre-computed in build_feature_matrix_from_db() and injected as a synthetic
+        # FRED column so it flows through the same lag-guarded pipeline.
+        if "pgr_vs_vfh_6m" in fred_aligned.columns:
+            df["pgr_vs_vfh_6m"] = fred_aligned["pgr_vs_vfh_6m"]
+
     # ------------------------------------------------------------------
     # Target variable: 6-month forward DRIP total return
     # ------------------------------------------------------------------
@@ -457,6 +500,62 @@ def build_feature_matrix_from_db(
                 fred_raw = fred_raw.join(pgr_vs_kie, how="left")
     except Exception:  # noqa: BLE001
         pass  # KIE not yet in DB — feature silently absent until data accumulates
+
+    # v6.0: pgr_vs_peers_6m — PGR trailing 6M return minus equal-weight composite
+    # of the four direct P&C insurance peers (ALL, TRV, CB, HIG).
+    # Requires peer prices bootstrapped via scripts/peer_fetch.py; silently absent
+    # if the peer tables are not yet populated.
+    try:
+        peer_price_frames = [
+            db_client.get_prices(conn, t) for t in config.PEER_TICKER_UNIVERSE
+        ]
+        available_peer_frames = [df for df in peer_price_frames if not df.empty]
+        if available_peer_frames and not prices.empty:
+            def _m_close(price_df: pd.DataFrame) -> pd.Series:
+                """Resample daily prices to month-end close."""
+                c = price_df["close"].copy()
+                c.index = pd.to_datetime(c.index)
+                return c.resample("ME").last()
+
+            pgr_m_v60 = _m_close(prices)
+            peer_monthly_df = pd.concat(
+                [_m_close(df) for df in available_peer_frames], axis=1
+            )
+            peer_composite_6m = peer_monthly_df.pct_change(6).mean(axis=1)
+            pgr_6m_v60 = pgr_m_v60.pct_change(6)
+            pgr_vs_peers = (pgr_6m_v60 - peer_composite_6m).rename("pgr_vs_peers_6m")
+            pgr_vs_peers.index = pgr_vs_peers.index + pd.offsets.MonthEnd(0)
+            if fred_raw.empty:
+                fred_raw = pgr_vs_peers.to_frame()
+            else:
+                fred_raw = fred_raw.join(pgr_vs_peers, how="left")
+    except Exception:  # noqa: BLE001
+        pass  # Peer prices not yet in DB — feature silently absent until bootstrapped
+
+    # v6.0: pgr_vs_vfh_6m — PGR trailing 6M return minus VFH (Vanguard Financials ETF)
+    # 6M return.  VFH is fetched weekly as part of the standard ETF benchmark universe,
+    # so no separate bootstrap is needed — data is always current.
+    try:
+        vfh_prices_raw = db_client.get_prices(conn, "VFH")
+        if not vfh_prices_raw.empty and not prices.empty:
+            def _mc_vfh(price_df: pd.DataFrame) -> pd.Series:
+                """Resample daily prices to month-end close."""
+                c = price_df["close"].copy()
+                c.index = pd.to_datetime(c.index)
+                return c.resample("ME").last()
+
+            pgr_m_vfh = _mc_vfh(prices)
+            vfh_m = _mc_vfh(vfh_prices_raw)
+            pgr_6m_vfh = pgr_m_vfh.pct_change(6)
+            vfh_6m = vfh_m.pct_change(6)
+            pgr_vs_vfh = (pgr_6m_vfh - vfh_6m).rename("pgr_vs_vfh_6m")
+            pgr_vs_vfh.index = pgr_vs_vfh.index + pd.offsets.MonthEnd(0)
+            if fred_raw.empty:
+                fred_raw = pgr_vs_vfh.to_frame()
+            else:
+                fred_raw = fred_raw.join(pgr_vs_vfh, how="left")
+    except Exception:  # noqa: BLE001
+        pass  # VFH not yet in DB — feature silently absent until data accumulates
 
     fred_macro = fred_raw if not fred_raw.empty else None
 
