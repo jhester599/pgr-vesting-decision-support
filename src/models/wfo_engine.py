@@ -51,6 +51,7 @@ import config
 from src.models.regularized_models import (
     build_bayesian_ridge_pipeline,
     build_elasticnet_pipeline,
+    build_gbt_pipeline,
     build_lasso_pipeline,
     build_ridge_pipeline,
     get_feature_importances,
@@ -135,7 +136,7 @@ class WFOResult:
 def run_wfo(
     X: pd.DataFrame,
     y: pd.Series,
-    model_type: Literal["lasso", "ridge", "elasticnet", "bayesian_ridge"] = "elasticnet",
+    model_type: Literal["lasso", "ridge", "elasticnet", "bayesian_ridge", "gbt"] = "elasticnet",
     target_horizon_months: int = 6,
     benchmark: str = "",
     purge_buffer: int | None = None,
@@ -247,15 +248,24 @@ def run_wfo(
             pipeline = build_lasso_pipeline()
         elif model_type == "bayesian_ridge":
             pipeline = build_bayesian_ridge_pipeline()
+        elif model_type == "gbt":
+            pipeline = build_gbt_pipeline()
         else:
             pipeline = build_ridge_pipeline()
         pipeline.fit(X_train, y_train)
         y_hat = pipeline.predict(X_test)
 
         model_step = pipeline.named_steps["model"]
-        optimal_alpha = float(
-            model_step.alpha_ if hasattr(model_step, "alpha_") else model_step.alpha
-        )
+        # GBT's .alpha attribute is the Huber loss quantile (default 0.9), not a
+        # regularisation strength.  Store 0.0 as a sentinel for non-linear models.
+        if model_type == "gbt":
+            optimal_alpha = 0.0
+        else:
+            optimal_alpha = float(
+                getattr(model_step, "alpha_", None)
+                or getattr(model_step, "alpha", 0.0)
+                or 0.0
+            )
 
         importances = get_feature_importances(pipeline, feature_names)
 
@@ -283,7 +293,7 @@ def predict_current(
     y_full: pd.Series,
     X_current: pd.DataFrame,
     wfo_result: WFOResult,
-    model_type: Literal["lasso", "ridge", "elasticnet", "bayesian_ridge"] = "elasticnet",
+    model_type: Literal["lasso", "ridge", "elasticnet", "bayesian_ridge", "gbt"] = "elasticnet",
     train_window_months: int | None = None,
 ) -> dict:
     """
@@ -345,6 +355,8 @@ def predict_current(
         pipeline = build_lasso_pipeline()
     elif model_type == "bayesian_ridge":
         pipeline = build_bayesian_ridge_pipeline()
+    elif model_type == "gbt":
+        pipeline = build_gbt_pipeline()
     else:
         pipeline = build_ridge_pipeline()
     pipeline.fit(X_recent, y_recent)
@@ -409,7 +421,7 @@ class CPCVResult:
 def run_cpcv(
     X: pd.DataFrame,
     y: pd.Series,
-    model_type: Literal["lasso", "ridge", "elasticnet", "bayesian_ridge"] = "elasticnet",
+    model_type: Literal["lasso", "ridge", "elasticnet", "bayesian_ridge", "gbt"] = "elasticnet",
     target_horizon_months: int = 6,
     n_folds: int | None = None,
     n_test_folds: int | None = None,
@@ -497,6 +509,8 @@ def run_cpcv(
             pipeline = build_lasso_pipeline()
         elif model_type == "bayesian_ridge":
             pipeline = build_bayesian_ridge_pipeline()
+        elif model_type == "gbt":
+            pipeline = build_gbt_pipeline()
         else:
             pipeline = build_ridge_pipeline()
         pipeline.fit(X_train, y_train)

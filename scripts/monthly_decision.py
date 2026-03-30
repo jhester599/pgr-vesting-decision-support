@@ -66,6 +66,37 @@ from src.reporting.backtest_report import (
 
 
 # ---------------------------------------------------------------------------
+# ETF short descriptions (shown in per-benchmark tables)
+# Stripped of provider names ("Vanguard", "SPDR", "iShares") and generic
+# suffixes ("Fund", "ETF") per reporting guidelines.
+# ---------------------------------------------------------------------------
+
+_ETF_DESCRIPTIONS: dict[str, str] = {
+    "VTI":  "Total Stock Market",
+    "VOO":  "S&P 500",
+    "VGT":  "Information Technology",
+    "VHT":  "Health Care",
+    "VFH":  "Financials",
+    "VIS":  "Industrials",
+    "VDE":  "Energy",
+    "VPU":  "Utilities",
+    "KIE":  "S&P Insurance",
+    "VXUS": "Total International Stock",
+    "VEA":  "Developed Markets ex-US",
+    "VWO":  "Emerging Markets",
+    "VIG":  "Dividend Appreciation",
+    "SCHD": "US Dividend Equity",
+    "BND":  "Total Bond Market",
+    "BNDX": "Total International Bond",
+    "VCIT": "Intermediate-Term Corporate Bond",
+    "VMBS": "Mortgage-Backed Securities",
+    "VNQ":  "Real Estate",
+    "GLD":  "Gold Shares",
+    "DBC":  "DB Commodity Index",
+}
+
+
+# ---------------------------------------------------------------------------
 # Business-day helpers
 # ---------------------------------------------------------------------------
 
@@ -296,7 +327,7 @@ def _write_recommendation_md(
         "",
         f"**As-of Date:** {as_of}  ",
         f"**Run Date:** {run_date}  ",
-        f"**Model Version:** v4.3 (Ensemble WFO, 20 ETF benchmarks, BayesianRidge confidence)  ",
+        f"**Model Version:** v5.0 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, inverse-variance weighting, C(8,2)=28 CPCV paths)  ",
         "",
         "---",
         "",
@@ -367,17 +398,18 @@ def _write_recommendation_md(
 
     if has_confidence:
         lines += [
-            "| Benchmark | Predicted Return | IC | Hit Rate | P(Outperform) | Confidence | Signal |",
-            "|-----------|----------------|----|----------|---------------|------------|--------|",
+            "| Benchmark | Description | Predicted Return | IC | Hit Rate | P(Outperform) | Confidence | Signal |",
+            "|-----------|-------------|----------------|----|----------|---------------|------------|--------|",
         ]
     else:
         lines += [
-            "| Benchmark | Predicted Return | IC | Hit Rate | Signal |",
-            "|-----------|----------------|----|----------|--------|",
+            "| Benchmark | Description | Predicted Return | IC | Hit Rate | Signal |",
+            "|-----------|-------------|----------------|----|----------|--------|",
         ]
 
     if not signals.empty:
         for ticker, row in signals.iterrows():
+            desc = _ETF_DESCRIPTIONS.get(str(ticker), str(ticker))
             pred = f"{row['predicted_relative_return']:+.2%}" if not pd.isna(row.get("predicted_relative_return")) else "n/a"
             ic_val = f"{row['ic']:.4f}" if not pd.isna(row.get("ic")) else "n/a"
             hr_val = f"{row['hit_rate']:.1%}" if not pd.isna(row.get("hit_rate")) else "n/a"
@@ -385,9 +417,9 @@ def _write_recommendation_md(
             if has_confidence:
                 prob = f"{row['prob_outperform']:.1%}" if not pd.isna(row.get("prob_outperform")) else "n/a"
                 tier = row.get("confidence_tier", "n/a")
-                lines.append(f"| {ticker} | {pred} | {ic_val} | {hr_val} | {prob} | {tier} | {sig} |")
+                lines.append(f"| {ticker} | {desc} | {pred} | {ic_val} | {hr_val} | {prob} | {tier} | {sig} |")
             else:
-                lines.append(f"| {ticker} | {pred} | {ic_val} | {hr_val} | {sig} |")
+                lines.append(f"| {ticker} | {desc} | {pred} | {ic_val} | {hr_val} | {sig} |")
 
     lines += [
         "",
@@ -611,12 +643,12 @@ def _write_diagnostic_report(
         f"| IC (Newey-West HAC) | {nw_ic:.4f} | {ic_flag_agg} | ≥ 0.07 |",
         f"| IC significance | {nw_pval:.4f} | {sig_marker} | p < 0.05 |",
         f"| Hit Rate | {agg_hit:.1%} | {hr_flag_agg} | ≥ 55.0% |",
-        f"| CPCV Positive Paths | N/A (Phase 1) | — | ≥ {config.DIAG_CPCV_MIN_POSITIVE_PATHS}/15 |",
+        f"| CPCV Positive Paths | N/A (Phase 1) | — | ≥ {config.DIAG_CPCV_MIN_POSITIVE_PATHS}/28 |",
         "",
-        "> **CPCV note:** Combinatorial Purged CV path analysis is deferred to v5.0.",
-        "> Running CPCV inside the monthly workflow would require ~15× additional model fits.",
-        "> The DIAG_CPCV_MIN_POSITIVE_PATHS threshold (≥ 10/15) is defined in `config.py`",
-        "> for use once CPCV is wired into the monthly pipeline.",
+        "> **CPCV note (v5.0):** C(8,2)=28 paths are configured but not run inside the monthly",
+        "> workflow — 4 models × 28 splits × 20 benchmarks = 2,240 fits per run.",
+        "> CPCV diagnostics are available on demand via `run_cpcv()` in `wfo_engine.py`.",
+        f"> The DIAG_CPCV_MIN_POSITIVE_PATHS threshold (≥ {config.DIAG_CPCV_MIN_POSITIVE_PATHS}/28) is defined in `config.py`.",
         "",
         "---",
         "",
@@ -632,13 +664,14 @@ def _write_diagnostic_report(
         "",
         "## Per-Benchmark Health",
         "",
-        f"| Benchmark | N OOS | IC | IC | Hit Rate | HR |",
-        f"|-----------|-------|----|----|-----------|----|",
+        "| Benchmark | Description | N OOS | IC | IC | Hit Rate | HR |",
+        "|-----------|-------------|-------|----|----|-----------|----|",
     ]
 
     for row in sorted(per_benchmark_rows, key=lambda r: r["benchmark"]):
+        desc = _ETF_DESCRIPTIONS.get(row["benchmark"], row["benchmark"])
         lines.append(
-            f"| {row['benchmark']} | {row['n_obs']} "
+            f"| {row['benchmark']} | {desc} | {row['n_obs']} "
             f"| {row['ic']:.4f} | {row['ic_flag']} "
             f"| {row['hit_rate']:.1%} | {row['hr_flag']} |"
         )
@@ -664,7 +697,7 @@ def _write_diagnostic_report(
         "| OOS R² | > 2% | 0.5–2% | < 0% | Campbell & Thompson (2008) |",
         "| Mean IC | > 0.07 | 0.03–0.07 | < 0.03 | Harvey et al. (2016) |",
         "| Hit Rate | > 55% | 52–55% | < 52% | Industry consensus |",
-        "| CPCV +paths | ≥ 13/15 | 10–12/15 | < 10/15 | López de Prado (2018) |",
+        "| CPCV +paths | ≥ 19/28 | 14–18/28 | < 14/28 | López de Prado (2018) |",
         "| PBO | < 15% | 15–40% | > 40% | Bailey et al. (2014) |",
         "",
         "---",
