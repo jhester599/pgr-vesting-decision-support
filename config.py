@@ -362,6 +362,23 @@ EDGAR_FILING_LAG_MONTHS: int = 2
 # At n < CALIBRATION_MIN_OBS_PLATT the raw BayesianRidge posterior is returned.
 # At n >= CALIBRATION_MIN_OBS_ISOTONIC the two-stage Platt → Isotonic model
 # is used, which is non-parametric and benefits from larger samples.
+# ---------------------------------------------------------------------------
+# v5.2 — Conformal Prediction Intervals
+# ---------------------------------------------------------------------------
+# Nominal coverage for the prediction interval shown in recommendation.md.
+# 0.80 = 80% CI; interpretation: "over any 5 predictions, at least 4 will
+# contain the true 6M relative return."
+CONFORMAL_COVERAGE: float = 0.80
+# Method: "aci" (Adaptive Conformal Inference; handles distribution shift)
+# or "split" (standard split conformal; simpler, slightly narrower intervals).
+CONFORMAL_METHOD: str = "aci"
+# ACI step size γ — controls how fast α_t adapts to coverage misses.
+# 0.05 is the default from Gibbs & Candès (2021); smaller = slower adaptation.
+CONFORMAL_ACI_GAMMA: float = 0.05
+
+# ---------------------------------------------------------------------------
+# v5.1 — Probability Calibration
+# ---------------------------------------------------------------------------
 CALIBRATION_MIN_OBS_PLATT: int = 20     # Activate Platt scaling above this n
 # Isotonic requires far more per-benchmark data to avoid plateau collapse on
 # out-of-sample inputs.  With n=78–260 per benchmark (2026), the step function
