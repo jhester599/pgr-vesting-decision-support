@@ -380,10 +380,25 @@ with marginal coverage guarantees under time-series non-stationarity.
 ### v6.0 — Cross-Asset Signals + BLP Aggregation
 **Target:** Day 42 (2026-05-06)
 
-Peer price history (ALL, TRV, CB, HIG) is available immediately via yfinance;
-no accumulation wait. BLP parameter fitting needs ~12 months of live OOS
-predictions — delay this sub-feature to Week 8+ (2026-05-20) while the rest
-of v6.0 ships on Day 42.
+**Peer data source decision (2026-03-30):** Peer price/dividend history for ALL,
+TRV, CB, HIG is sourced from Alpha Vantage — NOT yfinance.  yfinance scrapes
+Yahoo Finance's undocumented internal endpoints, has no API contract, and has
+broken silently multiple times.  Using AV keeps the entire price/dividend stack
+on a single source with consistent unadjusted price handling, known call budget,
+and no new dependencies.
+
+**AV budget solution:** Peer tickers (8 calls/run) are fetched on a dedicated
+Sunday 04:00 UTC cron — exactly 30 hours after the main Friday 22:00 UTC
+weekly_fetch.py cron.  Each day stays within the 25 calls/day free-tier limit:
+- Friday 22:00 UTC: `weekly_fetch.py` — 24 AV calls (PGR + 22 ETFs)
+- Sunday 04:00 UTC: `peer_data_fetch.py` — 8 AV calls (ALL, TRV, CB, HIG prices + dividends)
+
+**Data already flowing (2026-03-30):** `peer_bootstrap.yml` ran manually; ALL,
+TRV, CB, HIG full price and dividend history seeded into the DB.  `peer_data_fetch.yml`
+runs weekly from now on.
+
+BLP parameter fitting needs ~12 months of live OOS predictions — delay this
+sub-feature to Week 8+ (2026-05-20) while the rest of v6.0 ships on Day 42.
 
 - **Beta-Transformed Linear Pool (BLP)**: Replaces naive equal-weight ensemble
   averaging (Ranjan & Gneiting 2010: any linear pool of calibrated forecasts is
@@ -396,7 +411,7 @@ of v6.0 ships on Day 42.
   dominates raw momentum; critically, does not reverse at 3–5 years — uniquely
   valuable at the 6–12M horizon)
 - **Cross-asset signals**: KIE/VFH relative strength (insurance vs. broad financials);
-  PGR vs. peer composite (ALL, TRV, CB, HIG) via yfinance
+  PGR vs. peer composite (ALL, TRV, CB, HIG) — data sourced via Alpha Vantage
 
 ---
 
@@ -478,7 +493,8 @@ naturally and the advisory will stop appearing.
 - **Never finalize a module without a passing pytest suite** (CLAUDE.md mandate)
 - **No K-Fold cross-validation** — `TimeSeriesSplit` with embargo + purge buffer only
 - **No StandardScaler across full dataset** — scaler isolated within each WFO fold Pipeline
-- **No yfinance for fundamentals** — SEC EDGAR XBRL and FRED REST APIs only
+- **No yfinance** — not for fundamentals, ratios, or price data; AV is the canonical price
+  source for all tickers including v6.0 insurance peers (see v6.0 peer data source decision)
 - **Python 3.10+**, strict PEP 8, full type hinting
 - **Approved libraries:** pandas, numpy, scikit-learn, matplotlib, xgboost, requests,
   statsmodels (v3.0+), skfolio/PyPortfolioOpt (v4.0+)

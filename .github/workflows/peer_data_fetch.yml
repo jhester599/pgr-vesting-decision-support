@@ -1,0 +1,93 @@
+name: Peer Weekly Data Fetch (ALL, TRV, CB, HIG)
+
+# Weekly Sunday 04:00 UTC cron for insurance-peer price and dividend updates.
+#
+# Scheduled 30 hours after the main weekly_data_fetch.yml cron (Friday 22:00 UTC)
+# so both runs operate on different calendar days and never compete for the same
+# 25 calls/day Alpha Vantage free-tier budget:
+#
+#   Friday  22:00 UTC — weekly_data_fetch.yml  — 24 AV calls (PGR + 22 ETFs)
+#   Sunday  04:00 UTC — peer_data_fetch.yml    —  8 AV calls (ALL, TRV, CB, HIG)
+#
+# The 30-hour gap also absorbs potential GitHub Actions scheduler lag (typically
+# 0–60 minutes on the free tier) without any risk of overlap.
+#
+# AV budget per run: 8 calls (4 prices + 4 dividends); 17 calls of margin.
+# No EDGAR, no FRED — those are covered by the Friday run.
+
+on:
+  schedule:
+    # Sunday 04:00 UTC = 30 hours after Friday 22:00 UTC main fetch
+    - cron: '0 4 * * 0'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run — log actions, skip HTTP calls and DB writes'
+        required: false
+        default: 'false'
+
+jobs:
+  peer-fetch:
+    name: Fetch peer weekly data (8 AV calls)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required for git push back to the repo
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run peer fetch
+        env:
+          AV_API_KEY: ${{ secrets.AV_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: |
+          DRY_FLAG=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_FLAG="--dry-run"
+          fi
+          python scripts/peer_fetch.py $DRY_FLAG
+
+      - name: Commit updated database
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/pgr_financials.db
+          git diff --staged --quiet || git commit -m \
+            "chore: peer data update $(date -u +%Y-%m-%d) [skip ci]"
+          git push
+
+      - name: Verify peer rows updated
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          python - <<'EOF'
+          import sqlite3, sys
+          conn = sqlite3.connect("data/pgr_financials.db")
+          peers = ["ALL", "TRV", "CB", "HIG"]
+          all_ok = True
+          for ticker in peers:
+              n = conn.execute(
+                  "SELECT COUNT(*) FROM daily_prices WHERE ticker=?", (ticker,)
+              ).fetchone()[0]
+              latest = conn.execute(
+                  "SELECT MAX(price_date) FROM daily_prices WHERE ticker=?", (ticker,)
+              ).fetchone()[0]
+              status = "✅" if n > 0 else "❌"
+              print(f"  {ticker}: {n} price rows, latest {latest} {status}")
+              if n == 0:
+                  print(f"ERROR: {ticker} has no price rows.")
+                  all_ok = False
+          if not all_ok:
+              sys.exit(1)
+          print("Peer data verification passed.")
+          EOF

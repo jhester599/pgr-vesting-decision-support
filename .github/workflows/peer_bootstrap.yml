@@ -1,0 +1,112 @@
+name: Peer Data Bootstrap (ALL, TRV, CB, HIG)
+
+# One-time manual bootstrap of full price and dividend history for the four
+# PGR insurance-peer tickers used in v6.0 cross-asset features.
+#
+# AV budget: 8 calls (4 prices + 4 dividends) — well within the 25/day limit.
+# Run this once after the PR is merged to seed the DB.  Ongoing updates are
+# handled by the weekly peer_data_fetch.yml cron (Sundays 04:00 UTC).
+#
+# Why NOT yfinance:
+#   Alpha Vantage is the canonical price/dividend source for this project.
+#   yfinance has no API contract, scrapes Yahoo Finance's undocumented endpoints,
+#   and has a history of silent breaks.  Keeping all four peers on AV ensures
+#   consistent split/dividend handling and a known, auditable call budget.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run — log actions, skip HTTP calls and DB writes'
+        required: false
+        default: 'false'
+
+jobs:
+  peer-bootstrap:
+    name: Bootstrap peer price + dividend history (8 AV calls)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required for git push back to the repo
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run peer bootstrap fetch
+        env:
+          AV_API_KEY: ${{ secrets.AV_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: |
+          DRY_FLAG=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_FLAG="--dry-run"
+          fi
+          python scripts/peer_fetch.py $DRY_FLAG
+
+      - name: Commit updated database
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/pgr_financials.db
+          git diff --staged --quiet || git commit -m \
+            "chore: peer bootstrap — ALL TRV CB HIG prices+dividends $(date -u +%Y-%m-%d) [skip ci]"
+          git push
+
+      - name: Verify peer price rows in DB
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          python - <<'EOF'
+          import sqlite3, sys
+          conn = sqlite3.connect("data/pgr_financials.db")
+          peers = ["ALL", "TRV", "CB", "HIG"]
+          all_ok = True
+          for ticker in peers:
+              n_prices = conn.execute(
+                  "SELECT COUNT(*) FROM daily_prices WHERE ticker=?", (ticker,)
+              ).fetchone()[0]
+              n_divs = conn.execute(
+                  "SELECT COUNT(*) FROM daily_dividends WHERE ticker=?", (ticker,)
+              ).fetchone()[0]
+              status = "✅" if n_prices > 0 else "❌"
+              print(f"  {ticker}: {n_prices} price rows, {n_divs} dividend rows {status}")
+              if n_prices == 0:
+                  print(f"ERROR: {ticker} has no price rows — fetch may have failed.")
+                  all_ok = False
+          if not all_ok:
+              sys.exit(1)
+          print("Peer bootstrap verification passed.")
+          EOF
+
+      - name: Bootstrap summary
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          python - <<'EOF'
+          import sqlite3
+          conn = sqlite3.connect("data/pgr_financials.db")
+          peers = ["ALL", "TRV", "CB", "HIG"]
+          print("=" * 50)
+          print("  PGR v6.0 Peer Bootstrap Complete")
+          print("=" * 50)
+          for ticker in peers:
+              n_p = conn.execute(
+                  "SELECT COUNT(*) FROM daily_prices WHERE ticker=?", (ticker,)
+              ).fetchone()[0]
+              n_d = conn.execute(
+                  "SELECT COUNT(*) FROM daily_dividends WHERE ticker=?", (ticker,)
+              ).fetchone()[0]
+              first = conn.execute(
+                  "SELECT MIN(price_date) FROM daily_prices WHERE ticker=?", (ticker,)
+              ).fetchone()[0]
+              print(f"  {ticker}: {n_p:,} prices (from {first}), {n_d} dividends")
+          print("  Ongoing updates: peer_data_fetch.yml (Sundays 04:00 UTC)")
+          EOF
