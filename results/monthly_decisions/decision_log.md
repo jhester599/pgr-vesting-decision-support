@@ -37,6 +37,8 @@ Each run produces a dated subfolder under `results/monthly_decisions/YYYY-MM/` c
 | 2026-03-27 | 2026-03-30 | NEUTRAL | 50% | +1.75% | 0.0421 | 54.4% | [DRY RUN] |
 | 2026-03-20 | 2026-03-30 | NEUTRAL | 50% | +1.75% | 0.0421 | 54.4% | [DRY RUN] |
 | 2026-03-20 | 2026-03-30 | NEUTRAL | 50% | +1.75% | 0.0421 | 54.4% | [DRY RUN] |
+| 2026-03-20 | 2026-03-30 | NEUTRAL | 50% | +1.30% | -0.0056 | 53.0% | [DRY RUN] |
+| 2026-03-20 | 2026-03-30 | NEUTRAL | 50% | +1.30% | -0.0056 | 53.0% | [DRY RUN] |
 
 ---
 

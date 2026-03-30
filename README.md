@@ -1,13 +1,13 @@
-# PGR Vesting Decision Support · v5.2
+# PGR Vesting Decision Support · v6.1
 
 A quantitative decision-support engine for systematically unwinding a concentrated
 Progressive Corporation (PGR) RSU position held in a taxable brokerage account.
 
 The engine combines a 4-model Walk-Forward Optimized ensemble (ElasticNet + Ridge +
 BayesianRidge + GBT), per-benchmark Platt probability calibration, distribution-free
-conformal prediction intervals (ACI), Black-Litterman portfolio construction, and
-proactive tax-loss harvesting to produce a structured sell/hold recommendation for
-each vesting event.
+conformal prediction intervals (ACI), cross-asset signals (insurance peers + broad
+financials), Black-Litterman portfolio construction, and proactive tax-loss harvesting
+to produce a structured sell/hold recommendation for each vesting event.
 
 ---
 
@@ -30,7 +30,8 @@ For each event the engine outputs:
 - Calibrated P(outperform) per benchmark via Platt scaling (ECE 2.1%)
 - 80% conformal prediction interval per benchmark (ACI; empirical coverage 92%)
 - CPCV validation distribution (C(8,2)=28 paths, overfitting detection)
-- Monthly automated decision report (committed to `results/` on the 20th)
+- Cross-asset signals: `high_52w` (George & Hwang 2004), `pgr_vs_peers_6m` (vs. ALL/TRV/CB/HIG composite), `pgr_vs_vfh_6m` (vs. broad financials ETF)
+- Monthly automated decision report (committed to `results/` on the 20th, emailed via v6.1)
 
 ---
 
@@ -163,7 +164,7 @@ P(outperform) probabilities using per-benchmark logistic regression on OOS fold 
   sufficient OOS history prevents isotonic step-function overfitting
 - **33 new tests** in `test_calibration.py`; total 747 passed, 1 skipped
 
-### v5.2 — Conformal Prediction Intervals (current)
+### v5.2 — Conformal Prediction Intervals (complete)
 
 Distribution-free 80% prediction intervals with marginal coverage guarantees under
 time-series non-stationarity, using WFO OOS residuals as the calibration set.
@@ -179,6 +180,38 @@ time-series non-stationarity, using WFO OOS residuals as the calibration set.
 - Recommendation report: consensus table shows median CI range; per-benchmark table
   shows CI Lower / CI Upper; diagnostic shows empirical vs nominal coverage per benchmark
 - **46 new tests** in `test_conformal.py`; total 793 passed, 1 skipped
+
+### v6.0 — Cross-Asset Signals (current)
+
+Three new predictive features using peer insurance company and sector ETF price data
+already in the DB, computed in `build_feature_matrix_from_db()` and injected as
+synthetic FRED columns so they pass through the same lag-guarded pipeline.
+
+- **`high_52w`** (George & Hwang 2004): `monthly_close / rolling(252d).max()`.
+  Anchoring signal — stocks near their 52-week high tend to continue outperforming.
+  IC = +0.122 (p=0.041, n=281); 91.4% coverage. Current: 0.695 (PGR at 70% of high).
+- **`pgr_vs_peers_6m`**: PGR 6M return minus equal-weight composite of ALL, TRV, CB,
+  HIG (direct P&C insurance competitors). IC = +0.115 (p=0.045, n=304); 98.7% coverage.
+  Current: −0.232 (PGR has underperformed peers by 23% over 6 months).
+- **`pgr_vs_vfh_6m`**: PGR 6M return minus VFH (Vanguard Financials ETF — all US
+  financials). Broader lens than KIE; no separate bootstrap needed (VFH already in
+  weekly ETF fetch). IC = +0.088 (p=0.165, marginally sub-threshold); 82.1% coverage.
+  Lasso regularization will select or zero it based on marginal contribution.
+- Peer history (ALL, TRV, CB, HIG) bootstrapped 2026-03-30; `peer_data_fetch.yml`
+  maintains it weekly (Sunday 04:00 UTC, 8 AV calls).
+- **30 tests** in `tests/test_v60_features.py`; total **849 passed, 1 skipped**
+
+### v6.1 — Monthly Decision Email Notification (current)
+
+Automated email delivery of each monthly `recommendation.md` report immediately
+after the GitHub Actions commit step.
+
+- Inline Python (stdlib smtplib + ssl) — no third-party Actions, no new dependencies
+- Subject: `PGR Monthly Decision — April 2026: NEUTRAL (LOW CONFIDENCE)`
+- Port-aware: 465 → SMTP_SSL; 587 → STARTTLS (driven by `SMTP_PORT` secret)
+- Graceful fallback: skips if SMTP secrets unconfigured, report file missing, or
+  `dry_run: true` dispatch; `continue-on-error: true` — email failure never blocks DB commit
+- **Six new repository secrets required** (see GitHub Actions section below)
 
 ---
 
@@ -516,32 +549,45 @@ pgr-vesting-decision-support/
                                     #   config constants
 ```
 
-### v6.0 peer data infrastructure (current — data accumulation phase)
+### v6.0 / v6.1 modules (current)
 
 ```
 ├── config.py                        # PEER_TICKER_UNIVERSE = ["ALL", "TRV", "CB", "HIG"]
 │                                    #   weekly fetch active (Sunday 04:00 UTC cron)
 │
 ├── scripts/
-│   └── peer_fetch.py               # NEW: fetches prices + dividends for PEER_TICKER_UNIVERSE
+│   └── peer_fetch.py               # fetches prices + dividends for PEER_TICKER_UNIVERSE
 │                                    #   4 price AV calls + 4 dividend AV calls = 8 total
 │                                    #   --dry-run: logs projected calls, no HTTP
 │
 ├── src/
-│   └── ingestion/
-│       └── fetch_scheduler.py      # + get_peer_price_tickers() → list[str]
-│                                    #   + get_peer_dividend_tickers() → list[str]
+│   ├── ingestion/
+│   │   └── fetch_scheduler.py      # + get_peer_price_tickers() → list[str]
+│   │                                #   + get_peer_dividend_tickers() → list[str]
+│   │
+│   └── processing/
+│       └── feature_engineering.py  # + high_52w: monthly_close / rolling(252d, min=126).max()
+│                                    #   + pgr_vs_peers_6m: PGR 6M − equal-weight(ALL,TRV,CB,HIG) 6M
+│                                    #     computed in build_feature_matrix_from_db(), injected as
+│                                    #     synthetic FRED column (same pattern as pgr_vs_kie_6m)
+│                                    #   + pgr_vs_vfh_6m: PGR 6M − VFH 6M
+│                                    #     VFH already in weekly ETF fetch; no bootstrap needed
 │
-└── .github/workflows/
-    ├── peer_bootstrap.yml          # NEW: workflow_dispatch — one-time full history bootstrap
-    │                               #   ran 2026-03-30; seeded ALL, TRV, CB, HIG history
-    └── peer_data_fetch.yml         # NEW: Sunday 04:00 UTC weekly cron (30h after Friday)
-                                    #   8 AV calls; 17 calls of margin against 25/day limit
+├── .github/workflows/
+│   ├── peer_bootstrap.yml          # workflow_dispatch — one-time full history bootstrap
+│   │                               #   ran 2026-03-30; seeded ALL, TRV, CB, HIG history
+│   ├── peer_data_fetch.yml         # Sunday 04:00 UTC weekly cron (30h after Friday)
+│   │                               #   8 AV calls; 17 calls of margin against 25/day limit
+│   └── monthly_decision.yml        # + Send monthly decision email step (v6.1)
+│                                   #   inline smtplib; continue-on-error; skips if secrets
+│                                   #   unconfigured; subject includes signal + confidence
+│
+└── tests/
+    └── test_v60_features.py        # 30 tests: high_52w (range, burn-in, no-lookahead),
+                                    #   pgr_vs_peers_6m (composite math, sign invariants,
+                                    #   injection), pgr_vs_vfh_6m (injection, sign,
+                                    #   coexistence with peers), column name regression guards
 ```
-
-Feature engineering for v6.0 (`pgr_vs_peers_6m`, residual momentum) will be
-implemented once ~12 months of live peer data have accumulated alongside the
-live OOS predictions needed for BLP calibration.
 
 ---
 
@@ -683,6 +729,9 @@ from ~30 semi-annual observations to 300+ monthly samples.
 | `medical_cpi_yoy` | v4.5 | Medical care CPI YoY — bodily injury / PIP severity (IC −0.178) |
 | `ppi_auto_ins_yoy` | v4.5 | PPI auto insurance YoY — rate-earning power proxy (IC +0.185) |
 | `pgr_vs_kie_6m` | v4.5 | PGR vs. KIE 6M relative momentum — insurance-sector rotation (IC +0.091) |
+| `high_52w` | v6.0 | Current price / 52-week high (George & Hwang 2004 anchoring; IC +0.122) |
+| `pgr_vs_peers_6m` | v6.0 | PGR 6M return minus equal-weight composite of ALL, TRV, CB, HIG (IC +0.115) |
+| `pgr_vs_vfh_6m` | v6.0 | PGR 6M return minus VFH (Vanguard Financials ETF) 6M return (IC +0.088) |
 
 ### Walk-Forward Optimization (WFO)
 
@@ -892,7 +941,7 @@ python scripts/peer_fetch.py --dry-run
 | `weekly_data_fetch.yml` | Fridays 22:00 UTC | 24 | PGR + 21 ETF prices, PGR dividends, FRED macro |
 | `peer_data_fetch.yml` | **Sundays 04:00 UTC** | 8 | Peer prices + dividends (ALL, TRV, CB, HIG) |
 | `monthly_8k_fetch.yml` | 20th + 25th of month 14:00 UTC | 0 | PGR 8-K operating metrics (two-pass idempotent) |
-| `monthly_decision.yml` | 20th–22nd of month 15:00 UTC | 0 | Automated sell/hold recommendation report |
+| `monthly_decision.yml` | 20th–22nd of month 15:00 UTC | 0 | Automated sell/hold recommendation report + email notification (v6.1) |
 
 **Schedule note (2026-03-24):** Bootstrap workflows were rescheduled +1 day after two failures:
 1. *2026-03-23* — Alpha Vantage 25-call/day rate limit hit mid-run (14/22 tickers).
@@ -919,12 +968,18 @@ All workflows require repository secrets:
 | `AV_API_KEY` | Alpha Vantage free-tier key |
 | `FRED_API_KEY` | FRED public API key (free) |
 | ~~`FMP_API_KEY`~~ | No longer required — FMP v3 deprecated 2025-08-31; replaced by EDGAR XBRL |
+| `SMTP_SERVER` | Outbound SMTP hostname (e.g. `smtp.gmail.com`) — v6.1 email notification |
+| `SMTP_PORT` | SMTP port: `465` for SSL, `587` for STARTTLS — v6.1 |
+| `SMTP_USERNAME` | SMTP authentication username — v6.1 |
+| `SMTP_PASSWORD` | SMTP authentication password or app password — v6.1 |
+| `PREDICTION_EMAIL_FROM` | Sender address in the From header — v6.1 |
+| `PREDICTION_EMAIL_TO` | Recipient address for the monthly report — v6.1 |
 
 ---
 
 ## Running the Engine
 
-### v5.2 (current — 4-model ensemble + calibration + conformal CIs)
+### v6.1 (current — cross-asset signals + email notification)
 
 ```python
 import sqlite3
@@ -1018,7 +1073,7 @@ pytest -m integration      # integration smoke tests only
 pytest -m "not integration" # fast unit tests only
 ```
 
-**819 tests across 31 modules, all passing** (as of v6.0 peer data):
+**849 tests across 32 modules, all passing** (as of v6.1):
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
@@ -1053,6 +1108,7 @@ pytest -m "not integration" # fast unit tests only
 | `test_calibration.py` | 33 | ECE formula, block bootstrap CI, Platt fitting, isotonic two-stage, per-benchmark calibration, ECE ≤ raw on training data (v5.1) |
 | `test_conformal.py` | 46 | Coverage guarantee across distributions, ACI adaptation direction, finite-sample correction, dispatch, error handling, config constants (v5.2) |
 | `test_peer_fetch.py` | 26 | PEER_TICKER_UNIVERSE contents, no ETF/PGR overlap, budget separation invariant (Friday ≤25 + Sunday ≤25), 30-hour cron gap, dry-run mock (v6.0) |
+| `test_v60_features.py` | 30 | `high_52w` range/burn-in/no-lookahead, `pgr_vs_peers_6m` composite math + sign invariants + injection, `pgr_vs_vfh_6m` injection + signs + coexistence, column name regression guards (v6.0) |
 
 Critical invariants enforced by tests:
 
@@ -1075,6 +1131,9 @@ Critical invariants enforced by tests:
 - ACI with γ=0 produces identical CI width to split conformal (no adaptation) (v5.2)
 - `get_peer_price_tickers()` returns no overlap with `get_all_price_tickers()` (v6.0)
 - Friday AV calls ≤ 25 and Sunday AV calls ≤ 25 independently (v6.0)
+- `high_52w` values are in (0, 1] — current price can never exceed its own rolling max (v6.0)
+- `pgr_vs_peers_6m` > 0 iff PGR 6M return > equal-weight peer composite 6M return (v6.0)
+- `pgr_vs_vfh_6m` > 0 iff PGR 6M return > VFH 6M return (v6.0)
 
 ---
 
