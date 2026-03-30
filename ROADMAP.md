@@ -347,16 +347,33 @@ Small focused addition; no data dependencies.
 
 ---
 
-### v5.2 — MAPIE Conformal Prediction
-**Target:** Day 28 (2026-04-22)
+### v5.2 — Conformal Prediction Intervals ✅ COMPLETE
+**Delivered:** 2026-03-30
 
-Pure code addition on top of v5.1. No additional data needed.
+Distribution-free 80% prediction intervals for each benchmark's ensemble prediction,
+with marginal coverage guarantees under time-series non-stationarity.
 
-- `src/models/regularized_models.py` — `build_conformal_pipeline(base_model_type,
-  coverage=0.80)`; marginal coverage guarantees of 1-α ± O(1/n)
-- `requirements.txt` — Add `mapie` as optional dependency
-- Use EnbPI (Xu & Xie 2021) or Adaptive Conformal Inference (Gibbs & Candès 2021)
-  for time-series exchangeability violations
+**Delivered:**
+- `src/models/conformal.py` — Native split conformal + Adaptive Conformal Inference (ACI)
+  implementation; no MAPIE refit latency in the monthly pipeline
+  - `ConformalResult` dataclass: lower, upper, width, coverage_level, empirical_coverage,
+    n_calibration, method
+  - `split_conformal_interval()`: finite-sample corrected quantile of WFO OOS absolute
+    residuals; P(y ∈ CI) ≥ 1-α guarantee (Vovk et al. 2005)
+  - `aci_adjusted_interval()`: walk-forward α_t adaptation; update rule:
+    α_{t+1} = clip(α_t + γ(α_nominal − err_t), 0.01, 0.99); γ=0.05 default;
+    handles distribution shift in 6-month overlapping return windows (Gibbs & Candès 2021)
+  - `conformal_interval_from_ensemble()`: main entry; computes residuals from WFO OOS
+    y_true/y_hat; dispatches to split or ACI
+- `config.py` — Added `CONFORMAL_COVERAGE=0.80`, `CONFORMAL_METHOD="aci"`,
+  `CONFORMAL_ACI_GAMMA=0.05`
+- `requirements.txt` — Added `mapie>=1.3.0` (used for TimeSeriesRegressor validation path;
+  production pipeline uses native implementation)
+- `scripts/monthly_decision.py` — `_compute_conformal_intervals()` per-benchmark ACI
+  intervals added as Step 2.7; recommendation.md consensus table shows median 80% CI
+  range; per-benchmark table adds CI Lower / CI Upper columns; diagnostic.md adds
+  Conformal Prediction Intervals section with empirical vs nominal coverage per benchmark
+- **46 new tests** in `tests/test_conformal.py`; total: 793 passed, 1 skipped
 
 ---
 

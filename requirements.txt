@@ -11,5 +11,7 @@ scipy>=1.12.0
 statsmodels>=0.14.0
 skfolio>=0.3.0
 PyPortfolioOpt>=1.5.5
+# v5.2: conformal prediction intervals (TimeSeriesRegressor for EnbPI/ACI validation)
+mapie>=1.3.0
 # fracdiff is not available for Python ≥ 3.11; fractional differentiation
 # is implemented internally in src/processing/feature_engineering.py using numpy/scipy.

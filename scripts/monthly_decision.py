@@ -62,6 +62,7 @@ from src.models.calibration import (
     calibrate_prediction,
     fit_calibration_model,
 )
+from src.models.conformal import ConformalResult, conformal_interval_from_ensemble
 from src.reporting.backtest_report import (
     compute_newey_west_ic,
     compute_oos_r_squared,
@@ -416,6 +417,93 @@ def _calibrate_signals(
     )
 
 
+def _compute_conformal_intervals(
+    signals: pd.DataFrame,
+    ensemble_results: dict,
+) -> pd.DataFrame:
+    """
+    Compute per-benchmark conformal prediction intervals for the current ensemble predictions.
+
+    Uses ACI (Adaptive Conformal Inference) by default, falling back to split conformal
+    when insufficient calibration data is available (n < 4).
+
+    Coverage, method, and gamma are read from config constants:
+      CONFORMAL_COVERAGE  (default 0.80 = 80% CI)
+      CONFORMAL_METHOD    ("aci" or "split")
+      CONFORMAL_ACI_GAMMA (default 0.05)
+
+    Adds the following columns to the signals DataFrame:
+      ci_lower              Lower bound of the prediction interval.
+      ci_upper              Upper bound of the prediction interval.
+      ci_width              Total CI width (upper − lower).
+      ci_empirical_coverage Fraction of calibration residuals inside the interval.
+      ci_n_calibration      Number of calibration residuals used.
+
+    Args:
+        signals:          Per-benchmark signals from ``_generate_signals()``.
+        ensemble_results: Dict of ETF ticker → EnsembleWFOResult.
+
+    Returns:
+        Updated signals DataFrame with CI columns added.
+    """
+    if signals.empty:
+        return signals
+
+    pred_col = "predicted_relative_return"
+    if pred_col not in signals.columns:
+        return signals
+
+    signals = signals.copy()
+    ci_lowers: list[float] = []
+    ci_uppers: list[float] = []
+    ci_widths: list[float] = []
+    ci_empirical: list[float] = []
+    ci_n_cal: list[int] = []
+
+    for ticker in signals.index:
+        ens_result = ensemble_results.get(str(ticker))
+        y_hat_current = float(signals.at[ticker, pred_col])
+
+        if ens_result is None:
+            ci_lowers.append(float("nan"))
+            ci_uppers.append(float("nan"))
+            ci_widths.append(float("nan"))
+            ci_empirical.append(float("nan"))
+            ci_n_cal.append(0)
+            continue
+
+        y_hat_oos, y_true_oos = _reconstruct_ensemble_oos(ens_result)
+        if len(y_hat_oos) < 1:
+            ci_lowers.append(float("nan"))
+            ci_uppers.append(float("nan"))
+            ci_widths.append(float("nan"))
+            ci_empirical.append(float("nan"))
+            ci_n_cal.append(0)
+            continue
+
+        conf_result = conformal_interval_from_ensemble(
+            y_hat_current=y_hat_current,
+            y_hat_oos=y_hat_oos,
+            y_true_oos=y_true_oos,
+            coverage=config.CONFORMAL_COVERAGE,
+            method=config.CONFORMAL_METHOD,
+            gamma=config.CONFORMAL_ACI_GAMMA,
+        )
+        ci_lowers.append(conf_result.lower)
+        ci_uppers.append(conf_result.upper)
+        ci_widths.append(conf_result.width)
+        ci_empirical.append(conf_result.empirical_coverage)
+        ci_n_cal.append(conf_result.n_calibration)
+
+    signals["ci_lower"] = ci_lowers
+    signals["ci_upper"] = ci_uppers
+    signals["ci_width"] = ci_widths
+    signals["ci_empirical_coverage"] = ci_empirical
+    signals["ci_n_calibration"] = ci_n_cal
+
+    return signals
+
+
 def _consensus_signal(
     signals: pd.DataFrame,
 ) -> tuple[str, float, float, float, float, str]:
@@ -535,6 +623,18 @@ def _write_recommendation_md(
         mean_cal_prob = float(signals["calibrated_prob_outperform"].mean())
         lines.append(f"| P(Outperform, calibrated) | {mean_cal_prob:.1%} |")
 
+    # Conformal CI row — median CI bounds across benchmarks (robust to outlier widths)
+    has_ci = "ci_lower" in signals.columns and not signals.empty
+    if has_ci:
+        valid_ci = signals[["ci_lower", "ci_upper"]].dropna()
+        if not valid_ci.empty:
+            ci_lo_med = float(valid_ci["ci_lower"].median())
+            ci_hi_med = float(valid_ci["ci_upper"].median())
+            lines.append(
+                f"| {config.CONFORMAL_COVERAGE:.0%} Prediction Interval (median) "
+                f"| {ci_lo_med:+.2%} to {ci_hi_med:+.2%} |"
+            )
+
     lines += [
         f"| Mean IC (across benchmarks) | {mean_ic:.4f} |",
         f"| Mean Hit Rate | {mean_hr:.1%} |",
@@ -606,11 +706,22 @@ def _write_recommendation_md(
     ]
 
     show_cal_col = has_calibrated and "calibrated_prob_outperform" in signals.columns
+    show_ci_col = "ci_lower" in signals.columns and not signals.empty
 
-    if has_confidence and show_cal_col:
+    if has_confidence and show_cal_col and show_ci_col:
+        lines += [
+            "| Benchmark | Description | Predicted Return | CI Lower | CI Upper | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |",
+            "|-----------|-------------|----------------|----------|----------|----|----------|--------|--------|------------|--------|",
+        ]
+    elif has_confidence and show_cal_col:
         lines += [
             "| Benchmark | Description | Predicted Return | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |",
             "|-----------|-------------|----------------|----|----------|--------|--------|------------|--------|",
+        ]
+    elif has_confidence and show_ci_col:
+        lines += [
+            "| Benchmark | Description | Predicted Return | CI Lower | CI Upper | IC | Hit Rate | P(Outperform) | Confidence | Signal |",
+            "|-----------|-------------|----------------|----------|----------|----|----------|---------------|------------|--------|",
         ]
     elif has_confidence:
         lines += [
@@ -630,11 +741,22 @@ def _write_recommendation_md(
             ic_val = f"{row['ic']:.4f}" if not pd.isna(row.get("ic")) else "n/a"
             hr_val = f"{row['hit_rate']:.1%}" if not pd.isna(row.get("hit_rate")) else "n/a"
             sig = row.get("signal", "N/A")
-            if has_confidence and show_cal_col:
+            ci_lo_str = f"{row['ci_lower']:+.2%}" if show_ci_col and not pd.isna(row.get("ci_lower")) else "n/a"
+            ci_hi_str = f"{row['ci_upper']:+.2%}" if show_ci_col and not pd.isna(row.get("ci_upper")) else "n/a"
+            if has_confidence and show_cal_col and show_ci_col:
+                prob_raw = f"{row['prob_outperform']:.1%}" if not pd.isna(row.get("prob_outperform")) else "n/a"
+                prob_cal = f"{row['calibrated_prob_outperform']:.1%}" if not pd.isna(row.get("calibrated_prob_outperform")) else "n/a"
+                tier = row.get("confidence_tier", "n/a")
+                lines.append(f"| {ticker} | {desc} | {pred} | {ci_lo_str} | {ci_hi_str} | {ic_val} | {hr_val} | {prob_raw} | {prob_cal} | {tier} | {sig} |")
+            elif has_confidence and show_cal_col:
                 prob_raw = f"{row['prob_outperform']:.1%}" if not pd.isna(row.get("prob_outperform")) else "n/a"
                 prob_cal = f"{row['calibrated_prob_outperform']:.1%}" if not pd.isna(row.get("calibrated_prob_outperform")) else "n/a"
                 tier = row.get("confidence_tier", "n/a")
                 lines.append(f"| {ticker} | {desc} | {pred} | {ic_val} | {hr_val} | {prob_raw} | {prob_cal} | {tier} | {sig} |")
+            elif has_confidence and show_ci_col:
+                prob = f"{row['prob_outperform']:.1%}" if not pd.isna(row.get("prob_outperform")) else "n/a"
+                tier = row.get("confidence_tier", "n/a")
+                lines.append(f"| {ticker} | {desc} | {pred} | {ci_lo_str} | {ci_hi_str} | {ic_val} | {hr_val} | {prob} | {tier} | {sig} |")
             elif has_confidence:
                 prob = f"{row['prob_outperform']:.1%}" if not pd.isna(row.get("prob_outperform")) else "n/a"
                 tier = row.get("confidence_tier", "n/a")
@@ -736,6 +858,7 @@ def _write_diagnostic_report(
     ensemble_results: dict,
     target_horizon_months: int = 6,
     cal_result: CalibrationResult | None = None,
+    signals: pd.DataFrame | None = None,
 ) -> None:
     """
     Write diagnostic.md alongside recommendation.md.
@@ -907,6 +1030,60 @@ def _write_diagnostic_report(
         "",
         "---",
         "",
+        "## Conformal Prediction Intervals",
+        "",
+        f"**Method:** {config.CONFORMAL_METHOD.upper()} "
+        f"({'Adaptive Conformal Inference — adjusts α_t for distribution shift' if config.CONFORMAL_METHOD == 'aci' else 'Split Conformal — finite-sample corrected quantile of absolute residuals'})  ",
+        f"**Nominal Coverage:** {config.CONFORMAL_COVERAGE:.0%}  ",
+        "",
+    ]
+
+    # Build per-benchmark coverage table from signals CI columns
+    has_ci_data = (
+        signals is not None
+        and not signals.empty
+        and "ci_empirical_coverage" in signals.columns
+        and "ci_n_calibration" in signals.columns
+    )
+    if has_ci_data:
+        valid_rows = signals[signals["ci_n_calibration"] > 0]
+        if not valid_rows.empty:
+            mean_emp_cov = float(valid_rows["ci_empirical_coverage"].mean())
+            cov_flag = _flag(mean_emp_cov, config.CONFORMAL_COVERAGE, config.CONFORMAL_COVERAGE - 0.05)
+            lines += [
+                f"**Mean empirical coverage:** {mean_emp_cov:.1%} "
+                f"(target ≥ {config.CONFORMAL_COVERAGE:.0%}) {cov_flag}  ",
+                "",
+                "| Benchmark | Description | Predicted Return | CI Lower | CI Upper | CI Width | Emp. Coverage | N Cal |",
+                "|-----------|-------------|----------------|----------|----------|----------|---------------|-------|",
+            ]
+            for ticker, row in signals.iterrows():
+                if pd.isna(row.get("ci_lower")):
+                    continue
+                desc = _ETF_DESCRIPTIONS.get(str(ticker), str(ticker))
+                pred_str = f"{row['predicted_relative_return']:+.2%}" if not pd.isna(row.get("predicted_relative_return")) else "n/a"
+                ci_lo = f"{row['ci_lower']:+.2%}"
+                ci_hi = f"{row['ci_upper']:+.2%}"
+                ci_w = f"{row['ci_width']:.2%}"
+                emp_cov = f"{row['ci_empirical_coverage']:.1%}"
+                n_cal = int(row["ci_n_calibration"])
+                emp_flag = "✅" if row["ci_empirical_coverage"] >= config.CONFORMAL_COVERAGE else "⚠️"
+                lines.append(
+                    f"| {ticker} | {desc} | {pred_str} | {ci_lo} | {ci_hi} | {ci_w} | {emp_cov} {emp_flag} | {n_cal} |"
+                )
+        else:
+            lines.append("> ⚠️ No benchmarks had sufficient calibration data for conformal intervals.")
+    else:
+        lines.append("> ⚠️ Conformal interval data not available (signals not passed to diagnostic).")
+
+    lines += [
+        "",
+        "> **Interpretation:** The CI width reflects model uncertainty — wider intervals indicate",
+        "> larger historical prediction errors.  ACI dynamically adjusts coverage when errors",
+        "> cluster (distribution shift), providing stronger guarantees than static split conformal.",
+        "",
+        "---",
+        "",
         "## Per-Benchmark Health",
         "",
         "| Benchmark | Description | N OOS | IC | IC | Hit Rate | HR |",
@@ -992,6 +1169,19 @@ def main(
         f"(n={cal_result.n_obs:,} OOS obs, ECE={cal_result.ece:.1%})"
     )
 
+    # Step 2.7: Compute conformal prediction intervals (ACI / split conformal)
+    print("  Computing conformal prediction intervals...")
+    signals = _compute_conformal_intervals(signals, ensemble_results)
+    if "ci_lower" in signals.columns and not signals.empty:
+        valid_ci = signals[["ci_lower", "ci_upper"]].dropna()
+        if not valid_ci.empty:
+            ci_lo_med = float(valid_ci["ci_lower"].median())
+            ci_hi_med = float(valid_ci["ci_upper"].median())
+            print(
+                f"  {config.CONFORMAL_COVERAGE:.0%} CI (median across benchmarks): "
+                f"{ci_lo_med:+.2%} to {ci_hi_med:+.2%}"
+            )
+
     # Step 3: Compute consensus
     consensus, mean_pred, mean_ic, mean_hr, mean_prob, confidence_tier = _consensus_signal(signals)
     sell_pct = _sell_pct_from_consensus(consensus, mean_pred, mean_ic)
@@ -1024,6 +1214,7 @@ def main(
     _write_diagnostic_report(
         out_dir, as_of, ensemble_results,
         target_horizon_months=6, cal_result=cal_result,
+        signals=signals,
     )
 
     conn.close()
