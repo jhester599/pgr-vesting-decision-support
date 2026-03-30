@@ -11,16 +11,16 @@
 
 | Metric | Value | Status | Threshold (Good) |
 |--------|-------|--------|-----------------|
-| OOS R² (Campbell-Thompson) | -0.8626 (-86.26%) | ❌ | ≥ 2.00% |
-| IC (Newey-West HAC) | 0.0768 | ✅ | ≥ 0.07 |
-| IC significance | 0.0122 | ✅ p < 0.05 | p < 0.05 |
-| Hit Rate | 56.3% | ✅ | ≥ 55.0% |
-| CPCV Positive Paths | N/A (Phase 1) | — | ≥ 10/15 |
+| OOS R² (Campbell-Thompson) | -0.8472 (-84.72%) | ❌ | ≥ 2.00% |
+| IC (Newey-West HAC) | 0.0779 | ✅ | ≥ 0.07 |
+| IC significance | 0.0117 | ✅ p < 0.05 | p < 0.05 |
+| Hit Rate | 54.6% | ⚠️ | ≥ 55.0% |
+| CPCV Positive Paths | N/A (Phase 1) | — | ≥ 19/28 |
 
-> **CPCV note:** Combinatorial Purged CV path analysis is deferred to v5.0.
-> Running CPCV inside the monthly workflow would require ~15× additional model fits.
-> The DIAG_CPCV_MIN_POSITIVE_PATHS threshold (≥ 10/15) is defined in `config.py`
-> for use once CPCV is wired into the monthly pipeline.
+> **CPCV note (v5.0):** C(8,2)=28 paths are configured but not run inside the monthly
+> workflow — 4 models × 28 splits × 20 benchmarks = 2,240 fits per run.
+> CPCV diagnostics are available on demand via `run_cpcv()` in `wfo_engine.py`.
+> The DIAG_CPCV_MIN_POSITIVE_PATHS threshold (≥ 19/28) is defined in `config.py`.
 
 ---
 
@@ -28,40 +28,40 @@
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| Phase 1 | Raw BayesianRidge posterior (uncalibrated) | ✅ Active |
-| Phase 2 | Platt scaling (logistic regression on OOS probs → binary outcome) | ⏳ v5.1 (≥60 OOS obs) |
-| Phase 3 | Isotonic regression (non-parametric, n > 60) | ⏳ v5.1 |
+| Phase 1 | Raw BayesianRidge posterior (uncalibrated) | ⬛ Superseded |
+| Phase 2 | Platt scaling (logistic regression on OOS scores → binary) | ✅ Active (n=3,270  ECE=2.1% [1.1%–4.9%]) |
+| Phase 3 | Platt → Isotonic (non-parametric; monotone reliability) | ⏳ Activates at n ≥ 500 |
 
 ---
 
 ## Per-Benchmark Health
 
-| Benchmark | N OOS | IC | IC | Hit Rate | HR |
-|-----------|-------|----|----|-----------|----|
-| BND | 150 | -0.0219 | ❌ | 67.3% | ✅ |
-| BNDX | 78 | -0.0346 | ❌ | 60.3% | ✅ |
-| DBC | 162 | 0.1023 | ✅ | 63.6% | ✅ |
-| GLD | 180 | 0.0943 | ✅ | 58.3% | ✅ |
-| KIE | 168 | 0.1608 | ✅ | 55.4% | ✅ |
-| SCHD | 96 | -0.2595 | ❌ | 57.3% | ✅ |
-| VCIT | 120 | -0.1433 | ❌ | 67.5% | ✅ |
-| VDE | 180 | -0.0046 | ❌ | 54.4% | ⚠️ |
-| VEA | 144 | -0.0596 | ❌ | 60.4% | ✅ |
-| VFH | 186 | 0.0224 | ❌ | 47.8% | ❌ |
-| VGT | 186 | -0.1499 | ❌ | 45.2% | ❌ |
-| VHT | 186 | 0.1369 | ✅ | 57.0% | ✅ |
-| VIG | 162 | -0.0252 | ❌ | 52.5% | ⚠️ |
-| VIS | 180 | 0.0833 | ✅ | 46.1% | ❌ |
-| VMBS | 120 | -0.0379 | ❌ | 68.3% | ✅ |
-| VNQ | 180 | 0.1735 | ✅ | 60.0% | ✅ |
-| VOO | 108 | -0.0232 | ❌ | 44.4% | ❌ |
-| VPU | 186 | 0.1459 | ✅ | 59.1% | ✅ |
-| VTI | 222 | -0.0801 | ❌ | 46.8% | ❌ |
-| VWO | 174 | -0.0733 | ❌ | 63.2% | ✅ |
-| VXUS | 102 | -0.1051 | ❌ | 60.8% | ✅ |
+| Benchmark | Description | N OOS | IC | IC | Hit Rate | HR |
+|-----------|-------------|-------|----|----|-----------|----|
+| BND | Total Bond Market | 150 | 0.1248 | ✅ | 63.3% | ✅ |
+| BNDX | Total International Bond | 78 | 0.1756 | ✅ | 59.0% | ✅ |
+| DBC | DB Commodity Index | 162 | 0.1637 | ✅ | 63.6% | ✅ |
+| GLD | Gold Shares | 180 | 0.2296 | ✅ | 61.7% | ✅ |
+| KIE | S&P Insurance | 168 | 0.1437 | ✅ | 50.0% | ❌ |
+| SCHD | US Dividend Equity | 96 | -0.1625 | ❌ | 50.0% | ❌ |
+| VCIT | Intermediate-Term Corporate Bond | 120 | 0.0713 | ✅ | 61.7% | ✅ |
+| VDE | Energy | 180 | -0.0384 | ❌ | 49.4% | ❌ |
+| VEA | Developed Markets ex-US | 144 | -0.1571 | ❌ | 61.1% | ✅ |
+| VFH | Financials | 186 | -0.1297 | ❌ | 44.1% | ❌ |
+| VGT | Information Technology | 186 | 0.0180 | ❌ | 53.2% | ⚠️ |
+| VHT | Health Care | 186 | 0.0009 | ❌ | 52.7% | ⚠️ |
+| VIG | Dividend Appreciation | 162 | 0.0489 | ⚠️ | 51.2% | ❌ |
+| VIS | Industrials | 180 | -0.0298 | ❌ | 47.8% | ❌ |
+| VMBS | Mortgage-Backed Securities | 120 | 0.1244 | ✅ | 61.7% | ✅ |
+| VNQ | Real Estate | 180 | 0.1147 | ✅ | 57.2% | ✅ |
+| VOO | S&P 500 | 108 | -0.2127 | ❌ | 34.3% | ❌ |
+| VPU | Utilities | 186 | 0.1693 | ✅ | 57.0% | ✅ |
+| VTI | Total Stock Market | 222 | -0.0078 | ❌ | 50.0% | ❌ |
+| VWO | Emerging Markets | 174 | -0.0387 | ❌ | 58.6% | ✅ |
+| VXUS | Total International Stock | 102 | -0.2023 | ❌ | 66.7% | ✅ |
 
-**IC summary:** 7 ✅  0 ⚠️  14 ❌  (of 21 benchmarks)  
-**Hit rate ✅:** 14/21 benchmarks above 55% threshold  
+**IC summary:** 9 ✅  1 ⚠️  11 ❌  (of 21 benchmarks)  
+**Hit rate ✅:** 11/21 benchmarks above 55% threshold  
 
 ---
 
@@ -72,7 +72,7 @@
 | OOS R² | > 2% | 0.5–2% | < 0% | Campbell & Thompson (2008) |
 | Mean IC | > 0.07 | 0.03–0.07 | < 0.03 | Harvey et al. (2016) |
 | Hit Rate | > 55% | 52–55% | < 52% | Industry consensus |
-| CPCV +paths | ≥ 13/15 | 10–12/15 | < 10/15 | López de Prado (2018) |
+| CPCV +paths | ≥ 19/28 | 14–18/28 | < 14/28 | López de Prado (2018) |
 | PBO | < 15% | 15–40% | > 40% | Bailey et al. (2014) |
 
 ---

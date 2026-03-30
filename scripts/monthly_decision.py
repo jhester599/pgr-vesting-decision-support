@@ -239,19 +239,82 @@ def _generate_signals(
 # Consensus signal
 # ---------------------------------------------------------------------------
 
+def _reconstruct_ensemble_oos(
+    ens_result,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Reconstruct the inverse-variance ensemble OOS predictions for one benchmark.
+
+    Combines per-model WFO fold y_hat values using the same 1/MAE² weights
+    that ``get_ensemble_signals()`` uses for live prediction, giving a faithful
+    approximation of what the ensemble would have predicted at each historical
+    OOS observation.
+
+    Args:
+        ens_result: EnsembleWFOResult for a single benchmark.
+
+    Returns:
+        ``(y_hat_ensemble, y_true)`` — aligned arrays across all folds.
+    """
+    model_results = ens_result.model_results
+    if not model_results:
+        return np.array([], dtype=float), np.array([], dtype=float)
+
+    weights: dict[str, float] = {}
+    for mtype, result in model_results.items():
+        mae = result.mean_absolute_error
+        weights[mtype] = 1.0 / (mae ** 2) if mae > 1e-9 else 1.0
+    total_w = sum(weights.values())
+
+    ref_result = next(iter(model_results.values()))
+    n_folds = len(ref_result.folds)
+
+    all_y_hat: list[float] = []
+    all_y_true: list[float] = []
+
+    for fold_idx in range(n_folds):
+        fold_y_true: np.ndarray | None = None
+        weighted_y_hat: np.ndarray | None = None
+
+        for mtype, result in model_results.items():
+            if fold_idx >= len(result.folds):
+                continue
+            fold = result.folds[fold_idx]
+            w = weights[mtype] / total_w
+            if fold_y_true is None:
+                fold_y_true = fold.y_true
+                weighted_y_hat = np.zeros(len(fold.y_true), dtype=float)
+            weighted_y_hat = weighted_y_hat + w * fold.y_hat  # type: ignore[operator]
+
+        if fold_y_true is not None and weighted_y_hat is not None:
+            all_y_hat.extend(weighted_y_hat.tolist())
+            all_y_true.extend(fold_y_true.tolist())
+
+    return np.array(all_y_hat, dtype=float), np.array(all_y_true, dtype=float)
+
+
 def _calibrate_signals(
     signals: pd.DataFrame,
     ensemble_results: dict,
     target_horizon_months: int = 6,
 ) -> tuple[pd.DataFrame, CalibrationResult]:
     """
-    Calibrate per-benchmark P(outperform) using historical OOS fold data.
+    Calibrate per-benchmark P(outperform) using per-benchmark Platt scaling.
 
-    Reconstructs what the inverse-variance ensemble would have predicted at
-    each historical OOS fold by combining per-model y_hat values with their
-    MAE-derived weights (1/MAE²).  Fits a global calibration model on the
-    pooled (y_hat, binary_outcome) history, then applies it to the current
-    live ``predicted_relative_return`` for each benchmark.
+    Fits one Platt (logistic regression) model per ETF benchmark on that
+    benchmark's own OOS fold history.  Each benchmark's current live
+    ``predicted_relative_return`` is then passed through its own sigmoid to
+    produce a calibrated probability.
+
+    Using a single global calibration model would conflate 21 asset classes
+    with very different return distributions (e.g., GLD vs BND vs VGT), causing
+    the isotonic regression to return a single plateau value for all benchmarks.
+    Per-benchmark calibration preserves cross-benchmark discrimination.
+
+    Isotonic regression is intentionally disabled here.  With n=78–260 OOS
+    observations per benchmark (as of 2026), the isotonic step function produces
+    degenerate plateaus on out-of-sample inputs.  Isotonic will be re-evaluated
+    when each benchmark accumulates ≥500 OOS observations (roughly 2028+).
 
     Adds a ``calibrated_prob_outperform`` column to the signals DataFrame.
     The raw ``prob_outperform`` column is preserved for diagnostic comparison.
@@ -262,77 +325,95 @@ def _calibrate_signals(
         target_horizon_months: Prediction horizon (used as block_len for ECE CI).
 
     Returns:
-        ``(updated_signals, CalibrationResult)``
+        ``(updated_signals, CalibrationResult)`` where CalibrationResult is an
+        aggregate summary (pooled ECE computed after per-benchmark calibration).
     """
-    # ------------------------------------------------------------------
-    # Reconstruct historical OOS ensemble predictions (fold level)
-    # ------------------------------------------------------------------
-    all_y_hat: list[float] = []
-    all_outcomes: list[int] = []
+    if signals.empty:
+        return signals, CalibrationResult(
+            n_obs=0, method="uncalibrated", ece=0.0,
+            ece_ci_lower=0.0, ece_ci_upper=1.0,
+        )
 
-    for ens_result in ensemble_results.values():
-        model_results = ens_result.model_results
-        if not model_results:
+    pred_col = "predicted_relative_return"
+    if pred_col not in signals.columns:
+        return signals, CalibrationResult(
+            n_obs=0, method="uncalibrated", ece=0.0,
+            ece_ci_lower=0.0, ece_ci_upper=1.0,
+        )
+
+    signals = signals.copy()
+    calibrated_probs: list[float] = []
+
+    # For aggregate ECE reporting — pool calibrated probs and outcomes post-fit
+    all_cal_probs: list[float] = []
+    all_outcomes_pool: list[int] = []
+    n_total = 0
+    methods_used: list[str] = []
+
+    for ticker in signals.index:
+        ens_result = ensemble_results.get(str(ticker))
+        if ens_result is None:
+            calibrated_probs.append(0.5)
             continue
 
-        # Per-model inverse-variance weights (1/MAE²)
-        weights: dict[str, float] = {}
-        for mtype, result in model_results.items():
-            mae = result.mean_absolute_error
-            weights[mtype] = 1.0 / (mae ** 2) if mae > 1e-9 else 1.0
-        total_w = sum(weights.values())
+        y_hat_bm, y_true_bm = _reconstruct_ensemble_oos(ens_result)
+        if len(y_hat_bm) == 0:
+            calibrated_probs.append(0.5)
+            continue
 
-        # Align folds — all models train on identical TimeSeriesSplit indices
-        ref_result = next(iter(model_results.values()))
-        n_folds = len(ref_result.folds)
+        # Platt-only per benchmark (isotonic disabled — see docstring)
+        bm_model, bm_result = fit_calibration_model(
+            y_hat_bm,
+            (y_true_bm > 0).astype(int),
+            min_obs_platt=config.CALIBRATION_MIN_OBS_PLATT,
+            min_obs_isotonic=10_000,   # effectively disables isotonic
+            n_bins=config.CALIBRATION_N_BINS,
+            block_len=target_horizon_months,
+            n_bootstrap=max(50, config.CALIBRATION_BOOTSTRAP_REPS // 10),
+        )
 
-        for fold_idx in range(n_folds):
-            fold_y_true: np.ndarray | None = None
-            weighted_y_hat: np.ndarray | None = None
+        current_pred = float(signals.at[ticker, pred_col])
+        cal_prob = calibrate_prediction(bm_model, current_pred)
+        calibrated_probs.append(cal_prob)
+        methods_used.append(bm_result.method)
+        n_total += bm_result.n_obs
 
-            for mtype, result in model_results.items():
-                if fold_idx >= len(result.folds):
-                    continue
-                fold = result.folds[fold_idx]
-                w = weights[mtype] / total_w
-                if fold_y_true is None:
-                    fold_y_true = fold.y_true
-                    weighted_y_hat = np.zeros(len(fold.y_true), dtype=float)
-                weighted_y_hat = weighted_y_hat + w * fold.y_hat  # type: ignore[operator]
+        # Collect calibrated training probs for aggregate ECE
+        if bm_model is not None and len(y_hat_bm) >= config.CALIBRATION_MIN_OBS_PLATT:
+            from src.models.calibration import calibrate_prediction as _cal
+            train_cal_probs = [_cal(bm_model, float(y)) for y in y_hat_bm]
+            all_cal_probs.extend(train_cal_probs)
+            all_outcomes_pool.extend((y_true_bm > 0).astype(int).tolist())
 
-            if fold_y_true is not None and weighted_y_hat is not None:
-                all_y_hat.extend(weighted_y_hat.tolist())
-                all_outcomes.extend((fold_y_true > 0).astype(int).tolist())
-
-    y_hat_arr = np.array(all_y_hat, dtype=float)
-    outcomes_arr = np.array(all_outcomes, dtype=int)
+    signals["calibrated_prob_outperform"] = calibrated_probs
 
     # ------------------------------------------------------------------
-    # Fit calibration model
+    # Aggregate CalibrationResult for reporting
     # ------------------------------------------------------------------
-    cal_model, cal_result = fit_calibration_model(
-        y_hat_arr,
-        outcomes_arr,
-        min_obs_platt=config.CALIBRATION_MIN_OBS_PLATT,
-        min_obs_isotonic=config.CALIBRATION_MIN_OBS_ISOTONIC,
-        n_bins=config.CALIBRATION_N_BINS,
-        block_len=target_horizon_months,
-        n_bootstrap=config.CALIBRATION_BOOTSTRAP_REPS,
+    from src.models.calibration import compute_ece, block_bootstrap_ece_ci
+
+    if len(all_cal_probs) >= 4:
+        agg_probs = np.array(all_cal_probs, dtype=float)
+        agg_outcomes = np.array(all_outcomes_pool, dtype=int)
+        agg_ece = compute_ece(agg_probs, agg_outcomes, n_bins=config.CALIBRATION_N_BINS)
+        ci_lo, ci_hi = block_bootstrap_ece_ci(
+            agg_probs, agg_outcomes,
+            n_bins=config.CALIBRATION_N_BINS,
+            block_len=target_horizon_months,
+            n_bootstrap=config.CALIBRATION_BOOTSTRAP_REPS,
+        )
+        dominant_method = "platt" if "platt" in methods_used else "uncalibrated"
+    else:
+        agg_ece, ci_lo, ci_hi = 0.0, 0.0, 1.0
+        dominant_method = "uncalibrated"
+
+    return signals, CalibrationResult(
+        n_obs=n_total,
+        method=dominant_method,
+        ece=agg_ece,
+        ece_ci_lower=ci_lo,
+        ece_ci_upper=ci_hi,
     )
-
-    # ------------------------------------------------------------------
-    # Apply to current live predictions
-    # ------------------------------------------------------------------
-    if not signals.empty:
-        pred_col = "predicted_relative_return"
-        if pred_col in signals.columns:
-            signals = signals.copy()
-            signals["calibrated_prob_outperform"] = [
-                calibrate_prediction(cal_model, float(row[pred_col]))
-                for _, row in signals.iterrows()
-            ]
-
-    return signals, cal_result
 
 
 def _consensus_signal(

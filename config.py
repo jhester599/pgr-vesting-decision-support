@@ -363,7 +363,10 @@ EDGAR_FILING_LAG_MONTHS: int = 2
 # At n >= CALIBRATION_MIN_OBS_ISOTONIC the two-stage Platt → Isotonic model
 # is used, which is non-parametric and benefits from larger samples.
 CALIBRATION_MIN_OBS_PLATT: int = 20     # Activate Platt scaling above this n
-CALIBRATION_MIN_OBS_ISOTONIC: int = 60  # Switch to isotonic regression above this n
+# Isotonic requires far more per-benchmark data to avoid plateau collapse on
+# out-of-sample inputs.  With n=78–260 per benchmark (2026), the step function
+# returns a single constant for most live predictions.  Re-evaluate at ~500+.
+CALIBRATION_MIN_OBS_ISOTONIC: int = 500  # Per-benchmark isotonic threshold
 # ECE computation parameters
 CALIBRATION_N_BINS: int = 10            # Equal-width probability bins for ECE
 CALIBRATION_BOOTSTRAP_REPS: int = 500   # Block bootstrap replications for ECE CI
