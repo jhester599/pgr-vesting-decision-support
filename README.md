@@ -595,11 +595,11 @@ pgr-vesting-decision-support/
 
 | Source | Data | Tier |
 |--------|------|------|
-| Alpha Vantage `TIME_SERIES_WEEKLY` | Weekly OHLCV — PGR + 20 ETF benchmarks (~25 years) | Free |
-| Alpha Vantage `DIVIDENDS` | Ex-dividend history — PGR + 20 ETF benchmarks | Free (25 req/day) |
+| Alpha Vantage `TIME_SERIES_WEEKLY` | Weekly OHLCV — PGR + 21 ETF benchmarks (~25 years) | Free |
+| Alpha Vantage `DIVIDENDS` | Ex-dividend history — PGR + 21 ETF benchmarks | Free (25 req/day) |
 | SEC EDGAR XBRL (`data.sec.gov/api/xbrl`) | PGR quarterly ROE, EPS, revenue, net income (10-Q/10-K) | **Free — no API key** |
 | FRED public REST API | 9 macro series + 3 PGR-specific series (no budget impact) | Free |
-| EDGAR 8-K cache CSV | 256 months of combined ratio, PIF (PDF supplements) | User-provided |
+| EDGAR 8-K cache CSV | 256 months of combined ratio, PIF, BVPS (PDF supplements) | User-provided |
 | `config.PGR_KNOWN_SPLITS` | 3 historical splits (1992, 2002, 2006) | Hardcoded |
 
 ### SEC EDGAR XBRL (Quarterly Fundamentals)
@@ -800,8 +800,8 @@ for t in range(1, n):
 ```
 π = δ × Σ × w_mkt          # equilibrium returns (reverse optimization)
 Q = ensemble predicted excess returns per ETF
-Ω_ii = MAE²_i × scalar     # diagonal uncertainty matrix (v4.0)
-                            # → BayesianRidge predictive variance planned (v4.2)
+Ω_ii = σ²_pred_i            # diagonal: BayesianRidge posterior variance (v4.3/v5.1)
+                            # fallback: MAE²_i × scalar when posterior unavailable
 → PyPortfolioOpt BlackLittermanModel → EfficientFrontier.max_sharpe
 → weights clipped at KELLY_MAX_POSITION = 0.20
 ```

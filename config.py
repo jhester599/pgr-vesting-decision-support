@@ -390,3 +390,25 @@ CALIBRATION_MIN_OBS_ISOTONIC: int = 500  # Per-benchmark isotonic threshold
 CALIBRATION_N_BINS: int = 10            # Equal-width probability bins for ECE
 CALIBRATION_BOOTSTRAP_REPS: int = 500   # Block bootstrap replications for ECE CI
 
+# ---------------------------------------------------------------------------
+# v6.0 — Beta-Transformed Linear Pool (BLP) aggregation
+# Replaces naive equal-weight ensemble averaging with a calibrated pool.
+# Ranjan & Gneiting (2010): any linear pool of calibrated forecasts is
+# necessarily uncalibrated; BLP corrects this via a Beta CDF transformation.
+#
+# The BLP has 5 free parameters:
+#   a, b   — Beta distribution shape parameters (the transformation)
+#   w_1..3 — Linear pool weights for models 1-3; w_4 = 1 − Σw_1..3
+#             (4 models → 3 independent weights)
+#
+# Parameter fitting uses maximum likelihood on OOS probability sequences.
+# Requires BLP_MIN_OOS_MONTHS months of live OOS predictions to accumulate
+# before fitting — guard enforced by BLPModel.fit().
+# Target activation: Week 8 = 2026-05-20 (counting from first live run).
+# ---------------------------------------------------------------------------
+BLP_MIN_OOS_MONTHS: int = 12     # Minimum live OOS months required to fit BLP
+BLP_N_PARAMS: int = 5            # 2 Beta shape + 3 independent weights
+BLP_BETA_A_INIT: float = 1.0     # Initial Beta(a) shape (a=b=1 → uniform)
+BLP_BETA_B_INIT: float = 1.0     # Initial Beta(b) shape
+BLP_WEIGHT_INIT: float = 0.25    # Initial equal weight per model (4 models)
+

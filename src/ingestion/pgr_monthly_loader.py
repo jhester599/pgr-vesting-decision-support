@@ -40,6 +40,26 @@ _ALIASES: dict[str, list[str]] = {
     "expense_ratio": ["expense_ratio", "expenseratio", "expense ratio", "er"],
     "pif_total": ["pif_total", "piftotal", "policies_in_force", "pif", "total_pif"],
     "date": ["report_period", "date", "period", "report_date", "month", "year_month"],
+    # Book value per share — PGR reports this in monthly 8-K earnings supplements.
+    # Used to compute pb_ratio = price / bvps downstream in feature_engineering.
+    "book_value_per_share": [
+        "book_value_per_share",
+        "bookvaluepershare",
+        "book_value",
+        "bvps",
+        "book value per share",
+        "book_val_per_share",
+        "shareholders_equity_per_share",
+    ],
+    # Monthly basic EPS — used to compute TTM EPS (rolling 12-month sum) for pe_ratio.
+    "eps_basic": [
+        "eps_basic",
+        "epsbasic",
+        "eps basic",
+        "basic_eps",
+        "earnings_per_share_basic",
+        "eps",
+    ],
 }
 
 
@@ -76,7 +96,14 @@ def load(force_refresh: bool = False, apply_filing_lag: bool = True) -> pd.DataF
     if not os.path.exists(_EDGAR_CACHE_PATH):
         # Graceful degradation: return empty canonical DataFrame.
         empty = pd.DataFrame(
-            columns=["combined_ratio", "pif_total", "pif_growth_yoy", "gainshare_estimate"]
+            columns=[
+                "combined_ratio",
+                "pif_total",
+                "pif_growth_yoy",
+                "gainshare_estimate",
+                "book_value_per_share",
+                "eps_basic",
+            ]
         )
         empty.index = pd.DatetimeIndex([], name="date")
         return empty
@@ -141,6 +168,24 @@ def load(force_refresh: bool = False, apply_filing_lag: bool = True) -> pd.DataF
         pif_score = pd.Series(np.nan, index=df.index)
 
     df["gainshare_estimate"] = (0.5 * cr_score + 0.5 * pif_score)
+
+    # --- Book Value Per Share (v6.x) ---
+    # PGR reports BVPS in its monthly 8-K earnings supplements.  Used downstream
+    # in build_feature_matrix_from_db() to compute pb_ratio = price / bvps.
+    bvps_col = _find_col(raw, "book_value_per_share")
+    df["book_value_per_share"] = (
+        pd.to_numeric(raw[bvps_col], errors="coerce") if bvps_col else np.nan
+    )
+
+    # --- Monthly EPS (v6.x) ---
+    # PGR reports monthly basic EPS in 8-K supplements.  Used downstream in
+    # build_feature_matrix_from_db() to compute pe_ratio via TTM rolling sum
+    # (12-month roll of monthly EPS).  Superior to quarterly XBRL EPS: 3×
+    # more data points, tighter lag, and consistent with the pb_ratio source.
+    eps_col = _find_col(raw, "eps_basic")
+    df["eps_basic"] = (
+        pd.to_numeric(raw[eps_col], errors="coerce") if eps_col else np.nan
+    )
 
     df = df.astype("float64")
 

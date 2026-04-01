@@ -496,6 +496,85 @@ naturally and the advisory will stop appearing.
 
 ---
 
+### v6.x Completed — Feature Engineering Enhancements (2026-04-01)
+
+**pb_ratio and pe_ratio now use monthly EDGAR 8-K data throughout the stack.**
+
+Previously `pe_ratio` used quarterly XBRL EPS from `pgr_fundamentals_quarterly`
+(rolling 4-quarter sum, ~86 data points).  Now both ratios are computed entirely
+from `pgr_edgar_monthly` — the same monthly 8-K supplements that supply
+`combined_ratio` and `book_value_per_share`:
+
+| Feature | Source (before) | Source (after) |
+|---|---|---|
+| `pe_ratio` | `pgr_fundamentals_quarterly.eps` (quarterly XBRL, 4-quarter sum) | `pgr_edgar_monthly.eps_basic` (monthly 8-K, 12-month rolling sum) |
+| `pb_ratio` | `pgr_edgar_monthly.book_value_per_share` ✅ | unchanged ✅ |
+| `roe` | `pgr_fundamentals_quarterly.roe` (quarterly XBRL) | unchanged (see candidate below) |
+
+**Changes shipped:**
+- `src/database/schema.sql` — Added `eps_basic REAL` to `pgr_edgar_monthly`
+- `src/database/db_client.py` — Migration, upsert, and get updated for `eps_basic`
+- `src/ingestion/pgr_monthly_loader.py` — Loads `eps_basic` from CSV with alias resolution
+- `src/processing/feature_engineering.py` — `pe_ratio` uses `edgar_raw["eps_basic"].rolling(12).sum()`
+- `docs/PGR_EDGAR_CACHE_DATA_DICTIONARY.md` — Full data dictionary for all 65 columns
+
+**Bug fixes also shipped:**
+- `src/ingestion/multi_ticker_loader.py` / `multi_dividend_loader.py` — Fixed UTC/local
+  date mismatch in skip-if-fresh logic (`date.today()` → `datetime.now(tz=timezone.utc)`)
+- `tests/test_multi_ticker_loader.py` — Fixed budget-exhaustion test to insert UTC dates
+- `src/processing/feature_engineering.py` — Removed over-aggressive `cr_acceleration`
+  gate (was dropping the feature in test fixtures with <60 obs; production data has 225+)
+- `src/ingestion/exceptions.py` / `multi_ticker_loader.py` / `multi_dividend_loader.py` —
+  AV `"Information"` (soft advisory) now raises `AVRateLimitAdvisory` and continues
+  batch; only `"Note"` (hard quota) raises `AVRateLimitError` and stops
+
+---
+
+### Candidate Features — EDGAR Monthly 8-K (Future Sprint)
+
+Full column documentation in `docs/PGR_EDGAR_CACHE_DATA_DICTIONARY.md`.
+All features below are derivable from `data/processed/pgr_edgar_cache.csv`
+with 256 monthly observations back to August 2004.
+
+**Highest priority (strong theoretical prior + straightforward derivation):**
+
+| Candidate Feature | Derivation | Rationale |
+|---|---|---|
+| `npw_growth_yoy` | `net_premiums_written.pct_change(12)` | Volume momentum; acceleration above peers signals pricing power |
+| `channel_mix_direct_pct` | `pif_direct_auto / pif_total_personal_lines` | Rising direct share = structurally higher margin (no agent commission) |
+| `unearned_premium_growth_yoy` | `unearned_premiums.pct_change(12)` | Forward revenue signal; converts to earned revenue over next 6–12 months |
+| `underwriting_income` | `npe - losses_lae - policy_acquisition_costs - other_underwriting_expenses` | Core insurance profit stripped of investment income and taxes; cleaner signal than net income |
+| `npw_per_pif` | `net_premiums_written / pif_total` | Average premium per policy — captures rate increases independent of volume |
+| `roe` (monthly) | `roe_net_income_trailing_12m` from 8-K (pre-computed) | Switch from quarterly XBRL to monthly 8-K for consistency; same 256-obs depth as pe/pb |
+
+**Medium priority (informative but more data-engineering work):**
+
+| Candidate Feature | Derivation | Rationale |
+|---|---|---|
+| `reserve_to_npe_ratio` | `loss_lae_reserves / net_premiums_earned` | Reserve adequacy; rising ratio precedes adverse development |
+| `realized_gain_to_ni_ratio` | `total_net_realized_gains / net_income` | Earnings quality flag; high ratio = income driven by portfolio sales, not underwriting |
+| `price_to_npw` | `market_cap / (net_premiums_written * 12)` | Insurance-sector valuation multiple alongside P/B |
+| `investment_income_growth_yoy` | `investment_income.pct_change(12)` | Interest rate reinvestment tailwind/headwind |
+| `equity_per_share_growth_yoy` | `book_value_per_share.pct_change(12)` | Intrinsic value compounding rate on a per-share basis |
+| `loss_ratio_ttm` | `rolling(12).mean()` of `loss_lae_ratio` | Separates loss deterioration from expense pressure within combined_ratio |
+| `expense_ratio_ttm` | `rolling(12).mean()` of `expense_ratio` | Structural cost efficiency trend independent of loss activity |
+
+**Lower priority / requires additional data:**
+
+| Candidate Feature | Notes |
+|---|---|
+| `unrealized_gain_pct_equity` | `net_unrealized_gains_fixed / shareholders_equity` — OCI/rate risk proxy; high sensitivity to rate regime |
+| `cr_vs_industry_spread` | Requires external peer CR data (Travelers, Allstate, etc.) |
+| `combined_ratio_ex_cats` | Not directly reported; would need catastrophe loss estimates from external source |
+
+**Implementation notes:**
+- All features require the 2-month EDGAR filing lag (`config.EDGAR_FILING_LAG_MONTHS`)
+- `pif_property`, `npw_property`, and `npe_property` are only available from ~2015; any feature using them will have reduced coverage
+- Add to `pgr_monthly_loader.py` → `schema.sql` + `db_client.py` migration → `feature_engineering.py` (same pattern as `eps_basic` / `book_value_per_share`)
+- Validate each feature with a `pytest` test confirming non-null coverage ≥ `WFO_MIN_GAINSHARE_OBS` before activating in WFO
+
+---
+
 ## Development Principles
 
 - **Never finalize a module without a passing pytest suite** (CLAUDE.md mandate)

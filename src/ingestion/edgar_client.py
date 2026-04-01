@@ -24,8 +24,10 @@ XBRL concept → DB column mapping (us-gaap taxonomy):
   ROE = annualised(net_income) / equity  → roe  (derived, not a filed XBRL fact)
 
   pe_ratio, pb_ratio: NOT available from XBRL alone (require market price
-  data combined with fundamental data). Stored as NULL; can be computed
-  downstream once price data is joined.
+  data combined with fundamental data). Stored as NULL in the XBRL pipeline.
+  Computed downstream in feature_engineering.build_feature_matrix_from_db():
+    pe_ratio = monthly_price / TTM_EPS  (rolling 4-quarter EPS sum + AV price)
+    pb_ratio = monthly_price / BVPS     (monthly 8-K BVPS + AV price; v6.x)
 
 Monthly operating metrics (combined ratio, PIF, gainshare):
   PGR files these in monthly 8-K PDF/HTML supplements. They are NOT
@@ -303,8 +305,11 @@ def fetch_pgr_fundamentals_quarterly(
       - ``roe`` = annualised quarterly net income / end-of-period equity
         = (net_income × 4) / equity
 
-    Not available from XBRL:
-      - ``pe_ratio``, ``pb_ratio`` — require market price data; stored NULL.
+    Not available from XBRL alone:
+      - ``pe_ratio`` — computed in ``feature_engineering.build_feature_matrix_from_db()``
+        from EDGAR quarterly EPS + AV monthly prices; stored NULL in this table.
+      - ``pb_ratio`` — computed from monthly 8-K BVPS (``pgr_edgar_monthly.book_value_per_share``)
+        + AV monthly prices; stored NULL in this table.
 
     Args:
         force_refresh: If True, bypass the disk cache and re-fetch from EDGAR.
