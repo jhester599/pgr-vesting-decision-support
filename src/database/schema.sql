@@ -68,17 +68,21 @@ CREATE TABLE IF NOT EXISTS pgr_fundamentals_quarterly (
 -- ---------------------------------------------------------------------------
 -- PGR monthly operating metrics from SEC EDGAR 8-K filings
 -- Source: user-provided pgr_edgar_cache.csv (migrated at v2 init)
--- combined_ratio: GAAP combined ratio (loss + expense); below 96% = target
--- pif_total:      policies in force (total count)
--- pif_growth_yoy: year-over-year PIF growth (decimal, e.g. 0.12 = 12%)
--- gainshare_estimate: estimated annual multiplier [0.0, 2.0]
+-- combined_ratio:      GAAP combined ratio (loss + expense); below 96% = target
+-- pif_total:           policies in force (total count)
+-- pif_growth_yoy:      year-over-year PIF growth (decimal, e.g. 0.12 = 12%)
+-- gainshare_estimate:  estimated annual multiplier [0.0, 2.0]
+-- book_value_per_share: BVPS from monthly 8-K (v6.x); used to derive pb_ratio
+-- eps_basic:           monthly basic EPS from 8-K (v6.x); TTM sum used for pe_ratio
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS pgr_edgar_monthly (
-    month_end           TEXT    NOT NULL,
-    combined_ratio      REAL,
-    pif_total           REAL,
-    pif_growth_yoy      REAL,
-    gainshare_estimate  REAL,
+    month_end             TEXT    NOT NULL,
+    combined_ratio        REAL,
+    pif_total             REAL,
+    pif_growth_yoy        REAL,
+    gainshare_estimate    REAL,
+    book_value_per_share  REAL,
+    eps_basic             REAL,
     PRIMARY KEY (month_end)
 );
 

@@ -257,7 +257,11 @@ def build_feature_matrix(
         if "combined_ratio_ttm" in df.columns:
             df["cr_acceleration"] = df["combined_ratio_ttm"].diff(3)
 
-    # Drop optional Gainshare columns if insufficient observations
+    # Drop optional Gainshare columns if insufficient observations.
+    # cr_acceleration is a derivative of combined_ratio_ttm (3-period diff),
+    # so it is naturally gated: if combined_ratio_ttm is dropped here due to
+    # sparse data, cr_acceleration becomes all-NaN and the WFO engine drops
+    # it via its own feature-selection logic.  No separate threshold needed.
     for col in ["combined_ratio_ttm", "pif_growth_yoy", "gainshare_est"]:
         if col in df.columns:
             n_valid = df[col].notna().sum()
@@ -460,13 +464,83 @@ def build_feature_matrix_from_db(
         splits = splits_raw
 
     fundamentals_raw = db_client.get_pgr_fundamentals(conn)
-    fundamentals = fundamentals_raw if not fundamentals_raw.empty else None
 
+    # Load monthly EDGAR 8-K data first (needed for pb_ratio via BVPS below).
     edgar_raw = db_client.get_pgr_edgar_monthly(conn)
     if not edgar_raw.empty:
         # Apply filing lag to prevent EDGAR period-end vs filing date look-ahead bias (v4.1)
         edgar_raw = _apply_edgar_lag(edgar_raw)
     pgr_monthly = edgar_raw if not edgar_raw.empty else None
+
+    # --- Derive pe_ratio, pb_ratio, and roe from EDGAR data (v6.x) ---
+    # pe_ratio: monthly_price / TTM_EPS
+    #   Source: pgr_edgar_monthly.eps_basic (monthly 8-K).  TTM EPS =
+    #   rolling 12-month sum.  Lag already applied to edgar_raw above.
+    #   Superior to quarterly XBRL: 256 monthly obs vs ~86 quarterly;
+    #   no frequency interpolation needed; consistent source with pb_ratio.
+    # pb_ratio: monthly_price / book_value_per_share
+    #   Source: pgr_edgar_monthly.book_value_per_share (monthly 8-K).
+    #   Lag already applied to edgar_raw above.
+    # roe: from quarterly XBRL pgr_fundamentals_quarterly (EDGAR 10-Q/10-K).
+    #   roe_net_income_trailing_12m in the 8-K CSV is a candidate to replace
+    #   this in a future sprint once that column is added to the DB schema.
+    fundamentals = None
+    if not prices.empty:
+        monthly_close_vals = (
+            prices["close"].copy()
+            .pipe(lambda s: s.set_axis(pd.to_datetime(s.index)))
+            .resample("ME")
+            .last()
+        )
+        monthly_fundamentals = pd.DataFrame(index=monthly_close_vals.index)
+
+        # pe_ratio from monthly EPS (8-K supplements, lag already applied)
+        if (
+            not edgar_raw.empty
+            and "eps_basic" in edgar_raw.columns
+            and not edgar_raw["eps_basic"].isna().all()
+        ):
+            eps = edgar_raw["eps_basic"].copy()
+            eps.index = pd.to_datetime(eps.index)
+            # TTM EPS: rolling 12-month sum of monthly EPS figures
+            eps_ttm = eps.rolling(12, min_periods=12).sum()
+            eps_aligned = eps_ttm.reindex(monthly_fundamentals.index, method="ffill")
+            # Avoid division by zero or negative TTM EPS
+            valid_eps = eps_aligned.where(eps_aligned > 0)
+            monthly_fundamentals["pe_ratio"] = monthly_close_vals / valid_eps
+
+        # roe from quarterly XBRL (forward-filled to monthly, EDGAR lag applied)
+        if not fundamentals_raw.empty and "roe" in fundamentals_raw.columns:
+            roe_q = fundamentals_raw["roe"].copy()
+            roe_q.index = pd.to_datetime(roe_q.index)
+            roe_monthly = roe_q.resample("ME").last().ffill()
+            roe_monthly = roe_monthly.shift(config.EDGAR_FILING_LAG_MONTHS, freq="MS")
+            roe_monthly.index = roe_monthly.index + pd.offsets.MonthEnd(0)
+            monthly_fundamentals["roe"] = roe_monthly.reindex(
+                monthly_fundamentals.index, method="ffill"
+            )
+
+        # pb_ratio from monthly BVPS (PGR 8-K supplements, lag already applied)
+        if (
+            not edgar_raw.empty
+            and "book_value_per_share" in edgar_raw.columns
+            and not edgar_raw["book_value_per_share"].isna().all()
+        ):
+            bvps = edgar_raw["book_value_per_share"].copy()
+            bvps.index = pd.to_datetime(bvps.index)
+            # Align monthly prices to BVPS index, then compute ratio
+            price_aligned = monthly_close_vals.reindex(bvps.index, method="ffill")
+            valid_bvps = bvps.where(bvps > 0)
+            pb_series = (price_aligned / valid_bvps).rename("pb_ratio")
+            monthly_fundamentals["pb_ratio"] = pb_series.reindex(
+                monthly_fundamentals.index, method="ffill"
+            )
+
+        fundamentals = (
+            monthly_fundamentals
+            if not monthly_fundamentals.dropna(how="all").empty
+            else None
+        )
 
     # v3.0+: load FRED macro + v3.1/v4.5 PGR-specific series if the table is populated
     all_fred_series = list(config.FRED_SERIES_MACRO) + list(config.FRED_SERIES_PGR)

@@ -55,11 +55,40 @@ def get_connection(db_path: str | None = None) -> sqlite3.Connection:
     return conn
 
 
+def _add_column_if_missing(
+    conn: sqlite3.Connection,
+    table: str,
+    column: str,
+    col_type: str,
+) -> None:
+    """Add a column to an existing table if it is not already present.
+
+    This idempotent migration helper handles the case where a live database
+    was created before a new column was added to schema.sql.  SQLite does not
+    support ``ALTER TABLE … ADD COLUMN IF NOT EXISTS``, so we check
+    ``PRAGMA table_info`` first.
+
+    Args:
+        conn:     Open SQLite connection.
+        table:    Table name to alter.
+        column:   Column name to add.
+        col_type: SQLite type string, e.g. ``"REAL"`` or ``"TEXT"``.
+    """
+    cur = conn.execute(f"PRAGMA table_info({table})")
+    existing = {row[1] for row in cur.fetchall()}
+    if column not in existing:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+        conn.commit()
+
+
 def initialize_schema(conn: sqlite3.Connection) -> None:
     """Execute schema.sql to create all tables if they do not yet exist.
 
-    This operation is idempotent: running it on an already-initialised
-    database is a safe no-op.
+    Also runs idempotent ``ALTER TABLE`` migrations so that databases created
+    before a schema column addition are brought up to date automatically.
+
+    This operation is fully idempotent: running it on an already-initialised
+    and fully-migrated database is a safe no-op.
 
     Args:
         conn: An open SQLite connection returned by :func:`get_connection`.
@@ -68,6 +97,17 @@ def initialize_schema(conn: sqlite3.Connection) -> None:
     sql = schema_path.read_text(encoding="utf-8")
     conn.executescript(sql)
     conn.commit()
+
+    # ---------------------------------------------------------------------------
+    # Idempotent column migrations
+    # Add any columns introduced after the initial schema creation so that live
+    # databases are automatically brought up to date on the next initialize_schema
+    # call (e.g., during weekly_fetch.py or monthly_decision.py start-up).
+    # ---------------------------------------------------------------------------
+    # v6.x: book_value_per_share added to pgr_edgar_monthly
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "book_value_per_share", "REAL")
+    # v6.x: eps_basic added to pgr_edgar_monthly (monthly EPS from 8-K; used for pe_ratio)
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "eps_basic", "REAL")
 
 
 # ---------------------------------------------------------------------------
@@ -321,22 +361,31 @@ def get_pgr_fundamentals(conn: sqlite3.Connection) -> pd.DataFrame:
 def upsert_pgr_edgar_monthly(
     conn: sqlite3.Connection, records: list[dict[str, Any]]
 ) -> int:
-    """Bulk-insert or replace PGR monthly EDGAR metrics."""
+    """Bulk-insert or replace PGR monthly EDGAR metrics.
+
+    Includes ``book_value_per_share`` (v6.x) if present in the records;
+    defaults to ``None`` for rows from older data sources that predate the
+    column addition.
+    """
     if not records:
         return 0
     sql = """
         INSERT OR REPLACE INTO pgr_edgar_monthly
-            (month_end, combined_ratio, pif_total, pif_growth_yoy, gainshare_estimate)
+            (month_end, combined_ratio, pif_total, pif_growth_yoy,
+             gainshare_estimate, book_value_per_share, eps_basic)
         VALUES
-            (:month_end, :combined_ratio, :pif_total, :pif_growth_yoy, :gainshare_estimate)
+            (:month_end, :combined_ratio, :pif_total, :pif_growth_yoy,
+             :gainshare_estimate, :book_value_per_share, :eps_basic)
     """
     normalised = [
         {
-            "month_end":          r["month_end"],
-            "combined_ratio":     r.get("combined_ratio"),
-            "pif_total":          r.get("pif_total"),
-            "pif_growth_yoy":     r.get("pif_growth_yoy"),
-            "gainshare_estimate": r.get("gainshare_estimate"),
+            "month_end":             r["month_end"],
+            "combined_ratio":        r.get("combined_ratio"),
+            "pif_total":             r.get("pif_total"),
+            "pif_growth_yoy":        r.get("pif_growth_yoy"),
+            "gainshare_estimate":    r.get("gainshare_estimate"),
+            "book_value_per_share":  r.get("book_value_per_share"),
+            "eps_basic":             r.get("eps_basic"),
         }
         for r in records
     ]
@@ -346,9 +395,14 @@ def upsert_pgr_edgar_monthly(
 
 
 def get_pgr_edgar_monthly(conn: sqlite3.Connection) -> pd.DataFrame:
-    """Load all PGR monthly EDGAR metrics, sorted ascending by month_end."""
+    """Load all PGR monthly EDGAR metrics, sorted ascending by month_end.
+
+    Returns columns: combined_ratio, pif_total, pif_growth_yoy,
+    gainshare_estimate, book_value_per_share, eps_basic (NULL for pre-v6.x rows).
+    """
     sql = """
-        SELECT month_end, combined_ratio, pif_total, pif_growth_yoy, gainshare_estimate
+        SELECT month_end, combined_ratio, pif_total, pif_growth_yoy,
+               gainshare_estimate, book_value_per_share, eps_basic
         FROM pgr_edgar_monthly
         ORDER BY month_end ASC
     """

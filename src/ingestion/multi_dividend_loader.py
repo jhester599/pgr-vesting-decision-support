@@ -13,14 +13,14 @@ from __future__ import annotations
 
 import sqlite3
 import time
-from datetime import date
+from datetime import datetime, timezone
 from typing import Any
 
 import requests
 
 import config
 from src.database import db_client
-from src.ingestion.exceptions import AVRateLimitError
+from src.ingestion.exceptions import AVRateLimitAdvisory, AVRateLimitError
 
 _AV_BASE = config.AV_BASE_URL
 _AV_FUNCTION = "DIVIDENDS"
@@ -109,12 +109,16 @@ def _av_dividend_request(
     if "Error Message" in data:
         raise ValueError(f"Alpha Vantage dividend error for {ticker}: {data['Error Message']}")
     if "Note" in data:
+        # Hard daily quota exhausted — stop the batch entirely.
         raise AVRateLimitError(
             f"Alpha Vantage rate-limit note for {ticker}: {data['Note']}"
         )
     if "Information" in data:
-        raise AVRateLimitError(
-            f"Alpha Vantage info message for {ticker}: {data['Information']}"
+        # Soft advisory — quota not exhausted; no usable data for this ticker,
+        # but subsequent tickers can still succeed.  Raise AVRateLimitAdvisory
+        # so the caller can skip just this ticker and continue the batch.
+        raise AVRateLimitAdvisory(
+            f"Alpha Vantage advisory for {ticker}: {data['Information']}"
         )
 
     return data
@@ -155,7 +159,7 @@ class MultiDividendLoader:
             meta = db_client.get_ingestion_metadata(self._conn, ticker, "dividends")
             if meta and meta.get("last_fetched"):
                 fetched_date = meta["last_fetched"][:10]
-                if fetched_date == date.today().isoformat():
+                if fetched_date == datetime.now(tz=timezone.utc).strftime("%Y-%m-%d"):
                     return 0  # already fresh
 
         raw = _av_dividend_request(self._conn, ticker)
@@ -199,13 +203,20 @@ class MultiDividendLoader:
                     results[ticker] = 0
                 else:
                     results[ticker] = self.fetch_dividends(ticker)
+            except AVRateLimitAdvisory as exc:
+                # Soft advisory — quota not exhausted; skip this ticker only.
+                results[ticker] = None
+                print(
+                    f"  [av-advisory] Soft advisory for '{ticker}' — "
+                    f"skipping this ticker, continuing batch. {exc}"
+                )
             except AVRateLimitError as exc:
-                # AV server-side throttle — stop gracefully and return partial results.
+                # Hard quota exhausted — stop the batch, defer all remaining.
                 results[ticker] = None
                 for remaining in tickers[i + 1:]:
                     results[remaining] = None
                 print(
-                    f"  [rate-limit] AV throttled at '{ticker}' — "
+                    f"  [rate-limit] AV hard limit at '{ticker}' — "
                     f"{len(tickers) - i} tickers deferred to next run. {exc}"
                 )
                 return results

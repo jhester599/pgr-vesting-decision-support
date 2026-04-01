@@ -12,7 +12,7 @@ All HTTP calls are mocked so these tests run offline.
 
 from __future__ import annotations
 
-from datetime import date
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -187,8 +187,9 @@ class TestMultiTickerLoader:
 
     def test_fetch_all_prices_budget_exceeded_raises(self, conn):
         """Once the LOCAL DB daily AV limit is logged, fetch_all_prices must raise."""
-        # Exhaust the budget in the DB
-        today = date.today().isoformat()
+        # Exhaust the budget in the DB — use UTC date to match log_api_request().
+        from datetime import datetime, timezone
+        today = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
         for i in range(config.AV_DAILY_LIMIT):
             conn.execute(
                 "INSERT INTO api_request_log (api, date, endpoint, count) "
@@ -202,21 +203,19 @@ class TestMultiTickerLoader:
             loader.fetch_all_prices(["VTI"], sleep_between=0)
 
     @patch("src.ingestion.multi_ticker_loader.requests.get")
-    def test_fetch_all_prices_av_ratelimit_returns_partial(self, mock_get, conn):
-        """AV server-side rate limit returns partial results instead of raising.
+    def test_fetch_all_prices_information_skips_one_continues_rest(
+        self, mock_get, conn
+    ):
+        """'Information' advisory skips one ticker but the batch continues.
 
-        When AV returns an 'Information' key (server-side throttle), the batch
-        stops gracefully and returns results for completed tickers with None for
-        the throttled ticker and all remaining ones.
+        When AV returns the soft 'Information' key, no quota slot is consumed.
+        The affected ticker is marked None but all subsequent tickers still run.
         """
-        from src.ingestion.multi_ticker_loader import AVRateLimitError
-
         tickers = ["VTI", "BND", "GLD"]
 
         def side_effect(url, params=None, timeout=None):
             symbol = (params or {}).get("symbol", "")
             if symbol == "BND":
-                # Simulate AV returning rate-limit Information on second ticker
                 mock_resp = MagicMock()
                 mock_resp.raise_for_status = MagicMock()
                 mock_resp.json.return_value = {
@@ -226,7 +225,6 @@ class TestMultiTickerLoader:
                     )
                 }
                 return mock_resp
-            # All other tickers: normal weekly series response
             mock_resp = MagicMock()
             mock_resp.raise_for_status = MagicMock()
             mock_resp.json.return_value = self._av_response()
@@ -236,12 +234,108 @@ class TestMultiTickerLoader:
         loader = MultiTickerLoader(conn)
         results = loader.fetch_all_prices(tickers, sleep_between=0)
 
-        # VTI succeeded before the rate limit
+        # VTI completed before the advisory
         assert results["VTI"] is not None
         assert results["VTI"] >= 0
-        # BND and GLD were not processed (None = deferred)
+        # BND received the 'Information' advisory — skipped (None)
+        assert results["BND"] is None
+        # GLD still attempted and succeeded (batch continued)
+        assert results["GLD"] is not None
+        assert results["GLD"] >= 0
+
+    @patch("src.ingestion.multi_ticker_loader.requests.get")
+    def test_fetch_all_prices_note_hard_stop_defers_remaining(
+        self, mock_get, conn
+    ):
+        """'Note' (hard quota) stops the batch and defers all remaining tickers.
+
+        When AV returns 'Note', the 25-call daily limit is exhausted.
+        The throttled ticker and all subsequent tickers are set to None.
+        """
+        tickers = ["VTI", "BND", "GLD"]
+
+        def side_effect(url, params=None, timeout=None):
+            symbol = (params or {}).get("symbol", "")
+            if symbol == "BND":
+                mock_resp = MagicMock()
+                mock_resp.raise_for_status = MagicMock()
+                mock_resp.json.return_value = {
+                    "Note": (
+                        "Thank you for using Alpha Vantage! Our standard API "
+                        "rate limit is 25 requests per day."
+                    )
+                }
+                return mock_resp
+            mock_resp = MagicMock()
+            mock_resp.raise_for_status = MagicMock()
+            mock_resp.json.return_value = self._av_response()
+            return mock_resp
+
+        mock_get.side_effect = side_effect
+        loader = MultiTickerLoader(conn)
+        results = loader.fetch_all_prices(tickers, sleep_between=0)
+
+        # VTI completed before the hard limit
+        assert results["VTI"] is not None
+        assert results["VTI"] >= 0
+        # BND and GLD both deferred (hard stop)
         assert results["BND"] is None
         assert results["GLD"] is None
+
+    @patch("src.ingestion.multi_ticker_loader.requests.get")
+    def test_information_does_not_raise_av_rate_limit_error(self, mock_get, conn):
+        """Regression: 'Information' must NOT raise AVRateLimitError.
+
+        AVRateLimitError signals a hard quota stop; the soft 'Information'
+        advisory must raise AVRateLimitAdvisory instead so the caller can
+        distinguish the two cases and choose to continue the batch.
+        """
+        from src.ingestion.exceptions import AVRateLimitAdvisory, AVRateLimitError
+        from src.ingestion.multi_ticker_loader import _av_request
+
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json.return_value = {
+            "Information": "Standard API rate limit is 25 requests per day."
+        }
+        mock_get.return_value = mock_resp
+
+        import sqlite3
+        from src.database import db_client as _dbc
+        tmp_conn = sqlite3.connect(":memory:")
+        _dbc.initialize_schema(tmp_conn)
+
+        with pytest.raises(AVRateLimitAdvisory):
+            _av_request(tmp_conn, "PGR")
+
+        # Must not raise the hard-stop error
+        try:
+            _av_request(tmp_conn, "PGR")
+        except AVRateLimitAdvisory:
+            pass  # expected
+        except AVRateLimitError:
+            pytest.fail("'Information' response must not raise AVRateLimitError")
+
+    @patch("src.ingestion.multi_ticker_loader.requests.get")
+    def test_note_raises_av_rate_limit_error(self, mock_get, conn):
+        """'Note' response must raise AVRateLimitError (hard quota stop)."""
+        from src.ingestion.exceptions import AVRateLimitError
+        from src.ingestion.multi_ticker_loader import _av_request
+
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json.return_value = {
+            "Note": "Thank you for using Alpha Vantage! Rate limit 25/day."
+        }
+        mock_get.return_value = mock_resp
+
+        import sqlite3
+        from src.database import db_client as _dbc
+        tmp_conn = sqlite3.connect(":memory:")
+        _dbc.initialize_schema(tmp_conn)
+
+        with pytest.raises(AVRateLimitError):
+            _av_request(tmp_conn, "PGR")
 
     def test_fill_proxy_history_sets_proxy_fill_flag(self, conn):
         """fill_proxy_history must copy proxy rows with proxy_fill=1."""
@@ -392,12 +486,13 @@ class TestMultiDividendLoader:
         assert "BND" in results
 
     @patch("src.ingestion.multi_dividend_loader.requests.get")
-    def test_fetch_for_tickers_av_ratelimit_returns_partial(self, mock_get, conn):
-        """AV server-side rate limit on dividends returns partial results instead of raising.
+    def test_fetch_for_tickers_information_skips_one_continues_rest(
+        self, mock_get, conn
+    ):
+        """'Information' advisory on dividends skips one ticker; batch continues.
 
-        When AV returns an 'Information' or 'Note' key mid-batch, fetch_for_tickers
-        stops gracefully: the throttled ticker and all remaining ones are set to None,
-        while already-completed tickers retain their integer row counts.
+        The soft 'Information' key means VTI is skipped (None) but BND
+        still runs and succeeds.
         """
         tickers = ["PGR", "VTI", "BND"]
 
@@ -422,10 +517,46 @@ class TestMultiDividendLoader:
         loader = MultiDividendLoader(conn)
         results = loader.fetch_for_tickers(tickers, sleep_between=0)
 
-        # PGR succeeded before the rate limit
+        # PGR succeeded before the advisory
         assert results["PGR"] is not None
         assert isinstance(results["PGR"], int)
-        # VTI (throttled) and BND (not attempted) are deferred
+        # VTI received the advisory — skipped (None)
+        assert results["VTI"] is None
+        # BND still attempted and succeeded (batch continued)
+        assert results["BND"] is not None
+        assert isinstance(results["BND"], int)
+
+    @patch("src.ingestion.multi_dividend_loader.requests.get")
+    def test_fetch_for_tickers_note_hard_stop_defers_remaining(
+        self, mock_get, conn
+    ):
+        """'Note' (hard quota) on dividends stops the batch; all remaining deferred."""
+        tickers = ["PGR", "VTI", "BND"]
+
+        def side_effect(url, params=None, timeout=None):
+            symbol = (params or {}).get("symbol", "")
+            if symbol == "VTI":
+                mock_resp = MagicMock()
+                mock_resp.raise_for_status = MagicMock()
+                mock_resp.json.return_value = {
+                    "Note": (
+                        "Thank you for using Alpha Vantage! "
+                        "Rate limit 25 requests per day."
+                    )
+                }
+                return mock_resp
+            mock_resp = MagicMock()
+            mock_resp.raise_for_status = MagicMock()
+            mock_resp.json.return_value = self._av_div_response(symbol or "PGR")
+            return mock_resp
+
+        mock_get.side_effect = side_effect
+        loader = MultiDividendLoader(conn)
+        results = loader.fetch_for_tickers(tickers, sleep_between=0)
+
+        assert results["PGR"] is not None
+        assert isinstance(results["PGR"], int)
+        # VTI (hard limit) and BND (not attempted) both deferred
         assert results["VTI"] is None
         assert results["BND"] is None
 
