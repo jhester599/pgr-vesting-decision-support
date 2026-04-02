@@ -432,8 +432,8 @@ sub-feature to Week 8+ (2026-05-20) while the rest of v6.0 ships on Day 42.
 
 ---
 
-### v6.1 — Monthly Decision Email Notification
-**Status: COMPLETE (2026-03-30)**
+### v6.1 — Monthly Decision Email Notification (complete)
+**Released:** 2026-03-30
 **Theme:** Automated email delivery of monthly prediction report
 
 Added `Send monthly decision email` step to `.github/workflows/monthly_decision.yml`
@@ -458,6 +458,50 @@ immediately after the `Commit results` step.
 | `SMTP_PASSWORD` | SMTP authentication password |
 | `PREDICTION_EMAIL_FROM` | Sender address shown in the From header |
 | `PREDICTION_EMAIL_TO` | Recipient address |
+
+---
+
+### v6.2 — Historical Backfill + Expanded 8-K Schema (current)
+**Released:** 2026-04-01
+**Theme:** Load 20+ years of PGR operating data; expand pgr_edgar_monthly to 44 columns
+
+Unlocks `data/processed/pgr_edgar_cache.csv` (256 rows, 2004–2026, 65 columns) for
+model training.  The primary data gap was that `pgr_edgar_monthly` had only 22 months
+of live-fetched data capturing 7 of 65 available fields.
+
+**P1.2 — Schema Expansion:**
+- `src/database/schema.sql` — `pgr_edgar_monthly` extended from 7 to 44 columns:
+  foundational P&L (NPW, NPE, net income, EPS diluted, loss/LAE ratio, expense ratio),
+  segment channels (NPW/NPE/PIF by agency/direct/commercial/property),
+  company-level operating metrics (investment income, total revenues, total assets,
+  ROE, book equity, unearned premiums, buyback data), investment portfolio metrics
+  (FTE return, book yield, unrealized gains, duration), and derived features
+- `src/database/db_client.py` — `initialize_schema` applies 37 idempotent `ALTER TABLE`
+  migrations; `upsert_pgr_edgar_monthly` and `get_pgr_edgar_monthly` updated for all 44 cols
+
+**P1.1 — CSV Backfill (load_from_csv):**
+- `scripts/edgar_8k_fetcher.py` — `load_from_csv` now maps all 65 CSV columns via
+  `DIRECT_MAP`; computes derived features:
+  `channel_mix_agency_pct = npw_agency / (npw_agency + npw_direct)`,
+  `npw_growth_yoy` (12M pct_change), `underwriting_income = npe × (1 − CR/100)`,
+  `unearned_premium_growth_yoy` (12M pct_change); `buyback_yield` remains NULL
+  (requires market_cap not available in CSV)
+- Coverage log after load: combined_ratio, NPW, npw_agency, investment_income,
+  book_value_per_share, gainshare_estimate
+- CSV column rename handled: `roe_net_income_trailing_12m` → `roe_net_income_ttm`
+
+**Testing:**
+- `tests/test_v62_schema_and_csv.py` — **29 new tests**:
+  schema migration, round-trip upsert, backward compat, direct field mapping,
+  derived field correctness, NaN/NULL handling, dry_run, error cases, edge cases
+- **Total: 909 passed, 1 skipped**
+
+```bash
+# Bootstrap 20+ years of history (no network calls):
+python scripts/edgar_8k_fetcher.py --load-from-csv
+# Dry run to verify coverage before writing:
+python scripts/edgar_8k_fetcher.py --load-from-csv --dry-run
+```
 
 ---
 

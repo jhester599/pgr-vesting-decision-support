@@ -1,4 +1,4 @@
-# PGR Vesting Decision Support · v6.1
+# PGR Vesting Decision Support · v6.2
 
 A quantitative decision-support engine for systematically unwinding a concentrated
 Progressive Corporation (PGR) RSU position held in a taxable brokerage account.
@@ -201,7 +201,7 @@ synthetic FRED columns so they pass through the same lag-guarded pipeline.
   maintains it weekly (Sunday 04:00 UTC, 8 AV calls).
 - **30 tests** in `tests/test_v60_features.py`; total **849 passed, 1 skipped**
 
-### v6.1 — Monthly Decision Email Notification (current)
+### v6.1 — Monthly Decision Email Notification (complete)
 
 Automated email delivery of each monthly `recommendation.md` report immediately
 after the GitHub Actions commit step.
@@ -212,6 +212,49 @@ after the GitHub Actions commit step.
 - Graceful fallback: skips if SMTP secrets unconfigured, report file missing, or
   `dry_run: true` dispatch; `continue-on-error: true` — email failure never blocks DB commit
 - **Six new repository secrets required** (see GitHub Actions section below)
+
+### v6.2 — Historical Backfill + Expanded 8-K Schema (current)
+
+Unlocks 20+ years of high-quality PGR insurance operating data that was sitting
+unused in `data/processed/pgr_edgar_cache.csv`.
+
+**P1.2 — Schema Expansion (`pgr_edgar_monthly`):** Added 37 new columns across
+four categories, giving the ML feature matrix access to all 65 fields in the
+historical CSV:
+
+- **Foundational P&L** (6 cols): `net_premiums_written`, `net_premiums_earned`,
+  `net_income`, `eps_diluted`, `loss_lae_ratio`, `expense_ratio`
+- **Segment channels** (12 cols): `npw_*` and `npe_*` by agency/direct/commercial/property;
+  `pif_agency_auto`, `pif_direct_auto`, `pif_commercial_lines`, `pif_total_personal_lines`
+- **Company-level operating** (10 cols): `investment_income`, `total_revenues`,
+  `total_expenses`, `income_before_income_taxes`, `roe_net_income_ttm`,
+  `shareholders_equity`, `total_assets`, `unearned_premiums`,
+  `shares_repurchased`, `avg_cost_per_share`
+- **Investment portfolio** (4 cols): `fte_return_total_portfolio`, `investment_book_yield`,
+  `net_unrealized_gains_fixed`, `fixed_income_duration`
+- **Derived features** (5 cols, computed at load time): `channel_mix_agency_pct`,
+  `npw_growth_yoy`, `underwriting_income`, `unearned_premium_growth_yoy`,
+  `buyback_yield`
+
+Migration is idempotent: `db_client.initialize_schema()` applies `ALTER TABLE ADD COLUMN`
+for each new field so existing DBs are upgraded automatically on next run.
+
+**P1.1 — CSV Backfill:** `scripts/edgar_8k_fetcher.py --load-from-csv` now maps
+all 65 CSV columns into the expanded schema, computes all derived features, and
+upserts 256 rows (2004–2026) in a single no-network-call operation.
+
+```bash
+# Seed 20+ years of history from the committed CSV (no network calls):
+python scripts/edgar_8k_fetcher.py --load-from-csv
+```
+
+- `src/database/schema.sql` — `pgr_edgar_monthly` extended to 44 columns
+- `src/database/db_client.py` — `upsert_pgr_edgar_monthly`, `get_pgr_edgar_monthly`,
+  `initialize_schema` migrations all updated
+- `scripts/edgar_8k_fetcher.py` — `load_from_csv` maps all 65 CSV columns;
+  computes `channel_mix_agency_pct`, `npw_growth_yoy`, `underwriting_income`,
+  `unearned_premium_growth_yoy`; `pct_change` uses `fill_method=None`
+- **29 new tests** in `tests/test_v62_schema_and_csv.py`; total **909 passed, 1 skipped**
 
 ---
 

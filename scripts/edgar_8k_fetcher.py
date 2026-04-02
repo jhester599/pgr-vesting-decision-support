@@ -643,11 +643,11 @@ def load_from_csv(
     The CSV (``data/processed/pgr_edgar_cache.csv``) contains 256+ rows of
     monthly PGR data going back to 2004, pre-extracted from SEC EDGAR filings.
     This function converts the CSV's ``report_period`` (``"YYYY-MM"``) to
-    ``month_end`` (last calendar day of that month, ``"YYYY-MM-DD"``) and
-    upserts the relevant columns to the DB.
+    ``month_end`` (last calendar day of that month, ``"YYYY-MM-DD"``), maps all
+    65 CSV columns into the v6.2 expanded DB schema, computes derived features,
+    and upserts all rows.
 
-    This is the recommended bootstrap path for the full historical dataset:
-    no network calls are made.  The regular ``fetch_and_upsert`` EDGAR fetch
+    No network calls are made.  The regular ``fetch_and_upsert`` EDGAR fetch
     covers recent months not yet in the CSV.
 
     Args:
@@ -660,7 +660,7 @@ def load_from_csv(
 
     Raises:
         FileNotFoundError: If ``csv_path`` does not exist.
-        ValueError: If required columns are missing from the CSV.
+        ValueError: If ``report_period`` column is missing from the CSV.
     """
     import pandas as pd
 
@@ -678,51 +678,152 @@ def load_from_csv(
         )
 
     # Convert "YYYY-MM" → last calendar day of that month ("YYYY-MM-DD")
-    df["month_end"] = pd.to_datetime(
-        df["report_period"].astype(str), format="%Y-%m"
-    ) + pd.offsets.MonthEnd(0)
+    df["month_end"] = (
+        pd.to_datetime(df["report_period"].astype(str), format="%Y-%m")
+        + pd.offsets.MonthEnd(0)
+    )
     df["month_end"] = df["month_end"].dt.strftime("%Y-%m-%d")
+    df = df.sort_values("month_end").reset_index(drop=True)
 
-    # Map CSV columns to DB schema
-    col_map: dict[str, str] = {
-        "combined_ratio":  "combined_ratio",
-        "pif_total":       "pif_total",
+    # -----------------------------------------------------------------------
+    # Direct CSV column → DB column mappings (v6.2 expanded schema)
+    # CSV column name              DB column name
+    # -----------------------------------------------------------------------
+    DIRECT_MAP: dict[str, str] = {
+        "combined_ratio":              "combined_ratio",
+        "pif_total":                   "pif_total",
+        "net_premiums_written":        "net_premiums_written",
+        "net_premiums_earned":         "net_premiums_earned",
+        "net_income":                  "net_income",
+        "eps_diluted":                 "eps_diluted",
+        "eps_basic":                   "eps_basic",
+        "loss_lae_ratio":              "loss_lae_ratio",
+        "expense_ratio":               "expense_ratio",
+        "book_value_per_share":        "book_value_per_share",
+        # Segment-level channel metrics
+        "npw_agency":                  "npw_agency",
+        "npw_direct":                  "npw_direct",
+        "npw_commercial":              "npw_commercial",
+        "npw_property":                "npw_property",
+        "npe_agency":                  "npe_agency",
+        "npe_direct":                  "npe_direct",
+        "npe_commercial":              "npe_commercial",
+        "npe_property":                "npe_property",
+        "pif_agency_auto":             "pif_agency_auto",
+        "pif_direct_auto":             "pif_direct_auto",
+        "pif_commercial_lines":        "pif_commercial_lines",
+        "pif_total_personal_lines":    "pif_total_personal_lines",
+        # Company-level operating metrics
+        "investment_income":           "investment_income",
+        "total_revenues":              "total_revenues",
+        "total_expenses":              "total_expenses",
+        "income_before_income_taxes":  "income_before_income_taxes",
+        "roe_net_income_trailing_12m": "roe_net_income_ttm",  # CSV name differs
+        "shareholders_equity":         "shareholders_equity",
+        "total_assets":                "total_assets",
+        "unearned_premiums":           "unearned_premiums",
+        "shares_repurchased":          "shares_repurchased",
+        "avg_cost_per_share":          "avg_cost_per_share",
+        # Investment portfolio metrics
+        "fte_return_total_portfolio":  "fte_return_total_portfolio",
+        "investment_book_yield":       "investment_book_yield",
+        "net_unrealized_gains_fixed":  "net_unrealized_gains_fixed",
+        "fixed_income_duration":       "fixed_income_duration",
     }
-    for csv_col, db_col in col_map.items():
+
+    for csv_col, db_col in DIRECT_MAP.items():
         if csv_col in df.columns:
             df[db_col] = pd.to_numeric(df[csv_col], errors="coerce")
         else:
             df[db_col] = float("nan")
 
-    # Sort and compute derived fields
-    df = df.sort_values("month_end")
-    records_raw = df[["month_end", "combined_ratio", "pif_total"]].to_dict("records")
+    # -----------------------------------------------------------------------
+    # Derived fields (computed once the full sorted time series is available)
+    # -----------------------------------------------------------------------
 
-    # Convert NaN → None for SQLite compatibility
-    records: list[dict[str, Any]] = []
-    for r in records_raw:
-        records.append({
-            "month_end":         r["month_end"],
-            "combined_ratio":    None if (r["combined_ratio"] != r["combined_ratio"]) else r["combined_ratio"],
-            "pif_total":         None if (r["pif_total"] != r["pif_total"]) else r["pif_total"],
-            "pif_growth_yoy":    None,
-            "gainshare_estimate": None,
-        })
+    # pif_growth_yoy and gainshare_estimate: reuse existing logic via records path
+    # npw_growth_yoy: 12-month YoY on net_premiums_written
+    df["npw_growth_yoy"] = df["net_premiums_written"].pct_change(periods=12, fill_method=None)
 
-    records = _compute_derived_fields(records)
+    # channel_mix_agency_pct = npw_agency / (npw_agency + npw_direct)
+    npw_pl = df["npw_agency"] + df["npw_direct"]
+    df["channel_mix_agency_pct"] = df["npw_agency"].where(npw_pl > 0) / npw_pl.where(npw_pl > 0)
+
+    # underwriting_income = npe * (1 - combined_ratio / 100)
+    df["underwriting_income"] = df["net_premiums_earned"] * (
+        1.0 - df["combined_ratio"] / 100.0
+    )
+
+    # unearned_premium_growth_yoy: 12-month YoY on unearned_premiums
+    df["unearned_premium_growth_yoy"] = df["unearned_premiums"].pct_change(periods=12, fill_method=None)
+
+    # buyback_yield requires market_cap (price data) — set NULL for CSV path
+    df["buyback_yield"] = float("nan")
+
+    # -----------------------------------------------------------------------
+    # Build records list and apply pif_growth_yoy / gainshare via existing helper
+    # -----------------------------------------------------------------------
+    db_cols = list(DIRECT_MAP.values()) + [
+        "month_end",
+        "npw_growth_yoy", "channel_mix_agency_pct",
+        "underwriting_income", "unearned_premium_growth_yoy", "buyback_yield",
+    ]
+    # Deduplicate column list (roe_net_income_ttm could appear once)
+    seen_cols: set[str] = set()
+    unique_cols = []
+    for c in db_cols:
+        if c not in seen_cols:
+            unique_cols.append(c)
+            seen_cols.add(c)
+
+    df_out = df[unique_cols].copy()
+
+    def _nan_to_none(val: Any) -> Any:
+        """Convert float NaN to None for SQLite NULL storage."""
+        try:
+            if val != val:  # NaN check
+                return None
+        except TypeError:
+            pass
+        return val
+
+    records_raw: list[dict[str, Any]] = [
+        {col: _nan_to_none(row[col]) for col in unique_cols}
+        for _, row in df_out.iterrows()
+    ]
+
+    # Compute pif_growth_yoy and gainshare_estimate using the existing helper
+    # (operates on sorted list; only needs pif_total and combined_ratio)
+    records_raw = _compute_derived_fields(records_raw)
 
     log.info(
         "CSV loaded: %d rows  date_range=%s→%s",
-        len(records),
-        records[0]["month_end"] if records else "n/a",
-        records[-1]["month_end"] if records else "n/a",
+        len(records_raw),
+        records_raw[0]["month_end"] if records_raw else "n/a",
+        records_raw[-1]["month_end"] if records_raw else "n/a",
+    )
+
+    # Coverage summary
+    def _coverage(field: str) -> str:
+        n = sum(1 for r in records_raw if r.get(field) is not None)
+        return f"{n}/{len(records_raw)}"
+
+    log.info(
+        "Coverage  combined_ratio=%s  npw=%s  npw_agency=%s  "
+        "investment_income=%s  book_value=%s  gainshare=%s",
+        _coverage("combined_ratio"),
+        _coverage("net_premiums_written"),
+        _coverage("npw_agency"),
+        _coverage("investment_income"),
+        _coverage("book_value_per_share"),
+        _coverage("gainshare_estimate"),
     )
 
     if dry_run:
-        log.info("Dry run — skipping DB write (%d rows would be upserted).", len(records))
+        log.info("Dry run — skipping DB write (%d rows would be upserted).", len(records_raw))
         return 0
 
-    n = db_client.upsert_pgr_edgar_monthly(conn, records)
+    n = db_client.upsert_pgr_edgar_monthly(conn, records_raw)
     log.info("Upserted %d rows from CSV to pgr_edgar_monthly.", n)
     return n
 
