@@ -574,6 +574,39 @@ from `pgr_edgar_monthly` (PGR monthly 8-K supplements).  Defaulting to monthly
 
 ---
 
+### v6.5 — P2.6 / P2.7 / P2.8: HTML Parser Extension, Calibration Plot, Email Module (current)
+**Released:** 2026-04-02
+**Theme:** Live 8-K field capture (P2.6), calibration diagnostic (P2.7), testable email (P2.8)
+
+**P2.6 — Extend 8-K HTML Parser:**
+Extends `_parse_html_exhibit()` in `scripts/edgar_8k_fetcher.py` to capture
+12 additional fields from the monthly 8-K exhibit HTML:
+`net_premiums_written`, `net_premiums_earned`, `npw_agency`, `npw_direct`,
+`npw_commercial`, `npw_property`, `investment_income`, `book_value_per_share`,
+`eps_basic`, `shares_repurchased`, `avg_cost_per_share`, `investment_book_yield`.
+New `_try_parse_dollar()` helper reduces boilerplate for range-guarded regex extraction.
+`_compute_derived_fields()` extended to compute `channel_mix_agency_pct`,
+`underwriting_income`, `npw_growth_yoy`, `unearned_premium_growth_yoy` from the
+assembled time series (mirrors the CSV backfill path).
+
+**P2.7 — Calibration Reliability Diagram:**
+`_plot_calibration_curve()` added to `scripts/monthly_decision.py`.  Written to
+`results/monthly_decisions/YYYY-MM/plots/calibration_curve.png` on each monthly run.
+Shows binned predicted P(outperform) vs. actual fraction positive, with ECE annotation
+and 95% bootstrap CI.  `_calibrate_signals()` return signature updated to expose
+pooled probabilities and outcomes for the diagram.
+
+**P2.8 — Testable Email Module:**
+Email logic extracted from inline YAML into `src/reporting/email_sender.py`:
+- `build_email_message()` — pure function; constructs MIMEMultipart from report body
+- `send_monthly_email()` — env-var / kwarg config; SMTP_SSL (port 465) or STARTTLS (587);
+  `dry_run=True` returns subject without network connection
+Workflow YAML step updated to call the module.
+
+**Testing:** 35 new tests in `tests/test_v65_p26_p27_p28.py`; total **984 passed, 1 skipped**
+
+---
+
 ### Housekeeping — AV "Information" vs "Note" Response Handling
 **Target:** Low priority; address in any future ingestion sprint
 **Theme:** Improve weekly fetch resilience against benign AV advisories

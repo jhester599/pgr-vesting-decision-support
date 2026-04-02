@@ -303,19 +303,63 @@ def _get_filing_doc_url(
 # HTML parsing
 # ---------------------------------------------------------------------------
 
+def _try_parse_dollar(
+    html: str,
+    patterns: list[str],
+    lo: float,
+    hi: float,
+    scale: float = 1.0,
+) -> float | None:
+    """Try each regex in turn; return the first in-range numeric match, or None.
+
+    Args:
+        html:     Raw HTML text to search.
+        patterns: Ordered list of regex patterns (most-specific first).
+                  Each pattern must have exactly one capture group for the value.
+        lo:       Inclusive lower bound on the parsed value (after scaling).
+        hi:       Inclusive upper bound on the parsed value (after scaling).
+        scale:    Multiply the raw parsed number by this factor before range
+                  check (e.g. 1e6 to convert millions reported in the HTML to
+                  absolute dollars).
+
+    Returns:
+        The first valid parsed value, or ``None`` if no pattern matches.
+    """
+    for pat in patterns:
+        m = re.search(pat, html)
+        if m:
+            try:
+                raw = float(m.group(1).replace(",", "").replace("$", ""))
+                val = raw * scale
+                if lo <= val <= hi:
+                    return val
+            except (ValueError, AttributeError):
+                pass
+    return None
+
+
 def _parse_html_exhibit(
     html: str,
     filing_date: str,
 ) -> dict[str, Any] | None:
-    """Parse a PGR 8-K HTML exhibit for combined_ratio and PIF.
+    """Parse a PGR 8-K HTML exhibit for operating metrics.
 
-    PGR's monthly supplement contains a table with:
+    PGR's monthly Regulation FD supplement (item 7.01) contains tables with:
       - Combined Ratio (loss + expense; typically 85–105 for PGR)
       - Policies in Force (total count; typically 10M–30M)
+      - Net Premiums Written by segment (Agency, Direct, Commercial, Property)
+      - Net Premiums Earned totals
+      - Net Investment Income
+      - Book Value per Share
+      - EPS (basic)
+      - Shares Repurchased and average cost
+      - Investment book yield
 
-    The ``gainshare_estimate`` and ``pif_growth_yoy`` fields are left as
-    ``None`` here; they are computed in ``_compute_derived_fields`` once the
-    full sorted time series is available.
+    The ``gainshare_estimate``, ``pif_growth_yoy``, ``npw_growth_yoy``,
+    ``channel_mix_agency_pct``, ``underwriting_income``, and
+    ``unearned_premium_growth_yoy`` fields are left as ``None`` here; they are
+    computed in ``_compute_derived_fields`` once the full sorted time series is
+    available (YoY features) or on a per-row basis for ratio/product features.
 
     The filing date is used to derive ``month_end``: PGR files its monthly
     supplement in the first 3 weeks of the following month, so the data
@@ -326,9 +370,9 @@ def _parse_html_exhibit(
         filing_date: ISO date string (``"YYYY-MM-DD"``).
 
     Returns:
-        Dict with keys ``month_end``, ``combined_ratio``, ``pif_total``,
-        ``pif_growth_yoy``, ``gainshare_estimate``, or ``None`` if no usable
-        data is found.
+        Dict with all parseable field values set, None placeholders for derived
+        fields.  Returns ``None`` if neither combined_ratio nor pif_total can
+        be extracted (filing is likely not a monthly supplement).
     """
     filed_dt = datetime.strptime(filing_date, "%Y-%m-%d")
     # Period: last day of the month before the filing month
@@ -336,64 +380,223 @@ def _parse_html_exhibit(
     last_day_prior_month = first_of_filing_month - timedelta(days=1)
     month_end = last_day_prior_month.strftime("%Y-%m-%d")
 
-    combined_ratio: float | None = None
-    pif_total: float | None = None
+    # -----------------------------------------------------------------------
+    # Combined Ratio (always present; required for usability check)
+    # -----------------------------------------------------------------------
+    combined_ratio = _try_parse_dollar(
+        html,
+        patterns=[
+            r"(?i)combined\s+ratio[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*([\d]+\.[\d]+)",
+            r"(?i)combined\s+ratio\b[^<]{0,80}?([\d]{2,3}\.[\d]{1,2})",
+            r"(?i)\bCR\b[^<]{0,40}</t[dh]>\s*<t[dh][^>]*>\s*([\d]+\.[\d]+)",
+            r"(?si)combined.{0,300}?(\b\d{2,3}\.\d{1,2}\b)",
+        ],
+        lo=60.0, hi=140.0,
+    )
 
-    # --- Combined Ratio extraction ---
-    # Try multiple regex patterns, from most specific to most permissive.
-    cr_patterns = [
-        # Table cell pattern: label cell, then value cell
-        r"(?i)combined\s+ratio[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*([\d]+\.[\d]+)",
-        # Inline near label
-        r"(?i)combined\s+ratio\b[^<]{0,80}?([\d]{2,3}\.[\d]{1,2})",
-        # Abbreviated "CR" with value in nearby cell
-        r"(?i)\bCR\b[^<]{0,40}</t[dh]>\s*<t[dh][^>]*>\s*([\d]+\.[\d]+)",
-        # Looser: anywhere "combined" appears near a plausible number
-        r"(?si)combined.{0,300}?(\b\d{2,3}\.\d{1,2}\b)",
-    ]
-    for pat in cr_patterns:
-        m = re.search(pat, html)
-        if m:
-            try:
-                val = float(m.group(1))
-                if 60.0 <= val <= 140.0:
-                    combined_ratio = val
-                    break
-            except ValueError:
-                pass
-
-    # --- Policies in Force extraction ---
-    pif_patterns = [
-        # Table cell pattern
-        r"(?i)policies\s+in\s+force[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*([\d,]+)",
-        r"(?i)total\s+pif\b[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*([\d,]+)",
-        # Inline near label
-        r"(?i)policies\s+in\s+force\b[^<]{0,80}?([\d,]{6,})",
-        r"(?i)\bpif\b[^<]{0,40}</t[dh]>\s*<t[dh][^>]*>\s*([\d,]+)",
-        # Looser
-        r"(?si)policies\s+in\s+force.{0,300}?(\b[\d,]{6,}\b)",
-    ]
-    for pat in pif_patterns:
-        m = re.search(pat, html)
-        if m:
-            try:
-                val = float(m.group(1).replace(",", ""))
-                # PGR PIF: realistic range 100k–60M (accounts for growth over 15 years)
-                if 100_000 <= val <= 60_000_000:
-                    pif_total = val
-                    break
-            except ValueError:
-                pass
+    # -----------------------------------------------------------------------
+    # Policies in Force — total (always present in PGR supplements)
+    # -----------------------------------------------------------------------
+    pif_total = _try_parse_dollar(
+        html,
+        patterns=[
+            r"(?i)policies\s+in\s+force[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*([\d,]+)",
+            r"(?i)total\s+pif\b[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*([\d,]+)",
+            r"(?i)policies\s+in\s+force\b[^<]{0,80}?([\d,]{6,})",
+            r"(?i)\bpif\b[^<]{0,40}</t[dh]>\s*<t[dh][^>]*>\s*([\d,]+)",
+            r"(?si)policies\s+in\s+force.{0,300}?(\b[\d,]{6,}\b)",
+        ],
+        lo=100_000, hi=60_000_000,
+    )
 
     if combined_ratio is None and pif_total is None:
-        return None
+        return None  # Not a monthly supplement — skip
+
+    # -----------------------------------------------------------------------
+    # P2.6 — Segment Net Premiums Written (in $millions)
+    # PGR reports NPW in three segments: Agency (Personal Lines Auto),
+    # Direct (Personal Lines Auto), Commercial Lines, and Property.
+    # The monthly supplement typically has a "Net Premiums Written" table
+    # with one row per segment.  Dollar amounts are in millions.
+    # -----------------------------------------------------------------------
+
+    # Agency NPW
+    npw_agency = _try_parse_dollar(
+        html,
+        patterns=[
+            r"(?i)agency[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*\$?\s*([\d,]+\.?\d*)",
+            r"(?i)personal\s+lines\s+(?:auto\s+)?agency[^<]{0,80}([\d,]+\.?\d*)",
+            r"(?si)agency.{0,200}?net\s+premiums?\s+written.{0,200}?([\d,]+\.?\d*)",
+        ],
+        lo=100.0, hi=20_000.0,   # $100M–$20B realistic range (figures in $M)
+        scale=1.0,
+    )
+
+    # Direct NPW
+    npw_direct = _try_parse_dollar(
+        html,
+        patterns=[
+            r"(?i)direct[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*\$?\s*([\d,]+\.?\d*)",
+            r"(?i)personal\s+lines\s+(?:auto\s+)?direct[^<]{0,80}([\d,]+\.?\d*)",
+            r"(?si)direct.{0,200}?net\s+premiums?\s+written.{0,200}?([\d,]+\.?\d*)",
+        ],
+        lo=100.0, hi=20_000.0,
+        scale=1.0,
+    )
+
+    # Commercial Lines NPW
+    npw_commercial = _try_parse_dollar(
+        html,
+        patterns=[
+            r"(?i)commercial\s+lines?[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*\$?\s*([\d,]+\.?\d*)",
+            r"(?i)commercial\s+auto[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*\$?\s*([\d,]+\.?\d*)",
+            r"(?si)commercial\s+lines?.{0,200}?net\s+premiums?\s+written.{0,200}?([\d,]+\.?\d*)",
+        ],
+        lo=10.0, hi=5_000.0,
+        scale=1.0,
+    )
+
+    # Property NPW
+    npw_property = _try_parse_dollar(
+        html,
+        patterns=[
+            r"(?i)property[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*\$?\s*([\d,]+\.?\d*)",
+            r"(?si)property.{0,200}?net\s+premiums?\s+written.{0,200}?([\d,]+\.?\d*)",
+        ],
+        lo=1.0, hi=3_000.0,
+        scale=1.0,
+    )
+
+    # Total company NPW
+    net_premiums_written = _try_parse_dollar(
+        html,
+        patterns=[
+            r"(?i)(?:total\s+)?(?:company\s+)?net\s+premiums?\s+written[^<]{0,80}\$?\s*([\d,]+\.?\d*)",
+            r"(?i)net\s+premiums?\s+written[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*\$?\s*([\d,]+\.?\d*)",
+            r"(?si)net\s+premiums?\s+written.{0,300}?(\b[\d,]{3,}\.\d\b)",
+        ],
+        lo=500.0, hi=30_000.0,
+        scale=1.0,
+    )
+
+    # Net Premiums Earned — total
+    net_premiums_earned = _try_parse_dollar(
+        html,
+        patterns=[
+            r"(?i)net\s+premiums?\s+earned[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*\$?\s*([\d,]+\.?\d*)",
+            r"(?i)(?:total\s+)?net\s+premiums?\s+earned[^<]{0,80}\$?\s*([\d,]+\.?\d*)",
+            r"(?si)net\s+premiums?\s+earned.{0,300}?(\b[\d,]{3,}\.\d\b)",
+        ],
+        lo=500.0, hi=30_000.0,
+        scale=1.0,
+    )
+
+    # -----------------------------------------------------------------------
+    # Net Investment Income ($M)
+    # -----------------------------------------------------------------------
+    investment_income = _try_parse_dollar(
+        html,
+        patterns=[
+            r"(?i)net\s+investment\s+income[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*\$?\s*([\d,]+\.?\d*)",
+            r"(?i)investment\s+income[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*\$?\s*([\d,]+\.?\d*)",
+            r"(?si)investment\s+income.{0,200}?([\d,]+\.\d)",
+        ],
+        lo=5.0, hi=3_000.0,
+        scale=1.0,
+    )
+
+    # -----------------------------------------------------------------------
+    # Book Value per Share ($)
+    # -----------------------------------------------------------------------
+    book_value_per_share = _try_parse_dollar(
+        html,
+        patterns=[
+            r"(?i)book\s+value\s+per\s+(?:common\s+)?share[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*\$?\s*([\d,]+\.?\d+)",
+            r"(?i)book\s+value\s+per\s+share[^<]{0,80}\$\s*([\d,]+\.\d{2})",
+            r"(?si)book\s+value\s+per\s+share.{0,200}?\$\s*([\d,]+\.\d{2})",
+        ],
+        lo=5.0, hi=500.0,
+        scale=1.0,
+    )
+
+    # -----------------------------------------------------------------------
+    # EPS — basic ($ per share, monthly)
+    # -----------------------------------------------------------------------
+    eps_basic = _try_parse_dollar(
+        html,
+        patterns=[
+            r"(?i)(?:basic\s+)?earnings\s+per\s+(?:common\s+)?share[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*\$?\s*([\d,]+\.?\d+)",
+            r"(?i)\beps\b[^<]{0,40}basic[^<]{0,60}\$?\s*([\d]+\.\d{2})",
+            r"(?si)basic.{0,100}?earnings\s+per\s+share.{0,200}?\$\s*([\d]+\.\d{2})",
+        ],
+        lo=0.0, hi=20.0,
+        scale=1.0,
+    )
+
+    # -----------------------------------------------------------------------
+    # Shares Repurchased (millions of shares) and Average Cost per Share ($)
+    # -----------------------------------------------------------------------
+    shares_repurchased = _try_parse_dollar(
+        html,
+        patterns=[
+            r"(?i)shares?\s+repurchased[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*([\d,]+\.?\d*)",
+            r"(?i)(?:common\s+)?shares?\s+(?:re)?purchased[^<]{0,60}([\d,]+\.?\d*)",
+            r"(?si)repurchase.{0,200}?shares?.{0,100}?([\d,]+\.\d)",
+        ],
+        lo=0.0, hi=50.0,  # millions of shares
+        scale=1.0,
+    )
+
+    avg_cost_per_share = _try_parse_dollar(
+        html,
+        patterns=[
+            r"(?i)average\s+(?:purchase\s+)?(?:cost|price)\s+per\s+share[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*\$?\s*([\d,]+\.\d{2})",
+            r"(?i)avg\.\s+(?:cost|price)\s+per\s+share[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*\$?\s*([\d,]+\.\d{2})",
+            r"(?si)average.{0,50}(?:cost|price)\s+per\s+share.{0,200}?\$\s*([\d,]+\.\d{2})",
+        ],
+        lo=10.0, hi=600.0,
+        scale=1.0,
+    )
+
+    # -----------------------------------------------------------------------
+    # Investment Book Yield (as %)
+    # -----------------------------------------------------------------------
+    investment_book_yield = _try_parse_dollar(
+        html,
+        patterns=[
+            r"(?i)(?:investment\s+)?book\s+yield[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*([\d]+\.[\d]+)\s*%?",
+            r"(?i)book\s+yield[^<]{0,80}([\d]+\.[\d]+)\s*%",
+        ],
+        lo=0.5, hi=15.0,  # percentage points
+        scale=0.01,        # convert from % to decimal
+    )
 
     return {
         "month_end": month_end,
+        # Core
         "combined_ratio": combined_ratio,
         "pif_total": pif_total,
+        # v6.2 phase 1 fields parsed from HTML (P2.6)
+        "net_premiums_written": net_premiums_written,
+        "net_premiums_earned": net_premiums_earned,
+        "npw_agency": npw_agency,
+        "npw_direct": npw_direct,
+        "npw_commercial": npw_commercial,
+        "npw_property": npw_property,
+        "investment_income": investment_income,
+        "book_value_per_share": book_value_per_share,
+        "eps_basic": eps_basic,
+        "shares_repurchased": shares_repurchased,
+        "avg_cost_per_share": avg_cost_per_share,
+        "investment_book_yield": investment_book_yield,
+        # Derived fields — populated by _compute_derived_fields after time-series is assembled
         "pif_growth_yoy": None,
         "gainshare_estimate": None,
+        "channel_mix_agency_pct": None,
+        "underwriting_income": None,
+        "npw_growth_yoy": None,
+        "unearned_premium_growth_yoy": None,
+        "buyback_yield": None,
     }
 
 
@@ -401,12 +604,37 @@ def _parse_html_exhibit(
 # Derived field computation
 # ---------------------------------------------------------------------------
 
+def _prior_year_key(month_end: str) -> str:
+    """Return the month_end string for the same month one year prior.
+
+    Handles the Feb-29 edge case: if month_end is 2024-02-29 (leap year),
+    the prior-year key is 2023-02-28.
+    """
+    dt = datetime.strptime(month_end, "%Y-%m-%d")
+    try:
+        prior = dt.replace(year=dt.year - 1)
+    except ValueError:
+        # Feb 29 in a leap year → Feb 28 in a non-leap year
+        prior = dt.replace(year=dt.year - 1, day=28)
+    return prior.strftime("%Y-%m-%d")
+
+
 def _compute_derived_fields(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Compute ``pif_growth_yoy`` and ``gainshare_estimate`` for all records.
+    """Compute all derived fields for the full sorted 8-K time series.
 
     These fields require a full sorted time series so that year-ago values can
     be looked up.  Must be called after all records are collected and sorted
     ascending by ``month_end``.
+
+    Derived fields computed:
+      - ``pif_growth_yoy``          — YoY PIF growth (% change vs same month prior year)
+      - ``gainshare_estimate``       — PGR Gainshare multiplier estimate (0–2 scale)
+      - ``channel_mix_agency_pct``   — Agency NPW / (Agency + Direct NPW)
+      - ``underwriting_income``      — NPE × (1 − CR/100)  (core P&C profitability $)
+      - ``npw_growth_yoy``           — YoY % change in total Net Premiums Written
+      - ``unearned_premium_growth_yoy`` — YoY % change in unearned premium reserve
+        NOTE: unearned_premiums is rarely in the monthly supplement HTML; this will
+        typically remain None for the live-fetch path (available via CSV backfill).
 
     The gainshare formula mirrors ``pgr_monthly_loader.py``:
       - ``cr_score``    = clip((96 − CR) / 10,  0, 2)
@@ -417,28 +645,51 @@ def _compute_derived_fields(records: list[dict[str, Any]]) -> list[dict[str, Any
         records: List of record dicts, already sorted ascending by ``month_end``.
 
     Returns:
-        The same list with ``pif_growth_yoy`` and ``gainshare_estimate`` filled
-        in where computable.
+        The same list with all computable derived fields filled in.
     """
+    # Build lookup dicts for all fields that feed YoY computations
     pif_by_month: dict[str, float] = {
         r["month_end"]: r["pif_total"]
         for r in records
-        if r["pif_total"] is not None
+        if r.get("pif_total") is not None
+    }
+    npw_by_month: dict[str, float] = {
+        r["month_end"]: r["net_premiums_written"]
+        for r in records
+        if r.get("net_premiums_written") is not None
+    }
+    unprem_by_month: dict[str, float] = {
+        r["month_end"]: r["unearned_premiums"]
+        for r in records
+        if r.get("unearned_premiums") is not None
     }
 
     for rec in records:
+        me_key = rec["month_end"]
+        prior_key = _prior_year_key(me_key)
+
         # --- YoY PIF growth ---
-        if rec["pif_total"] is not None:
-            me = datetime.strptime(rec["month_end"], "%Y-%m-%d")
-            # Safe prior-year lookup: Feb 29 in a leap year → Feb 28 in a non-leap year
-            try:
-                prior_dt = me.replace(year=me.year - 1)
-            except ValueError:
-                prior_dt = me.replace(year=me.year - 1, day=28)
-            prior_key = prior_dt.strftime("%Y-%m-%d")
+        pif_cur = rec.get("pif_total")
+        if pif_cur is not None:
             prior_pif = pif_by_month.get(prior_key)
             if prior_pif and prior_pif != 0.0:
-                rec["pif_growth_yoy"] = (rec["pif_total"] - prior_pif) / prior_pif
+                rec["pif_growth_yoy"] = (pif_cur - prior_pif) / prior_pif
+
+        # --- YoY NPW growth ---
+        npw_cur = rec.get("net_premiums_written")
+        if npw_cur is not None:
+            prior_npw = npw_by_month.get(prior_key)
+            if prior_npw and prior_npw != 0.0:
+                rec["npw_growth_yoy"] = (npw_cur - prior_npw) / prior_npw
+
+        # --- YoY unearned premium growth ---
+        unprem_cur = rec.get("unearned_premiums")
+        if unprem_cur is not None:
+            prior_unprem = unprem_by_month.get(prior_key)
+            if prior_unprem and prior_unprem != 0.0:
+                rec["unearned_premium_growth_yoy"] = (
+                    (unprem_cur - prior_unprem) / prior_unprem
+                )
 
         # --- Gainshare estimate ---
         cr = rec.get("combined_ratio")
@@ -458,6 +709,21 @@ def _compute_derived_fields(records: list[dict[str, Any]]) -> list[dict[str, Any
             rec["gainshare_estimate"] = cr_score
         elif pif_score is not None:
             rec["gainshare_estimate"] = pif_score
+
+        # --- Per-row derived fields (no time series needed) ---
+
+        # channel_mix_agency_pct = npw_agency / (npw_agency + npw_direct)
+        npw_ag = rec.get("npw_agency")
+        npw_di = rec.get("npw_direct")
+        if npw_ag is not None and npw_di is not None:
+            denom = npw_ag + npw_di
+            if denom > 0.0:
+                rec["channel_mix_agency_pct"] = npw_ag / denom
+
+        # underwriting_income = net_premiums_earned × (1 − CR / 100)
+        npe = rec.get("net_premiums_earned")
+        if npe is not None and cr is not None:
+            rec["underwriting_income"] = npe * (1.0 - cr / 100.0)
 
     return records
 
@@ -607,15 +873,25 @@ def fetch_and_upsert(
 
     # Coverage report
     n_total = len(deduped)
-    cr_present = sum(1 for r in deduped if r.get("combined_ratio") is not None)
-    pif_present = sum(1 for r in deduped if r.get("pif_total") is not None)
-    gs_present = sum(1 for r in deduped if r.get("gainshare_estimate") is not None)
+
+    def _cov(field: str) -> str:
+        n = sum(1 for r in deduped if r.get(field) is not None)
+        return f"{n}/{n_total}"
+
     log.info(
-        "Coverage  combined_ratio=%d/%d  pif_total=%d/%d  gainshare=%d/%d  "
+        "Coverage  combined_ratio=%s  pif_total=%s  gainshare=%s  "
+        "npw=%s  npw_agency=%s  investment_income=%s  bvps=%s  "
+        "channel_mix=%s  underwriting_income=%s  "
         "date_range=%s→%s",
-        cr_present, n_total,
-        pif_present, n_total,
-        gs_present, n_total,
+        _cov("combined_ratio"),
+        _cov("pif_total"),
+        _cov("gainshare_estimate"),
+        _cov("net_premiums_written"),
+        _cov("npw_agency"),
+        _cov("investment_income"),
+        _cov("book_value_per_share"),
+        _cov("channel_mix_agency_pct"),
+        _cov("underwriting_income"),
         deduped[0]["month_end"],
         deduped[-1]["month_end"],
     )

@@ -1,4 +1,4 @@
-# PGR Vesting Decision Support · v6.4
+# PGR Vesting Decision Support · v6.5
 
 A quantitative decision-support engine for systematically unwinding a concentrated
 Progressive Corporation (PGR) RSU position held in a taxable brokerage account.
@@ -281,7 +281,7 @@ preserving full backward compatibility with pre-v6.2 databases.
 
 ---
 
-### v6.4 — P2.x Operational & Valuation Features (current)
+### v6.4 — P2.x Operational & Valuation Features (complete)
 
 Adds eleven new predictive features sourced entirely from `pgr_edgar_monthly`
 (PGR monthly 8-K supplements) across four categories: underwriting income,
@@ -332,6 +332,53 @@ dates, and subject to the `WFO_MIN_GAINSHARE_OBS` sparsity guard.  Absent when
 - `src/processing/feature_engineering.py` — v6.4 P2.x block added in
   `build_feature_matrix()`; all eleven features added to the sparsity-guard loop
 - **28 new tests** in `tests/test_v64_p2x_features.py`; total **949 passed, 1 skipped**
+
+---
+
+### v6.5 — P2.6 / P2.7 / P2.8: HTML Parser Extension, Calibration Plot, Email Module (current)
+
+Completes the remaining Priority 2 items from DEVELOPMENT_PLAN.md.
+
+**P2.6 — Extend 8-K HTML Parser:**
+The live EDGAR fetcher (`scripts/edgar_8k_fetcher.py`) previously captured only
+`combined_ratio` and `pif_total` from the monthly 8-K HTML exhibit.  Now parses:
+- `net_premiums_written`, `net_premiums_earned`
+- `npw_agency`, `npw_direct`, `npw_commercial`, `npw_property`
+- `investment_income`, `book_value_per_share`, `eps_basic`
+- `shares_repurchased`, `avg_cost_per_share`, `investment_book_yield`
+
+Derived fields (`channel_mix_agency_pct`, `underwriting_income`, `npw_growth_yoy`,
+`unearned_premium_growth_yoy`) are computed in `_compute_derived_fields()` after
+the full time series is assembled — same logic as the CSV backfill path.  All new
+fields feed directly into the v6.4 P2.x feature pipeline.
+
+**P2.7 — Calibration Reliability Diagram:**
+`_plot_calibration_curve()` added to `scripts/monthly_decision.py`.  Called after
+calibration on every monthly run; writes `plots/calibration_curve.png` to the
+month's output directory.  The reliability diagram plots predicted P(outperform)
+vs. actual fraction of outperforming months per bin, with a perfect-calibration
+diagonal reference and ECE annotation.  Returns `None` if insufficient data
+(< 4 observations) or if calibration method is still "uncalibrated".
+
+**P2.8 — Testable Email Module:**
+Email sending logic extracted from the inline GitHub Actions YAML script into
+`src/reporting/email_sender.py`, with two testable public functions:
+- `build_email_message(body, from_addr, to_addr, month_label)` — pure function;
+  parses signal from the report body and constructs the MIMEMultipart message
+- `send_monthly_email(report_path, ...)` — reads env-vars / kwargs, builds the
+  message, and sends via `smtplib.SMTP_SSL` (port 465) or `STARTTLS` (port 587)
+
+The workflow YAML step now calls `send_monthly_email()` from the module rather
+than embedding ~70 lines of inline Python.  `dry_run=True` returns the subject
+line without any network connection.
+
+- `scripts/edgar_8k_fetcher.py` — `_try_parse_dollar()` helper; extended
+  `_parse_html_exhibit()`; extended `_compute_derived_fields()`; updated coverage log
+- `scripts/monthly_decision.py` — `_plot_calibration_curve()`; updated
+  `_calibrate_signals()` return signature; called from `main()`
+- `src/reporting/email_sender.py` — **NEW** testable email module
+- `.github/workflows/monthly_decision.yml` — updated email step
+- **35 new tests** in `tests/test_v65_p26_p27_p28.py`; total **984 passed, 1 skipped**
 
 ---
 

@@ -408,13 +408,17 @@ def _calibrate_signals(
         agg_ece, ci_lo, ci_hi = 0.0, 0.0, 1.0
         dominant_method = "uncalibrated"
 
+    # Expose pooled arrays for the reliability diagram (P2.7)
+    cal_probs_arr = np.array(all_cal_probs, dtype=float) if len(all_cal_probs) >= 4 else np.array([], dtype=float)
+    cal_outcomes_arr = np.array(all_outcomes_pool, dtype=int) if len(all_outcomes_pool) >= 4 else np.array([], dtype=int)
+
     return signals, CalibrationResult(
         n_obs=n_total,
         method=dominant_method,
         ece=agg_ece,
         ece_ci_lower=ci_lo,
         ece_ci_upper=ci_hi,
-    )
+    ), cal_probs_arr, cal_outcomes_arr
 
 
 def _compute_conformal_intervals(
@@ -833,6 +837,125 @@ def _append_decision_log(
 
 
 # ---------------------------------------------------------------------------
+# P2.7 — Calibration reliability diagram
+# ---------------------------------------------------------------------------
+
+def _plot_calibration_curve(
+    out_dir: Path,
+    cal_probs: np.ndarray,
+    cal_outcomes: np.ndarray,
+    cal_result: CalibrationResult,
+    n_bins: int | None = None,
+) -> Path | None:
+    """Generate a reliability diagram (calibration curve) and save to disk.
+
+    The reliability diagram plots predicted probability (x-axis) against the
+    fraction of positive outcomes in each bin (y-axis).  A perfectly calibrated
+    model lies on the diagonal.  Points above the diagonal are under-confident;
+    points below are over-confident.
+
+    The plot includes:
+      - Binned calibration curve (blue circles, connected)
+      - Diagonal perfect-calibration reference (dashed grey)
+      - Histogram of predicted probabilities (bottom subpanel)
+      - ECE annotation with 95% bootstrap CI
+
+    Args:
+        out_dir:      Output directory (YYYY-MM folder).
+        cal_probs:    Array of pooled calibrated P(outperform) values.
+        cal_outcomes: Array of corresponding binary outcomes (1 = outperform).
+        cal_result:   CalibrationResult for ECE annotation.
+        n_bins:       Number of probability bins (default: config.CALIBRATION_N_BINS).
+
+    Returns:
+        Path to the saved PNG, or ``None`` if insufficient data.
+    """
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("  [calibration plot] matplotlib not available — skipping plot.")
+        return None
+
+    if len(cal_probs) < 4 or cal_result.method == "uncalibrated":
+        return None
+
+    if n_bins is None:
+        n_bins = getattr(config, "CALIBRATION_N_BINS", 10)
+
+    # Compute reliability bins
+    bin_edges = np.linspace(0.0, 1.0, n_bins + 1)
+    bin_centers: list[float] = []
+    fraction_pos: list[float] = []
+    bin_counts: list[int] = []
+
+    for i in range(n_bins):
+        lo, hi = bin_edges[i], bin_edges[i + 1]
+        mask = (cal_probs >= lo) & (cal_probs < hi)
+        if mask.sum() == 0:
+            continue
+        bin_centers.append(float(cal_probs[mask].mean()))
+        fraction_pos.append(float(cal_outcomes[mask].mean()))
+        bin_counts.append(int(mask.sum()))
+
+    if len(bin_centers) < 2:
+        return None
+
+    # ---- Plot ----
+    fig, (ax_main, ax_hist) = plt.subplots(
+        2, 1, figsize=(6, 7),
+        gridspec_kw={"height_ratios": [4, 1]},
+    )
+
+    # Reliability curve
+    ax_main.plot([0, 1], [0, 1], "--", color="grey", linewidth=1.2, label="Perfect calibration")
+    ax_main.plot(bin_centers, fraction_pos, "o-", color="#1f77b4", linewidth=2,
+                 markersize=7, label="Model calibration")
+
+    # Annotate ECE
+    ece_txt = (
+        f"ECE = {cal_result.ece:.1%}  "
+        f"[95% CI: {cal_result.ece_ci_lower:.1%}–{cal_result.ece_ci_upper:.1%}]"
+    )
+    ax_main.text(
+        0.04, 0.95, ece_txt,
+        transform=ax_main.transAxes,
+        fontsize=9, verticalalignment="top",
+        bbox={"boxstyle": "round,pad=0.3", "facecolor": "lightyellow", "alpha": 0.8},
+    )
+
+    ax_main.set_xlim(0, 1)
+    ax_main.set_ylim(0, 1)
+    ax_main.set_xlabel("Mean predicted probability")
+    ax_main.set_ylabel("Fraction of positives (actual)")
+    ax_main.set_title(
+        f"Calibration Reliability Diagram  "
+        f"(n={cal_result.n_obs:,} obs, {cal_result.method})"
+    )
+    ax_main.legend(fontsize=9)
+    ax_main.grid(True, alpha=0.3)
+
+    # Histogram of predicted probabilities
+    ax_hist.hist(cal_probs, bins=n_bins, range=(0, 1), color="#1f77b4", alpha=0.6)
+    ax_hist.set_xlim(0, 1)
+    ax_hist.set_xlabel("Predicted probability")
+    ax_hist.set_ylabel("Count")
+    ax_hist.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+
+    plots_dir = out_dir / "plots"
+    plots_dir.mkdir(parents=True, exist_ok=True)
+    save_path = plots_dir / "calibration_curve.png"
+    fig.savefig(save_path, dpi=120, bbox_inches="tight")
+    plt.close(fig)
+
+    print(f"  Wrote {save_path}")
+    return save_path
+
+
+# ---------------------------------------------------------------------------
 # Diagnostic OOS evaluation report (v4.3.1)
 # ---------------------------------------------------------------------------
 
@@ -1163,7 +1286,9 @@ def main(
 
     # Step 2.5: Calibrate P(outperform) using Platt / isotonic on OOS fold history
     print("  Calibrating probabilities...")
-    signals, cal_result = _calibrate_signals(signals, ensemble_results, target_horizon_months=6)
+    signals, cal_result, cal_probs, cal_outcomes = _calibrate_signals(
+        signals, ensemble_results, target_horizon_months=6
+    )
     print(
         f"  Calibration: {cal_result.method} "
         f"(n={cal_result.n_obs:,} OOS obs, ECE={cal_result.ece:.1%})"
@@ -1216,6 +1341,9 @@ def main(
         target_horizon_months=6, cal_result=cal_result,
         signals=signals,
     )
+
+    # Step 5.1 (P2.7): Calibration reliability diagram
+    _plot_calibration_curve(out_dir, cal_probs, cal_outcomes, cal_result)
 
     conn.close()
     print(f"\nDone. Results written to {out_dir}/")
