@@ -766,6 +766,84 @@ def check_staleness(conn: sqlite3.Connection) -> None:
 
 
 # ---------------------------------------------------------------------------
+# v7.2 — Parsed record cross-validator
+# ---------------------------------------------------------------------------
+
+def _validate_parsed_record(
+    record: dict[str, Any],
+    filing_date: str,
+    accession: str,
+) -> dict[str, Any]:
+    """Cross-validate parsed 8-K fields for internal consistency.
+
+    Checks:
+      1. combined_ratio ≈ loss_lae_ratio + expense_ratio (within 5pp).
+         If both sub-ratios are present and the sum deviates > 5pp from CR,
+         log a WARNING and set combined_ratio = None (prefer missing over wrong).
+      2. net_premiums_written >= sum of segment NPW (agency + direct +
+         commercial + property).  If total < sum of parts, log WARNING.
+      3. pif_total should be > 1,000,000 for PGR (sanity floor).
+         If parsed pif_total < 100,000, likely a mis-parse; set to None.
+      4. eps_basic should be in range [-5.0, 15.0] for monthly figures.
+         Out-of-range values are set to None.
+
+    Args:
+        record:       Parsed record dict from _parse_html_exhibit().
+        filing_date:  ISO date string for logging context.
+        accession:    Accession number for logging context.
+
+    Returns:
+        The record dict, possibly with some fields set to None.
+    """
+    cr = record.get("combined_ratio")
+    lr = record.get("loss_lae_ratio")
+    er = record.get("expense_ratio")
+
+    if cr is not None and lr is not None and er is not None:
+        expected_cr = lr + er
+        if abs(cr - expected_cr) > 5.0:
+            log.warning(
+                "VALIDATION: CR=%.1f but loss_ratio+expense_ratio=%.1f+%.1f=%.1f "
+                "(delta=%.1f) in %s (filed %s). Setting CR=None.",
+                cr, lr, er, expected_cr, abs(cr - expected_cr),
+                accession, filing_date,
+            )
+            record["combined_ratio"] = None
+
+    # NPW segment check
+    npw_total = record.get("net_premiums_written")
+    npw_parts = sum(
+        record.get(k) or 0.0
+        for k in ("npw_agency", "npw_direct", "npw_commercial", "npw_property")
+    )
+    if npw_total is not None and npw_parts > 0 and npw_total < npw_parts * 0.9:
+        log.warning(
+            "VALIDATION: NPW_total=%.1f < sum_of_segments=%.1f in %s (filed %s).",
+            npw_total, npw_parts, accession, filing_date,
+        )
+
+    # PIF floor
+    pif = record.get("pif_total")
+    if pif is not None and pif < 100_000:
+        log.warning(
+            "VALIDATION: pif_total=%.0f < 100,000 floor in %s. Setting None.",
+            pif, accession,
+        )
+        record["pif_total"] = None
+
+    # EPS range
+    eps = record.get("eps_basic")
+    if eps is not None and (eps < -5.0 or eps > 15.0):
+        log.warning(
+            "VALIDATION: eps_basic=%.2f out of [-5, 15] range in %s. Setting None.",
+            eps, accession,
+        )
+        record["eps_basic"] = None
+
+    return record
+
+
+# ---------------------------------------------------------------------------
 # Main fetch-and-upsert logic
 # ---------------------------------------------------------------------------
 
@@ -839,6 +917,16 @@ def fetch_and_upsert(
                 )
                 continue
 
+            # v7.2: cross-validate parsed fields; nullify inconsistent ones.
+            parsed = _validate_parsed_record(parsed, filing_date, accession)
+            # If validation nullified both core fields, skip this filing.
+            if parsed["combined_ratio"] is None and parsed["pif_total"] is None:
+                log.debug(
+                    "Validation nullified both CR and PIF for %s — skipping.",
+                    accession,
+                )
+                continue
+
             log.info(
                 "Parsed %s  month_end=%-12s  CR=%-6s  PIF=%s",
                 accession,
@@ -866,9 +954,16 @@ def fetch_and_upsert(
     records.sort(key=lambda r: r["month_end"])
     records = _compute_derived_fields(records)
 
+    # v7.2: prefer the filing with the most non-null fields when deduplicating.
+    def _completeness(rec: dict[str, Any]) -> int:
+        """Count non-None fields (excluding month_end)."""
+        return sum(1 for k, v in rec.items() if v is not None and k != "month_end")
+
     seen: dict[str, dict[str, Any]] = {}
     for rec in records:
-        seen[rec["month_end"]] = rec
+        me = rec["month_end"]
+        if me not in seen or _completeness(rec) >= _completeness(seen[me]):
+            seen[me] = rec
     deduped = sorted(seen.values(), key=lambda r: r["month_end"])
 
     # Coverage report
@@ -902,6 +997,21 @@ def fetch_and_upsert(
 
     n = db_client.upsert_pgr_edgar_monthly(conn, deduped)
     log.info("Upserted %d rows to pgr_edgar_monthly.", n)
+
+    # v7.2: warn when no new months were added to alert on format changes.
+    existing_months_row = conn.execute(
+        "SELECT COUNT(DISTINCT month_end) FROM pgr_edgar_monthly"
+    ).fetchone()
+    existing_count = existing_months_row[0] if existing_months_row else 0
+
+    if n == 0 or (existing_count > 0 and n <= existing_count):
+        log.warning(
+            "NOTE: No new months added this run (upserted %d rows into "
+            "a table with %d existing months). If this persists, check "
+            "whether PGR has changed its 8-K filing format.",
+            n, existing_count,
+        )
+
     return n
 
 
