@@ -461,7 +461,7 @@ immediately after the `Commit results` step.
 
 ---
 
-### v6.2 — Historical Backfill + Expanded 8-K Schema (current)
+### v6.2 — Historical Backfill + Expanded 8-K Schema (complete)
 **Released:** 2026-04-01
 **Theme:** Load 20+ years of PGR operating data; expand pgr_edgar_monthly to 44 columns
 
@@ -502,6 +502,32 @@ python scripts/edgar_8k_fetcher.py --load-from-csv
 # Dry run to verify coverage before writing:
 python scripts/edgar_8k_fetcher.py --load-from-csv --dry-run
 ```
+
+---
+
+### v6.3 — Channel-Mix Features in Monthly Decision Model (current)
+**Released:** 2026-04-01
+**Theme:** Wire agency/direct channel-mix signals into the ML feature pipeline (P1.4)
+
+Adds two new predictive features to `build_feature_matrix()`, consuming the
+segment-level data loaded by v6.2's CSV backfill:
+
+- **`channel_mix_agency_pct`**: `npw_agency / (npw_agency + npw_direct)`.
+  Agency share trending down (direct gaining) is a leading indicator of
+  improved unit economics and combined-ratio improvement — historically one
+  of PGR's key competitive differentiation signals.
+- **`npw_growth_yoy`**: companywide NPW 12-month YoY growth rate.  Strong
+  growth (> 10%) signals rate adequacy and market-share gain.
+
+**Implementation:**
+- `src/processing/feature_engineering.py` — new channel-mix block in the
+  `if pgr_monthly is not None` section; both features added to the sparsity-guard
+  loop (`WFO_MIN_GAINSHARE_OBS` threshold, same as combined_ratio_ttm)
+- Features read directly from `pgr_edgar_monthly` columns pre-computed at
+  CSV load time; forward-filled to monthly feature matrix dates
+- Absent when `pgr_monthly=None`, column missing, or all-NaN (full backward compat)
+
+**Testing:** 12 new tests in `tests/test_v63_channel_mix_features.py`; total **921 passed, 1 skipped**
 
 ---
 

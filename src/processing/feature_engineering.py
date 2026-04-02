@@ -25,6 +25,12 @@ Feature groups:
     - combined_ratio_ttm, pif_growth_yoy, gainshare_est
     Dropped entirely if fewer than WFO_MIN_GAINSHARE_OBS non-NaN rows.
 
+  PGR channel-mix features (v6.3, from expanded pgr_edgar_monthly schema):
+    - channel_mix_agency_pct  (npw_agency / total_personal_lines_npw;
+                               leading indicator of margin compression)
+    - npw_growth_yoy          (companywide NPW 12-month YoY growth rate)
+    Dropped silently if fewer than WFO_MIN_GAINSHARE_OBS non-NaN rows.
+
   Price-derived (v6.0):
     - high_52w              (current price / 52-week high; George & Hwang 2004)
 
@@ -257,12 +263,45 @@ def build_feature_matrix(
         if "combined_ratio_ttm" in df.columns:
             df["cr_acceleration"] = df["combined_ratio_ttm"].diff(3)
 
-    # Drop optional Gainshare columns if insufficient observations.
+        # ------------------------------------------------------------------
+        # v6.3 — Channel-mix features (P1.4)
+        # These are pre-computed and stored in pgr_edgar_monthly by the CSV
+        # loader (scripts/edgar_8k_fetcher.py --load-from-csv) and by the
+        # live EDGAR fetch once P2.6 updates the HTML parser.
+        # ------------------------------------------------------------------
+
+        # channel_mix_agency_pct: agency NPW / (agency + direct NPW).
+        # Increasing agency share signals traditional-channel reliance, often
+        # associated with higher acquisition costs; declining share (direct
+        # gaining) signals improved unit economics and PGR's competitive
+        # advantage in direct-to-consumer distribution.
+        if (
+            "channel_mix_agency_pct" in pgr_monthly.columns
+            and not pgr_monthly["channel_mix_agency_pct"].isna().all()
+        ):
+            df["channel_mix_agency_pct"] = pgr_monthly[
+                "channel_mix_agency_pct"
+            ].reindex(monthly_dates, method="ffill")
+
+        # npw_growth_yoy: companywide net premiums written YoY % growth.
+        # Strong NPW growth (> 10%) signals rate adequacy and market share
+        # gains; weak or negative growth signals competitive pressure or
+        # underwriting tightening.  Pre-computed 12M pct_change stored in DB.
+        if (
+            "npw_growth_yoy" in pgr_monthly.columns
+            and not pgr_monthly["npw_growth_yoy"].isna().all()
+        ):
+            df["npw_growth_yoy"] = pgr_monthly["npw_growth_yoy"].reindex(
+                monthly_dates, method="ffill"
+            )
+
+    # Drop optional Gainshare/channel-mix columns if insufficient observations.
     # cr_acceleration is a derivative of combined_ratio_ttm (3-period diff),
     # so it is naturally gated: if combined_ratio_ttm is dropped here due to
     # sparse data, cr_acceleration becomes all-NaN and the WFO engine drops
     # it via its own feature-selection logic.  No separate threshold needed.
-    for col in ["combined_ratio_ttm", "pif_growth_yoy", "gainshare_est"]:
+    for col in ["combined_ratio_ttm", "pif_growth_yoy", "gainshare_est",
+                "channel_mix_agency_pct", "npw_growth_yoy"]:
         if col in df.columns:
             n_valid = df[col].notna().sum()
             if n_valid < config.WFO_MIN_GAINSHARE_OBS:

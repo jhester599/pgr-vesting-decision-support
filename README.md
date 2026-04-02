@@ -1,4 +1,4 @@
-# PGR Vesting Decision Support · v6.2
+# PGR Vesting Decision Support · v6.3
 
 A quantitative decision-support engine for systematically unwinding a concentrated
 Progressive Corporation (PGR) RSU position held in a taxable brokerage account.
@@ -213,7 +213,7 @@ after the GitHub Actions commit step.
   `dry_run: true` dispatch; `continue-on-error: true` — email failure never blocks DB commit
 - **Six new repository secrets required** (see GitHub Actions section below)
 
-### v6.2 — Historical Backfill + Expanded 8-K Schema (current)
+### v6.2 — Historical Backfill + Expanded 8-K Schema (complete)
 
 Unlocks 20+ years of high-quality PGR insurance operating data that was sitting
 unused in `data/processed/pgr_edgar_cache.csv`.
@@ -255,6 +255,29 @@ python scripts/edgar_8k_fetcher.py --load-from-csv
   computes `channel_mix_agency_pct`, `npw_growth_yoy`, `underwriting_income`,
   `unearned_premium_growth_yoy`; `pct_change` uses `fill_method=None`
 - **29 new tests** in `tests/test_v62_schema_and_csv.py`; total **909 passed, 1 skipped**
+
+### v6.3 — Channel-Mix Features in Monthly Decision Model (current)
+
+Wires the agency/direct channel-mix signals (stored in the DB by v6.2's CSV
+backfill) into `build_feature_matrix()`, giving the ElasticNet/GBT ensemble
+access to PGR's distribution-channel dynamics for the first time.
+
+- **`channel_mix_agency_pct`**: agency NPW / (agency + direct NPW).  Declining
+  agency share (direct gaining) signals improved unit economics — a leading
+  indicator of combined-ratio improvement.
+- **`npw_growth_yoy`**: companywide net premiums written 12-month YoY growth rate.
+  Strong growth (> 10%) signals rate adequacy and market-share gain; weak or
+  negative growth signals competitive pressure or underwriting tightening.
+
+Both features are read directly from `pgr_edgar_monthly`, forward-filled to
+monthly dates, and subject to the same `WFO_MIN_GAINSHARE_OBS` sparsity guard
+as the existing Gainshare features (dropped silently if insufficient history).
+Features are absent when `pgr_monthly=None` or when the column is all-NaN,
+preserving full backward compatibility with pre-v6.2 databases.
+
+- `src/processing/feature_engineering.py` — channel-mix block added in
+  `build_feature_matrix()`; both features added to the sparsity-guard loop
+- **12 new tests** in `tests/test_v63_channel_mix_features.py`; total **921 passed, 1 skipped**
 
 ---
 
