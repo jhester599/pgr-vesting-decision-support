@@ -480,21 +480,15 @@ At least 18 tests:
 
 ---
 
-## v7.2 — EDGAR 8-K Parser Hardening
-
-**Theme:** Add three defensive layers to the EDGAR 8-K fetcher to prevent
+v7.2 — EDGAR 8-K Parser Hardening
+Theme: Add three defensive layers to the EDGAR 8-K fetcher to prevent
 silent mis-parses and missed filings.
-
-### Files to Modify
-
-#### `scripts/edgar_8k_fetcher.py`
-
-**Enhancement 1: Cross-validation of parsed values**
-
+Files to Modify
+`scripts/edgar_8k_fetcher.py`
+Enhancement 1: Cross-validation of parsed values
 Add a new function `_validate_parsed_record()` called immediately after
 `_parse_html_exhibit()` returns a non-None result (line ~834, inside the
 `for filing in filings:` loop in `fetch_and_upsert()`):
-
 ```python
 def _validate_parsed_record(
     record: dict[str, Any],
@@ -505,4 +499,464 @@ def _validate_parsed_record(
 
     Checks:
       1. combined_ratio ≈ loss_lae_ratio + expense_ratio (within 5pp).
-         If both sub-ratios are present and th
+         If both sub-ratios are present and the sum deviates > 5pp from CR,
+         log a WARNING and set combined_ratio = None (prefer missing over
+         wrong).
+      2. net_premiums_written >= sum of segment NPW (agency + direct +
+         commercial + property).  If total < sum of parts, log WARNING.
+      3. pif_total should be > 1,000,000 for PGR (sanity floor).
+         If parsed pif_total < 100,000, likely a mis-parse; set to None.
+      4. eps_basic should be in range [-5.0, 15.0] for monthly figures.
+         Out-of-range values are set to None.
+
+    Args:
+        record:       Parsed record dict from _parse_html_exhibit().
+        filing_date:  ISO date string for logging context.
+        accession:    Accession number for logging context.
+
+    Returns:
+        The record dict, possibly with some fields set to None.
+    """
+```
+Implementation logic:
+```python
+    cr = record.get("combined_ratio")
+    lr = record.get("loss_lae_ratio")
+    er = record.get("expense_ratio")
+
+    if cr is not None and lr is not None and er is not None:
+        expected_cr = lr + er
+        if abs(cr - expected_cr) > 5.0:
+            log.warning(
+                "VALIDATION: CR=%.1f but loss_ratio+expense_ratio=%.1f+%.1f=%.1f "
+                "(delta=%.1f) in %s (filed %s). Setting CR=None.",
+                cr, lr, er, expected_cr, abs(cr - expected_cr),
+                accession, filing_date,
+            )
+            record["combined_ratio"] = None
+
+    # NPW segment check
+    npw_total = record.get("net_premiums_written")
+    npw_parts = sum(
+        record.get(k) or 0.0
+        for k in ("npw_agency", "npw_direct", "npw_commercial", "npw_property")
+    )
+    if npw_total is not None and npw_parts > 0 and npw_total < npw_parts * 0.9:
+        log.warning(
+            "VALIDATION: NPW_total=%.1f < sum_of_segments=%.1f in %s (filed %s).",
+            npw_total, npw_parts, accession, filing_date,
+        )
+
+    # PIF floor
+    pif = record.get("pif_total")
+    if pif is not None and pif < 100_000:
+        log.warning(
+            "VALIDATION: pif_total=%.0f < 100,000 floor in %s. Setting None.",
+            pif, accession,
+        )
+        record["pif_total"] = None
+
+    # EPS range
+    eps = record.get("eps_basic")
+    if eps is not None and (eps < -5.0 or eps > 15.0):
+        log.warning(
+            "VALIDATION: eps_basic=%.2f out of [-5, 15] range in %s. Setting None.",
+            eps, accession,
+        )
+        record["eps_basic"] = None
+
+    return record
+```
+Wire it in: In `fetch_and_upsert()`, after line ~834 where
+`parsed = _parse_html_exhibit(html, filing_date)`, add:
+```python
+            if parsed is not None:
+                parsed = _validate_parsed_record(parsed, filing_date, accession)
+                # Re-check: if validation nullified both core fields, skip
+                if parsed["combined_ratio"] is None and parsed["pif_total"] is None:
+                    log.debug("Validation nullified both CR and PIF for %s — skipping.", accession)
+                    continue
+```
+Enhancement 2: Prefer most-complete filing when deduplicating by month_end
+Replace the current deduplication block (lines ~869–872):
+```python
+    # CURRENT (replace this):
+    seen: dict[str, dict[str, Any]] = {}
+    for rec in records:
+        seen[rec["month_end"]] = rec
+    deduped = sorted(seen.values(), key=lambda r: r["month_end"])
+```
+With:
+```python
+    # v7.2: prefer the filing with the most non-null fields when deduplicating
+    def _completeness(rec: dict[str, Any]) -> int:
+        """Count non-None fields (excluding month_end and derived nulls)."""
+        return sum(
+            1 for k, v in rec.items()
+            if v is not None and k != "month_end"
+        )
+
+    seen: dict[str, dict[str, Any]] = {}
+    for rec in records:
+        me = rec["month_end"]
+        if me not in seen or _completeness(rec) > _completeness(seen[me]):
+            seen[me] = rec
+    deduped = sorted(seen.values(), key=lambda r: r["month_end"])
+```
+Enhancement 3: Zero-new-data alerting in `fetch_and_upsert`
+After the final `log.info("Upserted %d rows …")` line (~904), add:
+```python
+    # Check if we actually added any NEW months vs what was already in the DB
+    existing_months_row = conn.execute(
+        "SELECT COUNT(DISTINCT month_end) FROM pgr_edgar_monthly"
+    ).fetchone()
+    existing_count = existing_months_row[0] if existing_months_row else 0
+
+    if n == 0 or (existing_count > 0 and n <= existing_count):
+        log.warning(
+            "NOTE: No new months added this run (upserted %d rows into "
+            "a table with %d existing months). If this persists, check "
+            "whether PGR has changed its 8-K filing format.",
+            n, existing_count,
+        )
+```
+Files to Create: Tests
+`tests/test_edgar_validation.py`
+At least 12 tests:
+`test_validate_cr_consistent_with_components` — CR=95, LR=65, ER=30 → no warning, CR preserved.
+`test_validate_cr_inconsistent_nullifies` — CR=95, LR=65, ER=40 → delta=10 > 5 → CR set to None.
+`test_validate_cr_missing_components_no_check` — CR=95, LR=None → no validation, CR preserved.
+`test_validate_pif_below_floor` — pif_total=50,000 → set to None.
+`test_validate_pif_above_floor` — pif_total=20,000,000 → preserved.
+`test_validate_eps_out_of_range_high` — eps_basic=25.0 → set to None.
+`test_validate_eps_out_of_range_low` — eps_basic=-10.0 → set to None.
+`test_validate_eps_in_range` — eps_basic=3.50 → preserved.
+`test_validate_npw_segment_warning` — total < sum of parts → log warning (no nullification).
+`test_dedup_prefers_more_complete` — Two records for same month_end: one with 5 non-null fields, one with 10.  After dedup the 10-field record wins.
+`test_dedup_same_completeness_uses_last` — Two records for same month_end with equal completeness.  Last one wins (existing behavior for ties).
+`test_validation_re_rejects_after_nullify` — If validation nullifies both CR and PIF, the record is skipped (not appended to records list).
+Acceptance Criteria
+[ ] All 12+ tests pass.
+[ ] Running `python scripts/edgar_8k_fetcher.py --dry-run --backfill-years 2`
+shows validation log messages for any inconsistent filings in the 2-year window.
+[ ] No existing test regressions.
+---
+v7.3 — Monthly Report Tax Section + Decision Log Fix
+Theme: Add tax impact analysis to the monthly recommendation report and
+fix the duplicate/malformed entries in `decision_log.md`.
+Files to Modify
+`scripts/monthly_decision.py`
+Enhancement 1: Tax Impact Section in recommendation.md
+Add a new function `_write_tax_section()` that is called from the main
+`_write_recommendation()` function.
+```python
+def _write_tax_section(
+    f,
+    vest_date: date,
+    as_of: date,
+    current_price: float,
+    predicted_6m_return: float,
+    predicted_12m_return: float | None,
+    prob_outperform_6m: float,
+    cost_basis_per_share: float,
+    shares: float,
+) -> None:
+    """Write the Tax Impact section to the recommendation.md file handle.
+
+    Shows:
+      1. Days until LTCG eligibility for each lot
+      2. STCG vs LTCG tax liability comparison
+      3. Three-scenario summary (if v7.1 is available)
+      4. Breakeven return for hold-to-LTCG decision
+
+    Args:
+        f:                    Open file handle (write mode).
+        vest_date:            Next vesting event date.
+        as_of:                As-of date for this report.
+        current_price:        Latest PGR closing price.
+        predicted_6m_return:  Model's weighted-average 6M relative return.
+        predicted_12m_return: Model's 12M return prediction (or None).
+        prob_outperform_6m:   Calibrated P(outperform) at 6M.
+        cost_basis_per_share: Lot cost basis.
+        shares:               Shares in this lot.
+    """
+```
+Implementation:
+```python
+    from src.tax.capital_gains import (
+        compute_stcg_ltcg_breakeven,
+        compute_three_scenarios,
+    )
+    import config
+
+    breakeven = compute_stcg_ltcg_breakeven()
+    days_to_ltcg = max(0, 366 - (as_of - vest_date).days)
+
+    # Use 12M prediction if available, else rough annualization of 6M
+    pred_12m = predicted_12m_return if predicted_12m_return is not None else predicted_6m_return * 2.0
+
+    three = compute_three_scenarios(
+        vest_date=vest_date,
+        rsu_type="performance",  # default; caller overrides
+        shares=shares,
+        cost_basis_per_share=cost_basis_per_share,
+        current_price=current_price,
+        predicted_6m_return=predicted_6m_return,
+        predicted_12m_return=pred_12m,
+        prob_outperform_6m=prob_outperform_6m,
+        prob_outperform_12m=prob_outperform_6m,  # proxy until 12M model exists
+    )
+
+    f.write("\n---\n\n## Tax Impact Analysis\n\n")
+    f.write(f"| Metric | Value |\n")
+    f.write(f"|--------|-------|\n")
+    f.write(f"| Days to LTCG eligibility | {days_to_ltcg} |\n")
+    f.write(f"| STCG rate | {config.STCG_RATE:.0%} |\n")
+    f.write(f"| LTCG rate | {config.LTCG_RATE:.0%} |\n")
+    f.write(f"| Breakeven return (hold-to-LTCG) | {breakeven:.1%} |\n")
+    f.write(f"| Model predicted 6M return | {predicted_6m_return:+.2%} |\n\n")
+
+    f.write("### Three-Scenario Comparison\n\n")
+    f.write("| Scenario | Sell Date | Tax Rate | Predicted Price | Gross | Tax | Net | Probability |\n")
+    f.write("|----------|-----------|----------|-----------------|-------|-----|-----|-------------|\n")
+    for s in three.scenarios:
+        f.write(
+            f"| {s.label} | {s.sell_date} | {s.tax_rate:.0%} | "
+            f"${s.predicted_price:,.2f} | ${s.gross_proceeds:,.0f} | "
+            f"${s.tax_liability:,.0f} | ${s.net_proceeds:,.0f} | "
+            f"{s.probability:.0%} |\n"
+        )
+    f.write(f"\n**Recommended:** {three.recommended_scenario}\n\n")
+```
+Wire it in: In the existing `_write_recommendation()` function, after the
+Per-Benchmark Signals table and before the closing `---`, add a call to
+`_write_tax_section()`.  The function needs `vest_date` and `cost_basis_per_share`
+which should be loaded from `config.VESTING_EVENTS` or
+`data/processed/position_lots.csv` if it exists, otherwise use the hardcoded
+values from the README:
+```python
+# Default lot data (from README — override via position_lots.csv if present)
+_DEFAULT_LOTS = [
+    {"vest_date": date(2026, 7, 17), "rsu_type": "performance",
+     "shares": 500, "cost_basis_per_share": 116.08},
+    {"vest_date": date(2027, 1, 19), "rsu_type": "time",
+     "shares": 500, "cost_basis_per_share": 133.65},
+]
+```
+For each lot where the vest_date is in the future (relative to as_of), call
+`_write_tax_section()`.
+Enhancement 2: Decision Log Deduplication
+In the function that appends to `decision_log.md` (search for
+`decision_log.md` in `monthly_decision.py`), add a guard:
+```python
+def _append_to_decision_log(log_path: Path, row: str, as_of: date, run_date: date, dry_run: bool) -> None:
+    """Append a row to the decision log, skipping if already present.
+
+    Deduplication key: (as_of_date, run_date, dry_run_flag).
+    """
+    if log_path.exists():
+        existing = log_path.read_text()
+        as_of_str = as_of.isoformat()
+        run_date_str = run_date.isoformat()
+        marker = f"| {as_of_str} | {run_date_str} |"
+        # For dry runs, check for the [DRY RUN] tag too
+        if dry_run:
+            if marker in existing and "[DRY RUN]" in existing.split(marker)[-1].split("\n")[0]:
+                return  # Already logged
+        else:
+            # Non-dry-run: skip if the exact (as_of, run_date) exists without [DRY RUN]
+            for line in existing.split("\n"):
+                if marker in line and "[DRY RUN]" not in line:
+                    return  # Already logged
+
+    with open(log_path, "a") as f:
+        f.write(row + "\n")
+```
+Replace the existing raw `open(…, "a").write(…)` call with a call to
+`_append_to_decision_log()`.
+Also add a one-time cleanup: if `decision_log.md` exists and contains duplicate
+rows, deduplicate them when the script starts:
+```python
+def _clean_decision_log(log_path: Path) -> None:
+    """Remove duplicate rows from the decision log (one-time cleanup)."""
+    if not log_path.exists():
+        return
+    lines = log_path.read_text().split("\n")
+    seen: set[str] = set()
+    cleaned: list[str] = []
+    for line in lines:
+        # Only deduplicate data rows (start with "| 20")
+        if line.startswith("| 20"):
+            if line in seen:
+                continue
+            seen.add(line)
+        cleaned.append(line)
+    log_path.write_text("\n".join(cleaned))
+```
+Call `_clean_decision_log()` once at the start of `main()`.
+Files to Create: Tests
+`tests/test_tax_report_section.py`
+At least 10 tests:
+`test_tax_section_includes_breakeven` — Output contains "Breakeven return".
+`test_tax_section_includes_three_scenarios` — Output contains "SELL_NOW_STCG",
+"HOLD_TO_LTCG", "HOLD_FOR_LOSS".
+`test_tax_section_days_to_ltcg_future_vest` — For a vest_date 3 months from
+now, days_to_ltcg > 0.
+`test_tax_section_days_to_ltcg_past_vest` — For a vest_date 400 days ago,
+days_to_ltcg = 0 (already eligible).
+`test_decision_log_dedup_skips_duplicate` — Appending the same row twice results
+in only one entry.
+`test_decision_log_dedup_allows_different_dates` — Different as_of dates both appear.
+`test_decision_log_dedup_dry_run_separate` — A dry-run row and a non-dry-run row
+for the same date are both kept.
+`test_clean_decision_log_removes_exact_dupes` — Duplicate table rows removed.
+`test_clean_decision_log_preserves_headers` — Header lines not affected.
+`test_clean_decision_log_no_file_noop` — Non-existent file → no error.
+Acceptance Criteria
+[ ] `python scripts/monthly_decision.py --dry-run` produces a recommendation.md
+with a "Tax Impact Analysis" section.
+[ ] The decision_log.md has no duplicate rows after running.
+[ ] All 10+ tests pass.
+[ ] No existing test regressions.
+---
+v7.4 — CPCV Path Stability Guard + Obs/Feature Ratio Warning
+Theme: Detect overfitting from new features via CPCV path variance,
+and warn when the obs/feature ratio drops below safe thresholds.
+Files to Modify
+`scripts/feature_ablation.py` (extend from v7.0)
+Add a `--cpcv` flag that, for each feature group, also runs CPCV and records
+path IC variance:
+```python
+    if args.cpcv:
+        cpcv_result = run_cpcv(
+            X_aligned, y_aligned,
+            n_folds=config.CPCV_N_FOLDS,
+            n_test_folds=config.CPCV_N_TEST_FOLDS,
+        )
+        row["cpcv_mean_ic"] = cpcv_result.mean_ic
+        row["cpcv_ic_std"] = cpcv_result.ic_std
+        row["cpcv_n_paths"] = cpcv_result.n_paths
+        row["cpcv_positive_paths"] = sum(1 for ic in cpcv_result.path_ics if ic > 0)
+```
+Add columns `cpcv_mean_ic`, `cpcv_ic_std`, `cpcv_n_paths`, `cpcv_positive_paths`
+to the output CSV.  Print a diagnostic: if group E has higher `cpcv_ic_std` than
+group C, flag it as "Feature bloat increasing overfitting risk."
+`src/models/wfo_engine.py`
+Add a warning inside `run_wfo()` after the train/test split loop.  After line
+~260 (where the loop over `TimeSeriesSplit` folds iterates), add:
+```python
+    # v7.4: Obs/feature ratio guard
+    n_features = X.shape[1]
+    obs_per_fold_min = min(
+        fold.y_true.shape[0] for fold in fold_results
+    ) if fold_results else 0
+    train_obs_min = config.WFO_TRAIN_WINDOW_MONTHS  # 60
+    obs_feature_ratio = train_obs_min / max(n_features, 1)
+
+    if obs_feature_ratio < 8.0:
+        import warnings
+        warnings.warn(
+            f"Low obs/feature ratio ({obs_feature_ratio:.1f}:1) with "
+            f"{n_features} features and {train_obs_min}-month training window. "
+            f"Consider pruning features or increasing training window. "
+            f"Benchmark: {benchmark}",
+            UserWarning,
+            stacklevel=2,
+        )
+```
+`config.py`
+Add:
+```python
+# v7.4 — Feature health guards
+OBS_FEATURE_RATIO_WARN: float = 8.0    # Warn when train_obs / n_features < this
+OBS_FEATURE_RATIO_MIN: float = 5.0     # Hard floor — raise ValueError below this
+CPCV_IC_STD_WARN: float = 0.15         # Flag benchmark if CPCV path IC std > this
+```
+Files to Create: Tests
+`tests/test_feature_health.py`
+At least 8 tests:
+`test_obs_feature_ratio_warning_fires` — 60 obs, 10 features → ratio 6.0 < 8.0 → UserWarning.
+`test_obs_feature_ratio_no_warning` — 60 obs, 5 features → ratio 12.0 ≥ 8.0 → no warning.
+`test_cpcv_ic_std_flag` — Synthetic CPCV result with ic_std=0.20 > 0.15 → flagged.
+`test_cpcv_ic_std_ok` — Synthetic CPCV result with ic_std=0.05 → not flagged.
+`test_ablation_cpcv_flag_output` — When `--cpcv` is used, CSV contains cpcv columns.
+`test_ablation_no_cpcv_flag` — When `--cpcv` is not used, CSV omits cpcv columns.
+`test_feature_groups_increasing_features` — n_features in output CSV is
+non-decreasing across groups A→E.
+`test_config_constants_defined` — `OBS_FEATURE_RATIO_WARN`, `OBS_FEATURE_RATIO_MIN`,
+`CPCV_IC_STD_WARN` exist in config.
+Acceptance Criteria
+[ ] `python scripts/feature_ablation.py --benchmarks VTI --cpcv` produces a CSV
+with CPCV columns populated.
+[ ] `run_wfo()` issues a `UserWarning` when obs/feature ratio < 8.0.
+[ ] All 8+ tests pass.
+[ ] No existing test regressions.
+---
+Implementation Order
+Execute versions in this order.  Each version should be a single commit (or
+small PR) with all tests passing before moving to the next.
+```
+v7.0  Feature Ablation Backtest
+  ↓
+  [DECISION POINT: Based on v7.0 results, optionally add features to
+   config.FEATURES_TO_DROP before proceeding]
+  ↓
+v7.1  Three-Scenario Tax Framework
+  ↓
+v7.2  EDGAR 8-K Parser Hardening
+  ↓
+v7.3  Monthly Report Tax Section + Decision Log Fix
+  ↓
+v7.4  CPCV Path Stability Guard + Obs/Feature Ratio Warning
+```
+Critical: v7.0 must complete first because its results may require pruning
+features before v7.1–v7.4 are implemented.  If the ablation shows that v6.3/v6.4
+features are net-negative, add them to `config.FEATURES_TO_DROP` as part of the
+v7.0 commit.
+---
+Test Count Targets
+Version	New Tests	Cumulative (estimated)
+v7.0	10+	994+
+v7.1	19+	1013+
+v7.2	12+	1025+
+v7.3	10+	1035+
+v7.4	8+	1043+
+---
+Files Summary
+New files to create:
+`scripts/feature_ablation.py`
+`tests/test_feature_ablation.py`
+`tests/test_three_scenario_tax.py`
+`tests/test_edgar_validation.py`
+`tests/test_tax_report_section.py`
+`tests/test_feature_health.py`
+Existing files to modify:
+`src/tax/capital_gains.py` (v7.1: add TaxScenario, ThreeScenarioResult, two functions)
+`src/portfolio/rebalancer.py` (v7.1: add three_scenario field to VestingRecommendation)
+`scripts/edgar_8k_fetcher.py` (v7.2: validation, dedup, alerting)
+`scripts/monthly_decision.py` (v7.3: tax section, decision log dedup)
+`src/models/wfo_engine.py` (v7.4: obs/feature ratio warning)
+`config.py` (v7.4: new guard constants)
+`ROADMAP.md` (all versions: append version entries)
+---
+Notes for Claude Code Execution
+Always run `pytest` after each version to verify no regressions.
+The baseline is 984 passed, 1 skipped.
+Do not modify existing test files unless a test needs updating due to
+a new field on an existing dataclass (e.g., `VestingRecommendation`).
+Import paths — All `src/` imports use the pattern
+`from src.module.submodule import function`.  Scripts in `scripts/` prepend
+the project root to `sys.path` via:
+```python
+   sys.path.insert(0, str(Path(__file__).parent.parent))
+   ```
+Test fixtures — Use the existing pattern from `test_v64_p2x_features.py`:
+synthetic price data via `_make_prices()`, synthetic dividends, and optional
+`pgr_monthly` DataFrames.  Do NOT use the live database in unit tests.
+The SQLite database (`data/pgr_financials.db`) is committed to the repo.
+Integration tests may read it but should not modify it.  Use `:memory:`
+connections for unit tests.
+Type hints — The codebase uses `from __future__ import annotations` in
+every file.  All new functions must include full type annotations.
+Logging — Use `logging.getLogger(__name__)` pattern consistent with
+existing modules.  WARNING level for validation failures, INFO for progress.
