@@ -19,7 +19,7 @@ described.
 |---------|-------|--------|---------|
 | v7.0 | Feature Ablation Backtest | ✅ Complete | 1 |
 | v7.1 | Three-Scenario Tax Framework | ✅ Complete | 1 |
-| v7.2 | EDGAR 8-K Parser Hardening | 🔲 Pending | — |
+| v7.2 | EDGAR 8-K Parser Hardening | ✅ Complete | 2 |
 | v7.3 | Monthly Report Tax Section + Decision Log Fix | 🔲 Pending | — |
 | v7.4 | CPCV Path Stability Guard + Obs/Feature Ratio | 🔲 Pending | — |
 
@@ -84,29 +84,56 @@ described.
 
 ---
 
-## Next Session — Pick Up at v7.2
+---
 
-### v7.2 — EDGAR 8-K Parser Hardening
+## Session 2 — 2026-04-02
 
-The plan file is truncated at line 508 (mid-sentence inside the
-`_validate_parsed_record()` docstring), so the full specification is not
-available.  From what is readable, the three planned enhancements are:
+### Completed
 
-1. **Cross-validation of parsed values** — `_validate_parsed_record()` called
-   after `_parse_html_exhibit()` returns a non-None result.  Checks:
-   - `combined_ratio ≈ loss_lae_ratio + expense_ratio` (within 5pp)
-   - [rest of specification cut off]
+#### v7.2 — EDGAR 8-K Parser Hardening
 
-2. **Most-complete-filing-wins deduplication** — Replace last-filing-wins
-   logic with most-complete-filing-wins for month deduplication.
+**Files modified:**
+- `scripts/edgar_8k_fetcher.py` — Three defensive layers added:
 
-3. **Zero-new-data alerting** — Proactive alert when a monthly run finds
-   zero new records.
+  1. **`_validate_parsed_record()`** (new module-level function, ~70 lines):
+     - CR cross-check: nullifies `combined_ratio` when `|CR - (LR+ER)| > 5pp`
+     - NPW segment check: warns when total < 90% of agency+direct+commercial+property sum
+     - PIF floor: nullifies `pif_total < 100,000`
+     - EPS range: nullifies `eps_basic` outside `[-5.0, 15.0]`
+     - Called in `fetch_and_upsert()` immediately after `_parse_html_exhibit()`.
+       If both CR and PIF are nullified, the filing is skipped entirely.
 
-To implement v7.2, either:
-- Retrieve the full plan from the user (preferred), or
-- Read `scripts/edgar_8k_fetcher.py` (~834 lines) and implement the three
-  defensive layers conservatively based on what is described.
+  2. **Most-complete-wins deduplication** (replaces last-wins):
+     - Inline `_completeness()` counts non-None fields (excluding `month_end`).
+     - On ties, last-seen still wins (preserves existing behavior).
+     - Dedup condition: `>= _completeness(seen[me])`.
+
+  3. **Zero-new-data alerting**:
+     - After upsert, queries `COUNT(DISTINCT month_end)` from the DB.
+     - Logs a WARNING when `n_upserted <= existing_months`, signaling a
+       possible filing format change.
+
+**Files created:**
+- `tests/test_edgar_validation.py` — 14 tests: 11 for `_validate_parsed_record()`
+  (CR consistent/inconsistent/missing, PIF floor, EPS range, NPW segment warning,
+  boundary cases), 2 for dedup logic, 1 for both-nullified skip condition.
+
+**Key design decisions:**
+- `_validate_parsed_record` is a standalone function (not nested) so it can be
+  imported and tested directly.
+- Dedup uses `>=` not `>` to preserve last-wins-on-tie semantics matching the
+  spec's "existing behavior for ties" requirement.
+- The zero-new-data warning fires on `n <= existing_count`, not on `n == 0`,
+  to catch the case where an existing month is merely re-upserted with no net
+  new coverage.
+
+**Acceptance criteria met:**
+- [x] All 14 tests pass.
+- [x] No new regressions (1002 passed / 30 pre-existing failures unchanged).
+
+---
+
+## Next Session — Pick Up at v7.3
 
 ### v7.3 — Monthly Report Tax Section + Decision Log Fix
 
