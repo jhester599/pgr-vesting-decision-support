@@ -108,6 +108,48 @@ def initialize_schema(conn: sqlite3.Connection) -> None:
     _add_column_if_missing(conn, "pgr_edgar_monthly", "book_value_per_share", "REAL")
     # v6.x: eps_basic added to pgr_edgar_monthly (monthly EPS from 8-K; used for pe_ratio)
     _add_column_if_missing(conn, "pgr_edgar_monthly", "eps_basic", "REAL")
+    # v6.2: foundational P&L fields
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "net_premiums_written", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "net_premiums_earned", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "net_income", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "eps_diluted", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "loss_lae_ratio", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "expense_ratio", "REAL")
+    # v6.2: segment-level channel metrics
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "npw_agency", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "npw_direct", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "npw_commercial", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "npw_property", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "npe_agency", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "npe_direct", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "npe_commercial", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "npe_property", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "pif_agency_auto", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "pif_direct_auto", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "pif_commercial_lines", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "pif_total_personal_lines", "REAL")
+    # v6.2: company-level operating metrics
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "investment_income", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "total_revenues", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "total_expenses", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "income_before_income_taxes", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "roe_net_income_ttm", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "shareholders_equity", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "total_assets", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "unearned_premiums", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "shares_repurchased", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "avg_cost_per_share", "REAL")
+    # v6.2: investment portfolio metrics
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "fte_return_total_portfolio", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "investment_book_yield", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "net_unrealized_gains_fixed", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "fixed_income_duration", "REAL")
+    # v6.2: derived fields
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "channel_mix_agency_pct", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "npw_growth_yoy", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "underwriting_income", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "unearned_premium_growth_yoy", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "buyback_yield", "REAL")
 
 
 # ---------------------------------------------------------------------------
@@ -363,29 +405,95 @@ def upsert_pgr_edgar_monthly(
 ) -> int:
     """Bulk-insert or replace PGR monthly EDGAR metrics.
 
-    Includes ``book_value_per_share`` (v6.x) if present in the records;
-    defaults to ``None`` for rows from older data sources that predate the
-    column addition.
+    Accepts any subset of the full v6.2 column set; missing keys default to
+    ``None`` (SQLite NULL).  This keeps callers that only supply core fields
+    (e.g. the live EDGAR HTML fetcher) compatible with the expanded schema.
     """
     if not records:
         return 0
     sql = """
-        INSERT OR REPLACE INTO pgr_edgar_monthly
-            (month_end, combined_ratio, pif_total, pif_growth_yoy,
-             gainshare_estimate, book_value_per_share, eps_basic)
-        VALUES
-            (:month_end, :combined_ratio, :pif_total, :pif_growth_yoy,
-             :gainshare_estimate, :book_value_per_share, :eps_basic)
+        INSERT OR REPLACE INTO pgr_edgar_monthly (
+            month_end, combined_ratio, pif_total, pif_growth_yoy,
+            gainshare_estimate, book_value_per_share, eps_basic,
+            net_premiums_written, net_premiums_earned, net_income,
+            eps_diluted, loss_lae_ratio, expense_ratio,
+            npw_agency, npw_direct, npw_commercial, npw_property,
+            npe_agency, npe_direct, npe_commercial, npe_property,
+            pif_agency_auto, pif_direct_auto, pif_commercial_lines,
+            pif_total_personal_lines,
+            investment_income, total_revenues, total_expenses,
+            income_before_income_taxes, roe_net_income_ttm,
+            shareholders_equity, total_assets,
+            unearned_premiums, shares_repurchased, avg_cost_per_share,
+            fte_return_total_portfolio, investment_book_yield,
+            net_unrealized_gains_fixed, fixed_income_duration,
+            channel_mix_agency_pct, npw_growth_yoy, underwriting_income,
+            unearned_premium_growth_yoy, buyback_yield
+        ) VALUES (
+            :month_end, :combined_ratio, :pif_total, :pif_growth_yoy,
+            :gainshare_estimate, :book_value_per_share, :eps_basic,
+            :net_premiums_written, :net_premiums_earned, :net_income,
+            :eps_diluted, :loss_lae_ratio, :expense_ratio,
+            :npw_agency, :npw_direct, :npw_commercial, :npw_property,
+            :npe_agency, :npe_direct, :npe_commercial, :npe_property,
+            :pif_agency_auto, :pif_direct_auto, :pif_commercial_lines,
+            :pif_total_personal_lines,
+            :investment_income, :total_revenues, :total_expenses,
+            :income_before_income_taxes, :roe_net_income_ttm,
+            :shareholders_equity, :total_assets,
+            :unearned_premiums, :shares_repurchased, :avg_cost_per_share,
+            :fte_return_total_portfolio, :investment_book_yield,
+            :net_unrealized_gains_fixed, :fixed_income_duration,
+            :channel_mix_agency_pct, :npw_growth_yoy, :underwriting_income,
+            :unearned_premium_growth_yoy, :buyback_yield
+        )
     """
     normalised = [
         {
-            "month_end":             r["month_end"],
-            "combined_ratio":        r.get("combined_ratio"),
-            "pif_total":             r.get("pif_total"),
-            "pif_growth_yoy":        r.get("pif_growth_yoy"),
-            "gainshare_estimate":    r.get("gainshare_estimate"),
-            "book_value_per_share":  r.get("book_value_per_share"),
-            "eps_basic":             r.get("eps_basic"),
+            "month_end":                   r["month_end"],
+            "combined_ratio":              r.get("combined_ratio"),
+            "pif_total":                   r.get("pif_total"),
+            "pif_growth_yoy":              r.get("pif_growth_yoy"),
+            "gainshare_estimate":          r.get("gainshare_estimate"),
+            "book_value_per_share":        r.get("book_value_per_share"),
+            "eps_basic":                   r.get("eps_basic"),
+            "net_premiums_written":        r.get("net_premiums_written"),
+            "net_premiums_earned":         r.get("net_premiums_earned"),
+            "net_income":                  r.get("net_income"),
+            "eps_diluted":                 r.get("eps_diluted"),
+            "loss_lae_ratio":              r.get("loss_lae_ratio"),
+            "expense_ratio":               r.get("expense_ratio"),
+            "npw_agency":                  r.get("npw_agency"),
+            "npw_direct":                  r.get("npw_direct"),
+            "npw_commercial":              r.get("npw_commercial"),
+            "npw_property":                r.get("npw_property"),
+            "npe_agency":                  r.get("npe_agency"),
+            "npe_direct":                  r.get("npe_direct"),
+            "npe_commercial":              r.get("npe_commercial"),
+            "npe_property":                r.get("npe_property"),
+            "pif_agency_auto":             r.get("pif_agency_auto"),
+            "pif_direct_auto":             r.get("pif_direct_auto"),
+            "pif_commercial_lines":        r.get("pif_commercial_lines"),
+            "pif_total_personal_lines":    r.get("pif_total_personal_lines"),
+            "investment_income":           r.get("investment_income"),
+            "total_revenues":              r.get("total_revenues"),
+            "total_expenses":              r.get("total_expenses"),
+            "income_before_income_taxes":  r.get("income_before_income_taxes"),
+            "roe_net_income_ttm":          r.get("roe_net_income_ttm"),
+            "shareholders_equity":         r.get("shareholders_equity"),
+            "total_assets":                r.get("total_assets"),
+            "unearned_premiums":           r.get("unearned_premiums"),
+            "shares_repurchased":          r.get("shares_repurchased"),
+            "avg_cost_per_share":          r.get("avg_cost_per_share"),
+            "fte_return_total_portfolio":  r.get("fte_return_total_portfolio"),
+            "investment_book_yield":       r.get("investment_book_yield"),
+            "net_unrealized_gains_fixed":  r.get("net_unrealized_gains_fixed"),
+            "fixed_income_duration":       r.get("fixed_income_duration"),
+            "channel_mix_agency_pct":      r.get("channel_mix_agency_pct"),
+            "npw_growth_yoy":              r.get("npw_growth_yoy"),
+            "underwriting_income":         r.get("underwriting_income"),
+            "unearned_premium_growth_yoy": r.get("unearned_premium_growth_yoy"),
+            "buyback_yield":               r.get("buyback_yield"),
         }
         for r in records
     ]
@@ -397,12 +505,26 @@ def upsert_pgr_edgar_monthly(
 def get_pgr_edgar_monthly(conn: sqlite3.Connection) -> pd.DataFrame:
     """Load all PGR monthly EDGAR metrics, sorted ascending by month_end.
 
-    Returns columns: combined_ratio, pif_total, pif_growth_yoy,
-    gainshare_estimate, book_value_per_share, eps_basic (NULL for pre-v6.x rows).
+    Returns all v6.2 columns.  Pre-v6.2 rows have NULL for the new fields;
+    callers should handle NaN accordingly.
     """
     sql = """
         SELECT month_end, combined_ratio, pif_total, pif_growth_yoy,
-               gainshare_estimate, book_value_per_share, eps_basic
+               gainshare_estimate, book_value_per_share, eps_basic,
+               net_premiums_written, net_premiums_earned, net_income,
+               eps_diluted, loss_lae_ratio, expense_ratio,
+               npw_agency, npw_direct, npw_commercial, npw_property,
+               npe_agency, npe_direct, npe_commercial, npe_property,
+               pif_agency_auto, pif_direct_auto, pif_commercial_lines,
+               pif_total_personal_lines,
+               investment_income, total_revenues, total_expenses,
+               income_before_income_taxes, roe_net_income_ttm,
+               shareholders_equity, total_assets,
+               unearned_premiums, shares_repurchased, avg_cost_per_share,
+               fte_return_total_portfolio, investment_book_yield,
+               net_unrealized_gains_fixed, fixed_income_duration,
+               channel_mix_agency_pct, npw_growth_yoy, underwriting_income,
+               unearned_premium_growth_yoy, buyback_yield
         FROM pgr_edgar_monthly
         ORDER BY month_end ASC
     """

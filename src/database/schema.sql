@@ -67,22 +67,96 @@ CREATE TABLE IF NOT EXISTS pgr_fundamentals_quarterly (
 
 -- ---------------------------------------------------------------------------
 -- PGR monthly operating metrics from SEC EDGAR 8-K filings
--- Source: user-provided pgr_edgar_cache.csv (migrated at v2 init)
--- combined_ratio:      GAAP combined ratio (loss + expense); below 96% = target
--- pif_total:           policies in force (total count)
--- pif_growth_yoy:      year-over-year PIF growth (decimal, e.g. 0.12 = 12%)
--- gainshare_estimate:  estimated annual multiplier [0.0, 2.0]
--- book_value_per_share: BVPS from monthly 8-K (v6.x); used to derive pb_ratio
--- eps_basic:           monthly basic EPS from 8-K (v6.x); TTM sum used for pe_ratio
+-- Source: user-provided pgr_edgar_cache.csv (migrated at v2 init); live fetch
+--         via scripts/edgar_8k_fetcher.py for recent months.
+--
+-- Core metrics (v2 baseline):
+--   combined_ratio:      GAAP combined ratio (loss + expense); below 96% = target
+--   pif_total:           policies in force — total count (thousands)
+--   pif_growth_yoy:      year-over-year PIF growth (decimal, e.g. 0.12 = 12%)
+--   gainshare_estimate:  estimated annual multiplier [0.0, 2.0]
+--
+-- v6.x additions:
+--   book_value_per_share: BVPS from monthly 8-K; used to derive pb_ratio
+--   eps_basic:            monthly basic EPS; TTM sum used for pe_ratio
+--
+-- v6.2 Phase 1 — foundational P&L / balance sheet fields (all in CSV):
+--   net_premiums_written, net_premiums_earned, net_income, eps_diluted,
+--   loss_lae_ratio, expense_ratio — foundational companywide P&L
+--
+-- v6.2 Phase 1 — segment-level channel metrics:
+--   npw_*/npe_*: net premiums written/earned by segment (agency/direct/commercial/property)
+--   pif_agency_auto, pif_direct_auto, pif_commercial_lines, pif_total_personal_lines
+--
+-- v6.2 Phase 1 — company-level operating metrics:
+--   investment_income, total_revenues, total_expenses, income_before_income_taxes,
+--   roe_net_income_ttm, shareholders_equity, total_assets,
+--   unearned_premiums, shares_repurchased, avg_cost_per_share
+--
+-- v6.2 Phase 2 — investment portfolio metrics:
+--   fte_return_total_portfolio, investment_book_yield,
+--   net_unrealized_gains_fixed, fixed_income_duration
+--
+-- v6.2 derived fields (computed at CSV load time):
+--   channel_mix_agency_pct: npw_agency / (npw_agency + npw_direct)
+--   npw_growth_yoy:         net_premiums_written YoY % change
+--   underwriting_income:    net_premiums_earned * (1 - combined_ratio/100)
+--   unearned_premium_growth_yoy: unearned_premiums YoY % change
+--   buyback_yield:          (shares_repurchased * avg_cost_per_share) / market_cap
+--                           NULL for CSV-load path (market_cap requires price data)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS pgr_edgar_monthly (
-    month_end             TEXT    NOT NULL,
-    combined_ratio        REAL,
-    pif_total             REAL,
-    pif_growth_yoy        REAL,
-    gainshare_estimate    REAL,
-    book_value_per_share  REAL,
-    eps_basic             REAL,
+    month_end                    TEXT    NOT NULL,
+    -- Core v2 fields
+    combined_ratio               REAL,
+    pif_total                    REAL,
+    pif_growth_yoy               REAL,
+    gainshare_estimate           REAL,
+    -- v6.x additions
+    book_value_per_share         REAL,
+    eps_basic                    REAL,
+    -- v6.2: foundational P&L
+    net_premiums_written         REAL,
+    net_premiums_earned          REAL,
+    net_income                   REAL,
+    eps_diluted                  REAL,
+    loss_lae_ratio               REAL,
+    expense_ratio                REAL,
+    -- v6.2: segment-level channel metrics
+    npw_agency                   REAL,
+    npw_direct                   REAL,
+    npw_commercial               REAL,
+    npw_property                 REAL,
+    npe_agency                   REAL,
+    npe_direct                   REAL,
+    npe_commercial               REAL,
+    npe_property                 REAL,
+    pif_agency_auto              REAL,
+    pif_direct_auto              REAL,
+    pif_commercial_lines         REAL,
+    pif_total_personal_lines     REAL,
+    -- v6.2: company-level operating metrics
+    investment_income            REAL,
+    total_revenues               REAL,
+    total_expenses               REAL,
+    income_before_income_taxes   REAL,
+    roe_net_income_ttm           REAL,
+    shareholders_equity          REAL,
+    total_assets                 REAL,
+    unearned_premiums            REAL,
+    shares_repurchased           REAL,
+    avg_cost_per_share           REAL,
+    -- v6.2: investment portfolio metrics
+    fte_return_total_portfolio   REAL,
+    investment_book_yield        REAL,
+    net_unrealized_gains_fixed   REAL,
+    fixed_income_duration        REAL,
+    -- v6.2: derived fields
+    channel_mix_agency_pct       REAL,
+    npw_growth_yoy               REAL,
+    underwriting_income          REAL,
+    unearned_premium_growth_yoy  REAL,
+    buyback_yield                REAL,
     PRIMARY KEY (month_end)
 );
 
