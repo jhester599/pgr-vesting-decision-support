@@ -505,7 +505,7 @@ python scripts/edgar_8k_fetcher.py --load-from-csv --dry-run
 
 ---
 
-### v6.3 — Channel-Mix Features in Monthly Decision Model (current)
+### v6.3 — Channel-Mix Features in Monthly Decision Model (complete)
 **Released:** 2026-04-01
 **Theme:** Wire agency/direct channel-mix signals into the ML feature pipeline (P1.4)
 
@@ -528,6 +528,49 @@ segment-level data loaded by v6.2's CSV backfill:
 - Absent when `pgr_monthly=None`, column missing, or all-NaN (full backward compat)
 
 **Testing:** 12 new tests in `tests/test_v63_channel_mix_features.py`; total **921 passed, 1 skipped**
+
+---
+
+### v6.4 — P2.x Operational & Valuation Features (current)
+**Released:** 2026-04-01
+**Theme:** Wire underwriting income, unearned premium pipeline, ROE trend,
+investment portfolio quality, and share repurchase signal into the ML feature
+pipeline (P2.1–P2.5)
+
+Adds eleven new predictive features to `build_feature_matrix()`, all sourced
+from `pgr_edgar_monthly` (PGR monthly 8-K supplements).  Defaulting to monthly
+8-K data throughout maximises observation count and ensures consistent sourcing.
+
+**P2.2 — Underwriting income:**
+- `underwriting_income` (DB pre-computed: `npe × (1 − CR/100)`)
+- `underwriting_income_3m` (3-month trailing average)
+- `underwriting_income_growth_yoy` (12M YoY pct_change)
+
+**P2.3 — Unearned premium pipeline:**
+- `unearned_premium_growth_yoy` (DB pre-computed 12M pct_change; leads earned premium ~6M)
+- `unearned_premium_to_npw_ratio` (`unearned_premiums / net_premiums_written`)
+
+**P2.4 — ROE trend:**
+- `roe_net_income_ttm` (8-K monthly TTM ROE; 4× more obs than quarterly XBRL)
+- `roe_trend` (current ROE − rolling 12M mean; positive = improving efficiency)
+
+**P2.1 — Investment portfolio:**
+- `investment_income_growth_yoy` (12M YoY growth; rate-environment proxy)
+- `investment_book_yield` (fixed-income book yield; complements `yield_slope`)
+
+**P2.5 — Share repurchase signal:**
+- `buyback_yield` (annualised buyback spend / est. market cap via BVPS + equity)
+- `buyback_acceleration` (current month / trailing 12M mean; > 1 = accelerating)
+
+**Implementation:**
+- `src/processing/feature_engineering.py` — v6.4 P2.x block added in the
+  `if pgr_monthly is not None` section; all eleven features added to the
+  sparsity-guard loop (`WFO_MIN_GAINSHARE_OBS` threshold)
+- All features sourced from `pgr_edgar_monthly`; forward-filled to monthly dates
+- Absent when `pgr_monthly=None`, column missing, or below sparsity threshold
+  (full backward compat with pre-v6.2 databases)
+
+**Testing:** 28 new tests in `tests/test_v64_p2x_features.py`; total **949 passed, 1 skipped**
 
 ---
 

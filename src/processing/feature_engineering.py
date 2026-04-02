@@ -31,6 +31,25 @@ Feature groups:
     - npw_growth_yoy          (companywide NPW 12-month YoY growth rate)
     Dropped silently if fewer than WFO_MIN_GAINSHARE_OBS non-NaN rows.
 
+  PGR P2.x features (v6.4, from pgr_edgar_monthly 8-K monthly supplements):
+    Underwriting income (P2.2):
+    - underwriting_income         (net_premiums_earned × (1 − CR/100); DB pre-computed)
+    - underwriting_income_3m      (3-month trailing average; smooths volatility)
+    - underwriting_income_growth_yoy (12M YoY growth rate; captures margin inflection)
+    Unearned premium pipeline (P2.3):
+    - unearned_premium_growth_yoy  (DB pre-computed; leads earned premium by ~6M)
+    - unearned_premium_to_npw_ratio (unearned / NPW; rising = accelerating new business)
+    ROE trend (P2.4):
+    - roe_net_income_ttm           (TTM ROE from 8-K supplement)
+    - roe_trend                    (current ROE − 12M rolling mean; sign = direction)
+    Investment portfolio (P2.1):
+    - investment_income_growth_yoy (12M YoY growth; rate-environment proxy)
+    - investment_book_yield        (fixed-income book yield; rate-sensitivity signal)
+    Share repurchase signal (P2.5):
+    - buyback_yield                (annualised buyback spend / estimated market cap)
+    - buyback_acceleration         (current buyback / trailing 12M mean; >1 = accelerating)
+    All dropped silently if fewer than WFO_MIN_GAINSHARE_OBS non-NaN rows.
+
   Price-derived (v6.0):
     - high_52w              (current price / 52-week high; George & Hwang 2004)
 
@@ -295,13 +314,163 @@ def build_feature_matrix(
                 monthly_dates, method="ffill"
             )
 
-    # Drop optional Gainshare/channel-mix columns if insufficient observations.
+        # ------------------------------------------------------------------
+        # v6.4 — P2.x features: Underwriting income, unearned premiums,
+        #         ROE trend, investment portfolio, share repurchase signal
+        # All source from pgr_monthly (PGR 8-K monthly supplements).
+        # ------------------------------------------------------------------
+
+        # --- P2.2: Underwriting income ---
+        # Pre-computed in DB: net_premiums_earned × (1 − combined_ratio / 100).
+        # More direct profitability signal than combined_ratio alone because
+        # it captures scale — a flat CR on growing premiums = growing margin $$.
+        if (
+            "underwriting_income" in pgr_monthly.columns
+            and not pgr_monthly["underwriting_income"].isna().all()
+        ):
+            uw_monthly = pgr_monthly["underwriting_income"].reindex(
+                monthly_dates, method="ffill"
+            )
+            df["underwriting_income"] = uw_monthly
+            # 3-month trailing average: smooths single-weather-event spikes
+            df["underwriting_income_3m"] = uw_monthly.rolling(3, min_periods=2).mean()
+            # YoY growth rate: positive slope = margin expansion trend
+            df["underwriting_income_growth_yoy"] = uw_monthly.pct_change(periods=12)
+
+        # --- P2.3: Unearned premium reserve growth (earned-premium pipeline) ---
+        # unearned_premium_growth_yoy is pre-computed in DB (12M pct_change).
+        # Rising unearned premiums lead earned premium growth by ~6 months.
+        if (
+            "unearned_premium_growth_yoy" in pgr_monthly.columns
+            and not pgr_monthly["unearned_premium_growth_yoy"].isna().all()
+        ):
+            df["unearned_premium_growth_yoy"] = pgr_monthly[
+                "unearned_premium_growth_yoy"
+            ].reindex(monthly_dates, method="ffill")
+
+        # unearned_premium_to_npw_ratio: unearned reserve / written premium.
+        # Ratio > 0.5 and rising signals accelerating new-business inflow
+        # faster than recognition — a forward earnings quality indicator.
+        if (
+            "unearned_premiums" in pgr_monthly.columns
+            and "net_premiums_written" in pgr_monthly.columns
+            and not pgr_monthly["unearned_premiums"].isna().all()
+            and not pgr_monthly["net_premiums_written"].isna().all()
+        ):
+            unprem = pgr_monthly["unearned_premiums"].reindex(
+                monthly_dates, method="ffill"
+            )
+            npw_m = pgr_monthly["net_premiums_written"].reindex(
+                monthly_dates, method="ffill"
+            )
+            valid_npw_m = npw_m.where(npw_m > 0)
+            df["unearned_premium_to_npw_ratio"] = unprem / valid_npw_m
+
+        # --- P2.4: ROE trend (capital-efficiency momentum) ---
+        # roe_net_income_ttm from 8-K supplement: monthly frequency, lag applied.
+        # Superior to quarterly XBRL roe for the same reason eps_basic is
+        # preferred over quarterly EPS — 4× more observations.
+        if (
+            "roe_net_income_ttm" in pgr_monthly.columns
+            and not pgr_monthly["roe_net_income_ttm"].isna().all()
+        ):
+            roe_monthly = pgr_monthly["roe_net_income_ttm"].reindex(
+                monthly_dates, method="ffill"
+            )
+            df["roe_net_income_ttm"] = roe_monthly
+            # roe_trend: current ROE − trailing 12M mean.
+            # Positive = improving efficiency vs. recent history (bullish);
+            # negative = deteriorating capital returns (bearish signal).
+            df["roe_trend"] = roe_monthly - roe_monthly.rolling(12, min_periods=6).mean()
+
+        # --- P2.1: Investment portfolio features ---
+        # investment_income_growth_yoy: YoY growth in net investment income.
+        # Rising growth signals either rate-environment uplift (reinvesting
+        # maturing bonds at higher yields) or a growing invested asset base.
+        if (
+            "investment_income" in pgr_monthly.columns
+            and not pgr_monthly["investment_income"].isna().all()
+        ):
+            inv_inc = pgr_monthly["investment_income"].reindex(
+                monthly_dates, method="ffill"
+            )
+            df["investment_income_growth_yoy"] = inv_inc.pct_change(periods=12)
+
+        # investment_book_yield: current yield on the fixed-income portfolio.
+        # Rising book yield = portfolio rolling into higher-coupon bonds,
+        # boosting recurring income; a direct complement to yield_slope.
+        if (
+            "investment_book_yield" in pgr_monthly.columns
+            and not pgr_monthly["investment_book_yield"].isna().all()
+        ):
+            df["investment_book_yield"] = pgr_monthly["investment_book_yield"].reindex(
+                monthly_dates, method="ffill"
+            )
+
+        # --- P2.5: Share repurchase signal ---
+        # Buyback amount = shares_repurchased × avg_cost_per_share ($ value).
+        # Management accelerates buybacks when they believe the stock is
+        # undervalued; this is a high-quality insider-confidence signal.
+        if (
+            "shares_repurchased" in pgr_monthly.columns
+            and "avg_cost_per_share" in pgr_monthly.columns
+            and not pgr_monthly["shares_repurchased"].isna().all()
+        ):
+            bb_shares = pgr_monthly["shares_repurchased"].reindex(
+                monthly_dates, method="ffill"
+            )
+            bb_cost = pgr_monthly["avg_cost_per_share"].reindex(
+                monthly_dates, method="ffill"
+            )
+            buyback_amount = (bb_shares * bb_cost).clip(lower=0)
+
+            # buyback_yield: annualised buyback spend as % of estimated market cap.
+            # Market cap estimated as: shares_outstanding × monthly_price, where
+            # shares_outstanding ≈ shareholders_equity / book_value_per_share.
+            # This avoids requiring a separate shares-outstanding data feed.
+            if (
+                "shareholders_equity" in pgr_monthly.columns
+                and "book_value_per_share" in pgr_monthly.columns
+                and not pgr_monthly["shareholders_equity"].isna().all()
+                and not pgr_monthly["book_value_per_share"].isna().all()
+            ):
+                equity_m = pgr_monthly["shareholders_equity"].reindex(
+                    monthly_dates, method="ffill"
+                )
+                bvps_m = pgr_monthly["book_value_per_share"].reindex(
+                    monthly_dates, method="ffill"
+                )
+                valid_bvps_m = bvps_m.where(bvps_m > 0)
+                # shares_outstanding proxy (in millions if equity is in $M)
+                shares_est = equity_m / valid_bvps_m
+                mkt_cap_est = shares_est * monthly_close
+                valid_mktcap = mkt_cap_est.where(mkt_cap_est > 0)
+                # ×12 to annualise monthly spend
+                df["buyback_yield"] = (buyback_amount * 12) / valid_mktcap
+
+            # buyback_acceleration: current buyback vs trailing 12M mean.
+            # Values >1 mean this month's repurchase pace is above the prior
+            # year's average — a signal of accelerating management confidence.
+            rolling_bb_mean = buyback_amount.rolling(12, min_periods=4).mean()
+            valid_bb_mean = rolling_bb_mean.where(rolling_bb_mean > 0)
+            df["buyback_acceleration"] = buyback_amount / valid_bb_mean
+
+    # Drop optional Gainshare/channel-mix/P2.x columns if insufficient observations.
     # cr_acceleration is a derivative of combined_ratio_ttm (3-period diff),
     # so it is naturally gated: if combined_ratio_ttm is dropped here due to
     # sparse data, cr_acceleration becomes all-NaN and the WFO engine drops
     # it via its own feature-selection logic.  No separate threshold needed.
-    for col in ["combined_ratio_ttm", "pif_growth_yoy", "gainshare_est",
-                "channel_mix_agency_pct", "npw_growth_yoy"]:
+    for col in [
+        "combined_ratio_ttm", "pif_growth_yoy", "gainshare_est",
+        "channel_mix_agency_pct", "npw_growth_yoy",
+        # v6.4 P2.x features
+        "underwriting_income", "underwriting_income_3m",
+        "underwriting_income_growth_yoy",
+        "unearned_premium_growth_yoy", "unearned_premium_to_npw_ratio",
+        "roe_net_income_ttm", "roe_trend",
+        "investment_income_growth_yoy", "investment_book_yield",
+        "buyback_yield", "buyback_acceleration",
+    ]:
         if col in df.columns:
             n_valid = df[col].notna().sum()
             if n_valid < config.WFO_MIN_GAINSHARE_OBS:

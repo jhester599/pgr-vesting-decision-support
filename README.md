@@ -1,4 +1,4 @@
-# PGR Vesting Decision Support · v6.3
+# PGR Vesting Decision Support · v6.4
 
 A quantitative decision-support engine for systematically unwinding a concentrated
 Progressive Corporation (PGR) RSU position held in a taxable brokerage account.
@@ -256,7 +256,7 @@ python scripts/edgar_8k_fetcher.py --load-from-csv
   `unearned_premium_growth_yoy`; `pct_change` uses `fill_method=None`
 - **29 new tests** in `tests/test_v62_schema_and_csv.py`; total **909 passed, 1 skipped**
 
-### v6.3 — Channel-Mix Features in Monthly Decision Model (current)
+### v6.3 — Channel-Mix Features in Monthly Decision Model (complete)
 
 Wires the agency/direct channel-mix signals (stored in the DB by v6.2's CSV
 backfill) into `build_feature_matrix()`, giving the ElasticNet/GBT ensemble
@@ -278,6 +278,60 @@ preserving full backward compatibility with pre-v6.2 databases.
 - `src/processing/feature_engineering.py` — channel-mix block added in
   `build_feature_matrix()`; both features added to the sparsity-guard loop
 - **12 new tests** in `tests/test_v63_channel_mix_features.py`; total **921 passed, 1 skipped**
+
+---
+
+### v6.4 — P2.x Operational & Valuation Features (current)
+
+Adds eleven new predictive features sourced entirely from `pgr_edgar_monthly`
+(PGR monthly 8-K supplements) across four categories: underwriting income,
+unearned premium pipeline, ROE trend, investment portfolio quality, and share
+repurchase signal.
+
+**P2.2 — Underwriting income (P&C margin in dollar terms):**
+- **`underwriting_income`**: `net_premiums_earned × (1 − CR/100)`, pre-computed
+  in DB.  More informative than combined ratio alone because scale matters —
+  a flat CR on growing premiums means expanding dollar margin.
+- **`underwriting_income_3m`**: 3-month trailing average; smooths
+  single-weather-event spikes.
+- **`underwriting_income_growth_yoy`**: 12M YoY growth rate; captures margin
+  inflection direction.
+
+**P2.3 — Unearned premium pipeline (earned-revenue leading indicator):**
+- **`unearned_premium_growth_yoy`**: 12M pct_change of unearned premiums
+  reserve, pre-computed in DB.  Rising reserve leads earned premium growth
+  by ~6 months.
+- **`unearned_premium_to_npw_ratio`**: `unearned_premiums / net_premiums_written`.
+  Ratio rising above 0.5 signals new business inflow accelerating faster than
+  recognition.
+
+**P2.4 — ROE trend (capital-efficiency momentum):**
+- **`roe_net_income_ttm`**: trailing 12M ROE from 8-K supplement — monthly
+  frequency, 4× more observations than quarterly XBRL.
+- **`roe_trend`**: `current_ROE − rolling 12M mean`.  Positive = improving
+  capital efficiency vs. recent history; negative = deteriorating.
+
+**P2.1 — Investment portfolio quality:**
+- **`investment_income_growth_yoy`**: 12M YoY growth in net investment income.
+  Rising growth signals rate-environment uplift or growing invested assets.
+- **`investment_book_yield`**: current fixed-income book yield.  Rising yield
+  = portfolio rolling into higher-coupon bonds; directly complements
+  `yield_slope`.
+
+**P2.5 — Share repurchase signal (management confidence):**
+- **`buyback_yield`**: annualised buyback spend / estimated market cap.  Market
+  cap estimated from `shareholders_equity / book_value_per_share` × price —
+  no separate shares-outstanding feed required.
+- **`buyback_acceleration`**: current month buyback / trailing 12M mean.
+  Values > 1 signal management is repurchasing above the prior-year pace.
+
+All eleven features read from `pgr_edgar_monthly`, forward-filled to monthly
+dates, and subject to the `WFO_MIN_GAINSHARE_OBS` sparsity guard.  Absent when
+`pgr_monthly=None` or columns are missing (backward compatible with pre-v6.2 DBs).
+
+- `src/processing/feature_engineering.py` — v6.4 P2.x block added in
+  `build_feature_matrix()`; all eleven features added to the sparsity-guard loop
+- **28 new tests** in `tests/test_v64_p2x_features.py`; total **949 passed, 1 skipped**
 
 ---
 
