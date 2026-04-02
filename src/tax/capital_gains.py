@@ -24,7 +24,7 @@ rounding errors that accumulate over multi-year sale programs.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Sequence
 
 import pandas as pd
@@ -399,7 +399,253 @@ def wash_sale_clear_date(harvest_date: "date", wash_sale_days: int | None = None
     Returns:
         First safe repurchase date.
     """
-    from datetime import timedelta
     if wash_sale_days is None:
         wash_sale_days = config.TLH_WASH_SALE_DAYS
     return harvest_date + timedelta(days=wash_sale_days)
+
+
+# ---------------------------------------------------------------------------
+# v7.1 — Three-Scenario Tax Framework
+# ---------------------------------------------------------------------------
+
+@dataclass
+class TaxScenario:
+    """One of three tax scenarios for a vesting event."""
+    label: str                       # "SELL_NOW_STCG", "HOLD_TO_LTCG", "HOLD_FOR_LOSS"
+    sell_date: date                  # When the sale would occur
+    tax_rate: float                  # Applicable tax rate (STCG or LTCG)
+    holding_period_days: int         # Days from vest_date to sell_date
+    predicted_return: float          # Model's predicted return over the holding period
+    predicted_price: float           # current_price * (1 + predicted_return)
+    gross_proceeds: float            # shares * predicted_price
+    tax_liability: float             # (predicted_price - cost_basis) * shares * tax_rate
+    net_proceeds: float              # gross_proceeds - tax_liability
+    breakeven_return: float          # Minimum return needed to prefer this scenario
+    probability: float               # Model-assigned probability (0.0–1.0)
+    rationale: str                   # Human-readable explanation
+
+
+@dataclass
+class ThreeScenarioResult:
+    """Complete three-scenario analysis for a vesting event."""
+    vest_date: date
+    rsu_type: str
+    current_price: float
+    cost_basis_per_share: float
+    shares: float
+    scenarios: list[TaxScenario]     # Always exactly 3 scenarios
+    recommended_scenario: str        # Label of the highest-utility scenario
+    stcg_ltcg_breakeven: float       # Return needed for LTCG to beat STCG
+    days_to_ltcg: int                # Days from vest_date until LTCG-eligible
+
+
+def compute_stcg_ltcg_breakeven(
+    stcg_rate: float | None = None,
+    ltcg_rate: float | None = None,
+) -> float:
+    """
+    Compute the minimum return needed for holding to LTCG to beat selling
+    immediately at STCG.
+
+    The breakeven is the return R such that:
+        (1+R) * (1 - ltcg_rate) = (1 - stcg_rate) + R
+    Simplified: R_breakeven ≈ (stcg_rate - ltcg_rate) / (1 - ltcg_rate)
+
+    With default rates (37% STCG, 20% LTCG): ~21.25%.
+
+    Args:
+        stcg_rate: Short-term capital gains tax rate. Default: config.STCG_RATE.
+        ltcg_rate: Long-term capital gains tax rate. Default: config.LTCG_RATE.
+
+    Returns:
+        Breakeven return as a decimal (e.g., 0.2125 for 21.25%).
+    """
+    if stcg_rate is None:
+        stcg_rate = config.STCG_RATE
+    if ltcg_rate is None:
+        ltcg_rate = config.LTCG_RATE
+    return (stcg_rate - ltcg_rate) / (1.0 - ltcg_rate)
+
+
+def compute_three_scenarios(
+    vest_date: date,
+    rsu_type: str,
+    shares: float,
+    cost_basis_per_share: float,
+    current_price: float,
+    predicted_6m_return: float,
+    predicted_12m_return: float,
+    prob_outperform_6m: float,
+    prob_outperform_12m: float,
+    stcg_rate: float | None = None,
+    ltcg_rate: float | None = None,
+) -> ThreeScenarioResult:
+    """
+    Compute three tax-aware scenarios for a vesting event.
+
+    Scenario A — Sell at Vest (STCG):
+        Sell immediately on vest_date.  Tax rate = STCG.
+        Proceeds are certain (no holding period risk).
+
+    Scenario B — Hold to LTCG Eligibility:
+        Hold for 366 days post-vest, then sell at LTCG rate.
+        Uses predicted_12m_return.  Tax rate = LTCG.  Proceeds are uncertain.
+
+    Scenario C — Hold for Capital Loss:
+        Relevant when predicted return is negative.  Harvest the loss to
+        offset other capital gains at the higher STCG rate plus up to
+        $3,000/yr of ordinary income.  Tax benefit = |loss| × STCG rate.
+
+    Args:
+        vest_date:             Date shares vest (holding period starts).
+        rsu_type:              "time" or "performance".
+        shares:                Number of shares in this lot.
+        cost_basis_per_share:  FMV on vest date (= cost basis for RSUs).
+        current_price:         Current market price per share.
+        predicted_6m_return:   Model's predicted 6-month PGR relative return.
+        predicted_12m_return:  Model's predicted 12-month PGR return.
+                               If unavailable, pass predicted_6m_return * 2
+                               as a rough annualization.
+        prob_outperform_6m:    Calibrated P(PGR outperforms) at 6M.
+        prob_outperform_12m:   Calibrated P(PGR outperforms) at 12M.
+                               If unavailable, pass prob_outperform_6m.
+        stcg_rate:             Override STCG rate.  Default: config.STCG_RATE.
+        ltcg_rate:             Override LTCG rate.  Default: config.LTCG_RATE.
+
+    Returns:
+        ThreeScenarioResult with exactly 3 scenarios and a recommendation.
+    """
+    if stcg_rate is None:
+        stcg_rate = config.STCG_RATE
+    if ltcg_rate is None:
+        ltcg_rate = config.LTCG_RATE
+
+    breakeven = compute_stcg_ltcg_breakeven(stcg_rate, ltcg_rate)
+    ltcg_date = vest_date + timedelta(days=366)
+    days_to_ltcg = (ltcg_date - vest_date).days  # always 366
+
+    # --- Scenario A: Sell Now at STCG ---
+    gain_a = (current_price - cost_basis_per_share) * shares
+    if gain_a >= 0:
+        tax_a = gain_a * stcg_rate
+    else:
+        tax_a = gain_a * stcg_rate  # negative number = tax benefit
+    gross_a = shares * current_price
+    net_a = gross_a - tax_a
+    prob_a = 1.0  # certain outcome
+    scenario_a = TaxScenario(
+        label="SELL_NOW_STCG",
+        sell_date=vest_date,
+        tax_rate=stcg_rate,
+        holding_period_days=0,
+        predicted_return=0.0,
+        predicted_price=current_price,
+        gross_proceeds=gross_a,
+        tax_liability=tax_a,
+        net_proceeds=net_a,
+        breakeven_return=0.0,
+        probability=prob_a,
+        rationale=(
+            f"Sell {shares:.0f} shares immediately at ${current_price:.2f}. "
+            f"Tax rate {stcg_rate:.0%} (STCG). "
+            f"Net proceeds: ${net_a:,.2f}."
+        ),
+    )
+
+    # --- Scenario B: Hold to LTCG Eligibility (366 days) ---
+    predicted_price_b = current_price * (1.0 + predicted_12m_return)
+    gain_b = (predicted_price_b - cost_basis_per_share) * shares
+    if gain_b >= 0:
+        tax_b = gain_b * ltcg_rate
+    else:
+        tax_b = gain_b * ltcg_rate  # negative number = tax benefit
+    gross_b = shares * predicted_price_b
+    net_b = gross_b - tax_b
+    prob_b = prob_outperform_12m
+    scenario_b = TaxScenario(
+        label="HOLD_TO_LTCG",
+        sell_date=ltcg_date,
+        tax_rate=ltcg_rate,
+        holding_period_days=days_to_ltcg,
+        predicted_return=predicted_12m_return,
+        predicted_price=predicted_price_b,
+        gross_proceeds=gross_b,
+        tax_liability=tax_b,
+        net_proceeds=net_b,
+        breakeven_return=breakeven,
+        probability=prob_b,
+        rationale=(
+            f"Hold until {ltcg_date} (LTCG-eligible). "
+            f"Predicted price: ${predicted_price_b:.2f} "
+            f"({predicted_12m_return:+.1%} 12M return). "
+            f"Tax rate {ltcg_rate:.0%} (LTCG). "
+            f"Net proceeds: ${net_b:,.2f} (P={prob_b:.0%})."
+        ),
+    )
+
+    # --- Scenario C: Hold for Capital Loss ---
+    if predicted_6m_return < 0:
+        predicted_loss_price = current_price * (1.0 + predicted_6m_return)
+        loss_gain = (predicted_loss_price - cost_basis_per_share) * shares  # negative
+        # Tax benefit: loss offsets gains at the higher STCG rate
+        tax_c = loss_gain * stcg_rate  # negative = tax benefit
+        gross_c = shares * predicted_loss_price
+        net_c = gross_c - tax_c  # net_c > gross_c because tax_c is negative
+        prob_c = 1.0 - prob_outperform_6m
+        rationale_c = (
+            f"Hold and harvest capital loss. "
+            f"Predicted price: ${predicted_loss_price:.2f} "
+            f"({predicted_6m_return:+.1%} 6M return). "
+            f"Loss tax benefit at {stcg_rate:.0%} STCG rate. "
+            f"Net (incl. benefit): ${net_c:,.2f} (P={prob_c:.0%})."
+        )
+    else:
+        # Positive predicted return: loss scenario is degenerate.
+        predicted_loss_price = current_price
+        tax_c = 0.0
+        gross_c = shares * current_price
+        net_c = gross_c
+        prob_c = 0.0
+        rationale_c = (
+            "Capital loss harvest not applicable: model predicts positive return."
+        )
+
+    scenario_c = TaxScenario(
+        label="HOLD_FOR_LOSS",
+        sell_date=vest_date + timedelta(days=180),  # approximate 6M
+        tax_rate=stcg_rate,
+        holding_period_days=180,
+        predicted_return=predicted_6m_return,
+        predicted_price=predicted_loss_price,
+        gross_proceeds=gross_c,
+        tax_liability=tax_c,
+        net_proceeds=net_c,
+        breakeven_return=0.0,
+        probability=prob_c,
+        rationale=rationale_c,
+    )
+
+    # --- Select recommended scenario (highest probability-weighted utility) ---
+    utility_a = prob_a * net_a
+    utility_b = prob_b * net_b
+    # Scenario C is only competitive when predicted return is negative.
+    utility_c = prob_c * net_c if predicted_6m_return < 0 else float("-inf")
+
+    candidates = [
+        ("SELL_NOW_STCG", utility_a),
+        ("HOLD_TO_LTCG", utility_b),
+        ("HOLD_FOR_LOSS", utility_c),
+    ]
+    recommended = max(candidates, key=lambda x: x[1])[0]
+
+    return ThreeScenarioResult(
+        vest_date=vest_date,
+        rsu_type=rsu_type,
+        current_price=current_price,
+        cost_basis_per_share=cost_basis_per_share,
+        shares=shares,
+        scenarios=[scenario_a, scenario_b, scenario_c],
+        recommended_scenario=recommended,
+        stcg_ltcg_breakeven=breakeven,
+        days_to_ltcg=days_to_ltcg,
+    )
