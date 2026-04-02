@@ -1109,3 +1109,93 @@ def apply_fracdiff(
     # Reindex to original index (NaN for any missing dates)
     diff_series = diff_series.reindex(series.index)
     return diff_series, d_star
+
+
+# ---------------------------------------------------------------------------
+# v7.4 — Observations-to-feature ratio guard
+# ---------------------------------------------------------------------------
+
+def compute_obs_feature_ratio(
+    X: pd.DataFrame,
+    min_ratio: float = 4.0,
+    warn: bool = True,
+) -> dict:
+    """Compute the observations-to-feature ratio and flag dangerous territory.
+
+    With ~280 monthly observations and 25+ features the per-WFO-fold ratio
+    approaches 2.4:1 (60-month training window ÷ 25 features), increasing
+    the risk of spurious in-sample fit.  A ratio below 4.0 is a warning sign;
+    below 2.0 is a failure condition where regularised regression is unlikely
+    to generalise.
+
+    This function operates on the full feature matrix (not per-fold).  The
+    per-fold ratio is approximately:
+        per_fold_ratio = (WFO_TRAIN_WINDOW_MONTHS) / n_features
+
+    Args:
+        X:         Feature DataFrame (rows = monthly observations, columns = features).
+                   NaN rows are excluded from the observation count.
+        min_ratio: Minimum acceptable full-matrix obs/feature ratio.
+                   Default: 4.0 (matches the target set when FEATURES_TO_DROP
+                   was introduced in v4.3).
+        warn:      If True, emit an import-time warning when ratio < min_ratio.
+                   Set False in tests to suppress output.
+
+    Returns:
+        Dict with keys:
+          n_obs (int)          — non-NaN row count (rows with all features present)
+          n_features (int)     — number of feature columns
+          ratio (float)        — n_obs / n_features
+          per_fold_ratio (float) — WFO_TRAIN_WINDOW_MONTHS / n_features
+          verdict (str)        — "OK", "WARNING", or "FAIL"
+          message (str)        — human-readable summary
+    """
+    import warnings
+    import config as _config
+
+    feature_cols = [c for c in X.columns if c != "target_6m_return"]
+    n_features = len(feature_cols)
+
+    if n_features == 0:
+        return {
+            "n_obs": 0,
+            "n_features": 0,
+            "ratio": float("nan"),
+            "per_fold_ratio": float("nan"),
+            "verdict": "FAIL",
+            "message": "No feature columns found in X.",
+        }
+
+    # Count rows where all feature columns are non-NaN.
+    n_obs = int(X[feature_cols].dropna(how="any").shape[0])
+    ratio = n_obs / n_features if n_features > 0 else float("nan")
+    per_fold_ratio = _config.WFO_TRAIN_WINDOW_MONTHS / n_features
+
+    if ratio < 2.0 or per_fold_ratio < 2.0:
+        verdict = "FAIL"
+    elif ratio < min_ratio or per_fold_ratio < min_ratio:
+        verdict = "WARNING"
+    else:
+        verdict = "OK"
+
+    message = (
+        f"obs/feature ratio: {ratio:.1f} (full matrix), "
+        f"{per_fold_ratio:.1f} (per WFO fold, {_config.WFO_TRAIN_WINDOW_MONTHS}M window).  "
+        f"n_obs={n_obs}, n_features={n_features}.  Verdict: {verdict}."
+    )
+
+    if warn and verdict != "OK":
+        warnings.warn(
+            f"v7.4 obs/feature ratio guard — {message}",
+            UserWarning,
+            stacklevel=2,
+        )
+
+    return {
+        "n_obs": n_obs,
+        "n_features": n_features,
+        "ratio": ratio,
+        "per_fold_ratio": per_fold_ratio,
+        "verdict": verdict,
+        "message": message,
+    }

@@ -20,8 +20,8 @@ described.
 | v7.0 | Feature Ablation Backtest | ✅ Complete | 1 |
 | v7.1 | Three-Scenario Tax Framework | ✅ Complete | 1 |
 | v7.2 | EDGAR 8-K Parser Hardening | ✅ Complete | 2 |
-| v7.3 | Monthly Report Tax Section + Decision Log Fix | 🔲 Pending | — |
-| v7.4 | CPCV Path Stability Guard + Obs/Feature Ratio | 🔲 Pending | — |
+| v7.3 | Monthly Report Tax Section + Decision Log Fix | ✅ Complete | 2 |
+| v7.4 | CPCV Path Stability Guard + Obs/Feature Ratio | ✅ Complete | 2 |
 
 ---
 
@@ -133,7 +133,58 @@ described.
 
 ---
 
-## Next Session — Pick Up at v7.3
+---
+
+## Session 2 (continued) — v7.3 and v7.4
+
+### v7.3 — Monthly Report Tax Section + Decision Log Fix
+
+**Files modified:**
+- `results/monthly_decisions/decision_log.md` — Fixed:
+  - Removed 6 duplicate dry-run rows orphaned outside the log table
+  - Fixed first row's 8 trailing pipe delimiters
+  - Consolidated to 5 unique, clean entries in the correct table
+- `scripts/monthly_decision.py` — Two changes:
+  1. **`_build_tax_context_lines()`** (new function): renders a `## Tax Context`
+     section in `recommendation.md` showing STCG/LTCG rates, the breakeven
+     return (~21.25%), current model prediction vs. breakeven, next vest dates,
+     and a verdict paragraph adapting to positive/negative/above-breakeven cases.
+     Wired into `_write_recommendation_md()` after the per-benchmark table.
+  2. **`_append_decision_log()` fix**: replaced the "find last `|` line in entire
+     file" scan (which anchored to the Column Definitions table) with a separator-
+     anchored scan using the log table's unique `|------------|` prefix. Added
+     `_log_path_override` parameter for test isolation.
+- `tests/test_monthly_report_tax.py` — 14 tests covering tax context content,
+  breakeven value, three verdict branches, custom rates, vest dates,
+  and all five `_append_decision_log` scenarios.
+
+### v7.4 — CPCV Path Stability Guard + Obs/Feature Ratio
+
+**Files modified:**
+- `src/models/wfo_engine.py` — Added three `@property` methods to `CPCVResult`:
+  - `n_positive_paths`: count of paths with IC > 0
+  - `positive_path_fraction`: fraction of positive paths (NaN when empty)
+  - `stability_verdict`: "GOOD" / "MARGINAL" / "FAIL" / "UNKNOWN" based on
+    `config.DIAG_CPCV_MIN_POSITIVE_PATHS = 19` (GOOD ≥ 19, MARGINAL ≥ 9, FAIL < 9)
+- `src/processing/feature_engineering.py` — Added `compute_obs_feature_ratio()`:
+  - Returns `n_obs`, `n_features`, `ratio`, `per_fold_ratio`, `verdict`, `message`
+  - Checks both the full-matrix ratio and the per-WFO-fold ratio
+    (`WFO_TRAIN_WINDOW_MONTHS / n_features`)
+  - Verdict: OK (both ≥ min_ratio), WARNING (either below min_ratio), FAIL (either < 2.0)
+  - Emits `UserWarning` when verdict != OK and `warn=True`
+- `tests/test_v74_guards.py` — 17 tests: 9 for CPCVResult stability properties
+  (n_positive_paths, fraction, all three verdicts + UNKNOWN) and 8 for
+  compute_obs_feature_ratio (OK, WARNING, FAIL, no-features, per_fold calc,
+  warning emission, no-warning-when-OK, exact boundary).
+
+**Test results:** 1033 passed / 1 skipped / 30 pre-existing failures unchanged.
+
+---
+
+## All v7.x Enhancements Complete
+
+All five versions from `claude-v7-plan.md` are implemented and tested.
+No v7.5+ work is planned; wait for new plan or user direction.
 
 ### v7.3 — Monthly Report Tax Section + Decision Log Fix
 
