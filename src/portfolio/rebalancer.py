@@ -22,7 +22,7 @@ from datetime import date
 import pandas as pd
 
 from src.models.wfo_engine import WFOResult
-from src.tax.capital_gains import TaxLot, optimize_sale, compute_position_summary
+from src.tax.capital_gains import TaxLot, ThreeScenarioResult, optimize_sale, compute_position_summary
 from src.portfolio.drift_analyzer import (
     PortfolioState,
     recommend_reallocation,
@@ -62,6 +62,8 @@ class VestingRecommendation:
     # v5.1 calibrated P(outperform) from Platt / isotonic regression.
     # None when insufficient OOS data (n < CALIBRATION_MIN_OBS_PLATT).
     calibrated_prob_outperform: float | None = None
+    # v7.1 three-scenario tax analysis (optional; None until wired in monthly_decision.py)
+    three_scenario: ThreeScenarioResult | None = None
 
 
 def generate_recommendation(
