@@ -118,6 +118,7 @@ def main(
 
     conn = db_client.get_connection(config.DB_PATH)
     db_client.initialize_schema(conn)
+    db_client.warn_if_db_behind(conn, context="bootstrap")
 
     # ------------------------------------------------------------------
     # Step 1: Verify DB has the minimum data needed

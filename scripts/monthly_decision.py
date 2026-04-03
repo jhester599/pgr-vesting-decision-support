@@ -101,6 +101,12 @@ _ETF_DESCRIPTIONS: dict[str, str] = {
     "DBC":  "DB Commodity Index",
 }
 
+_MODEL_VERSION_LABEL = (
+    "v8.5 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, "
+    "inverse-variance weighting, C(8,2)=28 CPCV paths, "
+    "v7 tax context + v8 data-health refresh)"
+)
+
 
 # ---------------------------------------------------------------------------
 # Business-day helpers
@@ -701,7 +707,7 @@ def _write_recommendation_md(
         "",
         f"**As-of Date:** {as_of}  ",
         f"**Run Date:** {run_date}  ",
-        f"**Model Version:** v5.0 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, inverse-variance weighting, C(8,2)=28 CPCV paths)  ",
+        f"**Model Version:** {_MODEL_VERSION_LABEL}  ",
         "",
         "---",
         "",
@@ -1415,6 +1421,7 @@ def main(
 
     conn = db_client.get_connection(config.DB_PATH)
     db_client.initialize_schema(conn)
+    db_client.warn_if_db_behind(conn, context="monthly_decision")
 
     # Step 1: Refresh FRED data
     _fetch_fred_step(conn, dry_run=dry_run, skip_fred=skip_fred)

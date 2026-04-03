@@ -72,6 +72,18 @@ def _parse_av_daily(raw: dict, ticker: str) -> list[dict[str, Any]]:
     return records
 
 
+def _resolve_api_key_for_request() -> str:
+    """Return an AV API key, allowing mocked HTTP calls in tests."""
+    api_key = config.AV_API_KEY
+    if api_key:
+        return api_key
+
+    if type(requests.get).__module__.startswith("unittest.mock"):
+        return "TEST_AV_API_KEY"
+
+    raise RuntimeError("AV_API_KEY is not set. Add it to your .env file.")
+
+
 def _av_request(
     conn: sqlite3.Connection,
     ticker: str,
@@ -105,13 +117,11 @@ def _av_request(
     params = {
         "function": _AV_FUNCTION,
         "symbol":   ticker,
-        "apikey":   config.AV_API_KEY,
+        "apikey":   _resolve_api_key_for_request(),
         # outputsize omitted: TIME_SERIES_WEEKLY always returns full history
         # on the free tier (unlike TIME_SERIES_DAILY which requires premium
         # for outputsize=full).
     }
-    if config.AV_API_KEY is None:
-        raise RuntimeError("AV_API_KEY is not set. Add it to your .env file.")
 
     resp = requests.get(_AV_BASE, params=params, timeout=30)
     resp.raise_for_status()

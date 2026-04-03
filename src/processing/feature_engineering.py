@@ -182,9 +182,6 @@ def build_feature_matrix(
         DataFrame indexed by month-end date with feature columns and
         ``target_6m_return`` as the final column.
     """
-    if not force_refresh and os.path.exists(_PROCESSED_PATH):
-        return pd.read_parquet(_PROCESSED_PATH)
-
     # Resample daily prices to month-end (last business day)
     monthly_close = price_history["close"].resample("BME").last()
     monthly_dates = monthly_close.index

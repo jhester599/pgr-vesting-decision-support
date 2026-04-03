@@ -1,4 +1,4 @@
-# PGR Vesting Decision Support · v6.5
+# PGR Vesting Decision Support - v8.5
 
 A quantitative decision-support engine for systematically unwinding a concentrated
 Progressive Corporation (PGR) RSU position held in a taxable brokerage account.
@@ -8,6 +8,15 @@ BayesianRidge + GBT), per-benchmark Platt probability calibration, distribution-
 conformal prediction intervals (ACI), cross-asset signals (insurance peers + broad
 financials), Black-Litterman portfolio construction, and proactive tax-loss harvesting
 to produce a structured sell/hold recommendation for each vesting event.
+
+Current status as of 2026-04-02:
+- v7.0-v7.4 are complete: feature ablation backtest, three-scenario tax framework,
+  EDGAR parser hardening, monthly tax/report cleanup, and CPCV/obs-feature guards.
+- v8.0-v8.5 are complete: baseline reconciliation with GitHub `master`, AV-loader
+  test stability fixes, startup DB health checks, committed CSV backfill to the
+  checked-in database, refreshed monthly artifacts, and documentation/workflow refresh.
+- The committed `pgr_edgar_monthly` baseline now spans the historical CSV backfill
+  (2004-08 through 2026-02) rather than only the recent live-fetch window.
 
 ---
 
@@ -335,7 +344,7 @@ dates, and subject to the `WFO_MIN_GAINSHARE_OBS` sparsity guard.  Absent when
 
 ---
 
-### v6.5 — P2.6 / P2.7 / P2.8: HTML Parser Extension, Calibration Plot, Email Module (current)
+### v6.5 — P2.6 / P2.7 / P2.8: HTML Parser Extension, Calibration Plot, Email Module (complete)
 
 Completes the remaining Priority 2 items from DEVELOPMENT_PLAN.md.
 
@@ -379,6 +388,29 @@ line without any network connection.
 - `src/reporting/email_sender.py` — **NEW** testable email module
 - `.github/workflows/monthly_decision.yml` — updated email step
 - **35 new tests** in `tests/test_v65_p26_p27_p28.py`; total **984 passed, 1 skipped**
+
+---
+
+### v7.0-v7.4 / v8.0-v8.5 — Stability, Governance, and Reproducibility (current)
+
+Post-v6.5 work focused on making the repo easier to trust and operate:
+
+- **v7.0** added `scripts/feature_ablation.py` so cumulative feature groups can be
+  measured against benchmark WFO performance before promoting them into the live stack.
+- **v7.1** added `TaxScenario` / `ThreeScenarioResult` and the three-scenario tax
+  framework used at vesting time to compare sell-now, hold-to-LTCG, and loss-harvest
+  outcomes.
+- **v7.2** hardened the live EDGAR parser with record validation, most-complete-wins
+  deduplication, and zero-new-data alerting.
+- **v7.3** added the monthly report tax-context section and repaired `decision_log.md`
+  insertion logic.
+- **v7.4** added CPCV path-stability properties plus observation-to-feature ratio
+  guardrails in the feature-engineering path.
+- **v8.x** reconciled the local repo with GitHub `master`, fixed AV loader tests so
+  mocked HTTP calls do not require a real API key, added startup DB health checks in
+  `bootstrap` and `monthly_decision`, refreshed the checked-in database from the
+  committed CSV, generated a fresh `results/monthly_decisions/2026-04/` report, and
+  removed a stale `FMP_API_KEY` dependency from the monthly workflow.
 
 ---
 
