@@ -22,7 +22,13 @@ from datetime import date
 import pandas as pd
 
 from src.models.wfo_engine import WFOResult
-from src.tax.capital_gains import TaxLot, ThreeScenarioResult, optimize_sale, compute_position_summary
+from src.tax.capital_gains import (
+    TaxLot,
+    ThreeScenarioResult,
+    compute_position_summary,
+    compute_three_scenarios,
+    optimize_sale,
+)
 from src.portfolio.drift_analyzer import (
     PortfolioState,
     recommend_reallocation,
@@ -159,6 +165,34 @@ def generate_recommendation(
     # --- v4.4: STCG boundary guard ---
     stcg_warning = _check_stcg_boundary(lots, vest_date, predicted_return, current_price)
 
+    # v7.1: execute the three-scenario tax engine on the current position using
+    # a weighted-average basis across remaining lots.  The current code path does
+    # not yet receive separate "newly vested shares" metadata, so this analysis
+    # operates on the sale decision's full in-scope position rather than a single
+    # vest-only tranche.
+    three_scenario = None
+    if total_shares > 0:
+        total_basis_remaining = sum(
+            lot.shares_remaining * lot.cost_basis_per_share
+            for lot in lots
+            if lot.shares_remaining and lot.shares_remaining > 0
+        )
+        avg_basis = total_basis_remaining / total_shares if total_shares > 0 else current_price
+        prob_6m = min(max(hit_rate, 0.0), 1.0)
+        prob_12m = prob_6m
+        predicted_12m_return = predicted_return * 2.0
+        three_scenario = compute_three_scenarios(
+            vest_date=vest_date,
+            rsu_type=rsu_type,
+            shares=total_shares,
+            cost_basis_per_share=avg_basis,
+            current_price=current_price,
+            predicted_6m_return=predicted_return,
+            predicted_12m_return=predicted_12m_return,
+            prob_outperform_6m=prob_6m,
+            prob_outperform_12m=prob_12m,
+        )
+
     return VestingRecommendation(
         vest_date=vest_date,
         rsu_type=rsu_type,
@@ -177,6 +211,7 @@ def generate_recommendation(
         benchmark_signals=benchmark_signals,
         target_horizon=target_horizon,
         stcg_warning=stcg_warning,
+        three_scenario=three_scenario,
     )
 
 
