@@ -1,4 +1,4 @@
-# PGR Vesting Decision Support - v8.7
+# PGR Vesting Decision Support - v8.13
 
 A quantitative decision-support engine for systematically unwinding a concentrated
 Progressive Corporation (PGR) RSU position held in a taxable brokerage account.
@@ -9,13 +9,14 @@ conformal prediction intervals (ACI), cross-asset signals (insurance peers + bro
 financials), Black-Litterman portfolio construction, and proactive tax-loss harvesting
 to produce a structured sell/hold recommendation for each vesting event.
 
-Current status as of 2026-04-02:
+Current status as of 2026-04-03:
 - v7.0-v7.4 are complete: feature ablation backtest, three-scenario tax framework,
   EDGAR parser hardening, monthly tax/report cleanup, and CPCV/obs-feature guards.
-- v8.0-v8.7 are complete: baseline reconciliation with GitHub `master`, AV-loader
+- v8.0-v8.13 are complete: baseline reconciliation with GitHub `master`, AV-loader
   test stability fixes, startup DB health checks, committed CSV backfill to the
   checked-in database, refreshed monthly artifacts, ensemble model-specific feature
-  tuning, and documentation/workflow refresh.
+  tuning, parser/runtime reconciliation, model-quality gating, and monthly
+  communication refresh.
 - The committed `pgr_edgar_monthly` baseline now spans the historical CSV backfill
   (2004-08 through 2026-02) rather than only the recent live-fetch window.
 - The live ensemble now uses model-specific production feature sets:
@@ -30,6 +31,12 @@ Current status as of 2026-04-02:
 - The live EDGAR HTML path now covers a much broader slice of the historical CSV:
   segment NPW/NPE, expanded PIF detail, P&L lines, share metrics, and several
   investment / balance-sheet fields now populate directly from recent 8-K exhibits.
+- The monthly decision layer now applies an explicit model-quality gate:
+  `ACTIONABLE`, `MONITORING-ONLY`, or `DEFER-TO-TAX-DEFAULT`, so weak aggregate
+  model health no longer reads as a high-confidence vesting recommendation.
+- The monthly report and email now open with an executive decision memo instead
+  of sending raw markdown as plaintext, and the next-vest section surfaces the
+  provisional three-scenario tax analysis directly in the user-facing output.
 
 ---
 
@@ -230,6 +237,9 @@ after the GitHub Actions commit step.
 
 - Inline Python (stdlib smtplib + ssl) — no third-party Actions, no new dependencies
 - Subject: `PGR Monthly Decision — April 2026: NEUTRAL (LOW CONFIDENCE)`
+- Plaintext body now starts with a short decision memo: signal, recommendation mode,
+  suggested vest action, predicted 6M return, and executive-summary bullets before
+  appending the full markdown report
 - Port-aware: 465 → SMTP_SSL; 587 → STARTTLS (driven by `SMTP_PORT` secret)
 - Graceful fallback: skips if SMTP secrets unconfigured, report file missing, or
   `dry_run: true` dispatch; `continue-on-error: true` — email failure never blocks DB commit

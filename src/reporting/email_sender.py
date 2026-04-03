@@ -29,6 +29,55 @@ from pathlib import Path
 # Public helpers
 # ---------------------------------------------------------------------------
 
+def _extract_report_value(body: str, field: str) -> str | None:
+    match = re.search(rf"\| {re.escape(field)} \| \*\*(.+?)\*\* \|", body)
+    if match:
+        return match.group(1)
+    match = re.search(rf"\| {re.escape(field)} \| (.+?) \|", body)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _extract_executive_summary(body: str) -> list[str]:
+    match = re.search(r"## Executive Summary\s+(.*?)\n---", body, flags=re.S)
+    if not match:
+        return []
+    return [
+        line.strip()[2:]
+        for line in match.group(1).splitlines()
+        if line.strip().startswith("- ")
+    ]
+
+
+def build_email_summary(body: str) -> str:
+    """Build a concise plaintext decision memo from recommendation.md."""
+    signal = _extract_report_value(body, "Signal") or "UNKNOWN"
+    mode = _extract_report_value(body, "Recommendation Mode") or "MONITORING-ONLY"
+    sell_pct = _extract_report_value(body, "Recommended Sell %") or "n/a"
+    predicted = _extract_report_value(body, "Predicted 6M Relative Return") or "n/a"
+    exec_lines = _extract_executive_summary(body)
+
+    lines = [
+        "PGR Monthly Decision Summary",
+        "",
+        f"Signal: {signal}",
+        f"Recommendation mode: {mode}",
+        f"Suggested vest action: {sell_pct}",
+        f"Predicted 6M relative return: {predicted}",
+    ]
+    if exec_lines:
+        lines += ["", "Executive summary:"]
+        lines.extend(f"- {line}" for line in exec_lines)
+
+    lines += [
+        "",
+        "Full report:",
+        body,
+    ]
+    return "\n".join(lines)
+
+
 def build_email_message(
     body: str,
     from_addr: str,
@@ -38,7 +87,8 @@ def build_email_message(
     """Construct a MIMEMultipart email from a recommendation.md body string.
 
     Extracts the signal line from the report body to produce an informative
-    subject line, then attaches the full Markdown body as plain text.
+    subject line, then attaches a concise plaintext summary followed by the
+    full report body.
 
     Args:
         body:        Full text of the monthly recommendation.md report.
@@ -65,7 +115,7 @@ def build_email_message(
     msg["Subject"] = subject
     msg["From"] = from_addr
     msg["To"] = to_addr
-    msg.attach(MIMEText(body, "plain", "utf-8"))
+    msg.attach(MIMEText(build_email_summary(body), "plain", "utf-8"))
     return msg
 
 
