@@ -150,6 +150,35 @@ def initialize_schema(conn: sqlite3.Connection) -> None:
     _add_column_if_missing(conn, "pgr_edgar_monthly", "underwriting_income", "REAL")
     _add_column_if_missing(conn, "pgr_edgar_monthly", "unearned_premium_growth_yoy", "REAL")
     _add_column_if_missing(conn, "pgr_edgar_monthly", "buyback_yield", "REAL")
+    # v8.9: broaden live EDGAR schema toward the historical CSV layout
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "filing_date", "TEXT")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "filing_type", "TEXT")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "accession_number", "TEXT")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "avg_diluted_equivalent_shares", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "total_net_realized_gains", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "service_revenues", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "fees_and_other_revenues", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "losses_lae", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "policy_acquisition_costs", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "other_underwriting_expenses", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "interest_expense", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "provision_for_income_taxes", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "total_comprehensive_income", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "comprehensive_eps_diluted", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "avg_shares_basic", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "avg_shares_diluted", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "pif_special_lines", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "pif_property", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "roe_comprehensive_trailing_12m", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "total_investments", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "loss_lae_reserves", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "debt", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "total_liabilities", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "common_shares_outstanding", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "fte_return_fixed_income", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "fte_return_common_stocks", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "debt_to_total_capital", "REAL")
+    _add_column_if_missing(conn, "pgr_edgar_monthly", "weighted_avg_credit_quality", "TEXT")
 
 
 def get_db_health_report(
@@ -496,37 +525,61 @@ def upsert_pgr_edgar_monthly(
         return 0
     sql = """
         INSERT OR REPLACE INTO pgr_edgar_monthly (
-            month_end, combined_ratio, pif_total, pif_growth_yoy,
+            month_end, filing_date, filing_type, accession_number,
+            combined_ratio, pif_total, pif_growth_yoy,
             gainshare_estimate, book_value_per_share, eps_basic,
+            avg_diluted_equivalent_shares,
             net_premiums_written, net_premiums_earned, net_income,
-            eps_diluted, loss_lae_ratio, expense_ratio,
+            eps_diluted, total_net_realized_gains, service_revenues,
+            fees_and_other_revenues, losses_lae, policy_acquisition_costs,
+            other_underwriting_expenses, interest_expense,
+            provision_for_income_taxes, total_comprehensive_income,
+            comprehensive_eps_diluted, avg_shares_basic, avg_shares_diluted,
+            loss_lae_ratio, expense_ratio,
             npw_agency, npw_direct, npw_commercial, npw_property,
             npe_agency, npe_direct, npe_commercial, npe_property,
-            pif_agency_auto, pif_direct_auto, pif_commercial_lines,
+            pif_agency_auto, pif_direct_auto, pif_special_lines, pif_property,
+            pif_commercial_lines,
             pif_total_personal_lines,
             investment_income, total_revenues, total_expenses,
             income_before_income_taxes, roe_net_income_ttm,
-            shareholders_equity, total_assets,
-            unearned_premiums, shares_repurchased, avg_cost_per_share,
+            roe_comprehensive_trailing_12m, shareholders_equity, total_assets,
+            total_investments, loss_lae_reserves, unearned_premiums,
+            debt, total_liabilities, common_shares_outstanding,
+            shares_repurchased, avg_cost_per_share,
+            fte_return_fixed_income, fte_return_common_stocks,
             fte_return_total_portfolio, investment_book_yield,
             net_unrealized_gains_fixed, fixed_income_duration,
+            debt_to_total_capital, weighted_avg_credit_quality,
             channel_mix_agency_pct, npw_growth_yoy, underwriting_income,
             unearned_premium_growth_yoy, buyback_yield
         ) VALUES (
-            :month_end, :combined_ratio, :pif_total, :pif_growth_yoy,
+            :month_end, :filing_date, :filing_type, :accession_number,
+            :combined_ratio, :pif_total, :pif_growth_yoy,
             :gainshare_estimate, :book_value_per_share, :eps_basic,
+            :avg_diluted_equivalent_shares,
             :net_premiums_written, :net_premiums_earned, :net_income,
-            :eps_diluted, :loss_lae_ratio, :expense_ratio,
+            :eps_diluted, :total_net_realized_gains, :service_revenues,
+            :fees_and_other_revenues, :losses_lae, :policy_acquisition_costs,
+            :other_underwriting_expenses, :interest_expense,
+            :provision_for_income_taxes, :total_comprehensive_income,
+            :comprehensive_eps_diluted, :avg_shares_basic, :avg_shares_diluted,
+            :loss_lae_ratio, :expense_ratio,
             :npw_agency, :npw_direct, :npw_commercial, :npw_property,
             :npe_agency, :npe_direct, :npe_commercial, :npe_property,
-            :pif_agency_auto, :pif_direct_auto, :pif_commercial_lines,
+            :pif_agency_auto, :pif_direct_auto, :pif_special_lines, :pif_property,
+            :pif_commercial_lines,
             :pif_total_personal_lines,
             :investment_income, :total_revenues, :total_expenses,
             :income_before_income_taxes, :roe_net_income_ttm,
-            :shareholders_equity, :total_assets,
-            :unearned_premiums, :shares_repurchased, :avg_cost_per_share,
+            :roe_comprehensive_trailing_12m, :shareholders_equity, :total_assets,
+            :total_investments, :loss_lae_reserves, :unearned_premiums,
+            :debt, :total_liabilities, :common_shares_outstanding,
+            :shares_repurchased, :avg_cost_per_share,
+            :fte_return_fixed_income, :fte_return_common_stocks,
             :fte_return_total_portfolio, :investment_book_yield,
             :net_unrealized_gains_fixed, :fixed_income_duration,
+            :debt_to_total_capital, :weighted_avg_credit_quality,
             :channel_mix_agency_pct, :npw_growth_yoy, :underwriting_income,
             :unearned_premium_growth_yoy, :buyback_yield
         )
@@ -534,16 +587,32 @@ def upsert_pgr_edgar_monthly(
     normalised = [
         {
             "month_end":                   r["month_end"],
+            "filing_date":                r.get("filing_date"),
+            "filing_type":                r.get("filing_type"),
+            "accession_number":           r.get("accession_number"),
             "combined_ratio":              r.get("combined_ratio"),
             "pif_total":                   r.get("pif_total"),
             "pif_growth_yoy":              r.get("pif_growth_yoy"),
             "gainshare_estimate":          r.get("gainshare_estimate"),
             "book_value_per_share":        r.get("book_value_per_share"),
             "eps_basic":                   r.get("eps_basic"),
+            "avg_diluted_equivalent_shares": r.get("avg_diluted_equivalent_shares"),
             "net_premiums_written":        r.get("net_premiums_written"),
             "net_premiums_earned":         r.get("net_premiums_earned"),
             "net_income":                  r.get("net_income"),
             "eps_diluted":                 r.get("eps_diluted"),
+            "total_net_realized_gains":    r.get("total_net_realized_gains"),
+            "service_revenues":            r.get("service_revenues"),
+            "fees_and_other_revenues":     r.get("fees_and_other_revenues"),
+            "losses_lae":                  r.get("losses_lae"),
+            "policy_acquisition_costs":    r.get("policy_acquisition_costs"),
+            "other_underwriting_expenses": r.get("other_underwriting_expenses"),
+            "interest_expense":            r.get("interest_expense"),
+            "provision_for_income_taxes":  r.get("provision_for_income_taxes"),
+            "total_comprehensive_income":  r.get("total_comprehensive_income"),
+            "comprehensive_eps_diluted":   r.get("comprehensive_eps_diluted"),
+            "avg_shares_basic":            r.get("avg_shares_basic"),
+            "avg_shares_diluted":          r.get("avg_shares_diluted"),
             "loss_lae_ratio":              r.get("loss_lae_ratio"),
             "expense_ratio":               r.get("expense_ratio"),
             "npw_agency":                  r.get("npw_agency"),
@@ -556,6 +625,8 @@ def upsert_pgr_edgar_monthly(
             "npe_property":                r.get("npe_property"),
             "pif_agency_auto":             r.get("pif_agency_auto"),
             "pif_direct_auto":             r.get("pif_direct_auto"),
+            "pif_special_lines":           r.get("pif_special_lines"),
+            "pif_property":                r.get("pif_property"),
             "pif_commercial_lines":        r.get("pif_commercial_lines"),
             "pif_total_personal_lines":    r.get("pif_total_personal_lines"),
             "investment_income":           r.get("investment_income"),
@@ -563,15 +634,25 @@ def upsert_pgr_edgar_monthly(
             "total_expenses":              r.get("total_expenses"),
             "income_before_income_taxes":  r.get("income_before_income_taxes"),
             "roe_net_income_ttm":          r.get("roe_net_income_ttm"),
+            "roe_comprehensive_trailing_12m": r.get("roe_comprehensive_trailing_12m"),
             "shareholders_equity":         r.get("shareholders_equity"),
             "total_assets":                r.get("total_assets"),
+            "total_investments":           r.get("total_investments"),
+            "loss_lae_reserves":           r.get("loss_lae_reserves"),
             "unearned_premiums":           r.get("unearned_premiums"),
+            "debt":                        r.get("debt"),
+            "total_liabilities":           r.get("total_liabilities"),
+            "common_shares_outstanding":   r.get("common_shares_outstanding"),
             "shares_repurchased":          r.get("shares_repurchased"),
             "avg_cost_per_share":          r.get("avg_cost_per_share"),
+            "fte_return_fixed_income":     r.get("fte_return_fixed_income"),
+            "fte_return_common_stocks":    r.get("fte_return_common_stocks"),
             "fte_return_total_portfolio":  r.get("fte_return_total_portfolio"),
             "investment_book_yield":       r.get("investment_book_yield"),
             "net_unrealized_gains_fixed":  r.get("net_unrealized_gains_fixed"),
             "fixed_income_duration":       r.get("fixed_income_duration"),
+            "debt_to_total_capital":       r.get("debt_to_total_capital"),
+            "weighted_avg_credit_quality": r.get("weighted_avg_credit_quality"),
             "channel_mix_agency_pct":      r.get("channel_mix_agency_pct"),
             "npw_growth_yoy":              r.get("npw_growth_yoy"),
             "underwriting_income":         r.get("underwriting_income"),
@@ -592,20 +673,32 @@ def get_pgr_edgar_monthly(conn: sqlite3.Connection) -> pd.DataFrame:
     callers should handle NaN accordingly.
     """
     sql = """
-        SELECT month_end, combined_ratio, pif_total, pif_growth_yoy,
+        SELECT month_end, filing_date, filing_type, accession_number,
+               combined_ratio, pif_total, pif_growth_yoy,
                gainshare_estimate, book_value_per_share, eps_basic,
+               avg_diluted_equivalent_shares,
                net_premiums_written, net_premiums_earned, net_income,
-               eps_diluted, loss_lae_ratio, expense_ratio,
+               eps_diluted, total_net_realized_gains, service_revenues,
+               fees_and_other_revenues, losses_lae, policy_acquisition_costs,
+               other_underwriting_expenses, interest_expense,
+               provision_for_income_taxes, total_comprehensive_income,
+               comprehensive_eps_diluted, avg_shares_basic, avg_shares_diluted,
+               loss_lae_ratio, expense_ratio,
                npw_agency, npw_direct, npw_commercial, npw_property,
                npe_agency, npe_direct, npe_commercial, npe_property,
-               pif_agency_auto, pif_direct_auto, pif_commercial_lines,
+               pif_agency_auto, pif_direct_auto, pif_special_lines, pif_property,
+               pif_commercial_lines,
                pif_total_personal_lines,
                investment_income, total_revenues, total_expenses,
                income_before_income_taxes, roe_net_income_ttm,
-               shareholders_equity, total_assets,
-               unearned_premiums, shares_repurchased, avg_cost_per_share,
+               roe_comprehensive_trailing_12m, shareholders_equity, total_assets,
+               total_investments, loss_lae_reserves, unearned_premiums,
+               debt, total_liabilities, common_shares_outstanding,
+               shares_repurchased, avg_cost_per_share,
+               fte_return_fixed_income, fte_return_common_stocks,
                fte_return_total_portfolio, investment_book_yield,
                net_unrealized_gains_fixed, fixed_income_duration,
+               debt_to_total_capital, weighted_avg_credit_quality,
                channel_mix_agency_pct, npw_growth_yoy, underwriting_income,
                unearned_premium_growth_yoy, buyback_yield
         FROM pgr_edgar_monthly

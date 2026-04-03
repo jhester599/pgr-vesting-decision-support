@@ -362,6 +362,8 @@ class TestFeatureImportances:
             combined_ratio_ttm=np.linspace(88.0, 96.0, len(X)),
             investment_income_growth_yoy=np.linspace(-0.1, 0.1, len(X)),
             roe_net_income_ttm=np.linspace(0.08, 0.14, len(X)),
+            buyback_yield=np.linspace(0.0, 0.02, len(X)),
+            buyback_acceleration=np.linspace(0.5, 1.5, len(X)),
             underwriting_income=np.linspace(100.0, 200.0, len(X)),
         )
 
@@ -369,6 +371,8 @@ class TestFeatureImportances:
         expected_cols = set(config.MODEL_FEATURE_OVERRIDES["bayesian_ridge"])
         actual_cols = set(result.folds[0].feature_importances.keys())
         assert actual_cols == expected_cols
+        assert "buyback_yield" in actual_cols
+        assert "buyback_acceleration" in actual_cols
 
 
 # ---------------------------------------------------------------------------
