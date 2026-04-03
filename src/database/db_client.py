@@ -152,6 +152,89 @@ def initialize_schema(conn: sqlite3.Connection) -> None:
     _add_column_if_missing(conn, "pgr_edgar_monthly", "buyback_yield", "REAL")
 
 
+def get_db_health_report(
+    conn: sqlite3.Connection,
+    csv_path: str | None = None,
+) -> dict[str, Any]:
+    """Return a lightweight data/schema parity report for startup checks."""
+    required_columns = {
+        "month_end",
+        "combined_ratio",
+        "pif_total",
+        "book_value_per_share",
+        "eps_basic",
+        "net_premiums_written",
+        "net_premiums_earned",
+        "underwriting_income",
+        "investment_book_yield",
+        "channel_mix_agency_pct",
+        "buyback_yield",
+    }
+
+    existing_columns = {
+        row[1] for row in conn.execute("PRAGMA table_info(pgr_edgar_monthly)").fetchall()
+    }
+    missing_columns = sorted(required_columns - existing_columns)
+
+    row = conn.execute(
+        """
+        SELECT COUNT(*), MIN(month_end), MAX(month_end)
+        FROM pgr_edgar_monthly
+        """
+    ).fetchone()
+    row_count = int(row[0]) if row else 0
+    min_month = row[1] if row else None
+    max_month = row[2] if row else None
+
+    csv_path_resolved = Path(csv_path) if csv_path else Path(config.DATA_PROCESSED_DIR) / "pgr_edgar_cache.csv"
+    expected_csv_rows = None
+    if csv_path_resolved.exists():
+        expected_csv_rows = max(
+            sum(1 for _ in csv_path_resolved.open("r", encoding="utf-8")) - 1,
+            0,
+        )
+
+    warnings: list[str] = []
+    if missing_columns:
+        warnings.append(
+            "pgr_edgar_monthly is missing expanded schema columns: "
+            + ", ".join(missing_columns)
+        )
+    if expected_csv_rows is not None and row_count < expected_csv_rows:
+        warnings.append(
+            f"pgr_edgar_monthly has {row_count} rows but the committed CSV contains "
+            f"{expected_csv_rows}; run scripts/edgar_8k_fetcher.py --load-from-csv."
+        )
+    if min_month is None:
+        warnings.append("pgr_edgar_monthly is empty; monthly features will be incomplete.")
+    elif min_month > "2004-08-31":
+        warnings.append(
+            f"pgr_edgar_monthly starts at {min_month}, later than the committed CSV baseline "
+            "starting in 2004-08."
+        )
+
+    return {
+        "missing_columns": missing_columns,
+        "row_count": row_count,
+        "min_month_end": min_month,
+        "max_month_end": max_month,
+        "expected_csv_rows": expected_csv_rows,
+        "warnings": warnings,
+    }
+
+
+def warn_if_db_behind(
+    conn: sqlite3.Connection,
+    context: str,
+    csv_path: str | None = None,
+) -> list[str]:
+    """Print startup warnings when the checked-in DB lags the documented baseline."""
+    report = get_db_health_report(conn, csv_path=csv_path)
+    for message in report["warnings"]:
+        print(f"[db-health] WARNING ({context}): {message}")
+    return list(report["warnings"])
+
+
 # ---------------------------------------------------------------------------
 # Price helpers
 # ---------------------------------------------------------------------------

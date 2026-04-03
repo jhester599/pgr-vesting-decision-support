@@ -57,7 +57,6 @@ jobs:
       - name: Run monthly decision script
         env:
           AV_API_KEY: ${{ secrets.AV_API_KEY }}
-          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: |
           AS_OF_FLAG=""

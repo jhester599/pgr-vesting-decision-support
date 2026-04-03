@@ -1,6 +1,11 @@
 # PGR Vesting Decision Support — Development Plan
 *Last updated: April 2026 | System version: v6.1*
 
+> Historical planning note: this document captures the pre-v6.5 backlog that fed
+> the later v6.5/v7.x work. For current completion status and the latest
+> enhancement roadmap, see `SESSION_PROGRESS.md`, `claude-v7-plan.md`, and
+> `codex-v8-plan.md`.
+
 ## Executive Summary
 
 The PGR Vesting Decision Support system is a fully automated monthly pipeline that ingests multi-source financial data, engineers insurance-specific features, and produces a calibrated sell-percentage recommendation for PGR RSU vesting decisions. Each month the system fetches OHLCV prices and dividends for 22 tickers via Alpha Vantage, 12 FRED macro series, SEC EDGAR XBRL quarterly fundamentals, and PGR monthly 8-K operating results. It computes monthly relative returns of PGR versus ETF benchmarks, runs a 4-model ensemble (ElasticNet, Ridge, BayesianRidge, GBT) with CPCV walk-forward validation, applies Platt/isotonic calibration and conformal prediction intervals, and sizes the recommendation via Black-Litterman + Kelly. Outputs include signals.csv, recommendation.md, decision_log.md, and an emailed report delivered on the first business day of each month.

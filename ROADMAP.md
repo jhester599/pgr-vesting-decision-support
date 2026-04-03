@@ -3,6 +3,12 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+Current status as of 2026-04-02:
+- v7.0-v7.4 are complete and verified in `SESSION_PROGRESS.md`.
+- v8.0-v8.5 are complete: repo baseline reconciled with GitHub `master`, the
+  checked-in database is backfilled from the committed CSV, startup DB health
+  checks are in place, and the monthly workflow/docs were refreshed.
+
 ## Version History
 
 ### v2.7 (complete)
@@ -608,8 +614,8 @@ Workflow YAML step updated to call the module.
 ---
 
 ### Housekeeping — AV "Information" vs "Note" Response Handling
-**Target:** Low priority; address in any future ingestion sprint
-**Theme:** Improve weekly fetch resilience against benign AV advisories
+**Status:** Complete
+**Theme:** Weekly fetch resilience against benign AV advisories
 
 The AV free-tier API returns two distinct response types that the current code
 treats identically:
@@ -619,10 +625,9 @@ treats identically:
 | `"Note"` | Hard daily quota (25 calls) exhausted | Stop immediately; defer remaining tickers |
 | `"Information"` | Advisory nudge ("spread out requests") | Log warning; **continue fetching** |
 
-**Current behaviour:** `multi_ticker_loader.py` and `multi_dividend_loader.py` both
-raise `AVRateLimitError` on either key, causing the weekly run to defer the remaining
-ticker(s) even when the advisory is benign.  Observed 2026-03-27: PGR dividend call
-was deferred despite 2/25 daily quota slots remaining.
+**Current behaviour:** `multi_ticker_loader.py` and `multi_dividend_loader.py` now
+raise `AVRateLimitAdvisory` on `"Information"` so the batch skips only the affected
+ticker and continues.  Only `"Note"` raises `AVRateLimitError` and stops the batch.
 
 **Root cause context:** The advisory fires when a free-tier session uses ~22–23 of its
 25 daily calls in one run.  The 13-second inter-call delay already exceeds AV's stated
@@ -631,14 +636,14 @@ add ~2.5 minutes to every weekly run with no benefit.  As the DB matures and mor
 tickers return 0 new rows (already-fresh data), the total calls-per-run will decrease
 naturally and the advisory will stop appearing.
 
-**Proposed fix (when scheduled):**
-- `src/ingestion/multi_ticker_loader.py` — In the response-inspection block, check
-  `"Note"` key for the hard stop; check `"Information"` key for log-and-continue.
+**Shipped fix:**
+- `src/ingestion/multi_ticker_loader.py` — `"Information"` continues the batch; `"Note"`
+  remains the hard stop.
 - `src/ingestion/multi_dividend_loader.py` — Same pattern.
-- `src/ingestion/exceptions.py` — Consider a separate `AVRateLimitAdvisory` exception
-  class (vs. `AVRateLimitError`) so callers can distinguish the two cases cleanly.
-- Add regression tests confirming that an `"Information"` payload does **not** raise
-  `AVRateLimitError`.
+- `src/ingestion/exceptions.py` — `AVRateLimitAdvisory` distinguishes soft advisories
+  from hard quota exhaustion.
+- `tests/test_multi_ticker_loader.py` — Regression coverage confirms mocked advisory
+  responses no longer abort the full batch and do not require a real `AV_API_KEY`.
 
 ---
 

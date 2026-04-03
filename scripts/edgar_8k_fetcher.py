@@ -977,7 +977,7 @@ def fetch_and_upsert(
         "Coverage  combined_ratio=%s  pif_total=%s  gainshare=%s  "
         "npw=%s  npw_agency=%s  investment_income=%s  bvps=%s  "
         "channel_mix=%s  underwriting_income=%s  "
-        "date_range=%s→%s",
+        "date_range=%s->%s",
         _cov("combined_ratio"),
         _cov("pif_total"),
         _cov("gainshare_estimate"),
@@ -1183,7 +1183,7 @@ def load_from_csv(
     records_raw = _compute_derived_fields(records_raw)
 
     log.info(
-        "CSV loaded: %d rows  date_range=%s→%s",
+        "CSV loaded: %d rows  date_range=%s->%s",
         len(records_raw),
         records_raw[0]["month_end"] if records_raw else "n/a",
         records_raw[-1]["month_end"] if records_raw else "n/a",
