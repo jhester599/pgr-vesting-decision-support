@@ -15,7 +15,11 @@ Each run produces a dated subfolder under `results/monthly_decisions/YYYY-MM/` c
 
 | As-Of Date | Run Date | Consensus Signal | Sell % | Predicted 6M Return | Mean IC | Hit Rate | Notes |
 |------------|----------|-----------------|--------|---------------------|---------|----------|-------|
-| 2026-03-26 | 2026-03-26 | NEUTRAL | 50% | +7.33% | -0.0113 | 57.4% |  | | | | | | | |
+| 2026-03-26 | 2026-03-26 | NEUTRAL | 50% | +7.33% | -0.0113 | 57.4% |  |
+| 2026-03-27 | 2026-03-29 | NEUTRAL | 50% | +4.65% | 0.0185 | 55.7% | [DRY RUN] |
+| 2026-03-27 | 2026-03-30 | NEUTRAL | 50% | +1.75% | 0.0421 | 54.4% | [DRY RUN] |
+| 2026-03-20 | 2026-03-30 | NEUTRAL | 50% | +1.75% | 0.0421 | 54.4% | [DRY RUN] |
+| 2026-03-20 | 2026-03-30 | NEUTRAL | 50% | +1.30% | -0.0056 | 53.0% | [DRY RUN] |
 
 ---
 
@@ -31,14 +35,6 @@ Each run produces a dated subfolder under `results/monthly_decisions/YYYY-MM/` c
 | Mean IC | Average information coefficient across active benchmarks |
 | Hit Rate | Average directional accuracy across active benchmarks |
 | Notes | Any anomalies, data gaps, or model warnings for this run |
-| 2026-03-27 | 2026-03-29 | NEUTRAL | 50% | +4.65% | 0.0185 | 55.7% | [DRY RUN] |
-| 2026-03-27 | 2026-03-29 | NEUTRAL | 50% | +4.65% | 0.0185 | 55.7% | [DRY RUN] |
-| 2026-03-27 | 2026-03-30 | NEUTRAL | 50% | +1.75% | 0.0421 | 54.4% | [DRY RUN] |
-| 2026-03-27 | 2026-03-30 | NEUTRAL | 50% | +1.75% | 0.0421 | 54.4% | [DRY RUN] |
-| 2026-03-20 | 2026-03-30 | NEUTRAL | 50% | +1.75% | 0.0421 | 54.4% | [DRY RUN] |
-| 2026-03-20 | 2026-03-30 | NEUTRAL | 50% | +1.75% | 0.0421 | 54.4% | [DRY RUN] |
-| 2026-03-20 | 2026-03-30 | NEUTRAL | 50% | +1.30% | -0.0056 | 53.0% | [DRY RUN] |
-| 2026-03-20 | 2026-03-30 | NEUTRAL | 50% | +1.30% | -0.0056 | 53.0% | [DRY RUN] |
 
 ---
 

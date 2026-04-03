@@ -417,6 +417,43 @@ class CPCVResult:
     ic_std: float = float("nan")
     split_ics: list[float] = field(default_factory=list)
 
+    # v7.4 — Path stability properties
+
+    @property
+    def n_positive_paths(self) -> int:
+        """Count of backtest paths with IC > 0."""
+        return sum(1 for ic in self.path_ics if not (ic != ic) and ic > 0)
+
+    @property
+    def positive_path_fraction(self) -> float:
+        """Fraction of backtest paths with IC > 0.  NaN when n_paths == 0."""
+        if not self.path_ics:
+            return float("nan")
+        return self.n_positive_paths / len(self.path_ics)
+
+    @property
+    def stability_verdict(self) -> str:
+        """Classify path stability as GOOD, MARGINAL, or FAIL.
+
+        Thresholds (from config.DIAG_CPCV_MIN_POSITIVE_PATHS = 19 for C(8,2)=28 paths):
+          GOOD:     n_positive_paths ≥ DIAG_CPCV_MIN_POSITIVE_PATHS  (≥ 67.9%)
+          MARGINAL: n_positive_paths ≥ DIAG_CPCV_MIN_POSITIVE_PATHS // 2
+                    but < DIAG_CPCV_MIN_POSITIVE_PATHS               (35–67%)
+          FAIL:     n_positive_paths < DIAG_CPCV_MIN_POSITIVE_PATHS // 2 (< 35%)
+
+        Returns "UNKNOWN" when path_ics is empty.
+        """
+        if not self.path_ics:
+            return "UNKNOWN"
+        n_pos = self.n_positive_paths
+        good_thresh = config.DIAG_CPCV_MIN_POSITIVE_PATHS
+        marginal_thresh = good_thresh // 2
+        if n_pos >= good_thresh:
+            return "GOOD"
+        if n_pos >= marginal_thresh:
+            return "MARGINAL"
+        return "FAIL"
+
 
 def run_cpcv(
     X: pd.DataFrame,

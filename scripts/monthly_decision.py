@@ -573,6 +573,105 @@ def _sell_pct_from_consensus(
 
 
 # ---------------------------------------------------------------------------
+# v7.3 — Tax context section builder
+# ---------------------------------------------------------------------------
+
+def _build_tax_context_lines(
+    predicted_6m_return: float,
+    prob_outperform: float,
+    stcg_rate: float | None = None,
+    ltcg_rate: float | None = None,
+) -> list[str]:
+    """Build the ## Tax Context section for recommendation.md.
+
+    Shows the STCG/LTCG breakeven return and interprets the current model
+    prediction against it.  No lot-specific data is needed; this section
+    provides universal tax-timing context for any RSU holder.
+
+    The key insight (v7.1 finding): PGR's typical model prediction of 1–7%
+    is far below the ~21% breakeven required for an immediate STCG sale to
+    beat waiting 366 days for LTCG treatment.  This section makes that
+    comparison explicit every month.
+
+    Args:
+        predicted_6m_return: Ensemble mean 6M relative return prediction.
+        prob_outperform:      Mean P(outperform) across benchmarks.
+        stcg_rate:            STCG rate override (default: config.STCG_RATE).
+        ltcg_rate:            LTCG rate override (default: config.LTCG_RATE).
+
+    Returns:
+        List of markdown lines (without leading blank line separator).
+    """
+    from src.tax.capital_gains import compute_stcg_ltcg_breakeven
+
+    if stcg_rate is None:
+        stcg_rate = config.STCG_RATE
+    if ltcg_rate is None:
+        ltcg_rate = config.LTCG_RATE
+
+    breakeven = compute_stcg_ltcg_breakeven(stcg_rate, ltcg_rate)
+    tax_differential = stcg_rate - ltcg_rate
+
+    # Interpret predicted return vs breakeven
+    pred_vs_breakeven_gap = predicted_6m_return - breakeven
+    if predicted_6m_return >= breakeven:
+        verdict = (
+            f"⚠️ **Model prediction ({predicted_6m_return:+.1%}) EXCEEDS the "
+            f"LTCG breakeven ({breakeven:.1%}).**  Immediate sale at STCG may be "
+            f"warranted — verify with lot-specific analysis."
+        )
+    elif predicted_6m_return > 0:
+        verdict = (
+            f"✓ **Model prediction ({predicted_6m_return:+.1%}) is below the "
+            f"LTCG breakeven ({breakeven:.1%}) by {abs(pred_vs_breakeven_gap):.1%}.**  "
+            f"Holding RSUs for 366 days post-vest to qualify for LTCG treatment "
+            f"is likely the higher after-tax outcome."
+        )
+    else:
+        verdict = (
+            f"⚠️ **Model predicts negative return ({predicted_6m_return:+.1%}).**  "
+            f"Consider capital-loss harvesting scenario — a tax loss at {stcg_rate:.0%} "
+            f"STCG rate can offset other gains.  See three-scenario analysis at vesting."
+        )
+
+    # Next vest dates from config
+    this_year = date.today().year
+    next_time_vest = date(this_year, config.TIME_RSU_VEST_MONTH, config.TIME_RSU_VEST_DAY)
+    next_perf_vest = date(this_year, config.PERF_RSU_VEST_MONTH, config.PERF_RSU_VEST_DAY)
+    if next_time_vest < date.today():
+        next_time_vest = date(this_year + 1, config.TIME_RSU_VEST_MONTH, config.TIME_RSU_VEST_DAY)
+    if next_perf_vest < date.today():
+        next_perf_vest = date(this_year + 1, config.PERF_RSU_VEST_MONTH, config.PERF_RSU_VEST_DAY)
+
+    lines = [
+        "",
+        "---",
+        "",
+        "## Tax Context",
+        "",
+        "| Parameter | Value |",
+        "|-----------|-------|",
+        f"| STCG Rate (federal) | {stcg_rate:.0%} |",
+        f"| LTCG Rate (federal) | {ltcg_rate:.0%} |",
+        f"| Tax-rate differential | {tax_differential:.0%} |",
+        f"| **LTCG breakeven return** | **{breakeven:.2%}** |",
+        f"| Current model prediction (6M) | {predicted_6m_return:+.2%} |",
+        f"| P(outperform) | {prob_outperform:.1%} |",
+        f"| Next time-based vest | {next_time_vest} |",
+        f"| Next performance vest | {next_perf_vest} |",
+        "",
+        verdict,
+        "",
+        "> **Breakeven formula:** `(STCG − LTCG) / (1 − LTCG)` — the minimum",
+        "> return needed on RSUs held to LTCG eligibility (366 days post-vest) to",
+        "> produce higher after-tax proceeds than selling immediately at STCG.",
+        "> Run `compute_three_scenarios()` at each vesting event for lot-specific analysis.",
+    ]
+
+    return lines
+
+
+# ---------------------------------------------------------------------------
 # Report writers
 # ---------------------------------------------------------------------------
 
@@ -768,6 +867,9 @@ def _write_recommendation_md(
             else:
                 lines.append(f"| {ticker} | {desc} | {pred} | {ic_val} | {hr_val} | {sig} |")
 
+    # v7.3 — Tax Context section
+    lines += _build_tax_context_lines(mean_predicted, mean_prob_outperform)
+
     lines += [
         "",
         "---",
@@ -802,9 +904,25 @@ def _append_decision_log(
     mean_ic: float,
     mean_hr: float,
     dry_run: bool,
+    _log_path_override: Path | None = None,
 ) -> None:
-    """Append one row to the persistent decision_log.md."""
-    log_path = Path("results") / "monthly_decisions" / "decision_log.md"
+    """Append one row to the persistent decision_log.md.
+
+    Inserts after the last data row of the ## Log table, identified by the
+    separator line immediately below the log table's header row.  This prevents
+    orphaned rows appearing in the Column Definitions or other sections.
+
+    v7.3 fix: replaced the previous "find last | line in entire file" approach
+    which incorrectly anchored to rows in the Column Definitions table.
+
+    Args:
+        _log_path_override: If provided, write to this path instead of the
+                            default results/monthly_decisions/decision_log.md.
+                            Used in tests only.
+    """
+    log_path = _log_path_override or (
+        Path("results") / "monthly_decisions" / "decision_log.md"
+    )
     if not log_path.exists():
         return
 
@@ -816,23 +934,44 @@ def _append_decision_log(
         f"| {'[DRY RUN]' if dry_run else ''} |"
     )
 
-    # Find the placeholder row and replace it, or append after the table header
+    # Replace the placeholder on first use.
     placeholder = "| *(first entry will appear here after the first automated run)* |"
     if placeholder in content:
         content = content.replace(placeholder, new_row, 1)
-    else:
-        # Append after the last table row
-        lines = content.splitlines()
-        # Find the last | line in the log table
-        last_table_idx = max(
-            (i for i, line in enumerate(lines) if line.startswith("| ")),
-            default=-1,
-        )
-        if last_table_idx >= 0:
-            lines.insert(last_table_idx + 1, new_row)
-            content = "\n".join(lines) + "\n"
+        log_path.write_text(content, encoding="utf-8")
+        print(f"  Appended to {log_path}")
+        return
 
-    log_path.write_text(content, encoding="utf-8")
+    # Locate the log table by its fixed separator line.  The log table header
+    # is the only table whose separator contains "Consensus Signal".  Find the
+    # last data row within that table (before the next "---" section divider or
+    # end of file) and insert after it.
+    LOG_SEPARATOR = "|------------|----------|-----------------|"
+    lines = content.splitlines()
+
+    sep_idx = next(
+        (i for i, line in enumerate(lines) if line.startswith(LOG_SEPARATOR)),
+        -1,
+    )
+    if sep_idx < 0:
+        # Fallback: can't find the log table — append at end of file.
+        content = content.rstrip("\n") + "\n" + new_row + "\n"
+        log_path.write_text(content, encoding="utf-8")
+        print(f"  Appended to {log_path} (fallback: no log table separator found)")
+        return
+
+    # Find the last log-table row: scan forward from sep_idx while lines start
+    # with "| " and stop at the first "---" divider or non-table line.
+    last_data_idx = sep_idx
+    for i in range(sep_idx + 1, len(lines)):
+        stripped = lines[i].strip()
+        if stripped.startswith("---") or (stripped and not stripped.startswith("|")):
+            break
+        if stripped.startswith("|"):
+            last_data_idx = i
+
+    lines.insert(last_data_idx + 1, new_row)
+    log_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"  Appended to {log_path}")
 
 
