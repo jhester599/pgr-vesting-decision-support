@@ -2,7 +2,7 @@
 
 **As-of Date:** 2026-04-02  
 **Run Date:** 2026-04-02  
-**Model Version:** v8.5 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, inverse-variance weighting, C(8,2)=28 CPCV paths, v7 tax context + v8 data-health refresh)  
+**Model Version:** v8.7 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, inverse-variance weighting, C(8,2)=28 CPCV paths, v7 tax context + v8 data-health refresh + model-specific feature sets)  
 
 ---
 

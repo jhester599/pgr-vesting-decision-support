@@ -4,7 +4,8 @@
 > Historical planning note: this document captures the pre-v6.5 backlog that fed
 > the later v6.5/v7.x work. For current completion status and the latest
 > enhancement roadmap, see `SESSION_PROGRESS.md`, `claude-v7-plan.md`, and
-> `codex-v8-plan.md`.
+> `codex-v8-plan.md`. The production ensemble now also uses model-specific
+> feature sets from the completed v7.0/v8.x ablation work.
 
 ## Executive Summary
 

@@ -56,6 +56,7 @@ from src.models.regularized_models import (
     build_ridge_pipeline,
     get_feature_importances,
 )
+from src.processing.feature_engineering import get_model_feature_columns
 
 
 # ---------------------------------------------------------------------------
@@ -186,6 +187,9 @@ def run_wfo(
         raise ValueError(
             "y contains NaN values. Call get_X_y(df, drop_na_target=True) first."
         )
+
+    selected_cols = get_model_feature_columns(X, model_type=model_type)
+    X = X[selected_cols].copy()
 
     # v3.0: resolve purge buffer — default from config based on horizon
     if purge_buffer is None:
@@ -328,6 +332,10 @@ def predict_current(
     """
     if train_window_months is None:
         train_window_months = config.WFO_TRAIN_WINDOW_MONTHS
+
+    selected_cols = get_model_feature_columns(X_full, model_type=model_type)
+    X_full = X_full[selected_cols].copy()
+    X_current = X_current[selected_cols].copy()
 
     # Align X and y; drop NaN targets (same as get_X_y with drop_na_target=True)
     aligned = X_full.join(y_full, how="inner")

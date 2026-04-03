@@ -281,6 +281,95 @@ class TestFeatureImportances:
             "Feature importances must be sorted by absolute value descending."
         )
 
+    def test_elasticnet_uses_model_specific_feature_subset(self, synthetic_dataset):
+        X, y = synthetic_dataset
+        X = X.assign(
+            mom_12m=X["mom_6m"] * 0.5,
+            vol_63d=X["vol_21d"] * 0.8,
+            yield_slope=np.linspace(-1.0, 1.0, len(X)),
+            yield_curvature=np.linspace(1.0, -1.0, len(X)),
+            real_rate_10y=np.linspace(0.1, 0.3, len(X)),
+            credit_spread_hy=np.linspace(0.2, 0.6, len(X)),
+            nfci=np.linspace(-0.5, 0.5, len(X)),
+            vix=np.linspace(15.0, 25.0, len(X)),
+            vmt_yoy=np.linspace(-0.02, 0.03, len(X)),
+            investment_income_growth_yoy=np.linspace(-0.1, 0.1, len(X)),
+            roe_net_income_ttm=np.linspace(0.08, 0.14, len(X)),
+            underwriting_income=np.linspace(100.0, 200.0, len(X)),
+            channel_mix_agency_pct=np.linspace(0.6, 0.7, len(X)),
+        )
+
+        result = run_wfo(X, y, model_type="elasticnet")
+        expected_cols = set(config.MODEL_FEATURE_OVERRIDES["elasticnet"])
+        actual_cols = set(result.folds[0].feature_importances.keys())
+        assert actual_cols == expected_cols
+
+    def test_gbt_uses_model_specific_feature_subset(self, synthetic_dataset):
+        X, y = synthetic_dataset
+        X = X.assign(
+            mom_12m=X["mom_6m"] * 0.5,
+            vol_63d=X["vol_21d"] * 0.8,
+            yield_slope=np.linspace(-1.0, 1.0, len(X)),
+            yield_curvature=np.linspace(1.0, -1.0, len(X)),
+            real_rate_10y=np.linspace(0.1, 0.3, len(X)),
+            credit_spread_hy=np.linspace(0.2, 0.6, len(X)),
+            nfci=np.linspace(-0.5, 0.5, len(X)),
+            vix=np.linspace(15.0, 25.0, len(X)),
+            vmt_yoy=np.linspace(-0.02, 0.03, len(X)),
+            investment_income_growth_yoy=np.linspace(-0.1, 0.1, len(X)),
+        )
+
+        result = run_wfo(X, y, model_type="gbt")
+        expected_cols = set(config.MODEL_FEATURE_OVERRIDES["gbt"])
+        actual_cols = set(result.folds[0].feature_importances.keys())
+        assert actual_cols == expected_cols
+
+    def test_ridge_uses_model_specific_feature_subset(self, synthetic_dataset):
+        X, y = synthetic_dataset
+        X = X.assign(
+            mom_12m=X["mom_6m"] * 0.5,
+            vol_63d=X["vol_21d"] * 0.8,
+            yield_slope=np.linspace(-1.0, 1.0, len(X)),
+            yield_curvature=np.linspace(1.0, -1.0, len(X)),
+            real_rate_10y=np.linspace(0.1, 0.3, len(X)),
+            credit_spread_hy=np.linspace(0.2, 0.6, len(X)),
+            nfci=np.linspace(-0.5, 0.5, len(X)),
+            vix=np.linspace(15.0, 25.0, len(X)),
+            vmt_yoy=np.linspace(-0.02, 0.03, len(X)),
+            combined_ratio_ttm=np.linspace(88.0, 96.0, len(X)),
+            investment_income_growth_yoy=np.linspace(-0.1, 0.1, len(X)),
+            roe_net_income_ttm=np.linspace(0.08, 0.14, len(X)),
+            underwriting_income=np.linspace(100.0, 200.0, len(X)),
+        )
+
+        result = run_wfo(X, y, model_type="ridge")
+        expected_cols = set(config.MODEL_FEATURE_OVERRIDES["ridge"])
+        actual_cols = set(result.folds[0].feature_importances.keys())
+        assert actual_cols == expected_cols
+
+    def test_bayesian_ridge_uses_model_specific_feature_subset(self, synthetic_dataset):
+        X, y = synthetic_dataset
+        X = X.assign(
+            mom_12m=X["mom_6m"] * 0.5,
+            vol_63d=X["vol_21d"] * 0.8,
+            yield_slope=np.linspace(-1.0, 1.0, len(X)),
+            yield_curvature=np.linspace(1.0, -1.0, len(X)),
+            real_rate_10y=np.linspace(0.1, 0.3, len(X)),
+            credit_spread_hy=np.linspace(0.2, 0.6, len(X)),
+            nfci=np.linspace(-0.5, 0.5, len(X)),
+            vix=np.linspace(15.0, 25.0, len(X)),
+            vmt_yoy=np.linspace(-0.02, 0.03, len(X)),
+            combined_ratio_ttm=np.linspace(88.0, 96.0, len(X)),
+            investment_income_growth_yoy=np.linspace(-0.1, 0.1, len(X)),
+            roe_net_income_ttm=np.linspace(0.08, 0.14, len(X)),
+            underwriting_income=np.linspace(100.0, 200.0, len(X)),
+        )
+
+        result = run_wfo(X, y, model_type="bayesian_ridge")
+        expected_cols = set(config.MODEL_FEATURE_OVERRIDES["bayesian_ridge"])
+        actual_cols = set(result.folds[0].feature_importances.keys())
+        assert actual_cols == expected_cols
+
 
 # ---------------------------------------------------------------------------
 # v2 WFOResult metadata tests
@@ -379,3 +468,32 @@ class TestPredictCurrent:
         assert pred["ic"] == pytest.approx(result.information_coefficient)
         assert pred["hit_rate"] == pytest.approx(result.hit_rate)
         assert pred["benchmark"] == "VTI"
+
+    def test_predict_current_respects_elasticnet_feature_subset(self, synthetic_dataset):
+        X, y = synthetic_dataset
+        X = X.assign(
+            mom_12m=X["mom_6m"] * 0.5,
+            vol_63d=X["vol_21d"] * 0.8,
+            yield_slope=np.linspace(-1.0, 1.0, len(X)),
+            yield_curvature=np.linspace(1.0, -1.0, len(X)),
+            real_rate_10y=np.linspace(0.1, 0.3, len(X)),
+            credit_spread_hy=np.linspace(0.2, 0.6, len(X)),
+            nfci=np.linspace(-0.5, 0.5, len(X)),
+            vix=np.linspace(15.0, 25.0, len(X)),
+            vmt_yoy=np.linspace(-0.02, 0.03, len(X)),
+            investment_income_growth_yoy=np.linspace(-0.1, 0.1, len(X)),
+            roe_net_income_ttm=np.linspace(0.08, 0.14, len(X)),
+            underwriting_income=np.linspace(100.0, 200.0, len(X)),
+            channel_mix_agency_pct=np.linspace(0.6, 0.7, len(X)),
+        )
+
+        result = run_wfo(X, y, model_type="elasticnet")
+        pred = predict_current(
+            X.iloc[:-1],
+            y.iloc[:-1],
+            X.iloc[[-1]],
+            result,
+            model_type="elasticnet",
+        )
+        top_feature_names = {name for name, _ in pred["top_features"]}
+        assert top_feature_names.issubset(set(config.MODEL_FEATURE_OVERRIDES["elasticnet"]))

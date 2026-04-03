@@ -622,6 +622,23 @@ def get_feature_columns(df: pd.DataFrame) -> list[str]:
     return [c for c in df.columns if c != "target_6m_return"]
 
 
+def get_model_feature_columns(
+    df: pd.DataFrame,
+    model_type: str | None = None,
+) -> list[str]:
+    """Return feature columns, applying any configured model-specific override."""
+    feature_cols = get_feature_columns(df)
+    if model_type is None:
+        return feature_cols
+
+    override_cols = getattr(config, "MODEL_FEATURE_OVERRIDES", {}).get(model_type)
+    if not override_cols:
+        return feature_cols
+
+    selected = [col for col in override_cols if col in feature_cols]
+    return selected or feature_cols
+
+
 def build_feature_matrix_from_db(
     conn: sqlite3.Connection,
     force_refresh: bool = False,

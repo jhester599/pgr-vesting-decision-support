@@ -13,10 +13,12 @@ Critical tests:
 import pytest
 import numpy as np
 import pandas as pd
+import config
 
 from src.processing.feature_engineering import (
     build_feature_matrix,
     get_feature_columns,
+    get_model_feature_columns,
     get_X_y,
     _apply_edgar_lag,
 )
@@ -223,6 +225,31 @@ class TestGetXY:
         feature_cols = get_feature_columns(feature_matrix)
         assert "target_6m_return" not in feature_cols
         assert len(feature_cols) == len(feature_matrix.columns) - 1
+
+    def test_model_feature_columns_applies_override(self):
+        df = pd.DataFrame(
+            columns=[
+                "mom_3m",
+                "mom_6m",
+                "mom_12m",
+                "vol_63d",
+                "yield_slope",
+                "yield_curvature",
+                "real_rate_10y",
+                "credit_spread_hy",
+                "nfci",
+                "vix",
+                "vmt_yoy",
+                "investment_income_growth_yoy",
+                "roe_net_income_ttm",
+                "underwriting_income",
+                "target_6m_return",
+            ]
+        )
+
+        feature_cols = get_model_feature_columns(df, model_type="elasticnet")
+
+        assert feature_cols == config.MODEL_FEATURE_OVERRIDES["elasticnet"]
 
 
 # ---------------------------------------------------------------------------

@@ -5,9 +5,11 @@ afternoon bootstrap). Development starts Day 3.
 
 Current status as of 2026-04-02:
 - v7.0-v7.4 are complete and verified in `SESSION_PROGRESS.md`.
-- v8.0-v8.5 are complete: repo baseline reconciled with GitHub `master`, the
+- v8.0-v8.7 are complete: repo baseline reconciled with GitHub `master`, the
   checked-in database is backfilled from the committed CSV, startup DB health
-  checks are in place, and the monthly workflow/docs were refreshed.
+  checks are in place, the ensemble now uses model-specific feature subsets
+  validated by the completed ablation follow-up, and the monthly workflow/docs
+  were refreshed.
 
 ## Version History
 

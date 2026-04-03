@@ -66,7 +66,7 @@ Verified from the merged upstream baseline and `SESSION_PROGRESS.md`:
 ### v8.3 — Monthly Reporting Refresh
 
 - Updated the recommendation metadata label in `scripts/monthly_decision.py` to
-  reflect the current pipeline state (`v8.5`).
+  reflect the current pipeline state (`v8.7` after the feature-set tuning work).
 - Confirmed the v7.3 tax-context section remains active in fresh report output.
 - Added a new committed monthly artifact set under `results/monthly_decisions/2026-04/`.
 
@@ -81,6 +81,28 @@ Verified from the merged upstream baseline and `SESSION_PROGRESS.md`:
 - Refreshed top-level docs (`README.md`, `ROADMAP.md`, `DEVELOPMENT_PLAN.md`)
   so they point readers to the current v7/v8 state instead of stopping at v6.5.
 - Replaced CP1252-hostile log arrows in `scripts/edgar_8k_fetcher.py` with ASCII.
+
+### v8.6 — ElasticNet / GBT Feature-Set Tuning
+
+- Completed the v7.0 ablation execution and saved outputs under
+  `results/backtests/feature_ablation_20260402.csv`.
+- Ran focused ElasticNet follow-up tests over Group E additions and selected a
+  production ElasticNet feature set of Group B plus
+  `investment_income_growth_yoy`, `roe_net_income_ttm`, and
+  `underwriting_income`.
+- Confirmed GBT performs best with the lean Group B macro regime set and should
+  not inherit the larger EDGAR-heavy stacks.
+
+### v8.7 — Full Ensemble Model-Specific Feature Sets
+
+- Extended the final head-to-head tuning to Ridge and BayesianRidge.
+- Ridge and BayesianRidge both performed best with a small Group C + Group E
+  hybrid: Group B plus `combined_ratio_ttm`,
+  `investment_income_growth_yoy`, and `roe_net_income_ttm`.
+- Added `MODEL_FEATURE_OVERRIDES` in `config.py` and enforced those subsets in
+  `run_wfo()` and `predict_current()` so backtests and live predictions use the
+  same per-model feature definitions.
+- Added regression coverage for the new model-specific selection behavior.
 
 ## Validation
 
@@ -97,3 +119,5 @@ Verified from the merged upstream baseline and `SESSION_PROGRESS.md`:
   CSV backfill rather than only the recent live-fetch window.
 - Startup scripts warn when the DB falls behind the documented schema/data baseline.
 - The latest committed monthly output is `results/monthly_decisions/2026-04/`.
+- The live ensemble now uses model-specific production feature sets rather than
+  a single shared feature block across all four models.
