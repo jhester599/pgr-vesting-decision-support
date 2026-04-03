@@ -321,6 +321,8 @@ MODEL_FEATURE_OVERRIDES: dict[str, list[str]] = {
         "combined_ratio_ttm",
         "investment_income_growth_yoy",
         "roe_net_income_ttm",
+        "buyback_yield",
+        "buyback_acceleration",
     ],
 }
 

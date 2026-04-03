@@ -34,6 +34,7 @@ SEC EDGAR rate limits: 10 requests/second max; ``User-Agent`` header required.
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import logging
 import os
@@ -41,9 +42,11 @@ import re
 import sqlite3
 import sys
 import time
+from html import unescape
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
+import pandas as pd
 import requests
 
 # Resolve project root so this script can be run directly or via GitHub Actions.
@@ -338,6 +341,114 @@ def _try_parse_dollar(
     return None
 
 
+def _strip_html_text(html: str) -> str:
+    """Return a whitespace-normalized plain-text view of an HTML exhibit."""
+    text = re.sub(r"<[^>]+>", " ", html)
+    text = unescape(text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _try_parse_last_text_match(
+    text: str,
+    patterns: list[str],
+    lo: float,
+    hi: float,
+    scale: float = 1.0,
+) -> float | None:
+    """Return the last valid text-mode regex match after scaling/range check."""
+    for pat in patterns:
+        matches = list(re.finditer(pat, text))
+        for match in reversed(matches):
+            try:
+                raw = float(match.group(1).replace(",", "").replace("$", ""))
+            except (ValueError, AttributeError):
+                continue
+            val = raw * scale
+            if lo <= val <= hi:
+                return val
+    return None
+
+
+def _dedup_row(row: pd.Series) -> list[str]:
+    """Collapse duplicate consecutive table-cell values into unique tokens."""
+    tokens: list[str] = []
+    prev: str | None = None
+    for val in row:
+        s = str(val).strip()
+        if s in ("nan", "NaN", "None", ""):
+            continue
+        if s != prev:
+            tokens.append(s)
+            prev = s
+    return tokens
+
+
+def _try_float(val: str) -> float | None:
+    """Parse a number string, handling commas, $, %, and parentheses."""
+    cleaned = (
+        val.replace(",", "")
+        .replace("$", "")
+        .replace("%", "")
+        .replace("\xa0", " ")
+        .strip()
+    )
+    if cleaned.lower() in ("nan", "none", "n/a", ""):
+        return None
+    cleaned = cleaned.replace("(", "-").replace(")", "").strip()
+    try:
+        result = float(cleaned)
+        if result != result:
+            return None
+        return result
+    except ValueError:
+        return None
+
+
+def _extract_numerics(tokens: list[str]) -> list[float]:
+    """Return all parseable numeric values from a token list."""
+    nums: list[float] = []
+    for token in tokens:
+        value = _try_float(token)
+        if value is not None:
+            nums.append(value)
+    return nums
+
+
+def _read_exhibit_tables(html: str) -> list[pd.DataFrame]:
+    """Parse all tabular structures from an exhibit HTML document."""
+    try:
+        return pd.read_html(io.StringIO(html), flavor="lxml")
+    except Exception:
+        return []
+
+
+def _parse_segment_metrics(
+    nums: list[float],
+) -> tuple[float, float, float | None, float | None, float]:
+    """Infer segment metric ordering from a six-value company row."""
+    agency, direct = nums[0], nums[1]
+    middle = list(nums[2:5])
+    company_total = nums[-1]
+
+    subtotal_idx = None
+    for idx, candidate in enumerate(middle):
+        if candidate <= 0:
+            continue
+        if abs(candidate - (agency + direct)) / candidate <= 0.03:
+            subtotal_idx = idx
+            break
+        others = [value for j, value in enumerate(middle) if j != idx]
+        if others and abs(candidate - (agency + direct + min(others))) / candidate <= 0.03:
+            subtotal_idx = idx
+            break
+
+    segments = [value for idx, value in enumerate(middle) if idx != subtotal_idx]
+    commercial = max(segments) if segments else None
+    property_value = min(segments) if len(segments) >= 2 else None
+
+    return agency, direct, commercial, property_value, company_total
+
+
 def _parse_html_exhibit(
     html: str,
     filing_date: str,
@@ -375,10 +486,239 @@ def _parse_html_exhibit(
         be extracted (filing is likely not a monthly supplement).
     """
     filed_dt = datetime.strptime(filing_date, "%Y-%m-%d")
+    text = _strip_html_text(html)
     # Period: last day of the month before the filing month
     first_of_filing_month = filed_dt.replace(day=1)
     last_day_prior_month = first_of_filing_month - timedelta(days=1)
     month_end = last_day_prior_month.strftime("%Y-%m-%d")
+
+    table_metrics: dict[str, Any] = {
+        "avg_diluted_equivalent_shares": None,
+        "avg_shares_basic": None,
+        "avg_shares_diluted": None,
+        "book_value_per_share": None,
+        "combined_ratio": None,
+        "common_shares_outstanding": None,
+        "comprehensive_eps_diluted": None,
+        "debt": None,
+        "debt_to_total_capital": None,
+        "eps_basic": None,
+        "eps_diluted": None,
+        "expense_ratio": None,
+        "fees_and_other_revenues": None,
+        "filing_date": filing_date,
+        "filing_type": "monthly_results",
+        "fixed_income_duration": None,
+        "fte_return_common_stocks": None,
+        "fte_return_fixed_income": None,
+        "fte_return_total_portfolio": None,
+        "income_before_income_taxes": None,
+        "interest_expense": None,
+        "investment_book_yield": None,
+        "investment_income": None,
+        "loss_lae_ratio": None,
+        "loss_lae_reserves": None,
+        "losses_lae": None,
+        "net_income": None,
+        "net_premiums_earned": None,
+        "net_premiums_written": None,
+        "net_unrealized_gains_fixed": None,
+        "npe_agency": None,
+        "npe_commercial": None,
+        "npe_direct": None,
+        "npe_property": None,
+        "npw_agency": None,
+        "npw_commercial": None,
+        "npw_direct": None,
+        "npw_property": None,
+        "other_underwriting_expenses": None,
+        "pif_agency_auto": None,
+        "pif_commercial_lines": None,
+        "pif_direct_auto": None,
+        "pif_property": None,
+        "pif_special_lines": None,
+        "pif_total": None,
+        "pif_total_personal_lines": None,
+        "policy_acquisition_costs": None,
+        "provision_for_income_taxes": None,
+        "roe_comprehensive_trailing_12m": None,
+        "roe_net_income_trailing_12m": None,
+        "service_revenues": None,
+        "shareholders_equity": None,
+        "shares_repurchased": None,
+        "total_assets": None,
+        "total_comprehensive_income": None,
+        "total_expenses": None,
+        "total_investments": None,
+        "total_liabilities": None,
+        "total_net_realized_gains": None,
+        "total_revenues": None,
+        "unearned_premiums": None,
+        "avg_cost_per_share": None,
+        "weighted_avg_credit_quality": None,
+    }
+
+    tables = _read_exhibit_tables(html)
+    for table in tables:
+        for _, row in table.iterrows():
+            tokens = _dedup_row(row)
+            if not tokens:
+                continue
+            label = tokens[0].lower().replace("’", "'")
+            nums = _extract_numerics(tokens[1:])
+
+            if "average diluted equivalent common shares" in label and nums:
+                table_metrics["avg_diluted_equivalent_shares"] = nums[0]
+            elif "average common shares outstanding - basic" in label and nums:
+                table_metrics["avg_shares_basic"] = nums[0]
+            elif "total average equivalent common shares - diluted" in label and nums:
+                table_metrics["avg_shares_diluted"] = nums[0]
+            elif label.startswith("net premiums written") and len(nums) >= 6:
+                candidate = _parse_segment_metrics(nums[-6:])
+                candidate_total = candidate[-1]
+                candidate_parts = [value for value in candidate[:-1] if value is not None]
+                current_total = table_metrics["net_premiums_written"]
+                # Some exhibits include both current-month and YTD segment tables.
+                # Prefer the smaller current-month slice over the larger YTD totals.
+                if candidate_parts and candidate_total >= max(candidate_parts) and (
+                    current_total is None
+                    or table_metrics["npw_agency"] is None
+                    or candidate_total < current_total
+                ):
+                    (
+                        table_metrics["npw_agency"],
+                        table_metrics["npw_direct"],
+                        table_metrics["npw_commercial"],
+                        table_metrics["npw_property"],
+                        table_metrics["net_premiums_written"],
+                    ) = candidate
+            elif label.startswith("net premiums earned") and len(nums) >= 6:
+                candidate = _parse_segment_metrics(nums[-6:])
+                candidate_total = candidate[-1]
+                candidate_parts = [value for value in candidate[:-1] if value is not None]
+                current_total = table_metrics["net_premiums_earned"]
+                if candidate_parts and candidate_total >= max(candidate_parts) and (
+                    current_total is None
+                    or table_metrics["npe_agency"] is None
+                    or candidate_total < current_total
+                ):
+                    (
+                        table_metrics["npe_agency"],
+                        table_metrics["npe_direct"],
+                        table_metrics["npe_commercial"],
+                        table_metrics["npe_property"],
+                        table_metrics["net_premiums_earned"],
+                    ) = candidate
+            elif label.startswith("net premiums written") and nums and table_metrics["net_premiums_written"] is None:
+                table_metrics["net_premiums_written"] = nums[0]
+            elif label.startswith("net premiums earned") and nums and table_metrics["net_premiums_earned"] is None:
+                table_metrics["net_premiums_earned"] = nums[0]
+            elif label.startswith("net income") and "available to common" not in label and nums and table_metrics["net_income"] is None:
+                table_metrics["net_income"] = nums[0]
+            elif "per share available to common shareholders" in label and nums and table_metrics["eps_diluted"] is None:
+                table_metrics["eps_diluted"] = nums[0]
+            elif label == "basic" and nums and table_metrics["eps_basic"] is None:
+                table_metrics["eps_basic"] = nums[0]
+            elif label == "diluted" and nums:
+                value = nums[0]
+                if table_metrics["eps_diluted"] is None:
+                    table_metrics["eps_diluted"] = value
+                elif value != table_metrics["eps_diluted"]:
+                    table_metrics["comprehensive_eps_diluted"] = value
+            elif "combined ratio" in label and nums and table_metrics["combined_ratio"] is None:
+                table_metrics["combined_ratio"] = nums[-1] if len(nums) >= 6 else nums[0]
+            elif "loss/lae ratio" in label and nums:
+                table_metrics["loss_lae_ratio"] = nums[-1] if len(nums) >= 6 else nums[0]
+            elif "expense ratio" in label and "net catastrophe" not in label and nums:
+                table_metrics["expense_ratio"] = nums[-1] if len(nums) >= 6 else nums[0]
+            elif "agency" in label and "auto" in label and nums and table_metrics["pif_agency_auto"] is None:
+                table_metrics["pif_agency_auto"] = nums[0]
+            elif "direct" in label and "auto" in label and nums and table_metrics["pif_direct_auto"] is None:
+                table_metrics["pif_direct_auto"] = nums[0]
+            elif "special lines" in label and nums and table_metrics["pif_special_lines"] is None:
+                table_metrics["pif_special_lines"] = nums[0]
+            elif "property business" in label and nums and table_metrics["pif_property"] is None:
+                table_metrics["pif_property"] = nums[0]
+            elif "total personal lines" in label and nums and table_metrics["pif_total_personal_lines"] is None:
+                table_metrics["pif_total_personal_lines"] = nums[0]
+            elif "commercial lines" in label and nums and table_metrics["pif_commercial_lines"] is None:
+                table_metrics["pif_commercial_lines"] = nums[0]
+            elif label in ("total", "companywide", "companywide total") and nums:
+                candidate = nums[0]
+                if candidate >= 10_000:
+                    table_metrics["pif_total"] = candidate
+            elif label == "investment income" and nums and table_metrics["investment_income"] is None:
+                table_metrics["investment_income"] = nums[0]
+            elif "total net realized gains" in label and nums and table_metrics["total_net_realized_gains"] is None:
+                table_metrics["total_net_realized_gains"] = nums[0]
+            elif label == "service revenues" and nums and table_metrics["service_revenues"] is None:
+                table_metrics["service_revenues"] = nums[0]
+            elif "fees and other revenues" in label and nums and table_metrics["fees_and_other_revenues"] is None:
+                table_metrics["fees_and_other_revenues"] = nums[0]
+            elif label == "total revenues" and nums and table_metrics["total_revenues"] is None:
+                table_metrics["total_revenues"] = nums[0]
+            elif "losses and loss adjustment expenses" in label and nums and table_metrics["losses_lae"] is None:
+                table_metrics["losses_lae"] = nums[0]
+            elif "policy acquisition costs" in label and nums and table_metrics["policy_acquisition_costs"] is None:
+                table_metrics["policy_acquisition_costs"] = nums[0]
+            elif "other underwriting expenses" in label and nums and table_metrics["other_underwriting_expenses"] is None:
+                table_metrics["other_underwriting_expenses"] = nums[0]
+            elif label == "interest expense" and nums and table_metrics["interest_expense"] is None:
+                table_metrics["interest_expense"] = nums[0]
+            elif label == "total expenses" and nums and table_metrics["total_expenses"] is None:
+                table_metrics["total_expenses"] = nums[0]
+            elif "income before income taxes" in label and nums and table_metrics["income_before_income_taxes"] is None:
+                table_metrics["income_before_income_taxes"] = nums[0]
+            elif "provision for income taxes" in label and nums and table_metrics["provision_for_income_taxes"] is None:
+                table_metrics["provision_for_income_taxes"] = nums[0]
+            elif "total comprehensive income" in label and nums and table_metrics["total_comprehensive_income"] is None:
+                table_metrics["total_comprehensive_income"] = nums[0]
+            elif label == "total investments2" and nums and table_metrics["total_investments"] is None:
+                table_metrics["total_investments"] = nums[0]
+            elif label == "total assets" and nums and table_metrics["total_assets"] is None:
+                table_metrics["total_assets"] = nums[0]
+            elif "loss and loss adjustment expense reserves" in label and nums and table_metrics["loss_lae_reserves"] is None:
+                table_metrics["loss_lae_reserves"] = nums[0]
+            elif label == "unearned premiums" and nums and table_metrics["unearned_premiums"] is None:
+                table_metrics["unearned_premiums"] = nums[0]
+            elif label == "debt" and nums and table_metrics["debt"] is None:
+                table_metrics["debt"] = nums[0]
+            elif label == "total liabilities" and nums and table_metrics["total_liabilities"] is None:
+                table_metrics["total_liabilities"] = nums[0]
+            elif "shareholders' equity" in label or "shareholders’ equity" in label:
+                if nums and table_metrics["shareholders_equity"] is None:
+                    table_metrics["shareholders_equity"] = nums[0]
+            elif "common shares outstanding" in label and nums and table_metrics["common_shares_outstanding"] is None:
+                table_metrics["common_shares_outstanding"] = nums[0]
+            elif "common shares repurchased" in label and nums and table_metrics["shares_repurchased"] is None:
+                raw = nums[0]
+                table_metrics["shares_repurchased"] = raw / 1_000_000.0 if raw >= 1_000 else raw
+            elif "average cost per common share" in label and nums and table_metrics["avg_cost_per_share"] is None:
+                table_metrics["avg_cost_per_share"] = nums[0]
+            elif "book value per common share" in label and nums and table_metrics["book_value_per_share"] is None:
+                table_metrics["book_value_per_share"] = nums[0]
+            elif label == "net income" and nums and table_metrics["roe_net_income_trailing_12m"] is None:
+                if tokens[-1].endswith("%") or "%" in tokens:
+                    table_metrics["roe_net_income_trailing_12m"] = nums[0]
+            elif "comprehensive income" == label and nums and table_metrics["roe_comprehensive_trailing_12m"] is None:
+                if tokens[-1].endswith("%") or "%" in tokens:
+                    table_metrics["roe_comprehensive_trailing_12m"] = nums[0]
+            elif "net unrealized pretax gains" in label and nums and table_metrics["net_unrealized_gains_fixed"] is None:
+                table_metrics["net_unrealized_gains_fixed"] = nums[0]
+            elif "debt-to-total capital ratio" in label and nums and table_metrics["debt_to_total_capital"] is None:
+                table_metrics["debt_to_total_capital"] = nums[0]
+            elif "fixed-income portfolio duration" in label and nums and table_metrics["fixed_income_duration"] is None:
+                table_metrics["fixed_income_duration"] = nums[0]
+            elif "weighted average credit quality" in label and table_metrics["weighted_avg_credit_quality"] is None:
+                table_metrics["weighted_avg_credit_quality"] = tokens[-1].replace(".", "").strip()
+            elif label == "fixed-income securities" and nums and table_metrics["fte_return_fixed_income"] is None:
+                table_metrics["fte_return_fixed_income"] = nums[0]
+            elif label == "common stocks" and nums and table_metrics["fte_return_common_stocks"] is None:
+                table_metrics["fte_return_common_stocks"] = nums[0]
+            elif label == "total portfolio" and nums and table_metrics["fte_return_total_portfolio"] is None:
+                table_metrics["fte_return_total_portfolio"] = nums[0]
+            elif "pretax annualized investment income book yield" in label and nums and table_metrics["investment_book_yield"] is None:
+                table_metrics["investment_book_yield"] = nums[0] / 100.0
 
     # -----------------------------------------------------------------------
     # Combined Ratio (always present; required for usability check)
@@ -406,7 +746,7 @@ def _parse_html_exhibit(
             r"(?i)\bpif\b[^<]{0,40}</t[dh]>\s*<t[dh][^>]*>\s*([\d,]+)",
             r"(?si)policies\s+in\s+force.{0,300}?(\b[\d,]{6,}\b)",
         ],
-        lo=100_000, hi=60_000_000,
+        lo=10_000, hi=100_000,
     )
 
     if combined_ratio is None and pif_total is None:
@@ -534,18 +874,45 @@ def _parse_html_exhibit(
     )
 
     # -----------------------------------------------------------------------
-    # Shares Repurchased (millions of shares) and Average Cost per Share ($)
+    # Shares Repurchased (stored as millions of shares) and Average Cost per
+    # Share ($).  PGR's exhibit format changes in 2023-08 from decimal
+    # "millions of shares" (e.g. 0.21) to whole-share counts (e.g. 46,822).
+    # Normalize both formats into millions of shares for downstream features.
     # -----------------------------------------------------------------------
-    shares_repurchased = _try_parse_dollar(
-        html,
+    whole_share_count = _try_parse_last_text_match(
+        text,
         patterns=[
-            r"(?i)shares?\s+repurchased[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*([\d,]+\.?\d*)",
-            r"(?i)(?:common\s+)?shares?\s+(?:re)?purchased[^<]{0,60}([\d,]+\.?\d*)",
-            r"(?si)repurchase.{0,200}?shares?.{0,100}?([\d,]+\.\d)",
+            r"(?i)common\s+shares\s+repurchased(?:\s*-\s*[a-z0-9 ]+)?\s+([\d,]{4,})",
+            r"(?i)shares\s+repurchased(?:\s*-\s*[a-z0-9 ]+)?\s+([\d,]{4,})",
         ],
-        lo=0.0, hi=50.0,  # millions of shares
+        lo=1_000.0,
+        hi=50_000_000.0,
         scale=1.0,
     )
+    if whole_share_count is not None:
+        shares_repurchased = whole_share_count / 1_000_000.0
+    else:
+        shares_repurchased = _try_parse_last_text_match(
+            text,
+            patterns=[
+                r"(?i)common\s+shares\s+repurchased(?:\s*-\s*[a-z0-9 ]+)?\s+([\d,]+(?:\.\d+)?)",
+                r"(?i)shares\s+repurchased(?:\s*-\s*[a-z0-9 ]+)?\s+([\d,]+(?:\.\d+)?)",
+            ],
+            lo=0.0,
+            hi=50.0,
+            scale=1.0,
+        )
+    if shares_repurchased is None:
+        shares_repurchased = _try_parse_dollar(
+            html,
+            patterns=[
+                r"(?i)shares?\s+repurchased[^<]{0,60}</t[dh]>\s*<t[dh][^>]*>\s*([\d,]+\.?\d*)",
+                r"(?i)(?:common\s+)?shares?\s+(?:re)?purchased[^<]{0,60}([\d,]+\.?\d*)",
+                r"(?si)repurchase.{0,200}?shares?.{0,100}?([\d,]+\.\d)",
+            ],
+            lo=0.0, hi=50.0,  # millions of shares
+            scale=1.0,
+        )
 
     avg_cost_per_share = _try_parse_dollar(
         html,
@@ -557,6 +924,18 @@ def _parse_html_exhibit(
         lo=10.0, hi=600.0,
         scale=1.0,
     )
+    if avg_cost_per_share is None:
+        avg_cost_per_share = _try_parse_last_text_match(
+            text,
+            patterns=[
+                r"(?i)average\s+cost\s+per\s+(?:common\s+)?share\s+\$?\s*([\d,]+\.\d{2})",
+                r"(?i)average\s+price\s+per\s+(?:common\s+)?share\s+\$?\s*([\d,]+\.\d{2})",
+                r"(?i)avg\.\s+(?:cost|price)\s+per\s+(?:common\s+)?share\s+\$?\s*([\d,]+\.\d{2})",
+            ],
+            lo=10.0,
+            hi=600.0,
+            scale=1.0,
+        )
 
     # -----------------------------------------------------------------------
     # Investment Book Yield (as %)
@@ -573,22 +952,71 @@ def _parse_html_exhibit(
 
     return {
         "month_end": month_end,
+        "filing_date": filing_date,
+        "filing_type": table_metrics["filing_type"],
         # Core
-        "combined_ratio": combined_ratio,
-        "pif_total": pif_total,
+        "combined_ratio": table_metrics["combined_ratio"] if table_metrics["combined_ratio"] is not None else combined_ratio,
+        "pif_total": table_metrics["pif_total"] if table_metrics["pif_total"] is not None else pif_total,
         # v6.2 phase 1 fields parsed from HTML (P2.6)
-        "net_premiums_written": net_premiums_written,
-        "net_premiums_earned": net_premiums_earned,
-        "npw_agency": npw_agency,
-        "npw_direct": npw_direct,
-        "npw_commercial": npw_commercial,
-        "npw_property": npw_property,
-        "investment_income": investment_income,
-        "book_value_per_share": book_value_per_share,
-        "eps_basic": eps_basic,
-        "shares_repurchased": shares_repurchased,
-        "avg_cost_per_share": avg_cost_per_share,
-        "investment_book_yield": investment_book_yield,
+        "net_premiums_written": table_metrics["net_premiums_written"] if table_metrics["net_premiums_written"] is not None else net_premiums_written,
+        "net_premiums_earned": table_metrics["net_premiums_earned"] if table_metrics["net_premiums_earned"] is not None else net_premiums_earned,
+        "net_income": table_metrics["net_income"],
+        "eps_diluted": table_metrics["eps_diluted"],
+        "avg_diluted_equivalent_shares": table_metrics["avg_diluted_equivalent_shares"],
+        "investment_income": table_metrics["investment_income"] if table_metrics["investment_income"] is not None else investment_income,
+        "total_net_realized_gains": table_metrics["total_net_realized_gains"],
+        "service_revenues": table_metrics["service_revenues"],
+        "fees_and_other_revenues": table_metrics["fees_and_other_revenues"],
+        "total_revenues": table_metrics["total_revenues"],
+        "losses_lae": table_metrics["losses_lae"],
+        "policy_acquisition_costs": table_metrics["policy_acquisition_costs"],
+        "other_underwriting_expenses": table_metrics["other_underwriting_expenses"],
+        "interest_expense": table_metrics["interest_expense"],
+        "total_expenses": table_metrics["total_expenses"],
+        "income_before_income_taxes": table_metrics["income_before_income_taxes"],
+        "provision_for_income_taxes": table_metrics["provision_for_income_taxes"],
+        "total_comprehensive_income": table_metrics["total_comprehensive_income"],
+        "eps_basic": table_metrics["eps_basic"] if table_metrics["eps_basic"] is not None else eps_basic,
+        "comprehensive_eps_diluted": table_metrics["comprehensive_eps_diluted"],
+        "avg_shares_basic": table_metrics["avg_shares_basic"],
+        "avg_shares_diluted": table_metrics["avg_shares_diluted"],
+        "loss_lae_ratio": table_metrics["loss_lae_ratio"],
+        "expense_ratio": table_metrics["expense_ratio"],
+        "pif_agency_auto": table_metrics["pif_agency_auto"],
+        "pif_direct_auto": table_metrics["pif_direct_auto"],
+        "pif_special_lines": table_metrics["pif_special_lines"],
+        "pif_property": table_metrics["pif_property"],
+        "pif_total_personal_lines": table_metrics["pif_total_personal_lines"],
+        "pif_commercial_lines": table_metrics["pif_commercial_lines"],
+        "npw_agency": table_metrics["npw_agency"] if table_metrics["npw_agency"] is not None else npw_agency,
+        "npw_direct": table_metrics["npw_direct"] if table_metrics["npw_direct"] is not None else npw_direct,
+        "npw_property": table_metrics["npw_property"] if table_metrics["npw_property"] is not None else npw_property,
+        "npw_commercial": table_metrics["npw_commercial"] if table_metrics["npw_commercial"] is not None else npw_commercial,
+        "npe_agency": table_metrics["npe_agency"],
+        "npe_direct": table_metrics["npe_direct"],
+        "npe_property": table_metrics["npe_property"],
+        "npe_commercial": table_metrics["npe_commercial"],
+        "total_investments": table_metrics["total_investments"],
+        "total_assets": table_metrics["total_assets"],
+        "loss_lae_reserves": table_metrics["loss_lae_reserves"],
+        "unearned_premiums": table_metrics["unearned_premiums"],
+        "debt": table_metrics["debt"],
+        "total_liabilities": table_metrics["total_liabilities"],
+        "shareholders_equity": table_metrics["shareholders_equity"],
+        "common_shares_outstanding": table_metrics["common_shares_outstanding"],
+        "shares_repurchased": table_metrics["shares_repurchased"] if table_metrics["shares_repurchased"] is not None else shares_repurchased,
+        "avg_cost_per_share": table_metrics["avg_cost_per_share"] if table_metrics["avg_cost_per_share"] is not None else avg_cost_per_share,
+        "book_value_per_share": table_metrics["book_value_per_share"] if table_metrics["book_value_per_share"] is not None else book_value_per_share,
+        "roe_net_income_trailing_12m": table_metrics["roe_net_income_trailing_12m"],
+        "roe_comprehensive_trailing_12m": table_metrics["roe_comprehensive_trailing_12m"],
+        "debt_to_total_capital": table_metrics["debt_to_total_capital"],
+        "fixed_income_duration": table_metrics["fixed_income_duration"],
+        "fte_return_fixed_income": table_metrics["fte_return_fixed_income"],
+        "fte_return_common_stocks": table_metrics["fte_return_common_stocks"],
+        "fte_return_total_portfolio": table_metrics["fte_return_total_portfolio"],
+        "investment_book_yield": table_metrics["investment_book_yield"] if table_metrics["investment_book_yield"] is not None else investment_book_yield,
+        "net_unrealized_gains_fixed": table_metrics["net_unrealized_gains_fixed"],
+        "weighted_avg_credit_quality": table_metrics["weighted_avg_credit_quality"],
         # Derived fields — populated by _compute_derived_fields after time-series is assembled
         "pif_growth_yoy": None,
         "gainshare_estimate": None,
@@ -824,9 +1252,9 @@ def _validate_parsed_record(
 
     # PIF floor
     pif = record.get("pif_total")
-    if pif is not None and pif < 100_000:
+    if pif is not None and pif < 10_000:
         log.warning(
-            "VALIDATION: pif_total=%.0f < 100,000 floor in %s. Setting None.",
+            "VALIDATION: pif_total=%.0f < 10,000 floor in %s. Setting None.",
             pif, accession,
         )
         record["pif_total"] = None
@@ -881,7 +1309,7 @@ def fetch_and_upsert(
     effective_cutoff = max(cutoff_raw, earliest).isoformat()
 
     log.info(
-        "Backfill window: %s → %s  (backfill_years=%d)",
+        "Backfill window: %s -> %s  (backfill_years=%d)",
         effective_cutoff,
         today.isoformat(),
         backfill_years,
@@ -919,6 +1347,7 @@ def fetch_and_upsert(
 
             # v7.2: cross-validate parsed fields; nullify inconsistent ones.
             parsed = _validate_parsed_record(parsed, filing_date, accession)
+            parsed["accession_number"] = accession
             # If validation nullified both core fields, skip this filing.
             if parsed["combined_ratio"] is None and parsed["pif_total"] is None:
                 log.debug(
@@ -1076,6 +1505,9 @@ def load_from_csv(
     # CSV column name              DB column name
     # -----------------------------------------------------------------------
     DIRECT_MAP: dict[str, str] = {
+        "filing_date":                  "filing_date",
+        "filing_type":                  "filing_type",
+        "accession_number":             "accession_number",
         "combined_ratio":              "combined_ratio",
         "pif_total":                   "pif_total",
         "net_premiums_written":        "net_premiums_written",
@@ -1083,6 +1515,19 @@ def load_from_csv(
         "net_income":                  "net_income",
         "eps_diluted":                 "eps_diluted",
         "eps_basic":                   "eps_basic",
+        "avg_diluted_equivalent_shares": "avg_diluted_equivalent_shares",
+        "total_net_realized_gains":    "total_net_realized_gains",
+        "service_revenues":            "service_revenues",
+        "fees_and_other_revenues":     "fees_and_other_revenues",
+        "losses_lae":                  "losses_lae",
+        "policy_acquisition_costs":    "policy_acquisition_costs",
+        "other_underwriting_expenses": "other_underwriting_expenses",
+        "interest_expense":            "interest_expense",
+        "provision_for_income_taxes":  "provision_for_income_taxes",
+        "total_comprehensive_income":  "total_comprehensive_income",
+        "comprehensive_eps_diluted":   "comprehensive_eps_diluted",
+        "avg_shares_basic":            "avg_shares_basic",
+        "avg_shares_diluted":          "avg_shares_diluted",
         "loss_lae_ratio":              "loss_lae_ratio",
         "expense_ratio":               "expense_ratio",
         "book_value_per_share":        "book_value_per_share",
@@ -1097,6 +1542,8 @@ def load_from_csv(
         "npe_property":                "npe_property",
         "pif_agency_auto":             "pif_agency_auto",
         "pif_direct_auto":             "pif_direct_auto",
+        "pif_special_lines":           "pif_special_lines",
+        "pif_property":                "pif_property",
         "pif_commercial_lines":        "pif_commercial_lines",
         "pif_total_personal_lines":    "pif_total_personal_lines",
         # Company-level operating metrics
@@ -1105,21 +1552,39 @@ def load_from_csv(
         "total_expenses":              "total_expenses",
         "income_before_income_taxes":  "income_before_income_taxes",
         "roe_net_income_trailing_12m": "roe_net_income_ttm",  # CSV name differs
+        "roe_comprehensive_trailing_12m": "roe_comprehensive_trailing_12m",
         "shareholders_equity":         "shareholders_equity",
         "total_assets":                "total_assets",
+        "total_investments":           "total_investments",
+        "loss_lae_reserves":           "loss_lae_reserves",
         "unearned_premiums":           "unearned_premiums",
+        "debt":                        "debt",
+        "total_liabilities":           "total_liabilities",
+        "common_shares_outstanding":   "common_shares_outstanding",
         "shares_repurchased":          "shares_repurchased",
         "avg_cost_per_share":          "avg_cost_per_share",
         # Investment portfolio metrics
+        "fte_return_fixed_income":     "fte_return_fixed_income",
+        "fte_return_common_stocks":    "fte_return_common_stocks",
         "fte_return_total_portfolio":  "fte_return_total_portfolio",
         "investment_book_yield":       "investment_book_yield",
         "net_unrealized_gains_fixed":  "net_unrealized_gains_fixed",
         "fixed_income_duration":       "fixed_income_duration",
+        "debt_to_total_capital":       "debt_to_total_capital",
+        "weighted_avg_credit_quality": "weighted_avg_credit_quality",
     }
 
+    text_cols = {
+        "filing_date",
+        "filing_type",
+        "accession_number",
+        "weighted_avg_credit_quality",
+    }
     for csv_col, db_col in DIRECT_MAP.items():
-        if csv_col in df.columns:
+        if csv_col in df.columns and db_col not in text_cols:
             df[db_col] = pd.to_numeric(df[csv_col], errors="coerce")
+        elif csv_col in df.columns:
+            df[db_col] = df[csv_col].astype(str)
         else:
             df[db_col] = float("nan")
 
