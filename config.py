@@ -288,6 +288,42 @@ FRACDIFF_ADF_ALPHA: float = 0.05        # Stationarity significance level
 #                     signal plus the distress premium; IG is redundant)
 FEATURES_TO_DROP: list[str] = ["vol_21d", "credit_spread_ig"]
 
+# v8.6: model-specific production feature sets from the completed v7/v8
+# ablation program.  GBT performs best with the lean Group B macro regime set.
+# ElasticNet performs best with Group B plus a narrow investment/ROE/
+# underwriting extension, avoiding the full Group E stack's low obs/feature ratio.
+MODEL_FEATURE_BASE_GROUP_B: list[str] = [
+    "mom_3m",
+    "mom_6m",
+    "mom_12m",
+    "vol_63d",
+    "yield_slope",
+    "yield_curvature",
+    "real_rate_10y",
+    "credit_spread_hy",
+    "nfci",
+    "vix",
+    "vmt_yoy",
+]
+MODEL_FEATURE_OVERRIDES: dict[str, list[str]] = {
+    "gbt": MODEL_FEATURE_BASE_GROUP_B,
+    "elasticnet": MODEL_FEATURE_BASE_GROUP_B + [
+        "investment_income_growth_yoy",
+        "roe_net_income_ttm",
+        "underwriting_income",
+    ],
+    "ridge": MODEL_FEATURE_BASE_GROUP_B + [
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "roe_net_income_ttm",
+    ],
+    "bayesian_ridge": MODEL_FEATURE_BASE_GROUP_B + [
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "roe_net_income_ttm",
+    ],
+}
+
 # Use BayesianRidge posterior variance (σ²_pred) as the Ω diagonal in the
 # Black-Litterman model instead of MAE².
 BL_USE_BAYESIAN_VARIANCE: bool = True

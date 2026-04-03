@@ -281,7 +281,7 @@ def print_summary(results_df: pd.DataFrame) -> None:
         mean_hr = row["hit_rate"]
         flag = ""
         if prev_ic is not None and mean_ic < prev_ic:
-            flag = "  ⚠ NET-NEGATIVE"
+            flag = "  [NET-NEGATIVE]"
             net_negative_groups.append(str(group_label))
         print(f"  {group_label:<20}  {mean_ic:>+10.4f}  {mean_hr:>13.3%}{flag}")
         prev_ic = mean_ic
@@ -289,9 +289,9 @@ def print_summary(results_df: pd.DataFrame) -> None:
     print("-" * 50)
 
     if net_negative_groups:
-        print("\n⚠  The following groups DECREASE mean IC vs the prior group:")
+        print("\n[WARNING] The following groups DECREASE mean IC vs the prior group:")
         for g in net_negative_groups:
-            print(f"   • {g}")
+            print(f"   - {g}")
 
         # Identify the new features introduced by the net-negative groups.
         to_drop: list[str] = []
@@ -308,7 +308,7 @@ def print_summary(results_df: pd.DataFrame) -> None:
             for col in sorted(set(to_drop)):
                 print(f"   \"{col}\",")
     else:
-        print("\n✓  All feature groups are non-negative — no features flagged.")
+        print("\n[OK] All feature groups are non-negative - no features flagged.")
 
     print("=" * 70)
 

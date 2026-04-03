@@ -102,9 +102,9 @@ _ETF_DESCRIPTIONS: dict[str, str] = {
 }
 
 _MODEL_VERSION_LABEL = (
-    "v8.5 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, "
+    "v8.7 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, "
     "inverse-variance weighting, C(8,2)=28 CPCV paths, "
-    "v7 tax context + v8 data-health refresh)"
+    "v7 tax context + v8 data-health refresh + model-specific feature sets)"
 )
 
 

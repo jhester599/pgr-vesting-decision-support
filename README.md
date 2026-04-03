@@ -1,4 +1,4 @@
-# PGR Vesting Decision Support - v8.5
+# PGR Vesting Decision Support - v8.7
 
 A quantitative decision-support engine for systematically unwinding a concentrated
 Progressive Corporation (PGR) RSU position held in a taxable brokerage account.
@@ -12,11 +12,17 @@ to produce a structured sell/hold recommendation for each vesting event.
 Current status as of 2026-04-02:
 - v7.0-v7.4 are complete: feature ablation backtest, three-scenario tax framework,
   EDGAR parser hardening, monthly tax/report cleanup, and CPCV/obs-feature guards.
-- v8.0-v8.5 are complete: baseline reconciliation with GitHub `master`, AV-loader
+- v8.0-v8.7 are complete: baseline reconciliation with GitHub `master`, AV-loader
   test stability fixes, startup DB health checks, committed CSV backfill to the
-  checked-in database, refreshed monthly artifacts, and documentation/workflow refresh.
+  checked-in database, refreshed monthly artifacts, ensemble model-specific feature
+  tuning, and documentation/workflow refresh.
 - The committed `pgr_edgar_monthly` baseline now spans the historical CSV backfill
   (2004-08 through 2026-02) rather than only the recent live-fetch window.
+- The live ensemble now uses model-specific production feature sets:
+  ElasticNet = Group B + `investment_income_growth_yoy` + `roe_net_income_ttm`
+  + `underwriting_income`; Ridge/BayesianRidge = Group B +
+  `combined_ratio_ttm` + `investment_income_growth_yoy` + `roe_net_income_ttm`;
+  GBT = Group B only.
 
 ---
 
@@ -391,7 +397,7 @@ line without any network connection.
 
 ---
 
-### v7.0-v7.4 / v8.0-v8.5 — Stability, Governance, and Reproducibility (current)
+### v7.0-v7.4 / v8.0-v8.7 — Stability, Governance, and Reproducibility (current)
 
 Post-v6.5 work focused on making the repo easier to trust and operate:
 
@@ -411,6 +417,13 @@ Post-v6.5 work focused on making the repo easier to trust and operate:
   `bootstrap` and `monthly_decision`, refreshed the checked-in database from the
   committed CSV, generated a fresh `results/monthly_decisions/2026-04/` report, and
   removed a stale `FMP_API_KEY` dependency from the monthly workflow.
+- The completed v7.0/v8.x ablation follow-up now drives production feature selection
+  by model instead of forcing a single shared stack:
+  ElasticNet uses Group B plus `investment_income_growth_yoy`,
+  `roe_net_income_ttm`, and `underwriting_income`; Ridge and BayesianRidge use
+  Group B plus `combined_ratio_ttm`, `investment_income_growth_yoy`, and
+  `roe_net_income_ttm`; GBT remains on the lean Group B baseline because broader
+  feature blocks reduced its OOS IC.
 
 ---
 
