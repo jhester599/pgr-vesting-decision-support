@@ -29,6 +29,7 @@ import config
 from src.portfolio.rebalancer import (
     VestingRecommendation,
     _check_stcg_boundary,
+    generate_recommendation,
 )
 from src.tax.capital_gains import TaxLot
 
@@ -294,7 +295,7 @@ class TestMixedPortfolios:
 # ===========================================================================
 
 class TestVestingRecommendationField:
-    """stcg_warning field exists on the dataclass and defaults to None."""
+    """v4.4/v7.1 optional fields exist on the dataclass and default to None."""
 
     def test_stcg_warning_field_exists(self) -> None:
         import dataclasses
@@ -306,3 +307,46 @@ class TestVestingRecommendationField:
         import dataclasses
         field_map = {f.name: f for f in dataclasses.fields(VestingRecommendation)}
         assert field_map["stcg_warning"].default is None
+
+    def test_three_scenario_field_exists(self) -> None:
+        import dataclasses
+        fields = {f.name for f in dataclasses.fields(VestingRecommendation)}
+        assert "three_scenario" in fields
+
+
+class TestGenerateRecommendationThreeScenario:
+
+    def test_generate_recommendation_populates_three_scenario(self, monkeypatch) -> None:
+        monkeypatch.setattr(
+            "src.portfolio.rebalancer.recommend_reallocation",
+            lambda portfolio_state, net: {},
+        )
+
+        fold = MagicMock()
+        fold.y_hat.mean.return_value = 0.06
+        wfo_result = MagicMock()
+        wfo_result.information_coefficient = 0.08
+        wfo_result.hit_rate = 0.61
+        wfo_result.folds = [fold]
+
+        lots = [
+            _lot(date(2025, 1, 15), shares=100.0, basis=200.0),
+            _lot(date(2025, 7, 15), shares=50.0, basis=220.0),
+        ]
+
+        rec = generate_recommendation(
+            vest_date=date(2026, 7, 17),
+            rsu_type="performance",
+            current_price=250.0,
+            lots=lots,
+            wfo_result=wfo_result,
+            portfolio_state=MagicMock(),
+        )
+
+        assert rec.three_scenario is not None
+        assert len(rec.three_scenario.scenarios) == 3
+        assert rec.three_scenario.recommended_scenario in {
+            "SELL_NOW_STCG",
+            "HOLD_TO_LTCG",
+            "HOLD_FOR_LOSS",
+        }

@@ -52,7 +52,9 @@ from src.models.multi_benchmark_wfo import (
 )
 from src.processing.feature_engineering import (
     build_feature_matrix_from_db,
+    compute_obs_feature_ratio,
     get_feature_columns,
+    get_X_y_relative,
 )
 from src.processing.multi_total_return import load_relative_return_matrix
 import numpy as np
@@ -63,6 +65,7 @@ from src.models.calibration import (
     fit_calibration_model,
 )
 from src.models.conformal import ConformalResult, conformal_interval_from_ensemble
+from src.models.wfo_engine import CPCVResult, run_cpcv
 from src.reporting.backtest_report import (
     compute_newey_west_ic,
     compute_oos_r_squared,
@@ -179,7 +182,7 @@ def _generate_signals(
     conn,
     as_of: date,
     target_horizon_months: int = 6,
-) -> tuple[pd.DataFrame, dict]:
+) -> tuple[pd.DataFrame, dict, dict]:
     """
     Build feature matrix (sliced to as_of), train ensemble WFO models, return signals.
 
@@ -188,7 +191,7 @@ def _generate_signals(
     ``prob_outperform`` columns in the output.
 
     Returns:
-        (signals, ensemble_results) where signals is a DataFrame indexed by benchmark
+        (signals, ensemble_results, diagnostics) where signals is a DataFrame indexed by benchmark
         with columns predicted_relative_return, ic, hit_rate, signal, prediction_std,
         prob_outperform, confidence_tier; and ensemble_results is the dict returned by
         ``run_ensemble_benchmarks`` (ETF ticker → EnsembleWFOResult).
@@ -202,9 +205,13 @@ def _generate_signals(
     # Strict temporal cutoff: only data available on or before as_of
     X_event = X_full.loc[X_full.index <= as_of_ts]
     if X_event.empty:
-        return pd.DataFrame(), {}
+        return pd.DataFrame(), {}, {}
 
     X_current = X_event.iloc[[-1]]
+    diagnostics: dict[str, object] = {
+        "obs_feature_report": compute_obs_feature_ratio(X_event, warn=True),
+        "representative_cpcv": None,
+    }
 
     # Load relative return matrix for all benchmarks
     rel_matrix_cols = {}
@@ -213,9 +220,26 @@ def _generate_signals(
         if not rel_series.empty:
             rel_matrix_cols[etf] = rel_series
     if not rel_matrix_cols:
-        return pd.DataFrame(), {}
+        return pd.DataFrame(), {}, diagnostics
 
     rel_matrix = pd.DataFrame(rel_matrix_cols)
+
+    # v7.4: run one representative CPCV diagnostic inside the monthly workflow.
+    # VTI + elasticnet gives a stable broad-market reference without multiplying
+    # runtime by the full 4-model × 20-benchmark grid.
+    if "VTI" in rel_matrix.columns:
+        try:
+            rel_series_vti = rel_matrix["VTI"].rename(f"VTI_{target_horizon_months}m")
+            X_vti, y_vti = get_X_y_relative(X_event, rel_series_vti, drop_na_target=True)
+            diagnostics["representative_cpcv"] = run_cpcv(
+                X_vti,
+                y_vti,
+                model_type="elasticnet",
+                target_horizon_months=target_horizon_months,
+                benchmark="VTI",
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"  [CPCV] WARNING: representative CPCV run failed: {exc}")
 
     # Train 3-model ensemble per benchmark (ElasticNet + Ridge + BayesianRidge)
     ensemble_results = run_ensemble_benchmarks(
@@ -239,7 +263,7 @@ def _generate_signals(
         "mean_hit_rate":    "hit_rate",
     })
 
-    return signals, ensemble_results
+    return signals, ensemble_results, diagnostics
 
 
 # ---------------------------------------------------------------------------
@@ -1127,6 +1151,8 @@ def _write_diagnostic_report(
     target_horizon_months: int = 6,
     cal_result: CalibrationResult | None = None,
     signals: pd.DataFrame | None = None,
+    obs_feature_report: dict | None = None,
+    representative_cpcv: CPCVResult | None = None,
 ) -> None:
     """
     Write diagnostic.md alongside recommendation.md.
@@ -1138,15 +1164,16 @@ def _write_diagnostic_report(
     - Newey-West HAC-adjusted Spearman IC (accounts for overlapping return windows)
     - Per-benchmark health table (IC, hit rate, n_obs, status flag)
 
-    CPCV positive-path count is deferred to Phase 2 (v5.0) — running CPCV
-    inside the monthly workflow would require ~15× additional model fits.
-
     Args:
         out_dir:                Output directory (YYYY-MM folder).
         as_of:                  As-of date for the report header.
         ensemble_results:       Dict of ETF ticker → EnsembleWFOResult from
                                 ``run_ensemble_benchmarks()``.
         target_horizon_months:  Forward return horizon used during training.
+        obs_feature_report:     Output of ``compute_obs_feature_ratio()`` for the
+                                feature matrix used in this monthly run.
+        representative_cpcv:    Optional representative CPCV diagnostic
+                                (currently VTI + elasticnet).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / "diagnostic.md"
@@ -1237,6 +1264,55 @@ def _write_diagnostic_report(
     # ------------------------------------------------------------------
     # Build markdown
     # ------------------------------------------------------------------
+    cpcv_value = "N/A"
+    cpcv_status = "—"
+    cpcv_threshold = f"≥ {config.DIAG_CPCV_MIN_POSITIVE_PATHS}/28"
+    cpcv_note_lines = [
+        "> **CPCV note (v5.0/v7.4):** Representative CPCV uses ElasticNet vs VTI",
+        "> as a monthly stability check. Full 4-model × 20-benchmark CPCV remains",
+        "> available on demand via `run_cpcv()` in `wfo_engine.py`.",
+    ]
+    if representative_cpcv is not None and representative_cpcv.n_paths > 0:
+        cpcv_value = (
+            f"{representative_cpcv.n_positive_paths}/{representative_cpcv.n_paths} "
+            f"({representative_cpcv.positive_path_fraction:.1%})"
+        )
+        cpcv_status = {
+            "GOOD": "✅",
+            "MARGINAL": "⚠️",
+            "FAIL": "❌",
+            "UNKNOWN": "⚠️",
+        }.get(representative_cpcv.stability_verdict, "⚠️")
+        cpcv_threshold = f"≥ {config.DIAG_CPCV_MIN_POSITIVE_PATHS}/{representative_cpcv.n_paths}"
+        cpcv_note_lines = [
+            f"> **Representative CPCV:** benchmark={representative_cpcv.benchmark}, "
+            f"model={representative_cpcv.model_type}, paths={representative_cpcv.n_paths}, "
+            f"mean IC={representative_cpcv.mean_ic:.4f}, IC std={representative_cpcv.ic_std:.4f}.",
+            f"> Stability verdict: {representative_cpcv.stability_verdict}. "
+            f"Threshold defined in `config.py` as ≥ {config.DIAG_CPCV_MIN_POSITIVE_PATHS} positive paths.",
+        ]
+
+    obs_feature_lines: list[str] = []
+    if obs_feature_report is not None:
+        obs_feature_lines = [
+            "",
+            "## Feature Governance",
+            "",
+            "| Metric | Value | Status | Threshold (Good) |",
+            "|--------|-------|--------|-----------------|",
+            f"| Full obs/feature ratio | {obs_feature_report['ratio']:.2f} | "
+            f"{ {'OK': '✅', 'WARNING': '⚠️', 'FAIL': '❌'}.get(obs_feature_report['verdict'], '⚠️') } | ≥ 4.0 |",
+            f"| Per-fold obs/feature ratio | {obs_feature_report['per_fold_ratio']:.2f} | "
+            f"{ {'OK': '✅', 'WARNING': '⚠️', 'FAIL': '❌'}.get(obs_feature_report['verdict'], '⚠️') } | ≥ 4.0 |",
+            f"| Features in monthly run | {obs_feature_report['n_features']} | — | — |",
+            f"| Fully populated observations | {obs_feature_report['n_obs']} | — | — |",
+            "",
+            f"> {obs_feature_report['message']}",
+            "",
+            "---",
+            "",
+        ]
+
     lines = [
         f"# PGR Diagnostic Report — {as_of.strftime('%B %Y')}",
         "",
@@ -1256,15 +1332,13 @@ def _write_diagnostic_report(
         f"| IC (Newey-West HAC) | {nw_ic:.4f} | {ic_flag_agg} | ≥ 0.07 |",
         f"| IC significance | {nw_pval:.4f} | {sig_marker} | p < 0.05 |",
         f"| Hit Rate | {agg_hit:.1%} | {hr_flag_agg} | ≥ 55.0% |",
-        f"| CPCV Positive Paths | N/A (Phase 1) | — | ≥ {config.DIAG_CPCV_MIN_POSITIVE_PATHS}/28 |",
+        f"| CPCV Positive Paths | {cpcv_value} | {cpcv_status} | {cpcv_threshold} |",
         "",
-        "> **CPCV note (v5.0):** C(8,2)=28 paths are configured but not run inside the monthly",
-        "> workflow — 4 models × 28 splits × 20 benchmarks = 2,240 fits per run.",
-        "> CPCV diagnostics are available on demand via `run_cpcv()` in `wfo_engine.py`.",
-        f"> The DIAG_CPCV_MIN_POSITIVE_PATHS threshold (≥ {config.DIAG_CPCV_MIN_POSITIVE_PATHS}/28) is defined in `config.py`.",
+        *cpcv_note_lines,
         "",
         "---",
         "",
+        *obs_feature_lines,
         "## Calibration Phase",
         "",
         "| Phase | Description | Status |",
@@ -1428,7 +1502,9 @@ def main(
 
     # Step 2: Generate signals (ensemble: ElasticNet + Ridge + BayesianRidge + GBT)
     print(f"\nGenerating ensemble signals (as-of {as_of})...")
-    signals, ensemble_results = _generate_signals(conn, as_of, target_horizon_months=6)
+    signals, ensemble_results, diagnostics = _generate_signals(
+        conn, as_of, target_horizon_months=6
+    )
 
     # Step 2.5: Calibrate P(outperform) using Platt / isotonic on OOS fold history
     print("  Calibrating probabilities...")
@@ -1486,6 +1562,8 @@ def main(
         out_dir, as_of, ensemble_results,
         target_horizon_months=6, cal_result=cal_result,
         signals=signals,
+        obs_feature_report=diagnostics.get("obs_feature_report"),
+        representative_cpcv=diagnostics.get("representative_cpcv"),
     )
 
     # Step 5.1 (P2.7): Calibration reliability diagram

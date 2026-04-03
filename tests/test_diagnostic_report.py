@@ -22,6 +22,7 @@ import pandas as pd
 import pytest
 
 import config
+from src.models.wfo_engine import CPCVResult
 
 # ---------------------------------------------------------------------------
 # Import the functions under test (path manipulation matches project layout)
@@ -234,6 +235,38 @@ class TestWriteDiagnosticReport:
         _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
         assert "Phase 1" in content or "N/A" in content
+
+    def test_report_includes_runtime_governance_metrics_when_provided(self, tmp_path: Path) -> None:
+        ensemble = _make_ensemble_results(n_obs=40)
+        cpcv_result = CPCVResult(
+            model_type="elasticnet",
+            benchmark="VTI",
+            n_splits=28,
+            n_paths=28,
+            path_ics=[0.05] * 20 + [-0.01] * 8,
+            mean_ic=0.032,
+            ic_std=0.041,
+            split_ics=[],
+        )
+        obs_feature_report = {
+            "n_obs": 120,
+            "n_features": 15,
+            "ratio": 8.0,
+            "per_fold_ratio": 4.0,
+            "verdict": "OK",
+            "message": "obs/feature ratio healthy.",
+        }
+        _write_diagnostic_report(
+            tmp_path,
+            date(2026, 3, 26),
+            ensemble,
+            obs_feature_report=obs_feature_report,
+            representative_cpcv=cpcv_result,
+        )
+        content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
+        assert "Feature Governance" in content
+        assert "20/28" in content
+        assert "Representative CPCV" in content
 
     def test_report_contains_threshold_reference(self, tmp_path: Path) -> None:
         ensemble = _make_ensemble_results(n_obs=40)
