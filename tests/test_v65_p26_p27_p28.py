@@ -368,6 +368,8 @@ class TestBuildEmailMessage:
     _SAMPLE_BODY = textwrap.dedent("""\
         # PGR Monthly Decision — April 2026
 
+        **As-of Date:** 2026-04-03
+
         ## Executive Summary
 
         - What changed since last month: Outlook weakened.
@@ -383,7 +385,46 @@ class TestBuildEmailMessage:
         | Recommendation Mode | **ACTIONABLE** |
         | Recommended Sell % | **20%** |
         | Predicted 6M Relative Return | +6.00% |
+
+        ---
+
+        ## Per-Benchmark Signals
+
+        ## Next Vest Decision
+
+        | Field | Value |
+        |-------|-------|
+        | Recommendation mode | **ACTIONABLE** |
+        | Next vest date | 2026-07-17 |
+        | RSU type | performance |
+        | Current PGR price | $198.84 |
+        | Current in-scope shares | 8.00 |
+        | Average cost basis used | $133.38 |
+        | Suggested default vest action | Sell 20% of the vesting tranche |
+
+        | Scenario | Sell Date | Tax Rate | Predicted Return | Net Proceeds | Probability |
+        |----------|-----------|----------|------------------|--------------|-------------|
+        | SELL_NOW_STCG | 2026-07-17 | 37% | +0.00% | $1,396.94 | 100.0% |
+        | HOLD_TO_LTCG | 2027-07-18 | 20% | +8.36% | $1,592.33 | 67.4% |
+
+        | Benchmark | Description | Predicted Return | CI Lower | CI Upper | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |
+        |-----------|-------------|------------------|----------|----------|----|----------|--------|--------|------------|--------|
+        | VTI | Total Stock Market | +6.95% | -29.14% | +43.05% | 0.0407 | 51.6% | 70.9% | 59.3% | HIGH | NEUTRAL |
+        | VHT | Health Care | +6.03% | -28.35% | +40.41% | 0.1665 | 58.5% | 68.3% | 66.1% | MODERATE | OUTPERFORM |
     """)
+
+    def _write_lots(self, tmp_path: Path) -> Path:
+        csv_path = tmp_path / "position_lots.csv"
+        csv_path.write_text(
+            textwrap.dedent("""\
+                vest_date,rsu_type,shares,cost_basis_per_share
+                2024-01-01,time,1,161
+                2025-01-21,time,1,240
+                2026-01-20,time,1,201
+            """),
+            encoding="utf-8",
+        )
+        return csv_path
 
     def test_extracts_signal_in_subject(self):
         msg = build_email_message(self._SAMPLE_BODY, "a@b.com", "c@d.com", "April 2026")
@@ -395,14 +436,39 @@ class TestBuildEmailMessage:
         assert msg["From"] == "from@x.com"
         assert msg["To"] == "to@y.com"
 
-    def test_body_attached_as_plain_text(self):
-        msg = build_email_message(self._SAMPLE_BODY, "a@b.com", "c@d.com", "April 2026")
+    def test_body_attached_as_plain_text(self, tmp_path):
+        lots_path = self._write_lots(tmp_path)
+        msg = build_email_message(
+            self._SAMPLE_BODY,
+            "a@b.com",
+            "c@d.com",
+            "April 2026",
+            lots_csv_path=lots_path,
+        )
         payloads = msg.get_payload()
         body = payloads[0].get_payload(decode=True).decode()
         assert "PGR Monthly Decision Summary" in body
         assert "Recommendation mode: ACTIONABLE" in body
-        assert "Executive summary:" in body
+        assert "What's changed:" in body
+        assert "Existing shares already held:" in body
         assert "Full report:" in body
+
+    def test_html_body_attached_and_contains_structured_sections(self, tmp_path):
+        lots_path = self._write_lots(tmp_path)
+        msg = build_email_message(
+            self._SAMPLE_BODY,
+            "a@b.com",
+            "c@d.com",
+            "April 2026",
+            lots_csv_path=lots_path,
+        )
+        payloads = msg.get_payload()
+        html_body = payloads[1].get_payload(decode=True).decode()
+        assert "<html>" in html_body
+        assert "New vested shares" in html_body
+        assert "Existing shares already held" in html_body
+        assert "Benchmark detail" in html_body
+        assert "Loss lots first" in html_body
 
     def test_unknown_signal_when_no_match(self):
         msg = build_email_message("No signal line here", "a@b.com", "c@d.com", "April 2026")
