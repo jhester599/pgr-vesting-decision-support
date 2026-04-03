@@ -1,5 +1,9 @@
 # PGR EDGAR Monthly 8-K Data Dictionary
 
+The v8.9 live-parser expansion now captures a much larger subset of these
+fields directly from recent monthly 8-K HTML exhibits, reducing the gap
+between the live EDGAR fetch path and this historical CSV baseline.
+
 **Source file:** `data/processed/pgr_edgar_cache.csv`
 **Coverage:** August 2004 – January 2026 (256 monthly observations)
 **Filing types:** `monthly_results` (170 rows) and `quarterly_earnings` (86 rows)
@@ -136,7 +140,7 @@ Snapshot at month-end, in millions USD.
 
 | Column | Non-null | Min | Median | Max | Notes |
 |---|---|---|---|---|---|
-| `shares_repurchased` | 242/256 | 0.0 | 0.3 | 16.9 | Shares bought back in period (thousands) |
+| `shares_repurchased` | 242/256 | 0.0 | 0.3 | 16.9 | Shares bought back in period (millions of shares, normalized from source filings) |
 | `avg_cost_per_share` | 245/256 | 0.00 | 23.39 | 281.35 | Average buyback price (dollars) |
 | `debt_to_total_capital` | 253/256 | 14.4% | 24.8% | 35.4% | Debt / (debt + equity) |
 | `roe_net_income_trailing_12m` | 253/256 | -2.1% | 18.7% | 38.5% | Pre-computed TTM ROE (net income basis) |

@@ -104,6 +104,30 @@ Verified from the merged upstream baseline and `SESSION_PROGRESS.md`:
   same per-model feature definitions.
 - Added regression coverage for the new model-specific selection behavior.
 
+### v8.8 â€” Buyback Parser Hardening And BayesianRidge Refresh
+
+- Confirmed Progressive changed the share-repurchase line-item format in the
+  SEC exhibits around the 2023-08 reporting period, from decimal millions of
+  shares to whole-share counts.
+- Hardened `scripts/edgar_8k_fetcher.py` so `shares_repurchased` is normalized
+  into millions of shares under both formats, preserving continuity in
+  `buyback_yield` and `buyback_acceleration`.
+- Reran focused buyback-feature retests and promoted
+  `buyback_yield` + `buyback_acceleration` into the production
+  `bayesian_ridge` feature override only.
+
+### v8.9 - Live EDGAR Parser Breadth Expansion
+
+- Extended `scripts/edgar_8k_fetcher.py` to parse a much broader slice of the
+  monthly 8-K HTML tables, including segment NPW/NPE rows, expanded PIF detail,
+  additional P&L lines, share metrics, and several investment / balance-sheet
+  fields that previously existed only in the historical CSV path.
+- Expanded `pgr_edgar_monthly` schema/storage coverage so those newly parsed
+  live fields persist in SQLite instead of being discarded on ingest.
+- Hardened segment-table parsing to handle both current-month and YTD layouts,
+  plus varying personal-lines subtotal column order, so recent live filings now
+  populate channel-mix and underwriting features consistently.
+
 ## Validation
 
 - Targeted regression run:

@@ -20,9 +20,16 @@ Current status as of 2026-04-02:
   (2004-08 through 2026-02) rather than only the recent live-fetch window.
 - The live ensemble now uses model-specific production feature sets:
   ElasticNet = Group B + `investment_income_growth_yoy` + `roe_net_income_ttm`
-  + `underwriting_income`; Ridge/BayesianRidge = Group B +
-  `combined_ratio_ttm` + `investment_income_growth_yoy` + `roe_net_income_ttm`;
-  GBT = Group B only.
+  + `underwriting_income`; Ridge = Group B + `combined_ratio_ttm` +
+  `investment_income_growth_yoy` + `roe_net_income_ttm`; BayesianRidge =
+  Ridge set + `buyback_yield` + `buyback_acceleration`; GBT = Group B only.
+- The EDGAR parser now normalizes `shares_repurchased` to millions of shares
+  across both legacy decimal filings (for example `0.21`) and newer whole-share
+  filings (for example `46,822` -> `0.046822`), so buyback features remain
+  time-consistent across the 2023-08 filing-format change.
+- The live EDGAR HTML path now covers a much broader slice of the historical CSV:
+  segment NPW/NPE, expanded PIF detail, P&L lines, share metrics, and several
+  investment / balance-sheet fields now populate directly from recent 8-K exhibits.
 
 ---
 
@@ -408,6 +415,9 @@ Post-v6.5 work focused on making the repo easier to trust and operate:
   outcomes.
 - **v7.2** hardened the live EDGAR parser with record validation, most-complete-wins
   deduplication, and zero-new-data alerting.
+- **v8.8** extended that same live parser toward parity with the historical CSV by
+  adding table-based extraction for segment premiums, expanded PIF and P&L fields,
+  recent share-count / buyback rows, and newer investment / capital metrics.
 - **v7.3** added the monthly report tax-context section and repaired `decision_log.md`
   insertion logic.
 - **v7.4** added CPCV path-stability properties plus observation-to-feature ratio
@@ -1113,8 +1123,14 @@ Place your position data at `data/processed/position_lots.csv` (gitignored):
 
 ```csv
 vest_date,rsu_type,shares,cost_basis_per_share
-2026-07-17,performance,500,116.08
-2027-01-19,time,500,133.65
+2019-01-01,time,1,59
+2020-01-01,time,1,74
+2021-01-01,time,1,99
+2022-01-01,time,1,103
+2023-01-01,time,1,130
+2024-01-01,time,1,161
+2025-01-21,time,1,240
+2026-01-20,time,1,201
 ```
 
 ### v2 Database Bootstrap
