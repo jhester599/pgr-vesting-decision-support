@@ -161,7 +161,13 @@ class TestParseHtmlExhibit:
         html = self._minimal_html(cr=91.0, pif=18_500_000)
         result = _parse_html_exhibit(html, "2024-02-15")
         assert result is not None
-        assert result["pif_total"] == pytest.approx(18_500_000)
+        assert result["pif_total"] == pytest.approx(18_500)
+
+    def test_extracts_pif_total_when_already_in_thousands(self):
+        html = self._minimal_html(cr=91.0, pif=18_500)
+        result = _parse_html_exhibit(html, "2024-02-15")
+        assert result is not None
+        assert result["pif_total"] == pytest.approx(18_500)
 
     def test_extracts_net_premiums_written(self):
         html = self._minimal_html(cr=91.0, pif=15_000_000, npw=2_500.0)
@@ -362,12 +368,21 @@ class TestBuildEmailMessage:
     _SAMPLE_BODY = textwrap.dedent("""\
         # PGR Monthly Decision — April 2026
 
+        ## Executive Summary
+
+        - What changed since last month: Outlook weakened.
+        - What to do at the next vest: Default 50% sale.
+
+        ---
+
         ## Consensus Signal
 
         | Field | Value |
         |-------|-------|
         | Signal | **OUTPERFORM (HIGH CONFIDENCE)** |
+        | Recommendation Mode | **ACTIONABLE** |
         | Recommended Sell % | **20%** |
+        | Predicted 6M Relative Return | +6.00% |
     """)
 
     def test_extracts_signal_in_subject(self):
@@ -383,7 +398,11 @@ class TestBuildEmailMessage:
     def test_body_attached_as_plain_text(self):
         msg = build_email_message(self._SAMPLE_BODY, "a@b.com", "c@d.com", "April 2026")
         payloads = msg.get_payload()
-        assert any("OUTPERFORM" in p.get_payload(decode=True).decode() for p in payloads)
+        body = payloads[0].get_payload(decode=True).decode()
+        assert "PGR Monthly Decision Summary" in body
+        assert "Recommendation mode: ACTIONABLE" in body
+        assert "Executive summary:" in body
+        assert "Full report:" in body
 
     def test_unknown_signal_when_no_match(self):
         msg = build_email_message("No signal line here", "a@b.com", "c@d.com", "April 2026")

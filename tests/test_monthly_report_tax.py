@@ -168,7 +168,7 @@ class TestAppendDecisionLog:
         )
 
     def test_new_row_not_duplicated(self, tmp_path):
-        """Calling append twice inserts exactly two log rows (one per call)."""
+        """Calling append twice with identical data only records one row."""
         log_path = _make_log_file(tmp_path)
         _append(log_path)
         _append(log_path)
@@ -176,8 +176,8 @@ class TestAppendDecisionLog:
         # Count lines that look like log data rows containing our date.
         matching_lines = [l for l in content.splitlines()
                           if "2026-04-20" in l and l.strip().startswith("|")]
-        assert len(matching_lines) == 2, (
-            f"Expected 2 data rows with '2026-04-20', found {len(matching_lines)}"
+        assert len(matching_lines) == 1, (
+            f"Expected 1 de-duplicated row with '2026-04-20', found {len(matching_lines)}"
         )
 
     def test_dry_run_flag_written(self, tmp_path):

@@ -96,16 +96,16 @@ class TestValidateParsedRecord:
         assert result["combined_ratio"] == 95.0
 
     def test_validate_pif_below_floor(self):
-        """pif_total=50,000 < 100,000 floor → set to None."""
-        rec = _rec(pif_total=50_000.0)
+        """pif_total=5,000 < 10,000 canonical floor → set to None."""
+        rec = _rec(pif_total=5_000.0)
         result = _validate_parsed_record(rec, "2026-01-20", "ACC004")
         assert result["pif_total"] is None
 
     def test_validate_pif_above_floor(self):
-        """pif_total=20,000,000 ≥ 100,000 floor → preserved."""
-        rec = _rec(pif_total=20_000_000.0)
+        """pif_total=20,000 (thousands) ≥ 10,000 floor → preserved."""
+        rec = _rec(pif_total=20_000.0)
         result = _validate_parsed_record(rec, "2026-01-20", "ACC005")
-        assert result["pif_total"] == 20_000_000.0
+        assert result["pif_total"] == 20_000.0
 
     def test_validate_eps_out_of_range_high(self):
         """eps_basic=25.0 > 15.0 → set to None."""
@@ -147,10 +147,10 @@ class TestValidateParsedRecord:
         assert result["combined_ratio"] == 95.0
 
     def test_validate_pif_at_floor_boundary(self):
-        """pif_total=100,000 exactly → not < 100,000 → preserved."""
-        rec = _rec(pif_total=100_000.0)
+        """pif_total=10,000 exactly → not < 10,000 → preserved."""
+        rec = _rec(pif_total=10_000.0)
         result = _validate_parsed_record(rec, "2026-01-20", "ACC011")
-        assert result["pif_total"] == 100_000.0
+        assert result["pif_total"] == 10_000.0
 
 
 # ---------------------------------------------------------------------------
@@ -207,7 +207,7 @@ class TestBothNullifiedSkip:
             combined_ratio=95.0,
             loss_lae_ratio=65.0,
             expense_ratio=40.0,   # delta=10 > 5 → CR nullified
-            pif_total=50_000.0,   # < 100,000 → PIF nullified
+            pif_total=5_000.0,    # < 10,000 → PIF nullified
         )
         result = _validate_parsed_record(rec, "2026-01-20", "ACC_BOTH")
 
@@ -215,3 +215,10 @@ class TestBothNullifiedSkip:
         assert result["pif_total"] is None, "PIF should have been nullified"
         # Confirm the caller's skip condition would trigger:
         assert result["combined_ratio"] is None and result["pif_total"] is None
+
+    def test_validate_accepts_both_legacy_and_current_pif_scales(self):
+        """Legacy raw counts and current thousand-scale counts both survive after normalization."""
+        legacy = _validate_parsed_record(_rec(pif_total=18_500.0), "2026-01-20", "ACC_LEGACY")
+        current = _validate_parsed_record(_rec(pif_total=29_575.0), "2026-01-20", "ACC_CURRENT")
+        assert legacy["pif_total"] == 18_500.0
+        assert current["pif_total"] == 29_575.0

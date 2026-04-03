@@ -135,6 +135,42 @@ Verified from the merged upstream baseline and `SESSION_PROGRESS.md`:
 - Full suite should be run after the final doc/code refresh to confirm that the
   entire repository remains green under the updated baseline.
 
+## v8.10-v8.13 - Reliability and Communication Refresh
+
+### v8.10 - Restore Green Baseline
+
+- Reconciled EDGAR parser expectations with the broadened live-parser behavior.
+- Standardized live HTML `pif_total` handling to the canonical thousands-of-policies
+  convention used by the historical CSV and downstream feature engineering.
+- Added regression coverage for both legacy large-format and current thousand-scale
+  PIF inputs so parser, validator, schema expectations, and tests agree.
+
+### v8.11 - Truthful Runtime and Artifact Refresh
+
+- Refreshed the monthly report generation path so committed artifacts reflect the
+  merged parser/runtime state instead of stale intermediate outputs.
+- Updated the monthly model/version label to `v8.13`.
+- Kept `decision_log.md` append behavior de-duplicated for exact reruns.
+
+### v8.12 - Model Quality Gating and Recommendation Logic
+
+- Added a recommendation-mode layer to `scripts/monthly_decision.py` with three
+  statuses: `ACTIONABLE`, `MONITORING-ONLY`, and `DEFER-TO-TAX-DEFAULT`.
+- Based the gate on existing diagnostics only: aggregate OOS R^2, aggregate IC,
+  aggregate hit rate, and representative CPCV verdict.
+- Routed weak-quality months to the default diversification/tax-discipline sale
+  rule rather than presenting them as prediction-led vesting calls.
+
+### v8.13 - Report and Email Usability Refresh
+
+- Added an executive summary to `recommendation.md` covering change since last
+  month, current model view, trust level, next-vest action, and what would need
+  to improve before the recommendation becomes more aggressive.
+- Surfaced the provisional three-scenario tax analysis directly in the monthly
+  report, including the next vest date, current lot proxy, and tax-engine table.
+- Upgraded `src/reporting/email_sender.py` to send a structured plaintext memo
+  with a readable summary followed by the full report instead of raw markdown only.
+
 ## Current State After v8
 
 - Local checkout matches the merged GitHub baseline from 2026-04-02 plus the

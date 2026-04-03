@@ -267,6 +267,29 @@ class TestWriteDiagnosticReport:
         assert "Feature Governance" in content
         assert "20/28" in content
         assert "Representative CPCV" in content
+        assert "≥ 19/28" in content
+
+    def test_report_scales_representative_cpcv_threshold_to_runtime_path_count(self, tmp_path: Path) -> None:
+        ensemble = _make_ensemble_results(n_obs=40)
+        cpcv_result = CPCVResult(
+            model_type="elasticnet",
+            benchmark="VTI",
+            n_splits=7,
+            n_paths=7,
+            path_ics=[0.05] * 4 + [-0.01] * 3,
+            mean_ic=0.012,
+            ic_std=0.041,
+            split_ics=[],
+        )
+        _write_diagnostic_report(
+            tmp_path,
+            date(2026, 3, 26),
+            ensemble,
+            representative_cpcv=cpcv_result,
+        )
+        content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
+        assert "≥ 5/7" in content
+        assert "≥ 19/28" in content
 
     def test_report_contains_threshold_reference(self, tmp_path: Path) -> None:
         ensemble = _make_ensemble_results(n_obs=40)

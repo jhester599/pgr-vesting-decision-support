@@ -422,6 +422,15 @@ def _read_exhibit_tables(html: str) -> list[pd.DataFrame]:
         return []
 
 
+def _normalise_pif_value(value: float | None) -> float | None:
+    """Normalise PIF counts to the canonical 'thousands of policies' unit."""
+    if value is None:
+        return None
+    if value >= 100_000:
+        return value / 1_000.0
+    return value
+
+
 def _parse_segment_metrics(
     nums: list[float],
 ) -> tuple[float, float, float | None, float | None, float]:
@@ -644,7 +653,7 @@ def _parse_html_exhibit(
             elif "commercial lines" in label and nums and table_metrics["pif_commercial_lines"] is None:
                 table_metrics["pif_commercial_lines"] = nums[0]
             elif label in ("total", "companywide", "companywide total") and nums:
-                candidate = nums[0]
+                candidate = _normalise_pif_value(nums[0])
                 if candidate >= 10_000:
                     table_metrics["pif_total"] = candidate
             elif label == "investment income" and nums and table_metrics["investment_income"] is None:
@@ -746,8 +755,9 @@ def _parse_html_exhibit(
             r"(?i)\bpif\b[^<]{0,40}</t[dh]>\s*<t[dh][^>]*>\s*([\d,]+)",
             r"(?si)policies\s+in\s+force.{0,300}?(\b[\d,]{6,}\b)",
         ],
-        lo=10_000, hi=100_000,
+        lo=10_000, hi=30_000_000,
     )
+    pif_total = _normalise_pif_value(pif_total)
 
     if combined_ratio is None and pif_total is None:
         return None  # Not a monthly supplement — skip
@@ -1210,8 +1220,8 @@ def _validate_parsed_record(
          log a WARNING and set combined_ratio = None (prefer missing over wrong).
       2. net_premiums_written >= sum of segment NPW (agency + direct +
          commercial + property).  If total < sum of parts, log WARNING.
-      3. pif_total should be > 1,000,000 for PGR (sanity floor).
-         If parsed pif_total < 100,000, likely a mis-parse; set to None.
+      3. pif_total is stored in thousands of policies for PGR monthly data.
+         If parsed pif_total < 10,000, likely a mis-parse; set to None.
       4. eps_basic should be in range [-5.0, 15.0] for monthly figures.
          Out-of-range values are set to None.
 

@@ -35,7 +35,9 @@ Options:
 from __future__ import annotations
 
 import argparse
+import math
 import os
+import re
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -72,6 +74,7 @@ from src.reporting.backtest_report import (
     export_backtest_to_csv,
     generate_rolling_ic_series,
 )
+from src.tax.capital_gains import compute_three_scenarios, load_position_lots
 
 
 # ---------------------------------------------------------------------------
@@ -105,9 +108,9 @@ _ETF_DESCRIPTIONS: dict[str, str] = {
 }
 
 _MODEL_VERSION_LABEL = (
-    "v8.7 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, "
+    "v8.13 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, "
     "inverse-variance weighting, C(8,2)=28 CPCV paths, "
-    "v7 tax context + v8 data-health refresh + model-specific feature sets)"
+    "v8 reliability, communication, and model-quality gating refresh)"
 )
 
 
@@ -186,7 +189,7 @@ def _generate_signals(
     """
     Build feature matrix (sliced to as_of), train ensemble WFO models, return signals.
 
-    Uses the v3.1 ElasticNet + Ridge + BayesianRidge ensemble per benchmark.
+    Uses the production 4-model ensemble per benchmark.
     BayesianRidge posterior variance drives the ``confidence_tier`` and
     ``prob_outperform`` columns in the output.
 
@@ -241,7 +244,7 @@ def _generate_signals(
         except Exception as exc:  # noqa: BLE001
             print(f"  [CPCV] WARNING: representative CPCV run failed: {exc}")
 
-    # Train 3-model ensemble per benchmark (ElasticNet + Ridge + BayesianRidge)
+    # Train 4-model ensemble per benchmark (ElasticNet + Ridge + BayesianRidge + GBT)
     ensemble_results = run_ensemble_benchmarks(
         X_event,
         rel_matrix,
@@ -583,6 +586,181 @@ def _consensus_signal(
     return consensus, mean_pred, mean_ic, mean_hr, mean_prob, confidence_tier
 
 
+def _compute_aggregate_health(
+    ensemble_results: dict,
+    target_horizon_months: int = 6,
+) -> dict | None:
+    """Compute the aggregate health metrics shared by recommendation and diagnostics."""
+    nw_lags = target_horizon_months - 1
+    all_dates: list[pd.Timestamp] = []
+    all_y_true: list[float] = []
+    all_y_hat: list[float] = []
+    per_benchmark_rows: list[dict] = []
+
+    for etf, ens_result in ensemble_results.items():
+        model_result = ens_result.model_results.get(
+            "elasticnet",
+            next(iter(ens_result.model_results.values()), None),
+        )
+        if model_result is None or len(model_result.folds) == 0:
+            continue
+
+        y_true = model_result.y_true_all
+        y_hat = model_result.y_hat_all
+        dates = model_result.test_dates_all
+        if len(y_true) < 2:
+            continue
+
+        all_dates.extend(dates.tolist())
+        all_y_true.extend(y_true.tolist())
+        all_y_hat.extend(y_hat.tolist())
+
+        from scipy.stats import spearmanr as _spearmanr
+
+        ic_val, _ = _spearmanr(y_true, y_hat)
+        hit = float(np.mean(np.sign(y_true) == np.sign(y_hat)))
+        per_benchmark_rows.append(
+            {
+                "benchmark": etf,
+                "n_obs": len(y_true),
+                "ic": ic_val,
+                "hit_rate": hit,
+                "ic_flag": _flag(ic_val, config.DIAG_MIN_IC, 0.03),
+                "hr_flag": _flag(hit, config.DIAG_MIN_HIT_RATE, 0.52),
+            }
+        )
+
+    if len(all_y_true) < 4:
+        return None
+
+    agg_predicted = pd.Series(all_y_hat, index=pd.DatetimeIndex(all_dates))
+    agg_realized = pd.Series(all_y_true, index=pd.DatetimeIndex(all_dates))
+    agg_predicted, agg_realized = agg_predicted.align(agg_realized, join="inner")
+
+    oos_r2 = compute_oos_r_squared(agg_predicted, agg_realized)
+    nw_ic, nw_pval = compute_newey_west_ic(agg_predicted, agg_realized, lags=nw_lags)
+    agg_hit = float(np.mean(np.sign(agg_realized.values) == np.sign(agg_predicted.values)))
+
+    return {
+        "n_agg": len(agg_realized),
+        "nw_lags": nw_lags,
+        "oos_r2": oos_r2,
+        "nw_ic": nw_ic,
+        "nw_pval": nw_pval,
+        "agg_hit": agg_hit,
+        "r2_flag": _flag(oos_r2, config.DIAG_MIN_OOS_R2, 0.005),
+        "ic_flag": _flag(nw_ic, config.DIAG_MIN_IC, 0.03),
+        "hr_flag": _flag(agg_hit, config.DIAG_MIN_HIT_RATE, 0.52),
+        "per_benchmark_rows": per_benchmark_rows,
+        "agg_predicted": agg_predicted,
+        "agg_realized": agg_realized,
+    }
+
+
+def _get_next_vest_info(as_of: date) -> tuple[date, str]:
+    """Return the next vest date and RSU type after the as-of date."""
+    candidates = [
+        (date(as_of.year, config.TIME_RSU_VEST_MONTH, config.TIME_RSU_VEST_DAY), "time"),
+        (date(as_of.year, config.PERF_RSU_VEST_MONTH, config.PERF_RSU_VEST_DAY), "performance"),
+        (date(as_of.year + 1, config.TIME_RSU_VEST_MONTH, config.TIME_RSU_VEST_DAY), "time"),
+        (date(as_of.year + 1, config.PERF_RSU_VEST_MONTH, config.PERF_RSU_VEST_DAY), "performance"),
+    ]
+    future = sorted((d, rsu_type) for d, rsu_type in candidates if d >= as_of)
+    return future[0]
+
+
+def _load_previous_decision_summary(as_of: date) -> dict | None:
+    """Load the most recent prior row from decision_log.md, if available."""
+    path = Path("results/monthly_decisions/decision_log.md")
+    if not path.exists():
+        return None
+
+    rows: list[dict[str, str]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("| "):
+            continue
+        if "As-Of Date" in line or "---" in line:
+            continue
+        parts = [part.strip() for part in line.strip().strip("|").split("|")]
+        if len(parts) != 8:
+            continue
+        rows.append(
+            {
+                "as_of": parts[0],
+                "run_date": parts[1],
+                "consensus": parts[2],
+                "sell_pct": parts[3],
+                "predicted": parts[4],
+                "mean_ic": parts[5],
+                "mean_hr": parts[6],
+                "notes": parts[7],
+            }
+        )
+
+    prior_rows: list[dict[str, str]] = []
+    for row in rows:
+        try:
+            if date.fromisoformat(row["as_of"]) < as_of:
+                prior_rows.append(row)
+        except ValueError:
+            continue
+    if not prior_rows:
+        return None
+    prior_rows.sort(key=lambda row: row["as_of"])
+    return prior_rows[-1]
+
+
+def _determine_recommendation_mode(
+    consensus: str,
+    mean_predicted: float,
+    mean_ic: float,
+    mean_hr: float,
+    aggregate_health: dict | None,
+    representative_cpcv: CPCVResult | None,
+) -> dict[str, str | float]:
+    """Downgrade weak-model months into monitoring or tax-default modes."""
+    cpcv_verdict = representative_cpcv.stability_verdict if representative_cpcv is not None else "UNKNOWN"
+    oos_r2 = aggregate_health["oos_r2"] if aggregate_health is not None else float("nan")
+
+    if (
+        aggregate_health is not None
+        and oos_r2 >= config.DIAG_MIN_OOS_R2
+        and mean_ic >= config.DIAG_MIN_IC
+        and mean_hr >= config.DIAG_MIN_HIT_RATE
+        and cpcv_verdict not in {"FAIL"}
+    ):
+        return {
+            "mode": "actionable",
+            "label": "ACTIONABLE",
+            "sell_pct": _sell_pct_from_consensus(consensus, mean_predicted, mean_ic),
+            "summary": "Model quality is strong enough for the signal to influence the vest decision.",
+            "action_note": "Prediction-led adjustment is allowed because aggregate model health is above threshold.",
+        }
+
+    if (
+        aggregate_health is None
+        or oos_r2 < 0.0
+        or mean_ic < 0.03
+        or mean_hr < 0.52
+        or cpcv_verdict == "FAIL"
+    ):
+        return {
+            "mode": "defer-to-tax-default",
+            "label": "DEFER-TO-TAX-DEFAULT",
+            "sell_pct": 0.50,
+            "summary": "Model quality is too weak to justify a prediction-led vesting action.",
+            "action_note": "Use the default diversification and tax-discipline rule rather than the point forecast.",
+        }
+
+    return {
+        "mode": "monitoring-only",
+        "label": "MONITORING-ONLY",
+        "sell_pct": 0.50,
+        "summary": "The signal is directionally interesting, but not trustworthy enough to override the default vesting rule.",
+        "action_note": "Treat this as monitoring evidence only until the aggregate diagnostics strengthen.",
+    }
+
+
 def _sell_pct_from_consensus(
     consensus: str,
     mean_predicted: float,
@@ -611,6 +789,7 @@ def _build_tax_context_lines(
     prob_outperform: float,
     stcg_rate: float | None = None,
     ltcg_rate: float | None = None,
+    as_of: date | None = None,
 ) -> list[str]:
     """Build the ## Tax Context section for recommendation.md.
 
@@ -628,6 +807,7 @@ def _build_tax_context_lines(
         prob_outperform:      Mean P(outperform) across benchmarks.
         stcg_rate:            STCG rate override (default: config.STCG_RATE).
         ltcg_rate:            LTCG rate override (default: config.LTCG_RATE).
+        as_of:                Reporting as-of date for next-vest calculations.
 
     Returns:
         List of markdown lines (without leading blank line separator).
@@ -638,6 +818,8 @@ def _build_tax_context_lines(
         stcg_rate = config.STCG_RATE
     if ltcg_rate is None:
         ltcg_rate = config.LTCG_RATE
+    if as_of is None:
+        as_of = date.today()
 
     breakeven = compute_stcg_ltcg_breakeven(stcg_rate, ltcg_rate)
     tax_differential = stcg_rate - ltcg_rate
@@ -665,12 +847,12 @@ def _build_tax_context_lines(
         )
 
     # Next vest dates from config
-    this_year = date.today().year
+    this_year = as_of.year
     next_time_vest = date(this_year, config.TIME_RSU_VEST_MONTH, config.TIME_RSU_VEST_DAY)
     next_perf_vest = date(this_year, config.PERF_RSU_VEST_MONTH, config.PERF_RSU_VEST_DAY)
-    if next_time_vest < date.today():
+    if next_time_vest < as_of:
         next_time_vest = date(this_year + 1, config.TIME_RSU_VEST_MONTH, config.TIME_RSU_VEST_DAY)
-    if next_perf_vest < date.today():
+    if next_perf_vest < as_of:
         next_perf_vest = date(this_year + 1, config.PERF_RSU_VEST_MONTH, config.PERF_RSU_VEST_DAY)
 
     lines = [
@@ -701,6 +883,176 @@ def _build_tax_context_lines(
     return lines
 
 
+def _build_provisional_vest_scenario(
+    conn,
+    as_of: date,
+    mean_predicted: float,
+    prob_outperform: float,
+) -> dict | None:
+    """Build a provisional three-scenario view for the next vest using current lots."""
+    lots_path = Path("data/processed/position_lots.csv")
+    if not lots_path.exists():
+        return None
+
+    lots = load_position_lots(str(lots_path))
+    if not lots:
+        return None
+
+    prices = db_client.get_prices(conn, "PGR", end_date=str(as_of))
+    if prices.empty:
+        return None
+
+    current_price = float(prices["close"].iloc[-1])
+    total_shares = sum(lot.shares_remaining for lot in lots if lot.shares_remaining and lot.shares_remaining > 0)
+    if total_shares <= 0:
+        return None
+
+    avg_basis = sum(
+        lot.shares_remaining * lot.cost_basis_per_share
+        for lot in lots
+        if lot.shares_remaining and lot.shares_remaining > 0
+    ) / total_shares
+    vest_date, rsu_type = _get_next_vest_info(as_of)
+    scenario = compute_three_scenarios(
+        vest_date=vest_date,
+        rsu_type=rsu_type,
+        shares=total_shares,
+        cost_basis_per_share=avg_basis,
+        current_price=current_price,
+        predicted_6m_return=mean_predicted,
+        predicted_12m_return=mean_predicted * 2.0,
+        prob_outperform_6m=prob_outperform,
+        prob_outperform_12m=prob_outperform,
+    )
+    return {
+        "vest_date": vest_date,
+        "rsu_type": rsu_type,
+        "current_price": current_price,
+        "avg_basis": avg_basis,
+        "shares": total_shares,
+        "scenario": scenario,
+    }
+
+
+def _build_executive_summary_lines(
+    as_of: date,
+    consensus: str,
+    confidence_tier: str,
+    mean_predicted: float,
+    sell_pct: float,
+    recommendation_mode: dict[str, str | float],
+    aggregate_health: dict | None,
+    previous_summary: dict | None,
+    next_vest_summary: dict | None,
+) -> list[str]:
+    """Build a concise decision memo at the top of recommendation.md."""
+    quality_sentence = recommendation_mode["summary"]
+    if previous_summary is None:
+        change_line = "First tracked monthly memo on the refreshed v8 baseline."
+    else:
+        change_line = (
+            f"Previous logged month ({previous_summary['as_of']}) was "
+            f"{previous_summary['consensus']} at {previous_summary['predicted']} "
+            f"with mean IC {previous_summary['mean_ic']}."
+        )
+
+    next_vest_line = "Next vest guidance unavailable because the lot file or latest PGR price is missing."
+    if next_vest_summary is not None:
+        next_vest_line = (
+            f"Next vest is {next_vest_summary['vest_date']} ({next_vest_summary['rsu_type']}). "
+            f"Default action today: sell {sell_pct:.0%} at vest unless model quality improves."
+        )
+
+    change_trigger = (
+        "A more aggressive recommendation would require aggregate OOS R^2 >= 2%, "
+        "mean IC >= 0.07, hit rate >= 55%, and a non-failing representative CPCV check."
+    )
+    if recommendation_mode["mode"] == "actionable":
+        change_trigger = (
+            "This view would weaken if aggregate IC, hit rate, OOS R^2, or representative CPCV "
+            "drops back below the current quality thresholds."
+        )
+
+    health_line = "Aggregate health unavailable."
+    if aggregate_health is not None:
+        health_line = (
+            f"Aggregate health: OOS R^2 {aggregate_health['oos_r2']:.2%}, "
+            f"IC {aggregate_health['nw_ic']:.4f}, hit rate {aggregate_health['agg_hit']:.1%}."
+        )
+
+    return [
+        "## Executive Summary",
+        "",
+        f"- What changed since last month: {change_line}",
+        f"- Current model view: {consensus} with {confidence_tier.lower()} confidence and a 6M relative-return estimate of {mean_predicted:+.2%}.",
+        f"- How trustworthy it is: {quality_sentence} {health_line}",
+        f"- What to do at the next vest: {next_vest_line}",
+        f"- What would change the recommendation: {change_trigger}",
+        "",
+        "---",
+        "",
+    ]
+
+
+def _build_vest_decision_lines(
+    next_vest_summary: dict | None,
+    recommendation_mode: dict[str, str | float],
+    sell_pct: float,
+) -> list[str]:
+    """Render the next-vest recommendation and provisional three-scenario table."""
+    if next_vest_summary is None:
+        return []
+
+    scenario_result = next_vest_summary["scenario"]
+    winner_label = (
+        "Provisional scenario winner"
+        if recommendation_mode["mode"] == "actionable"
+        else "Tax-engine scenario ranking (informational only)"
+    )
+    scenario_note = (
+        "The tax engine's highest-utility scenario aligns with the current point forecast."
+        if recommendation_mode["mode"] == "actionable"
+        else "Because recommendation mode is not ACTIONABLE, do not treat the tax-engine ranking below as a standalone trading instruction."
+    )
+
+    lines = [
+        "## Next Vest Decision",
+        "",
+        "| Field | Value |",
+        "|-------|-------|",
+        f"| Recommendation mode | **{recommendation_mode['label']}** |",
+        f"| Next vest date | {next_vest_summary['vest_date']} |",
+        f"| RSU type | {next_vest_summary['rsu_type']} |",
+        f"| Current PGR price | ${next_vest_summary['current_price']:.2f} |",
+        f"| Current in-scope shares | {next_vest_summary['shares']:.2f} |",
+        f"| Average cost basis used | ${next_vest_summary['avg_basis']:.2f} |",
+        f"| Suggested default vest action | Sell {sell_pct:.0%} of the vesting tranche |",
+        "",
+        f"> {recommendation_mode['action_note']}",
+        "> The scenario table below is provisional and uses the current lot file as a proxy for the next vesting decision.",
+        "",
+        "| Scenario | Sell Date | Tax Rate | Predicted Return | Net Proceeds | Probability |",
+        "|----------|-----------|----------|------------------|--------------|-------------|",
+    ]
+
+    for scenario in scenario_result.scenarios:
+        lines.append(
+            f"| {scenario.label} | {scenario.sell_date} | {scenario.tax_rate:.0%} | "
+            f"{scenario.predicted_return:+.2%} | ${scenario.net_proceeds:,.2f} | {scenario.probability:.1%} |"
+        )
+
+    lines += [
+        "",
+        f"> {winner_label}: **{scenario_result.recommended_scenario}**.",
+        f"> {scenario_note}",
+        f"> STCG/LTCG breakeven from the tax engine: {scenario_result.stcg_ltcg_breakeven:.2%}.",
+        "",
+        "---",
+        "",
+    ]
+    return lines
+
+
 # ---------------------------------------------------------------------------
 # Report writers
 # ---------------------------------------------------------------------------
@@ -709,6 +1061,7 @@ def _write_recommendation_md(
     out_dir: Path,
     as_of: date,
     run_date: date,
+    conn,
     signals: pd.DataFrame,
     consensus: str,
     mean_predicted: float,
@@ -719,12 +1072,34 @@ def _write_recommendation_md(
     mean_prob_outperform: float = 0.5,
     composite_confidence_tier: str = "LOW",
     cal_result: CalibrationResult | None = None,
+    aggregate_health: dict | None = None,
+    recommendation_mode: dict[str, str | float] | None = None,
 ) -> None:
     """Write the human-readable recommendation report."""
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / "recommendation.md"
 
     has_confidence = "prob_outperform" in signals.columns
+    has_calibrated = (
+        "calibrated_prob_outperform" in signals.columns
+        and not signals.empty
+        and cal_result is not None
+        and cal_result.method != "uncalibrated"
+    )
+    mean_cal_prob = (
+        float(signals["calibrated_prob_outperform"].mean())
+        if has_calibrated
+        else mean_prob_outperform
+    )
+    if recommendation_mode is None:
+        recommendation_mode = {
+            "mode": "monitoring-only",
+            "label": "MONITORING-ONLY",
+            "summary": "Recommendation mode defaulted because aggregate health was unavailable.",
+            "action_note": "Use the default diversification rule.",
+        }
+    previous_summary = _load_previous_decision_summary(as_of)
+    next_vest_summary = _build_provisional_vest_scenario(conn, as_of, mean_predicted, mean_cal_prob)
 
     lines = [
         f"# PGR Monthly Decision Report — {as_of.strftime('%B %Y')}",
@@ -735,25 +1110,29 @@ def _write_recommendation_md(
         "",
         "---",
         "",
+        *_build_executive_summary_lines(
+            as_of,
+            consensus,
+            composite_confidence_tier,
+            mean_predicted,
+            sell_pct,
+            recommendation_mode,
+            aggregate_health,
+            previous_summary,
+            next_vest_summary,
+        ),
         "## Consensus Signal",
         "",
         f"| Field | Value |",
         f"|-------|-------|",
         f"| Signal | **{consensus} ({composite_confidence_tier} CONFIDENCE)** |",
+        f"| Recommendation Mode | **{recommendation_mode['label']}** |",
         f"| Recommended Sell % | **{sell_pct:.0%}** |",
         f"| Predicted 6M Relative Return | {mean_predicted:+.2%} |",
     ]
-
-    has_calibrated = (
-        "calibrated_prob_outperform" in signals.columns
-        and not signals.empty
-        and cal_result is not None
-        and cal_result.method != "uncalibrated"
-    )
     if has_confidence:
         lines.append(f"| P(Outperform, raw) | {mean_prob_outperform:.1%} |")
     if has_calibrated:
-        mean_cal_prob = float(signals["calibrated_prob_outperform"].mean())
         lines.append(f"| P(Outperform, calibrated) | {mean_cal_prob:.1%} |")
 
     # Conformal CI row — median CI bounds across benchmarks (robust to outlier widths)
@@ -805,7 +1184,21 @@ def _write_recommendation_md(
     n_total = len(signals)
     outperform_frac = f"{n_outperform}/{n_total} ({n_outperform / n_total:.0%})" if n_total else "0/0"
 
-    if consensus == "OUTPERFORM":
+    if recommendation_mode["mode"] == "defer-to-tax-default":
+        lines += [
+            f"The point forecast leans {consensus.lower()}, and {outperform_frac} benchmarks favour outperformance, "
+            f"but the broader quality gate is failing.",
+            "",
+            "Recommended action at next vesting event: **DEFAULT 50% SALE** for diversification and tax discipline, not because the prediction is high-confidence.",
+        ]
+    elif recommendation_mode["mode"] == "monitoring-only":
+        lines += [
+            f"The point forecast leans {consensus.lower()}, and {outperform_frac} benchmarks favour outperformance, "
+            "but the signal should be treated as monitoring information rather than an execution-grade edge.",
+            "",
+            "Recommended action at next vesting event: **DEFAULT 50% SALE** unless future monthly runs improve the quality gate.",
+        ]
+    elif consensus == "OUTPERFORM":
         lines += [
             f"The ensemble has **{composite_confidence_tier.lower()} conviction** that PGR "
             f"will outperform a diversified ETF portfolio over the next 6 months.  "
@@ -837,6 +1230,8 @@ def _write_recommendation_md(
         "## Per-Benchmark Signals",
         "",
     ]
+
+    lines += _build_vest_decision_lines(next_vest_summary, recommendation_mode, sell_pct)
 
     show_cal_col = has_calibrated and "calibrated_prob_outperform" in signals.columns
     show_ci_col = "ci_lower" in signals.columns and not signals.empty
@@ -898,7 +1293,7 @@ def _write_recommendation_md(
                 lines.append(f"| {ticker} | {desc} | {pred} | {ic_val} | {hr_val} | {sig} |")
 
     # v7.3 — Tax Context section
-    lines += _build_tax_context_lines(mean_predicted, mean_prob_outperform)
+    lines += _build_tax_context_lines(mean_predicted, mean_cal_prob, as_of=as_of)
 
     lines += [
         "",
@@ -963,6 +1358,9 @@ def _append_decision_log(
         f"| {mean_predicted:+.2%} | {mean_ic:.4f} | {mean_hr:.1%} "
         f"| {'[DRY RUN]' if dry_run else ''} |"
     )
+    if new_row in content:
+        print(f"  Decision log already contains this row; skipping append.")
+        return
 
     # Replace the placeholder on first use.
     placeholder = "| *(first entry will appear here after the first automated run)* |"
@@ -1283,13 +1681,17 @@ def _write_diagnostic_report(
             "FAIL": "❌",
             "UNKNOWN": "⚠️",
         }.get(representative_cpcv.stability_verdict, "⚠️")
-        cpcv_threshold = f"≥ {config.DIAG_CPCV_MIN_POSITIVE_PATHS}/{representative_cpcv.n_paths}"
+        scaled_positive_threshold = math.ceil(
+            config.DIAG_CPCV_MIN_POSITIVE_PATHS * representative_cpcv.n_paths / 28
+        )
+        cpcv_threshold = f"≥ {scaled_positive_threshold}/{representative_cpcv.n_paths}"
         cpcv_note_lines = [
             f"> **Representative CPCV:** benchmark={representative_cpcv.benchmark}, "
             f"model={representative_cpcv.model_type}, paths={representative_cpcv.n_paths}, "
             f"mean IC={representative_cpcv.mean_ic:.4f}, IC std={representative_cpcv.ic_std:.4f}.",
             f"> Stability verdict: {representative_cpcv.stability_verdict}. "
-            f"Threshold defined in `config.py` as ≥ {config.DIAG_CPCV_MIN_POSITIVE_PATHS} positive paths.",
+            f"Scaled monthly threshold: ≥ {scaled_positive_threshold}/{representative_cpcv.n_paths} "
+            f"(maps from the full C(8,2) standard of ≥ {config.DIAG_CPCV_MIN_POSITIVE_PATHS}/28 positive paths).",
         ]
 
     obs_feature_lines: list[str] = []
@@ -1531,7 +1933,16 @@ def main(
 
     # Step 3: Compute consensus
     consensus, mean_pred, mean_ic, mean_hr, mean_prob, confidence_tier = _consensus_signal(signals)
-    sell_pct = _sell_pct_from_consensus(consensus, mean_pred, mean_ic)
+    aggregate_health = _compute_aggregate_health(ensemble_results, target_horizon_months=6)
+    recommendation_mode = _determine_recommendation_mode(
+        consensus,
+        mean_pred,
+        mean_ic,
+        mean_hr,
+        aggregate_health,
+        diagnostics.get("representative_cpcv"),
+    )
+    sell_pct = float(recommendation_mode["sell_pct"])
 
     print(f"\n  Consensus signal: {consensus} ({confidence_tier} CONFIDENCE)")
     print(f"  Predicted 6M relative return: {mean_pred:+.2%}")
@@ -1540,16 +1951,21 @@ def main(
         mean_cal = float(signals["calibrated_prob_outperform"].mean())
         print(f"  P(outperform, calibrated): {mean_cal:.1%}")
     print(f"  Mean IC: {mean_ic:.4f}  |  Mean hit rate: {mean_hr:.1%}")
+    if aggregate_health is not None:
+        print(f"  Aggregate OOS R^2: {aggregate_health['oos_r2']:.2%}")
+    print(f"  Recommendation mode: {recommendation_mode['label']}")
     print(f"  Sell %: {sell_pct:.0%}")
 
     # Step 4: Write outputs
     out_dir = _output_dir(as_of)
     _write_recommendation_md(
-        out_dir, as_of, run_date, signals,
+        out_dir, as_of, run_date, conn, signals,
         consensus, mean_pred, mean_ic, mean_hr, sell_pct, dry_run,
         mean_prob_outperform=mean_prob,
         composite_confidence_tier=confidence_tier,
         cal_result=cal_result,
+        aggregate_health=aggregate_health,
+        recommendation_mode=recommendation_mode,
     )
     _write_signals_csv(out_dir, signals)
     _append_decision_log(

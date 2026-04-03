@@ -1,8 +1,18 @@
 # PGR Monthly Decision Report — April 2026
 
 **As-of Date:** 2026-04-02  
-**Run Date:** 2026-04-02  
-**Model Version:** v8.7 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, inverse-variance weighting, C(8,2)=28 CPCV paths, v7 tax context + v8 data-health refresh + model-specific feature sets)  
+**Run Date:** 2026-04-03  
+**Model Version:** v8.13 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, inverse-variance weighting, C(8,2)=28 CPCV paths, v8 reliability, communication, and model-quality gating refresh)  
+
+---
+
+## Executive Summary
+
+- What changed since last month: Previous logged month (2026-03-27) was NEUTRAL at +1.75% with mean IC 0.0421.
+- Current model view: OUTPERFORM with moderate confidence and a 6M relative-return estimate of +4.18%.
+- How trustworthy it is: Model quality is too weak to justify a prediction-led vesting action. Aggregate health: OOS R^2 -123.80%, IC 0.1255, hit rate 56.8%.
+- What to do at the next vest: Next vest is 2026-07-17 (performance). Default action today: sell 50% at vest unless model quality improves.
+- What would change the recommendation: A more aggressive recommendation would require aggregate OOS R^2 >= 2%, mean IC >= 0.07, hit rate >= 55%, and a non-failing representative CPCV check.
 
 ---
 
@@ -10,55 +20,83 @@
 
 | Field | Value |
 |-------|-------|
-| Signal | **NEUTRAL (MODERATE CONFIDENCE)** |
+| Signal | **OUTPERFORM (MODERATE CONFIDENCE)** |
+| Recommendation Mode | **DEFER-TO-TAX-DEFAULT** |
 | Recommended Sell % | **50%** |
-| Predicted 6M Relative Return | -7.70% |
-| P(Outperform, raw) | 32.5% |
-| P(Outperform, calibrated) | 68.0% |
-| 80% Prediction Interval (median) | -43.61% to +26.86% |
-| Mean IC (across benchmarks) | -0.0095 |
-| Mean Hit Rate | 50.5% |
+| Predicted 6M Relative Return | +4.18% |
+| P(Outperform, raw) | 64.0% |
+| P(Outperform, calibrated) | 67.4% |
+| 80% Prediction Interval (median) | -29.14% to +40.41% |
+| Mean IC (across benchmarks) | 0.1065 |
+| Mean Hit Rate | 56.4% |
 
 > **Note:** The sell % recommendation is used only at actual vesting events
 > (January and July).  Monthly reports are monitoring tools, not trade signals.
 >
-> **Calibration:** Phase 2 — Platt scaling active (n=3,270 OOS obs).  ECE = 1.8% [95% CI: 1.1%–4.7%].
+> **Calibration:** Phase 2 — Platt scaling active (n=3,270 OOS obs).  ECE = 1.0% [95% CI: 1.0%–4.2%].
 
 ---
 
 ## Interpretation
 
-Model signal is weak (mean IC below threshold or mixed directional signals).  1/21 (5%) benchmarks favour outperformance.
+The point forecast leans outperform, and 11/21 (52%) benchmarks favour outperformance, but the broader quality gate is failing.
 
-Recommended action at next vesting event: **DEFAULT 50% SALE** for risk management.
+Recommended action at next vesting event: **DEFAULT 50% SALE** for diversification and tax discipline, not because the prediction is high-confidence.
 
 ---
 
 ## Per-Benchmark Signals
 
+## Next Vest Decision
+
+| Field | Value |
+|-------|-------|
+| Recommendation mode | **DEFER-TO-TAX-DEFAULT** |
+| Next vest date | 2026-07-17 |
+| RSU type | performance |
+| Current PGR price | $198.84 |
+| Current in-scope shares | 8.00 |
+| Average cost basis used | $133.38 |
+| Suggested default vest action | Sell 50% of the vesting tranche |
+
+> Use the default diversification and tax-discipline rule rather than the point forecast.
+> The scenario table below is provisional and uses the current lot file as a proxy for the next vesting decision.
+
+| Scenario | Sell Date | Tax Rate | Predicted Return | Net Proceeds | Probability |
+|----------|-----------|----------|------------------|--------------|-------------|
+| SELL_NOW_STCG | 2026-07-17 | 37% | +0.00% | $1,396.94 | 100.0% |
+| HOLD_TO_LTCG | 2027-07-18 | 20% | +8.36% | $1,592.33 | 67.4% |
+| HOLD_FOR_LOSS | 2027-01-13 | 37% | +4.18% | $1,590.72 | 0.0% |
+
+> Tax-engine scenario ranking (informational only): **SELL_NOW_STCG**.
+> Because recommendation mode is not ACTIONABLE, do not treat the tax-engine ranking below as a standalone trading instruction.
+> STCG/LTCG breakeven from the tax engine: 21.25%.
+
+---
+
 | Benchmark | Description | Predicted Return | CI Lower | CI Upper | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |
 |-----------|-------------|----------------|----------|----------|----|----------|--------|--------|------------|--------|
-| VTI | Total Stock Market | -11.75% | -45.91% | +22.41% | -0.0573 | 45.5% | 21.4% | 57.8% | HIGH | NEUTRAL |
-| VOO | S&P 500 | -8.38% | -43.61% | +26.86% | -0.1776 | 37.0% | 29.0% | 70.8% | HIGH | NEUTRAL |
-| VGT | Information Technology | -15.49% | -55.49% | +24.51% | -0.0142 | 47.0% | 22.5% | 55.5% | HIGH | NEUTRAL |
-| VHT | Health Care | -19.71% | -58.86% | +19.45% | 0.0649 | 51.7% | 9.7% | 50.0% | HIGH | UNDERPERFORM |
-| VFH | Financials | -5.01% | -28.30% | +18.29% | -0.0358 | 46.5% | 33.8% | 62.2% | MODERATE | NEUTRAL |
-| VIS | Industrials | -3.36% | -41.03% | +34.32% | -0.0567 | 45.6% | 40.8% | 64.3% | LOW | NEUTRAL |
-| VDE | Energy | -17.52% | -54.41% | +19.36% | -0.0753 | 53.3% | 20.8% | 68.8% | HIGH | NEUTRAL |
-| VPU | Utilities | -16.67% | -43.14% | +9.81% | 0.1544 | 52.2% | 12.2% | 59.8% | HIGH | UNDERPERFORM |
-| KIE | S&P Insurance | -8.36% | -33.45% | +16.72% | -0.0558 | 47.9% | 19.0% | 60.8% | HIGH | NEUTRAL |
-| VXUS | Total International Stock | -2.16% | -46.21% | +41.89% | -0.1764 | 49.0% | 44.0% | 79.7% | LOW | NEUTRAL |
-| VEA | Developed Markets ex-US | -3.63% | -50.12% | +42.87% | -0.1561 | 47.7% | 40.2% | 78.7% | LOW | NEUTRAL |
-| VWO | Emerging Markets | -2.66% | -44.60% | +39.28% | -0.0681 | 47.6% | 42.6% | 76.4% | LOW | NEUTRAL |
-| VIG | Dividend Appreciation | -7.98% | -39.35% | +23.38% | 0.0117 | 49.7% | 27.9% | 68.7% | HIGH | NEUTRAL |
-| SCHD | US Dividend Equity | -4.01% | -83.68% | +75.65% | -0.1071 | 49.2% | 44.0% | 77.0% | LOW | NEUTRAL |
-| BND | Total Bond Market | +0.65% | -33.06% | +34.36% | 0.1258 | 55.2% | 52.0% | 75.3% | LOW | NEUTRAL |
-| BNDX | Total International Bond | -0.29% | -28.75% | +28.16% | 0.1030 | 53.2% | 49.1% | 72.8% | LOW | NEUTRAL |
-| VCIT | Intermediate-Term Corporate Bond | +0.01% | -29.00% | +29.02% | 0.0421 | 57.9% | 50.0% | 74.4% | LOW | NEUTRAL |
-| VMBS | Mortgage-Backed Securities | +1.55% | -32.04% | +35.13% | 0.0893 | 59.4% | 54.8% | 74.8% | LOW | OUTPERFORM |
-| VNQ | Real Estate | -7.56% | -33.78% | +18.66% | 0.1189 | 53.2% | 29.2% | 59.2% | HIGH | UNDERPERFORM |
-| GLD | Gold Shares | -12.10% | -55.01% | +30.82% | 0.0540 | 50.6% | 22.4% | 63.2% | HIGH | UNDERPERFORM |
-| DBC | DB Commodity Index | -17.31% | -50.63% | +16.01% | 0.0161 | 61.0% | 17.9% | 76.8% | HIGH | NEUTRAL |
+| VTI | Total Stock Market | +6.95% | -29.14% | +43.05% | 0.0407 | 51.6% | 70.9% | 59.3% | HIGH | NEUTRAL |
+| VOO | S&P 500 | +0.65% | -34.51% | +35.82% | 0.1574 | 47.5% | 52.1% | 68.5% | LOW | NEUTRAL |
+| VGT | Information Technology | -2.42% | -41.10% | +36.25% | 0.0802 | 52.6% | 44.3% | 54.0% | LOW | UNDERPERFORM |
+| VHT | Health Care | +6.03% | -28.35% | +40.41% | 0.1665 | 58.5% | 68.3% | 66.1% | MODERATE | OUTPERFORM |
+| VFH | Financials | +8.80% | -24.67% | +42.26% | 0.1511 | 53.6% | 80.1% | 62.0% | HIGH | OUTPERFORM |
+| VIS | Industrials | +3.02% | -34.34% | +40.38% | 0.1192 | 51.5% | 59.6% | 63.5% | LOW | OUTPERFORM |
+| VDE | Energy | -6.93% | -54.08% | +40.21% | -0.0259 | 53.5% | 34.1% | 66.3% | MODERATE | NEUTRAL |
+| VPU | Utilities | +3.43% | -27.14% | +34.00% | 0.2303 | 57.3% | 60.5% | 65.4% | MODERATE | OUTPERFORM |
+| KIE | S&P Insurance | +5.85% | -16.76% | +28.47% | 0.1463 | 56.4% | 73.8% | 61.7% | HIGH | OUTPERFORM |
+| VXUS | Total International Stock | +6.34% | -38.55% | +51.24% | 0.0349 | 58.8% | 71.2% | 69.7% | HIGH | NEUTRAL |
+| VEA | Developed Markets ex-US | +4.04% | -40.84% | +48.92% | 0.0477 | 58.5% | 64.0% | 68.6% | MODERATE | NEUTRAL |
+| VWO | Emerging Markets | +6.24% | -32.58% | +45.06% | 0.0389 | 55.3% | 69.6% | 69.9% | MODERATE | NEUTRAL |
+| VIG | Dividend Appreciation | +4.09% | -25.43% | +33.61% | 0.1390 | 54.3% | 63.7% | 65.3% | MODERATE | OUTPERFORM |
+| SCHD | US Dividend Equity | -1.53% | -78.06% | +75.01% | -0.0871 | 52.1% | 47.4% | 71.7% | LOW | NEUTRAL |
+| BND | Total Bond Market | +11.26% | -20.35% | +42.87% | 0.1452 | 63.2% | 84.3% | 75.9% | HIGH | OUTPERFORM |
+| BNDX | Total International Bond | +11.47% | -18.16% | +41.09% | 0.1751 | 62.2% | 84.9% | 73.7% | HIGH | OUTPERFORM |
+| VCIT | Intermediate-Term Corporate Bond | +10.75% | -21.69% | +43.19% | 0.0751 | 61.2% | 83.4% | 75.6% | HIGH | OUTPERFORM |
+| VMBS | Mortgage-Backed Securities | +10.17% | -21.89% | +42.23% | 0.1147 | 64.2% | 82.2% | 76.0% | HIGH | OUTPERFORM |
+| VNQ | Real Estate | +4.00% | -24.13% | +32.12% | 0.2237 | 57.1% | 62.8% | 61.5% | MODERATE | OUTPERFORM |
+| GLD | Gold Shares | -2.19% | -44.30% | +39.93% | 0.1631 | 55.7% | 42.9% | 66.4% | LOW | UNDERPERFORM |
+| DBC | DB Commodity Index | -2.29% | -37.45% | +32.87% | 0.0996 | 60.5% | 43.9% | 74.6% | LOW | UNDERPERFORM |
 
 ---
 
@@ -70,12 +108,12 @@ Recommended action at next vesting event: **DEFAULT 50% SALE** for risk manageme
 | LTCG Rate (federal) | 20% |
 | Tax-rate differential | 17% |
 | **LTCG breakeven return** | **21.25%** |
-| Current model prediction (6M) | -7.70% |
-| P(outperform) | 32.5% |
+| Current model prediction (6M) | +4.18% |
+| P(outperform) | 67.4% |
 | Next time-based vest | 2027-01-19 |
 | Next performance vest | 2026-07-17 |
 
-⚠️ **Model predicts negative return (-7.7%).**  Consider capital-loss harvesting scenario — a tax loss at 37% STCG rate can offset other gains.  See three-scenario analysis at vesting.
+✓ **Model prediction (+4.2%) is below the LTCG breakeven (21.2%) by 17.1%.**  Holding RSUs for 366 days post-vest to qualify for LTCG treatment is likely the higher after-tax outcome.
 
 > **Breakeven formula:** `(STCG − LTCG) / (1 − LTCG)` — the minimum
 > return needed on RSUs held to LTCG eligibility (366 days post-vest) to
