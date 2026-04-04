@@ -74,6 +74,12 @@ from src.reporting.backtest_report import (
     export_backtest_to_csv,
     generate_rolling_ic_series,
 )
+from src.reporting.decision_rendering import (
+    build_executive_summary_lines as render_executive_summary_lines,
+    build_vest_decision_lines as render_vest_decision_lines,
+    determine_recommendation_mode as render_determine_recommendation_mode,
+)
+from src.reporting.run_manifest import build_run_manifest, write_run_manifest
 from src.tax.capital_gains import compute_three_scenarios, load_position_lots
 
 
@@ -108,9 +114,10 @@ _ETF_DESCRIPTIONS: dict[str, str] = {
 }
 
 _MODEL_VERSION_LABEL = (
-    "v8.13 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, "
+    "v10.1 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, "
     "inverse-variance weighting, C(8,2)=28 CPCV paths, "
-    "v8 reliability, communication, and model-quality gating refresh)"
+    "post-v9 baseline reconciliation, migrations, CI/workflow hardening, "
+    "and run-manifest support)"
 )
 
 
@@ -718,47 +725,15 @@ def _determine_recommendation_mode(
     aggregate_health: dict | None,
     representative_cpcv: CPCVResult | None,
 ) -> dict[str, str | float]:
-    """Downgrade weak-model months into monitoring or tax-default modes."""
-    cpcv_verdict = representative_cpcv.stability_verdict if representative_cpcv is not None else "UNKNOWN"
-    oos_r2 = aggregate_health["oos_r2"] if aggregate_health is not None else float("nan")
-
-    if (
-        aggregate_health is not None
-        and oos_r2 >= config.DIAG_MIN_OOS_R2
-        and mean_ic >= config.DIAG_MIN_IC
-        and mean_hr >= config.DIAG_MIN_HIT_RATE
-        and cpcv_verdict not in {"FAIL"}
-    ):
-        return {
-            "mode": "actionable",
-            "label": "ACTIONABLE",
-            "sell_pct": _sell_pct_from_consensus(consensus, mean_predicted, mean_ic),
-            "summary": "Model quality is strong enough for the signal to influence the vest decision.",
-            "action_note": "Prediction-led adjustment is allowed because aggregate model health is above threshold.",
-        }
-
-    if (
-        aggregate_health is None
-        or oos_r2 < 0.0
-        or mean_ic < 0.03
-        or mean_hr < 0.52
-        or cpcv_verdict == "FAIL"
-    ):
-        return {
-            "mode": "defer-to-tax-default",
-            "label": "DEFER-TO-TAX-DEFAULT",
-            "sell_pct": 0.50,
-            "summary": "Model quality is too weak to justify a prediction-led vesting action.",
-            "action_note": "Use the default diversification and tax-discipline rule rather than the point forecast.",
-        }
-
-    return {
-        "mode": "monitoring-only",
-        "label": "MONITORING-ONLY",
-        "sell_pct": 0.50,
-        "summary": "The signal is directionally interesting, but not trustworthy enough to override the default vesting rule.",
-        "action_note": "Treat this as monitoring evidence only until the aggregate diagnostics strengthen.",
-    }
+    """Compatibility wrapper around the extracted decision-rendering helper."""
+    return render_determine_recommendation_mode(
+        consensus=consensus,
+        mean_predicted=mean_predicted,
+        mean_ic=mean_ic,
+        mean_hr=mean_hr,
+        aggregate_health=aggregate_health,
+        representative_cpcv=representative_cpcv,
+    )
 
 
 def _sell_pct_from_consensus(
@@ -945,53 +920,18 @@ def _build_executive_summary_lines(
     previous_summary: dict | None,
     next_vest_summary: dict | None,
 ) -> list[str]:
-    """Build a concise decision memo at the top of recommendation.md."""
-    quality_sentence = recommendation_mode["summary"]
-    if previous_summary is None:
-        change_line = "First tracked monthly memo on the refreshed v8 baseline."
-    else:
-        change_line = (
-            f"Previous logged month ({previous_summary['as_of']}) was "
-            f"{previous_summary['consensus']} at {previous_summary['predicted']} "
-            f"with mean IC {previous_summary['mean_ic']}."
-        )
-
-    next_vest_line = "Next vest guidance unavailable because the lot file or latest PGR price is missing."
-    if next_vest_summary is not None:
-        next_vest_line = (
-            f"Next vest is {next_vest_summary['vest_date']} ({next_vest_summary['rsu_type']}). "
-            f"Default action today: sell {sell_pct:.0%} at vest unless model quality improves."
-        )
-
-    change_trigger = (
-        "A more aggressive recommendation would require aggregate OOS R^2 >= 2%, "
-        "mean IC >= 0.07, hit rate >= 55%, and a non-failing representative CPCV check."
+    """Compatibility wrapper around the extracted summary-rendering helper."""
+    return render_executive_summary_lines(
+        as_of=as_of,
+        consensus=consensus,
+        confidence_tier=confidence_tier,
+        mean_predicted=mean_predicted,
+        sell_pct=sell_pct,
+        recommendation_mode=recommendation_mode,
+        aggregate_health=aggregate_health,
+        previous_summary=previous_summary,
+        next_vest_summary=next_vest_summary,
     )
-    if recommendation_mode["mode"] == "actionable":
-        change_trigger = (
-            "This view would weaken if aggregate IC, hit rate, OOS R^2, or representative CPCV "
-            "drops back below the current quality thresholds."
-        )
-
-    health_line = "Aggregate health unavailable."
-    if aggregate_health is not None:
-        health_line = (
-            f"Aggregate health: OOS R^2 {aggregate_health['oos_r2']:.2%}, "
-            f"IC {aggregate_health['nw_ic']:.4f}, hit rate {aggregate_health['agg_hit']:.1%}."
-        )
-
-    return [
-        "## Executive Summary",
-        "",
-        f"- What changed since last month: {change_line}",
-        f"- Current model view: {consensus} with {confidence_tier.lower()} confidence and a 6M relative-return estimate of {mean_predicted:+.2%}.",
-        f"- How trustworthy it is: {quality_sentence} {health_line}",
-        f"- What to do at the next vest: {next_vest_line}",
-        f"- What would change the recommendation: {change_trigger}",
-        "",
-        "---",
-        "",
-    ]
 
 
 def _build_vest_decision_lines(
@@ -999,58 +939,12 @@ def _build_vest_decision_lines(
     recommendation_mode: dict[str, str | float],
     sell_pct: float,
 ) -> list[str]:
-    """Render the next-vest recommendation and provisional three-scenario table."""
-    if next_vest_summary is None:
-        return []
-
-    scenario_result = next_vest_summary["scenario"]
-    winner_label = (
-        "Provisional scenario winner"
-        if recommendation_mode["mode"] == "actionable"
-        else "Tax-engine scenario ranking (informational only)"
+    """Compatibility wrapper around the extracted vest-section helper."""
+    return render_vest_decision_lines(
+        next_vest_summary=next_vest_summary,
+        recommendation_mode=recommendation_mode,
+        sell_pct=sell_pct,
     )
-    scenario_note = (
-        "The tax engine's highest-utility scenario aligns with the current point forecast."
-        if recommendation_mode["mode"] == "actionable"
-        else "Because recommendation mode is not ACTIONABLE, do not treat the tax-engine ranking below as a standalone trading instruction."
-    )
-
-    lines = [
-        "## Next Vest Decision",
-        "",
-        "| Field | Value |",
-        "|-------|-------|",
-        f"| Recommendation mode | **{recommendation_mode['label']}** |",
-        f"| Next vest date | {next_vest_summary['vest_date']} |",
-        f"| RSU type | {next_vest_summary['rsu_type']} |",
-        f"| Current PGR price | ${next_vest_summary['current_price']:.2f} |",
-        f"| Current in-scope shares | {next_vest_summary['shares']:.2f} |",
-        f"| Average cost basis used | ${next_vest_summary['avg_basis']:.2f} |",
-        f"| Suggested default vest action | Sell {sell_pct:.0%} of the vesting tranche |",
-        "",
-        f"> {recommendation_mode['action_note']}",
-        "> The scenario table below is provisional and uses the current lot file as a proxy for the next vesting decision.",
-        "",
-        "| Scenario | Sell Date | Tax Rate | Predicted Return | Net Proceeds | Probability |",
-        "|----------|-----------|----------|------------------|--------------|-------------|",
-    ]
-
-    for scenario in scenario_result.scenarios:
-        lines.append(
-            f"| {scenario.label} | {scenario.sell_date} | {scenario.tax_rate:.0%} | "
-            f"{scenario.predicted_return:+.2%} | ${scenario.net_proceeds:,.2f} | {scenario.probability:.1%} |"
-        )
-
-    lines += [
-        "",
-        f"> {winner_label}: **{scenario_result.recommended_scenario}**.",
-        f"> {scenario_note}",
-        f"> STCG/LTCG breakeven from the tax engine: {scenario_result.stcg_ltcg_breakeven:.2%}.",
-        "",
-        "---",
-        "",
-    ]
-    return lines
 
 
 # ---------------------------------------------------------------------------
@@ -1358,7 +1252,11 @@ def _append_decision_log(
         f"| {mean_predicted:+.2%} | {mean_ic:.4f} | {mean_hr:.1%} "
         f"| {'[DRY RUN]' if dry_run else ''} |"
     )
-    if new_row in content:
+    row_prefix = (
+        f"| {as_of} | {run_date} | {consensus} | {sell_pct:.0%} "
+        f"| {mean_predicted:+.2%} | {mean_ic:.4f} | {mean_hr:.1%} |"
+    )
+    if new_row in content or any(line.startswith(row_prefix) for line in content.splitlines()):
         print(f"  Decision log already contains this row; skipping append.")
         return
 
@@ -1984,6 +1882,42 @@ def main(
 
     # Step 5.1 (P2.7): Calibration reliability diagram
     _plot_calibration_curve(out_dir, cal_probs, cal_outcomes, cal_result)
+
+    snapshot = db_client.get_operational_snapshot(conn)
+    warnings: list[str] = []
+    if aggregate_health is not None and aggregate_health["oos_r2"] < config.DIAG_MIN_OOS_R2:
+        warnings.append(
+            f"Aggregate OOS R^2 below threshold: {aggregate_health['oos_r2']:.2%} < {config.DIAG_MIN_OOS_R2:.2%}."
+        )
+    if diagnostics.get("representative_cpcv") is not None:
+        verdict = diagnostics["representative_cpcv"].stability_verdict
+        if verdict == "FAIL":
+            warnings.append("Representative CPCV verdict is FAIL.")
+    if diagnostics.get("obs_feature_report") is not None:
+        obs_report = diagnostics["obs_feature_report"]
+        if obs_report.get("verdict") != "OK":
+            warnings.append(
+                f"Observation-to-feature report is {obs_report.get('verdict')} "
+                f"(ratio={obs_report.get('ratio', float('nan')):.2f})."
+            )
+
+    manifest = build_run_manifest(
+        workflow_name="monthly_decision",
+        script_name="scripts/monthly_decision.py",
+        as_of_date=as_of,
+        schema_version=snapshot["schema_version"],
+        latest_dates=snapshot["latest_dates"],
+        row_counts=snapshot["row_counts"],
+        warnings=warnings,
+        outputs=[
+            str(out_dir / "recommendation.md"),
+            str(out_dir / "diagnostic.md"),
+            str(out_dir / "signals.csv"),
+        ],
+        artifact_classification="production",
+        cwd=str(Path(__file__).parent.parent),
+    )
+    write_run_manifest(out_dir, manifest)
 
     conn.close()
     print(f"\nDone. Results written to {out_dir}/")

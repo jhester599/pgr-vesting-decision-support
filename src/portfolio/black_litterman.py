@@ -33,6 +33,7 @@ import pandas as pd
 from sklearn.covariance import LedoitWolf
 
 import config
+from src.models.multi_benchmark_wfo import EnsembleWFOResult
 
 
 def _ledoit_wolf_covariance(returns_df: pd.DataFrame) -> pd.DataFrame:
@@ -52,7 +53,7 @@ def _ledoit_wolf_covariance(returns_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_bl_weights(
-    ensemble_signals: dict[str, "EnsembleWFOResult"],
+    ensemble_signals: dict[str, EnsembleWFOResult],
     returns_df: pd.DataFrame,
     risk_aversion: float | None = None,
     view_confidence_scalar: float | None = None,

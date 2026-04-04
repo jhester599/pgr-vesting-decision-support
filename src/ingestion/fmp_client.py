@@ -20,6 +20,7 @@ import requests
 
 import config
 from src.ingestion.exceptions import FMPEndpointDeprecatedError
+from src.ingestion.provider_registry import get_provider_spec
 
 
 # ---------------------------------------------------------------------------
@@ -47,13 +48,15 @@ def _save_counts(counts: dict) -> None:
 
 def _increment_fmp_count() -> int:
     """Increment today's FMP request counter; raise if limit exceeded."""
+    provider = get_provider_spec("fmp")
     counts = _load_counts()
     today = datetime.utcnow().strftime("%Y-%m-%d")
     fmp_key = f"fmp_{today}"
     counts[fmp_key] = counts.get(fmp_key, 0) + 1
-    if counts[fmp_key] > config.FMP_DAILY_LIMIT:
+    limit = provider.daily_limit or config.FMP_DAILY_LIMIT
+    if provider.enforce_limit and counts[fmp_key] > limit:
         raise RuntimeError(
-            f"FMP daily request limit ({config.FMP_DAILY_LIMIT}) reached for {today}. "
+            f"FMP daily request limit ({limit}) reached for {today}. "
             "Use cached data or wait until tomorrow."
         )
     _save_counts(counts)

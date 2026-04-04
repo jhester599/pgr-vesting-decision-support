@@ -2,7 +2,7 @@
 
 **As-of Date:** 2026-04-02  
 **Horizon:** 6M  
-**OOS observations (aggregate):** 3270  
+**OOS observations (aggregate):** 3312  
 **Newey-West lags:** 5 (accounts for 5-month return-window overlap)  
 
 ---
@@ -11,13 +11,13 @@
 
 | Metric | Value | Status | Threshold (Good) |
 |--------|-------|--------|-----------------|
-| OOS R² (Campbell-Thompson) | -1.2380 (-123.80%) | ❌ | ≥ 2.00% |
-| IC (Newey-West HAC) | 0.1255 | ✅ | ≥ 0.07 |
+| OOS R² (Campbell-Thompson) | -1.1870 (-118.70%) | ❌ | ≥ 2.00% |
+| IC (Newey-West HAC) | 0.1348 | ✅ | ≥ 0.07 |
 | IC significance | 0.0000 | ✅ p < 0.05 | p < 0.05 |
-| Hit Rate | 56.8% | ✅ | ≥ 55.0% |
+| Hit Rate | 56.6% | ✅ | ≥ 55.0% |
 | CPCV Positive Paths | 0/7 (0.0%) | ❌ | ≥ 5/7 |
 
-> **Representative CPCV:** benchmark=VTI, model=elasticnet, paths=7, mean IC=-0.2946, IC std=0.0868.
+> **Representative CPCV:** benchmark=VTI, model=elasticnet, paths=7, mean IC=-0.2929, IC std=0.0877.
 > Stability verdict: FAIL. Scaled monthly threshold: ≥ 5/7 (maps from the full C(8,2) standard of ≥ 19/28 positive paths).
 
 ---
@@ -41,7 +41,7 @@
 | Phase | Description | Status |
 |-------|-------------|--------|
 | Phase 1 | Raw BayesianRidge posterior (uncalibrated) | ⬛ Superseded |
-| Phase 2 | Platt scaling (logistic regression on OOS scores → binary) | ✅ Active (n=3,270  ECE=1.0% [1.0%–4.2%]) |
+| Phase 2 | Platt scaling (logistic regression on OOS scores → binary) | ✅ Active (n=3,312  ECE=1.8% [1.0%–4.5%]) |
 | Phase 3 | Platt → Isotonic (non-parametric; monotone reliability) | ⏳ Activates at n ≥ 500 |
 
 ---
@@ -51,31 +51,31 @@
 **Method:** ACI (Adaptive Conformal Inference — adjusts α_t for distribution shift)  
 **Nominal Coverage:** 80%  
 
-**Mean empirical coverage:** 93.0% (target ≥ 80%) ✅  
+**Mean empirical coverage:** 92.8% (target ≥ 80%) ✅  
 
 | Benchmark | Description | Predicted Return | CI Lower | CI Upper | CI Width | Emp. Coverage | N Cal |
 |-----------|-------------|----------------|----------|----------|----------|---------------|-------|
-| VTI | Total Stock Market | +6.95% | -29.14% | +43.05% | 72.20% | 89.6% ✅ | 222 |
-| VOO | S&P 500 | +0.65% | -34.51% | +35.82% | 70.33% | 87.0% ✅ | 108 |
-| VGT | Information Technology | -2.42% | -41.10% | +36.25% | 77.35% | 94.6% ✅ | 186 |
-| VHT | Health Care | +6.03% | -28.35% | +40.41% | 68.76% | 95.7% ✅ | 186 |
-| VFH | Financials | +8.80% | -24.67% | +42.26% | 66.93% | 93.5% ✅ | 186 |
-| VIS | Industrials | +3.02% | -34.34% | +40.38% | 74.72% | 95.0% ✅ | 180 |
-| VDE | Energy | -6.93% | -54.08% | +40.21% | 94.29% | 91.7% ✅ | 180 |
-| VPU | Utilities | +3.43% | -27.14% | +34.00% | 61.14% | 90.9% ✅ | 186 |
-| KIE | S&P Insurance | +5.85% | -16.76% | +28.47% | 45.24% | 76.8% ⚠️ | 168 |
-| VXUS | Total International Stock | +6.34% | -38.55% | +51.24% | 89.78% | 99.0% ✅ | 102 |
-| VEA | Developed Markets ex-US | +4.04% | -40.84% | +48.92% | 89.76% | 99.3% ✅ | 144 |
-| VWO | Emerging Markets | +6.24% | -32.58% | +45.06% | 77.63% | 97.7% ✅ | 174 |
-| VIG | Dividend Appreciation | +4.09% | -25.43% | +33.61% | 59.04% | 95.7% ✅ | 162 |
-| SCHD | US Dividend Equity | -1.53% | -78.06% | +75.01% | 153.07% | 94.8% ✅ | 96 |
-| BND | Total Bond Market | +11.26% | -20.35% | +42.87% | 63.22% | 96.7% ✅ | 150 |
-| BNDX | Total International Bond | +11.47% | -18.16% | +41.09% | 59.26% | 94.9% ✅ | 78 |
-| VCIT | Intermediate-Term Corporate Bond | +10.75% | -21.69% | +43.19% | 64.88% | 95.0% ✅ | 120 |
-| VMBS | Mortgage-Backed Securities | +10.17% | -21.89% | +42.23% | 64.12% | 97.5% ✅ | 120 |
-| VNQ | Real Estate | +4.00% | -24.13% | +32.12% | 56.25% | 86.7% ✅ | 180 |
-| GLD | Gold Shares | -2.19% | -44.30% | +39.93% | 84.24% | 91.7% ✅ | 180 |
-| DBC | DB Commodity Index | -2.29% | -37.45% | +32.87% | 70.32% | 90.1% ✅ | 162 |
+| VTI | Total Stock Market | +4.61% | -25.39% | +34.61% | 60.00% | 89.6% ✅ | 222 |
+| VOO | S&P 500 | +1.85% | -30.07% | +33.78% | 63.85% | 86.1% ✅ | 108 |
+| VGT | Information Technology | -0.56% | -37.36% | +36.23% | 73.59% | 94.8% ✅ | 192 |
+| VHT | Health Care | +3.50% | -31.18% | +38.17% | 69.35% | 95.8% ✅ | 192 |
+| VFH | Financials | +6.36% | -20.38% | +33.11% | 53.49% | 90.6% ✅ | 192 |
+| VIS | Industrials | +3.97% | -40.66% | +48.60% | 89.26% | 97.8% ✅ | 180 |
+| VDE | Energy | -10.61% | -58.87% | +37.66% | 96.53% | 91.7% ✅ | 180 |
+| VPU | Utilities | -0.37% | -28.08% | +27.35% | 55.44% | 88.5% ✅ | 192 |
+| KIE | S&P Insurance | +6.62% | -17.29% | +30.52% | 47.81% | 81.5% ✅ | 168 |
+| VXUS | Total International Stock | +4.13% | -39.83% | +48.10% | 87.94% | 98.1% ✅ | 108 |
+| VEA | Developed Markets ex-US | +2.50% | -41.89% | +46.89% | 88.78% | 98.7% ✅ | 150 |
+| VWO | Emerging Markets | +6.22% | -32.81% | +45.26% | 78.07% | 97.7% ✅ | 174 |
+| VIG | Dividend Appreciation | +2.99% | -24.31% | +30.30% | 54.61% | 95.1% ✅ | 162 |
+| SCHD | US Dividend Equity | +0.12% | -60.16% | +60.40% | 120.56% | 92.7% ✅ | 96 |
+| BND | Total Bond Market | +7.11% | -23.72% | +37.93% | 61.65% | 96.0% ✅ | 150 |
+| BNDX | Total International Bond | +9.00% | -21.39% | +39.38% | 60.77% | 94.9% ✅ | 78 |
+| VCIT | Intermediate-Term Corporate Bond | +9.22% | -22.69% | +41.13% | 63.82% | 95.8% ✅ | 120 |
+| VMBS | Mortgage-Backed Securities | +8.27% | -21.84% | +38.37% | 60.21% | 95.0% ✅ | 120 |
+| VNQ | Real Estate | +5.47% | -24.33% | +35.26% | 59.58% | 90.6% ✅ | 180 |
+| GLD | Gold Shares | -15.08% | -65.89% | +35.73% | 101.62% | 93.9% ✅ | 180 |
+| DBC | DB Commodity Index | -4.65% | -39.64% | +30.33% | 69.97% | 83.9% ✅ | 168 |
 
 > **Interpretation:** The CI width reflects model uncertainty — wider intervals indicate
 > larger historical prediction errors.  ACI dynamically adjusts coverage when errors
@@ -87,30 +87,30 @@
 
 | Benchmark | Description | N OOS | IC | IC | Hit Rate | HR |
 |-----------|-------------|-------|----|----|-----------|----|
-| BND | Total Bond Market | 150 | 0.1169 | ✅ | 66.0% | ✅ |
-| BNDX | Total International Bond | 78 | 0.0388 | ⚠️ | 56.4% | ✅ |
-| DBC | DB Commodity Index | 162 | 0.1238 | ✅ | 59.9% | ✅ |
-| GLD | Gold Shares | 180 | 0.1947 | ✅ | 60.0% | ✅ |
-| KIE | S&P Insurance | 168 | 0.1776 | ✅ | 53.0% | ⚠️ |
-| SCHD | US Dividend Equity | 96 | -0.0794 | ❌ | 56.2% | ✅ |
-| VCIT | Intermediate-Term Corporate Bond | 120 | 0.0399 | ⚠️ | 60.0% | ✅ |
-| VDE | Energy | 180 | -0.0492 | ❌ | 54.4% | ⚠️ |
-| VEA | Developed Markets ex-US | 144 | 0.0099 | ❌ | 65.3% | ✅ |
-| VFH | Financials | 186 | 0.0125 | ❌ | 52.2% | ⚠️ |
-| VGT | Information Technology | 186 | -0.0284 | ❌ | 48.9% | ❌ |
-| VHT | Health Care | 186 | 0.1752 | ✅ | 57.5% | ✅ |
-| VIG | Dividend Appreciation | 162 | 0.0747 | ✅ | 56.2% | ✅ |
-| VIS | Industrials | 180 | 0.0568 | ⚠️ | 48.9% | ❌ |
-| VMBS | Mortgage-Backed Securities | 120 | 0.1157 | ✅ | 65.0% | ✅ |
-| VNQ | Real Estate | 180 | 0.2511 | ✅ | 59.4% | ✅ |
-| VOO | S&P 500 | 108 | 0.0839 | ✅ | 40.7% | ❌ |
-| VPU | Utilities | 186 | 0.2719 | ✅ | 61.3% | ✅ |
-| VTI | Total Stock Market | 222 | 0.0640 | ⚠️ | 49.5% | ❌ |
-| VWO | Emerging Markets | 174 | -0.0224 | ❌ | 60.9% | ✅ |
-| VXUS | Total International Stock | 102 | -0.0977 | ❌ | 67.6% | ✅ |
+| BND | Total Bond Market | 150 | 0.1073 | ✅ | 62.0% | ✅ |
+| BNDX | Total International Bond | 78 | 0.0518 | ⚠️ | 59.0% | ✅ |
+| DBC | DB Commodity Index | 168 | 0.0461 | ⚠️ | 66.1% | ✅ |
+| GLD | Gold Shares | 180 | 0.2319 | ✅ | 63.3% | ✅ |
+| KIE | S&P Insurance | 168 | 0.1396 | ✅ | 53.0% | ⚠️ |
+| SCHD | US Dividend Equity | 96 | 0.0961 | ✅ | 54.2% | ⚠️ |
+| VCIT | Intermediate-Term Corporate Bond | 120 | 0.0646 | ⚠️ | 59.2% | ✅ |
+| VDE | Energy | 180 | 0.0422 | ⚠️ | 56.7% | ✅ |
+| VEA | Developed Markets ex-US | 150 | 0.0116 | ❌ | 62.7% | ✅ |
+| VFH | Financials | 192 | 0.1022 | ✅ | 54.2% | ⚠️ |
+| VGT | Information Technology | 192 | 0.0362 | ⚠️ | 46.4% | ❌ |
+| VHT | Health Care | 192 | 0.1022 | ✅ | 55.7% | ✅ |
+| VIG | Dividend Appreciation | 162 | 0.0745 | ✅ | 51.2% | ❌ |
+| VIS | Industrials | 180 | 0.0951 | ✅ | 50.0% | ❌ |
+| VMBS | Mortgage-Backed Securities | 120 | 0.1090 | ✅ | 65.0% | ✅ |
+| VNQ | Real Estate | 180 | 0.2918 | ✅ | 61.7% | ✅ |
+| VOO | S&P 500 | 108 | -0.0731 | ❌ | 36.1% | ❌ |
+| VPU | Utilities | 192 | 0.2521 | ✅ | 58.3% | ✅ |
+| VTI | Total Stock Market | 222 | 0.0233 | ❌ | 49.1% | ❌ |
+| VWO | Emerging Markets | 174 | 0.0660 | ⚠️ | 61.5% | ✅ |
+| VXUS | Total International Stock | 108 | -0.0741 | ❌ | 66.7% | ✅ |
 
-**IC summary:** 10 ✅  4 ⚠️  7 ❌  (of 21 benchmarks)  
-**Hit rate ✅:** 14/21 benchmarks above 55% threshold  
+**IC summary:** 11 ✅  6 ⚠️  4 ❌  (of 21 benchmarks)  
+**Hit rate ✅:** 13/21 benchmarks above 55% threshold  
 
 ---
 

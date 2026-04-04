@@ -180,6 +180,17 @@ class TestAppendDecisionLog:
             f"Expected 1 de-duplicated row with '2026-04-20', found {len(matching_lines)}"
         )
 
+    def test_dry_run_duplicate_skipped_when_non_dry_row_already_exists(self, tmp_path):
+        """A dry-run rerun should not append a second row with identical metrics."""
+        log_path = _make_log_file(tmp_path)
+        _append(log_path, dry_run=False)
+        _append(log_path, dry_run=True)
+        matching_lines = [
+            line for line in log_path.read_text(encoding="utf-8").splitlines()
+            if "2026-04-20" in line and line.strip().startswith("|")
+        ]
+        assert len(matching_lines) == 1
+
     def test_dry_run_flag_written(self, tmp_path):
         """[DRY RUN] label appears in the appended row when dry_run=True."""
         log_path = _make_log_file(tmp_path)

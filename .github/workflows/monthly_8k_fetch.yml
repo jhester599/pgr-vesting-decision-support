@@ -1,31 +1,8 @@
-# monthly_8k_fetch.yml — PGR Monthly 8-K Operating Metrics
-#
-# Two-pass schedule (idempotent — safe to run twice per month):
-#
-#   Pass 1 (20th at 14:00 UTC):
-#     PGR typically files its monthly Regulation FD supplement (item 7.01)
-#     in the first 2–3 weeks of the following month.  The 20th reliably
-#     captures the vast majority of on-time filings.
-#
-#   Pass 2 (25th at 14:00 UTC):
-#     Fallback for months where PGR files late (holiday weeks, earnings
-#     overlap, or SEC review delays).  Also auto-retries any transient
-#     failure from the 20th (network timeout, EDGAR rate-limit spike,
-#     GitHub Actions outage).
-#
-#   Because edgar_8k_fetcher.py uses INSERT OR REPLACE (idempotent upsert),
-#   running it twice in the same month is safe:
-#     - If PGR has not filed yet on the 20th → no new rows; DB unchanged.
-#     - If PGR filed between the 20th and 25th → new row upserted on 25th.
-#     - If both runs see the same data → second run is a no-op.
-
 name: Monthly 8-K Fetch (PGR Operating Metrics)
 
 on:
   schedule:
-    # Pass 1: 20th of each month at 14:00 UTC (primary trigger)
     - cron: '0 14 20 * *'
-    # Pass 2: 25th of each month at 14:00 UTC (fallback / late-filing retry)
     - cron: '0 14 25 * *'
   workflow_dispatch:
     inputs:
@@ -34,23 +11,27 @@ on:
         required: false
         default: '2'
       dry_run:
-        description: 'Dry run — parse filings but skip DB write (true/false)'
+        description: 'Dry run - parse filings but skip DB write'
         required: false
         default: 'false'
+
+concurrency:
+  group: monthly-8k-fetch
+  cancel-in-progress: false
 
 jobs:
   fetch_8k:
     name: Fetch PGR monthly 8-K data
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # required for git push back to the repo
+      contents: write
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -62,19 +43,45 @@ jobs:
         run: |
           BACKFILL="${{ github.event.inputs.backfill_years || '2' }}"
           DRY_FLAG=""
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             DRY_FLAG="--dry-run"
           fi
           python scripts/edgar_8k_fetcher.py --backfill-years "$BACKFILL" $DRY_FLAG
 
+      - name: Verify EDGAR latest row and write summary
+        if: ${{ !(github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true') }}
+        run: |
+          python - <<'PY'
+          import sqlite3
+
+          conn = sqlite3.connect("data/pgr_financials.db")
+          row = conn.execute(
+              """
+              SELECT COUNT(*), MAX(month_end), MAX(filing_date)
+              FROM pgr_edgar_monthly
+              """
+          ).fetchone()
+          row_count, latest_month, latest_filing = row
+          if row_count == 0:
+              raise SystemExit("pgr_edgar_monthly is empty after monthly 8-K fetch.")
+          summary = [
+              "## Monthly 8-K Fetch",
+              "",
+              f"- pgr_edgar_monthly rows: `{row_count}`",
+              f"- Latest month_end: `{latest_month}`",
+              f"- Latest filing_date: `{latest_filing}`",
+          ]
+          with open("workflow_summary.md", "w", encoding="utf-8") as fh:
+              fh.write("\n".join(summary) + "\n")
+          conn.close()
+          PY
+          cat workflow_summary.md >> "$GITHUB_STEP_SUMMARY"
+
       - name: Commit updated database
-        # Only commit if the DB changed (skip for dry-run)
-        if: ${{ github.event.inputs.dry_run != 'true' }}
+        if: ${{ !(github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true') }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/pgr_financials.db
-          # Only commit if there are staged changes
-          git diff --staged --quiet || git commit -m \
-            "chore: 8-K monthly fetch $(date -u +%Y-%m-%d) [skip ci]"
+          git diff --staged --quiet || git commit -m "chore: 8-K monthly fetch $(date -u +%Y-%m-%d) [skip ci]"
           git push

@@ -4,6 +4,15 @@
 -- WAL mode and foreign_keys are enabled at connection time by db_client.py.
 
 -- ---------------------------------------------------------------------------
+-- Applied schema migrations
+-- Tracks ordered migration files applied by migration_runner.py.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    migration_id  TEXT PRIMARY KEY,
+    applied_at    TEXT NOT NULL
+);
+
+-- ---------------------------------------------------------------------------
 -- Daily OHLCV prices for PGR and all 22 ETF benchmarks
 -- source: 'av' (Alpha Vantage) or 'fmp' (Financial Modeling Prep)
 -- proxy_fill: 1 if this row was copied from a proxy ticker (e.g. VTI for FZROX
