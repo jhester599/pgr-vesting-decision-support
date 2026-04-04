@@ -1,0 +1,4 @@
+path_name,review_months,mean_predicted,mean_ic,mean_hit_rate,mean_aggregate_oos_r2,mean_sell_pct,signal_changes,mode_changes,signal_agreement_with_shadow_rate,mode_agreement_with_shadow_rate,sell_agreement_with_shadow_rate
+shadow_baseline,12,0.05348494323481339,-0.1300579043947634,0.6310956860609535,-0.15654473749475967,0.5,0,0,1.0,1.0,1.0
+candidate_v18,12,-0.1680641163396147,0.20390715737550366,0.6662659972586757,-0.18096872885500184,0.5,0,0,0.0,1.0,1.0
+candidate_v16,12,-0.13174853414836118,0.1851478234743911,0.6613619763144386,-0.19797259731257913,0.5,0,0,0.0,1.0,1.0

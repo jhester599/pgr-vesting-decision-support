@@ -1,0 +1,3 @@
+candidate_name,candidate_feature,replace_feature,mean_policy_return_sign,mean_policy_return_sign_delta,mean_oos_r2,mean_oos_r2_delta,mean_ic,mean_ic_delta
+gbt_lean_plus_two__v16,vwo_vxus_spread_6m,real_rate_10y,0.07649092856478784,0.0041348249964919355,-0.22178248189816505,0.0349955699577664,0.17638872416872975,0.023218599620138634
+ridge_lean_v1__v16,real_yield_change_6m,yield_curvature,0.07508912278298749,0.0023172770199361824,-0.6709595056912645,-0.1506973981218002,0.1871006437997208,-0.005617268409540431

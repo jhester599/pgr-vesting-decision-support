@@ -260,6 +260,12 @@ def build_feature_matrix(
                 monthly_dates, method="ffill"
             )
             df["combined_ratio_ttm"] = cr_monthly.rolling(12, min_periods=6).mean()
+            # monthly_combined_ratio_delta: 3M average relative to PGR's
+            # long-standing 96 combined-ratio target. Positive = worse than
+            # target; negative = better than target.
+            df["monthly_combined_ratio_delta"] = (
+                cr_monthly.rolling(3, min_periods=2).mean() - 96.0
+            )
 
         if "pif_growth_yoy" in pgr_monthly.columns:
             df["pif_growth_yoy"] = pgr_monthly["pif_growth_yoy"].reindex(
@@ -278,6 +284,18 @@ def build_feature_matrix(
         # Requires combined_ratio_ttm to be already computed above.
         if "combined_ratio_ttm" in df.columns:
             df["cr_acceleration"] = df["combined_ratio_ttm"].diff(3)
+
+        # pif_growth_acceleration: 3M annualized policy growth minus 12M
+        # trailing growth. Positive = unit growth is accelerating.
+        if (
+            "pif_total" in pgr_monthly.columns
+            and not pgr_monthly["pif_total"].isna().all()
+        ):
+            pif_total = pgr_monthly["pif_total"].reindex(monthly_dates, method="ffill")
+            valid_pif_total = pif_total.where(pif_total > 0)
+            pif_3m_annualized = (valid_pif_total / valid_pif_total.shift(3)) ** 4 - 1.0
+            pif_12m_yoy = (valid_pif_total / valid_pif_total.shift(12)) - 1.0
+            df["pif_growth_acceleration"] = pif_3m_annualized - pif_12m_yoy
 
         # ------------------------------------------------------------------
         # v6.3 — Channel-mix features (P1.4)
@@ -311,6 +329,44 @@ def build_feature_matrix(
                 monthly_dates, method="ffill"
             )
 
+        # npw_per_pif_yoy: average premium per policy, a pricing-power
+        # decomposition that separates rate actions from unit growth.
+        if (
+            "net_premiums_written" in pgr_monthly.columns
+            and "pif_total" in pgr_monthly.columns
+            and not pgr_monthly["net_premiums_written"].isna().all()
+            and not pgr_monthly["pif_total"].isna().all()
+        ):
+            npw_m = pgr_monthly["net_premiums_written"].reindex(
+                monthly_dates, method="ffill"
+            )
+            pif_total = pgr_monthly["pif_total"].reindex(
+                monthly_dates, method="ffill"
+            )
+            valid_pif_total = pif_total.where(pif_total > 0)
+            npw_per_pif = npw_m / valid_pif_total
+            df["npw_per_pif_yoy"] = npw_per_pif.pct_change(
+                periods=12,
+                fill_method=None,
+            )
+
+        # npw_vs_npe_spread_pct: written-vs-earned premium spread. Positive
+        # = premium pipeline still building faster than earnings recognition.
+        if (
+            "net_premiums_written" in pgr_monthly.columns
+            and "net_premiums_earned" in pgr_monthly.columns
+            and not pgr_monthly["net_premiums_written"].isna().all()
+            and not pgr_monthly["net_premiums_earned"].isna().all()
+        ):
+            npw_m = pgr_monthly["net_premiums_written"].reindex(
+                monthly_dates, method="ffill"
+            )
+            npe_m = pgr_monthly["net_premiums_earned"].reindex(
+                monthly_dates, method="ffill"
+            )
+            valid_npe_m = npe_m.where(npe_m.abs() > 1e-12)
+            df["npw_vs_npe_spread_pct"] = (npw_m - npe_m) / valid_npe_m
+
         # ------------------------------------------------------------------
         # v6.4 — P2.x features: Underwriting income, unearned premiums,
         #         ROE trend, investment portfolio, share repurchase signal
@@ -336,6 +392,25 @@ def build_feature_matrix(
                 periods=12,
                 fill_method=None,
             )
+
+        # underwriting_margin_ttm: underwriting profit over trailing-12-month
+        # earned premium. More stationary than nominal underwriting income.
+        if (
+            "underwriting_income" in pgr_monthly.columns
+            and "net_premiums_earned" in pgr_monthly.columns
+            and not pgr_monthly["underwriting_income"].isna().all()
+            and not pgr_monthly["net_premiums_earned"].isna().all()
+        ):
+            uw_monthly = pgr_monthly["underwriting_income"].reindex(
+                monthly_dates, method="ffill"
+            )
+            npe_monthly = pgr_monthly["net_premiums_earned"].reindex(
+                monthly_dates, method="ffill"
+            )
+            uw_ttm = uw_monthly.rolling(12, min_periods=6).sum()
+            npe_ttm = npe_monthly.rolling(12, min_periods=6).sum()
+            valid_npe_ttm = npe_ttm.where(npe_ttm.abs() > 1e-12)
+            df["underwriting_margin_ttm"] = uw_ttm / valid_npe_ttm
 
         # --- P2.3: Unearned premium reserve growth (earned-premium pipeline) ---
         # unearned_premium_growth_yoy is pre-computed in DB (12M pct_change).
@@ -383,6 +458,20 @@ def build_feature_matrix(
             # negative = deteriorating capital returns (bearish signal).
             df["roe_trend"] = roe_monthly - roe_monthly.rolling(12, min_periods=6).mean()
 
+        # book_value_per_share_growth_yoy: insurance-native balance-sheet
+        # compounding signal preferred over more generic valuation anchors.
+        if (
+            "book_value_per_share" in pgr_monthly.columns
+            and not pgr_monthly["book_value_per_share"].isna().all()
+        ):
+            bvps_monthly = pgr_monthly["book_value_per_share"].reindex(
+                monthly_dates, method="ffill"
+            )
+            df["book_value_per_share_growth_yoy"] = bvps_monthly.pct_change(
+                periods=12,
+                fill_method=None,
+            )
+
         # --- P2.1: Investment portfolio features ---
         # investment_income_growth_yoy: YoY growth in net investment income.
         # Rising growth signals either rate-environment uplift (reinvesting
@@ -409,6 +498,22 @@ def build_feature_matrix(
             df["investment_book_yield"] = pgr_monthly["investment_book_yield"].reindex(
                 monthly_dates, method="ffill"
             )
+
+        # duration_rate_shock_3m: fixed-income duration times the 3M change
+        # in the 10Y Treasury yield. Captures insurer bond-book sensitivity.
+        if (
+            "fixed_income_duration" in pgr_monthly.columns
+            and not pgr_monthly["fixed_income_duration"].isna().all()
+        ):
+            duration_monthly = pgr_monthly["fixed_income_duration"].reindex(
+                monthly_dates, method="ffill"
+            )
+            if fred_macro is not None and "GS10" in _apply_fred_lags(fred_macro).columns:
+                fred_aligned_local = _apply_fred_lags(fred_macro).reindex(
+                    monthly_dates, method="ffill"
+                )
+                rate_change_3m = fred_aligned_local["GS10"].diff(3)
+                df["duration_rate_shock_3m"] = duration_monthly * rate_change_3m
 
         # --- P2.5: Share repurchase signal ---
         # Buyback amount = shares_repurchased × avg_cost_per_share ($ value).
@@ -465,13 +570,16 @@ def build_feature_matrix(
     # it via its own feature-selection logic.  No separate threshold needed.
     for col in [
         "combined_ratio_ttm", "pif_growth_yoy", "gainshare_est",
+        "monthly_combined_ratio_delta", "pif_growth_acceleration",
         "channel_mix_agency_pct", "npw_growth_yoy",
+        "npw_per_pif_yoy", "npw_vs_npe_spread_pct",
         # v6.4 P2.x features
         "underwriting_income", "underwriting_income_3m",
-        "underwriting_income_growth_yoy",
+        "underwriting_income_growth_yoy", "underwriting_margin_ttm",
         "unearned_premium_growth_yoy", "unearned_premium_to_npw_ratio",
-        "roe_net_income_ttm", "roe_trend",
+        "roe_net_income_ttm", "roe_trend", "book_value_per_share_growth_yoy",
         "investment_income_growth_yoy", "investment_book_yield",
+        "duration_rate_shock_3m",
         "buyback_yield", "buyback_acceleration",
     ]:
         if col in df.columns:
@@ -505,10 +613,14 @@ def build_feature_matrix(
         # real_rate_10y: nominal 10Y minus breakeven inflation
         if all(s in fred_aligned.columns for s in ("GS10", "T10YIE")):
             df["real_rate_10y"] = fred_aligned["GS10"] - fred_aligned["T10YIE"]
+            df["real_yield_change_6m"] = df["real_rate_10y"].diff(6)
+            df["breakeven_inflation_10y"] = fred_aligned["T10YIE"]
+            df["breakeven_momentum_3m"] = fred_aligned["T10YIE"].diff(3)
 
         # credit_spread_ig: Moody's Baa minus 10Y Treasury
         if "BAA10Y" in fred_aligned.columns:
             df["credit_spread_ig"] = fred_aligned["BAA10Y"]
+            df["baa10y_spread"] = fred_aligned["BAA10Y"]
 
         # credit_spread_hy: ICE BofA HY OAS
         if "BAMLH0A0HYM2" in fred_aligned.columns:
@@ -562,6 +674,11 @@ def build_feature_matrix(
                 fill_method=None,
             )
 
+        if {"used_car_cpi_yoy", "medical_cpi_yoy"}.issubset(df.columns):
+            df["severity_index_yoy"] = df[
+                ["used_car_cpi_yoy", "medical_cpi_yoy"]
+            ].mean(axis=1)
+
         # ppi_auto_ins_yoy: YoY % change in PPI for Private Passenger Auto Insurance
         # (PCU5241265241261).  Replaces the originally planned CUSR0000SETC01 (motor
         # vehicle insurance CPI) which is unavailable via FRED.  The PPI captures
@@ -572,6 +689,11 @@ def build_feature_matrix(
             df["ppi_auto_ins_yoy"] = fred_aligned["PCU5241265241261"].pct_change(
                 12,
                 fill_method=None,
+            )
+
+        if {"ppi_auto_ins_yoy", "severity_index_yoy"}.issubset(df.columns):
+            df["rate_adequacy_gap_yoy"] = (
+                df["ppi_auto_ins_yoy"] - df["severity_index_yoy"]
             )
 
         # pgr_vs_kie_6m: PGR trailing 6M return minus KIE trailing 6M return.
@@ -601,6 +723,16 @@ def build_feature_matrix(
         # FRED column so it flows through the same lag-guarded pipeline.
         if "pgr_vs_vfh_6m" in fred_aligned.columns:
             df["pgr_vs_vfh_6m"] = fred_aligned["pgr_vs_vfh_6m"]
+
+        # v18.0 benchmark-side relative spreads from existing benchmark prices.
+        if "vwo_vxus_spread_6m" in fred_aligned.columns:
+            df["vwo_vxus_spread_6m"] = fred_aligned["vwo_vxus_spread_6m"]
+
+        if "gold_vs_treasury_6m" in fred_aligned.columns:
+            df["gold_vs_treasury_6m"] = fred_aligned["gold_vs_treasury_6m"]
+
+        if "commodity_equity_momentum" in fred_aligned.columns:
+            df["commodity_equity_momentum"] = fred_aligned["commodity_equity_momentum"]
 
     # ------------------------------------------------------------------
     # Target variable: 6-month forward DRIP total return
@@ -870,6 +1002,62 @@ def build_feature_matrix_from_db(
                 fred_raw = fred_raw.join(pgr_vs_vfh, how="left")
     except Exception:  # noqa: BLE001
         pass  # VFH not yet in DB — feature silently absent until data accumulates
+
+    # v18.0: benchmark-side relative features from existing benchmark prices.
+    # These are meant to help explain reduced-universe directional bias without
+    # requiring new paid data or expanding model complexity.
+    try:
+        vwo_prices_raw = db_client.get_prices(conn, "VWO")
+        vxus_prices_raw = db_client.get_prices(conn, "VXUS")
+        gld_prices_raw = db_client.get_prices(conn, "GLD")
+        bnd_prices_raw = db_client.get_prices(conn, "BND")
+        dbc_prices_raw = db_client.get_prices(conn, "DBC")
+        voo_prices_raw = db_client.get_prices(conn, "VOO")
+
+        def _monthly_close_generic(price_df: pd.DataFrame) -> pd.Series:
+            close = price_df["close"].copy()
+            close.index = pd.to_datetime(close.index)
+            return close.resample("ME").last()
+
+        synthetic_frames: list[pd.Series] = []
+
+        if not vwo_prices_raw.empty and not vxus_prices_raw.empty:
+            vwo_m = _monthly_close_generic(vwo_prices_raw)
+            vxus_m = _monthly_close_generic(vxus_prices_raw)
+            vwo_vxus_spread = (
+                vwo_m.pct_change(6, fill_method=None)
+                - vxus_m.pct_change(6, fill_method=None)
+            ).rename("vwo_vxus_spread_6m")
+            vwo_vxus_spread.index = vwo_vxus_spread.index + pd.offsets.MonthEnd(0)
+            synthetic_frames.append(vwo_vxus_spread)
+
+        if not gld_prices_raw.empty and not bnd_prices_raw.empty:
+            gld_m = _monthly_close_generic(gld_prices_raw)
+            bnd_m = _monthly_close_generic(bnd_prices_raw)
+            gold_vs_treasury = (
+                gld_m.pct_change(6, fill_method=None)
+                - bnd_m.pct_change(6, fill_method=None)
+            ).rename("gold_vs_treasury_6m")
+            gold_vs_treasury.index = gold_vs_treasury.index + pd.offsets.MonthEnd(0)
+            synthetic_frames.append(gold_vs_treasury)
+
+        if not dbc_prices_raw.empty and not voo_prices_raw.empty:
+            dbc_m = _monthly_close_generic(dbc_prices_raw)
+            voo_m = _monthly_close_generic(voo_prices_raw)
+            commodity_equity = (
+                dbc_m.pct_change(6, fill_method=None)
+                - voo_m.pct_change(6, fill_method=None)
+            ).rename("commodity_equity_momentum")
+            commodity_equity.index = commodity_equity.index + pd.offsets.MonthEnd(0)
+            synthetic_frames.append(commodity_equity)
+
+        for synthetic_series in synthetic_frames:
+            if fred_raw.empty:
+                fred_raw = synthetic_series.to_frame()
+            else:
+                fred_raw = fred_raw.join(synthetic_series, how="left")
+    except Exception:  # noqa: BLE001
+        pass  # benchmark-side relative features are optional and should fail closed
 
     fred_macro = fred_raw if not fred_raw.empty else None
 

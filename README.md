@@ -1,4 +1,4 @@
-# PGR Vesting Decision Support - v14 research + v13.1 production baseline
+# PGR Vesting Decision Support - v18 bias study + v13.1 production baseline
 
 PGR Vesting Decision Support is a tax-aware decision-support system for unwinding
 a concentrated Progressive Corporation (`PGR`) RSU position in a taxable
@@ -48,6 +48,29 @@ Status as of 2026-04-04:
   compares the live 4-model stack against lean Ridge/GBT-centered replacement
   candidates. The current v14 conclusion is `continue shadowing, do not
   promote yet`, with `ensemble_ridge_gbt` as the leading v15 candidate.
+- `v15.x` is now executed through `v15.2`. It reviewed 4 external research
+  reports, built a canonical candidate inventory, screened one-for-one
+  replacements on the v14 Ridge/GBT survivors, confirmed the best winners
+  across all deployed model types, and finished with a final cross-model
+  bakeoff.
+- `v16.x` is a completed narrow promotion study on the best v15 upgrades. It
+  compares the modified Ridge+GBT pair against the reduced-universe live stack
+  and the `historical_mean` baseline. The current v16 conclusion is
+  `shadow_for_v17`: the modified pair is now the top reduced-universe row, but
+  it still does not separate enough from the baseline to justify immediate
+  production promotion.
+- `v17.x` is a completed production-style shadow gate. It tests whether the
+  modified Ridge+GBT pair should replace the current live stack as the visible
+  cross-check under the promoted v13.1 recommendation layer. The v17
+  conclusion is `keep_current_live_cross_check`: the candidate is steadier and
+  much healthier on reduced-universe metrics, but it disagrees with the
+  simpler baseline too consistently to improve the current user-facing
+  experience yet.
+- `v18.x` is a completed directional-bias reduction study. It tests only
+  narrow benchmark-side and peer-relative one-for-one swaps on the modified
+  Ridge+GBT pair. The v18 conclusion is `keep_v16_as_research_only`: the best
+  swaps improved reduced-universe metrics again, but they did not reduce the
+  candidate's directional disagreement with the promoted simpler baseline.
 
 ## Production vs. Research
 
@@ -76,8 +99,35 @@ The repo now has explicit operating boundaries:
 - Active recommendation-layer default:
   - v13.1 `shadow_promoted` recommendation-layer mode
 - Active prediction-layer conclusion:
-  - keep the live 4-model stack for now; carry `ensemble_ridge_gbt` into v15
-    fixed-budget feature replacement work
+  - keep the live 4-model stack for now
+- Active v15 status:
+  - execution complete through `v15.2`
+  - strongest confirmed replacements:
+    - `rate_adequacy_gap_yoy` for GBT
+    - `book_value_per_share_growth_yoy` for the linear models
+  - best single v15 candidate:
+    - `gbt_lean_plus_two__v15_best`
+- Active v16 status:
+  - promotion study complete
+  - leading replacement stack:
+    - `ensemble_ridge_gbt_v16`
+  - current decision:
+    - keep the v13.1 recommendation layer unchanged
+    - keep the live production prediction stack unchanged for now
+    - carry the modified Ridge+GBT pair into a narrower v17 shadow / promotion gate if we continue
+- Active v17 status:
+  - shadow gate complete
+  - current decision:
+    - keep the v13.1 recommendation layer unchanged
+    - keep the current live production cross-check unchanged
+    - keep `ensemble_ridge_gbt_v16` as a research candidate only
+- Active v18 status:
+  - bias-reduction study complete
+  - current decision:
+    - keep the v13.1 recommendation layer unchanged
+    - keep the current live production cross-check unchanged
+    - keep `ensemble_ridge_gbt_v16` as the leading research candidate
+    - do not advance the v18 benchmark-side swaps to another promotion gate
 - Historical planning and review artifacts:
   - `docs/history/claude-v7-plan.md`
   - `docs/plans/codex-v8-plan.md`
@@ -165,6 +215,15 @@ python -m pytest -q
   - [V13_RESULTS_SUMMARY.md](docs/results/V13_RESULTS_SUMMARY.md)
   - [V14_RESULTS_SUMMARY.md](docs/results/V14_RESULTS_SUMMARY.md)
   - [V14_CLOSEOUT_AND_V15_NEXT.md](docs/closeouts/V14_CLOSEOUT_AND_V15_NEXT.md)
+  - [V15_RESULTS_SUMMARY.md](docs/results/V15_RESULTS_SUMMARY.md)
+  - [V15_EXECUTION_SUMMARY.md](docs/results/V15_EXECUTION_SUMMARY.md)
+  - [V15_CLOSEOUT_AND_V16_NEXT.md](docs/closeouts/V15_CLOSEOUT_AND_V16_NEXT.md)
+  - [V16_RESULTS_SUMMARY.md](docs/results/V16_RESULTS_SUMMARY.md)
+  - [V16_CLOSEOUT_AND_V17_NEXT.md](docs/closeouts/V16_CLOSEOUT_AND_V17_NEXT.md)
+  - [V17_RESULTS_SUMMARY.md](docs/results/V17_RESULTS_SUMMARY.md)
+  - [V17_CLOSEOUT_AND_V18_NEXT.md](docs/closeouts/V17_CLOSEOUT_AND_V18_NEXT.md)
+  - [V18_RESULTS_SUMMARY.md](docs/results/V18_RESULTS_SUMMARY.md)
+  - [V18_CLOSEOUT_AND_V19_NEXT.md](docs/closeouts/V18_CLOSEOUT_AND_V19_NEXT.md)
 - Architecture and operations:
   - [docs/architecture.md](docs/architecture.md)
   - [docs/workflows.md](docs/workflows.md)
@@ -235,3 +294,20 @@ improved on the reduced-universe live stack and stayed close to the
 `historical_mean` baseline, but still did not earn immediate promotion. The
 main v14 recommendation is to use fixed-budget feature replacement in v15
 rather than reopening broader methodology expansion.
+
+## Notes on v15
+
+v15 completed the fixed-budget feature replacement cycle and produced real
+feature wins without expanding feature count materially.
+
+The two most important results were:
+
+- `rate_adequacy_gap_yoy` replacing `vmt_yoy` in GBT
+- `book_value_per_share_growth_yoy` replacing `roe_net_income_ttm` across the
+  linear-model family
+
+The best single v15 model in the final bakeoff was `gbt_lean_plus_two__v15_best`,
+which improved mean sign-policy return versus both the baseline GBT and the
+`historical_mean` sign-policy baseline. OOS R² is still negative, so v15 should
+be treated as a successful feature-research milestone, not yet a final
+production-promotion decision.

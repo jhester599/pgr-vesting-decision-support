@@ -1,0 +1,2 @@
+status,recommended_path,rationale
+keep_current_live_cross_check,live_production,"The modified Ridge+GBT candidate improved the reduced-universe metrics, but it did not behave clearly enough versus the current live cross-check over recent monthly snapshots to justify replacing the current cross-check path."

@@ -1,0 +1,2 @@
+status,recommended_candidate,rationale
+shadow_for_v17,ensemble_ridge_gbt_v16,"The modified Ridge+GBT pair improved on the reduced live stack and stayed close to the historical-mean baseline, but it did not clear a strong enough edge for direct promotion."

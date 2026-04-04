@@ -91,6 +91,61 @@ It adds:
 - minimal one-feature-at-a-time surgery on the surviving lean candidates
 - production-like shadow review memos for the leading replacement candidate
 
+v15 feature-replacement work is now also documented in:
+
+- `docs/plans/codex-v15-plan.md`
+- `docs/plans/codex-v15-feature-test-plan.md`
+- `docs/results/V15_RESULTS_SUMMARY.md`
+- `docs/closeouts/V15_CLOSEOUT_AND_V16_NEXT.md`
+
+It adds:
+
+- a fixed-budget feature-replacement inventory template
+- archived external research reports under `docs/history/v15-research-reports/`
+- baseline feature inventories for the post-v14 Ridge / GBT candidate pair
+- current feature coverage reports under `results/v15/`
+- a canonical one-for-one swap queue
+- `v15.0` exhaustive screening on Ridge / GBT
+- `v15.1` cross-model confirmation on all deployed model types
+- `v15.2` final cross-model bakeoff
+
+v16 promotion-study work is now also documented in:
+
+- `docs/plans/codex-v16-plan.md`
+- `docs/results/V16_RESULTS_SUMMARY.md`
+- `docs/closeouts/V16_CLOSEOUT_AND_V17_NEXT.md`
+
+It adds:
+
+- a narrow promotion gate for the confirmed v15 Ridge / GBT feature swaps
+- direct comparison against the reduced-universe live 4-model stack
+- direct comparison against the `historical_mean` baseline
+- a clear `promote / shadow / do not promote` decision record
+
+v17 shadow-gate work is now also documented in:
+
+- `docs/plans/codex-v17-plan.md`
+- `docs/results/V17_RESULTS_SUMMARY.md`
+- `docs/closeouts/V17_CLOSEOUT_AND_V18_NEXT.md`
+
+It adds:
+
+- a production-style monthly review window for the modified v16 Ridge+GBT pair
+- direct comparison against the current live production cross-check under the promoted v13.1 recommendation layer
+- a gate for whether the modified pair should replace the visible cross-check path
+
+v18 directional-bias work is now also documented in:
+
+- `docs/plans/codex-v18-plan.md`
+- `docs/results/V18_RESULTS_SUMMARY.md`
+- `docs/closeouts/V18_CLOSEOUT_AND_V19_NEXT.md`
+
+It adds:
+
+- narrow benchmark-side and peer-relative swaps on the modified v16 Ridge+GBT pair
+- a direct check for whether those swaps reduce the pair's directional disagreement with the promoted simpler baseline
+- a final v18 gate on whether the resulting pair should advance at all
+
 ## Promotion Rule
 
 Research results do not become production behavior automatically.
@@ -156,6 +211,108 @@ The current narrowed conclusion is:
   baseline
 - the next step should be fixed-budget feature replacement in v15 rather than
   broader methodology expansion
+
+## Current v15 Conclusion
+
+v15 is executed, but it still does not justify an immediate production
+prediction-stack promotion.
+
+What v15 did prove:
+
+- the feature set was part of the prediction-quality problem
+- `rate_adequacy_gap_yoy` is a real upgrade for the GBT path
+- `book_value_per_share_growth_yoy` is a real upgrade for the linear-model path
+
+What v15 did not yet prove:
+
+- that a modified prediction stack should replace the live one immediately
+
+So the current next-step recommendation is:
+
+- keep the v13.1 recommendation layer unchanged
+- keep the live production prediction stack unchanged for now
+- move to a narrow promotion study using the v15-confirmed Ridge / GBT
+  replacements
+
+## Current v16 Conclusion
+
+v16 improves the replacement candidate, but still does not justify an
+immediate production prediction-stack promotion.
+
+What v16 proved:
+
+- `ensemble_ridge_gbt_v16` is now the best reduced-universe row
+- the v15 feature swaps improved the Ridge+GBT pair versus the reduced live
+  production stack
+- the modified pair materially improved OOS R^2 versus the reduced live stack
+
+What v16 did not yet prove:
+
+- that the modified pair clears a strong enough edge versus the
+  `historical_mean` baseline to become the new live prediction layer
+
+So the current conclusion is:
+
+- keep the v13.1 recommendation layer unchanged
+- keep the current live prediction stack unchanged for now
+- treat `ensemble_ridge_gbt_v16` as the lead shadow candidate for the next
+  narrow promotion gate
+
+## Current v17 Conclusion
+
+v17 still does not justify a production prediction-layer change.
+
+What v17 proved:
+
+- the modified Ridge+GBT pair is steadier than the current live production cross-check
+- the modified pair keeps the improved reduced-universe metrics from v16
+
+What v17 did not prove:
+
+- that the modified pair behaves as a better user-facing cross-check under the
+  promoted simpler baseline
+
+In fact, the main blocker is now clearer:
+
+- the modified pair disagrees with the simpler baseline too consistently on
+  direction, so promoting it would likely make the report more confusing even
+  though its reduced-universe metrics are better
+
+So the current conclusion is:
+
+- keep the v13.1 recommendation layer unchanged
+- keep the current live production cross-check unchanged
+- keep `ensemble_ridge_gbt_v16` in research only
+- target directional-bias reduction and deferred benchmark-side / peer-relative
+  feature families next rather than broader model complexity
+
+## Current v18 Conclusion
+
+v18 improved the candidate's reduced-universe metrics again, but still did not
+improve the user-facing promotion case.
+
+What v18 proved:
+
+- narrow benchmark-side and peer-relative swaps are feasible with the existing data
+- `vwo_vxus_spread_6m` and `real_yield_change_6m` were the best v18 one-for-one swaps
+- the resulting `ensemble_ridge_gbt_v18` improved metrics versus `ensemble_ridge_gbt_v16`
+
+What v18 did not prove:
+
+- that those swaps reduce the candidate's directional disagreement with the
+  promoted simpler baseline
+
+In fact, the main blocker remains:
+
+- both the v16 and v18 candidate pairs still disagree with the simpler
+  baseline on direction in every reviewed month
+
+So the current conclusion is:
+
+- keep the v13.1 recommendation layer unchanged
+- keep the current live production cross-check unchanged
+- keep `ensemble_ridge_gbt_v16` as the leading research candidate
+- do not advance the v18 swaps to another promotion gate
 
 ## Classifier Sidecar Policy
 

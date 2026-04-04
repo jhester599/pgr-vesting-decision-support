@@ -1,0 +1,2 @@
+status,recommended_candidate,rationale
+keep_v16_as_research_only,ensemble_ridge_gbt_v16,The benchmark-side and peer-relative swaps did not reduce the candidate's directional bias against the promoted simpler baseline enough to justify another promotion attempt.
