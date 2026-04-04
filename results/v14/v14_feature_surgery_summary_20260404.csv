@@ -1,0 +1,3 @@
+candidate_name,model_type,n_features,feature_columns
+ridge_lean_v1,ridge,12,"mom_12m,vol_63d,yield_slope,yield_curvature,real_rate_10y,credit_spread_hy,nfci,vix,combined_ratio_ttm,investment_income_growth_yoy,roe_net_income_ttm,npw_growth_yoy"
+gbt_lean_plus_two,gbt,14,"mom_3m,mom_6m,mom_12m,vol_63d,yield_slope,yield_curvature,real_rate_10y,credit_spread_hy,nfci,vix,vmt_yoy,pif_growth_yoy,investment_book_yield,underwriting_income_growth_yoy"

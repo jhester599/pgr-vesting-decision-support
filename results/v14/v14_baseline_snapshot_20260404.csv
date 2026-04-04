@@ -1,0 +1,2 @@
+as_of,recommendation_layer_mode,manifest_git_sha,manifest_warnings,live_signal,live_mean_prediction,shadow_signal,shadow_mean_prediction,sell_pct_agreement,signal_agreement
+2026-04-02,shadow_promoted,309fa850c91bb779f48551d99b3e6113cd3d3775-dirty,Aggregate OOS R^2 below threshold: -118.70% < 2.00%. | Representative CPCV verdict is FAIL. | Observation-to-feature report is FAIL (ratio=1.53).,NEUTRAL,0.004010855548661183,OUTPERFORM,0.05064869956768678,False,False

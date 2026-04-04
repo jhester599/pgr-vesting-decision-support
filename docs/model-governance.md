@@ -77,6 +77,20 @@ It adds:
 - a promoted v13.1 default that uses the simpler diversification-first
   recommendation layer while keeping the live stack visible as a cross-check
 
+v14 reduced-universe prediction-layer work is now also documented in:
+
+- `docs/plans/codex-v14-plan.md`
+- `docs/results/V14_RESULTS_SUMMARY.md`
+- `docs/closeouts/V14_CLOSEOUT_AND_V15_NEXT.md`
+
+It adds:
+
+- a post-v13 baseline freeze after the real April production run
+- a narrow reduced-universe bakeoff between the live 4-model stack and lean
+  Ridge/GBT-centered candidates
+- minimal one-feature-at-a-time surgery on the surviving lean candidates
+- production-like shadow review memos for the leading replacement candidate
+
 ## Promotion Rule
 
 Research results do not become production behavior automatically.
@@ -104,7 +118,7 @@ A candidate should only be promoted when it demonstrates:
 - Provisional:
   - candidates under consideration for future production use
   - diversification-aware redeploy policies not yet promoted
-  - v12 shadow-baseline recommendation behavior
+  - v14 reduced-universe replacement candidate shadowing
 
 ## Current Recommendation-Layer Conclusion
 
@@ -128,6 +142,20 @@ This means:
 - the live 4-model monthly stack is still surfaced as a cross-check
 - usefulness improvements from v11-v12 are now part of the production report
   and email path
+
+## Current Prediction-Layer Conclusion
+
+After v14, the repo still does not recommend replacing the live prediction
+stack immediately.
+
+The current narrowed conclusion is:
+
+- `ensemble_ridge_gbt` is the leading reduced-universe replacement candidate
+- it improves on the reduced-universe live 4-model stack
+- it remains close to, but not clearly ahead of, the `historical_mean`
+  baseline
+- the next step should be fixed-budget feature replacement in v15 rather than
+  broader methodology expansion
 
 ## Classifier Sidecar Policy
 
