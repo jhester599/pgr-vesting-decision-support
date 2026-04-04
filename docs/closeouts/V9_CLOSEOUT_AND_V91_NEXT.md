@@ -213,8 +213,8 @@ If those criteria are not met, the right outcome is not to force promotion.
 
 Primary plan and summary:
 
-- [codex-v9-plan.md](C:/Users/Jeff/.codex/worktrees/3a71/pgr-vesting-decision-support/codex-v9-plan.md)
-- [V9_RESULTS_SUMMARY.md](C:/Users/Jeff/.codex/worktrees/3a71/pgr-vesting-decision-support/V9_RESULTS_SUMMARY.md)
+- [codex-v9-plan.md](C:/Users/Jeff/.codex/worktrees/3a71/pgr-vesting-decision-support/docs/plans/codex-v9-plan.md)
+- [V9_RESULTS_SUMMARY.md](C:/Users/Jeff/.codex/worktrees/3a71/pgr-vesting-decision-support/docs/results/V9_RESULTS_SUMMARY.md)
 
 Most important result artifacts:
 

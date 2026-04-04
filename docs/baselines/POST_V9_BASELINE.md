@@ -47,9 +47,9 @@ The repository baseline at v10.1 is therefore mixed:
 
 ### New top-level research documents
 
-- `codex-v9-plan.md`
-- `V9_RESULTS_SUMMARY.md`
-- `V9_CLOSEOUT_AND_V91_NEXT.md`
+- `docs/plans/codex-v9-plan.md`
+- `docs/results/V9_RESULTS_SUMMARY.md`
+- `docs/closeouts/V9_CLOSEOUT_AND_V91_NEXT.md`
 
 ## Classification of Current Repo Components
 
@@ -95,8 +95,8 @@ The repository baseline at v10.1 is therefore mixed:
 
 - `ROADMAP.md`
 - `DEVELOPMENT_PLAN.md`
-- `claude-v7-plan.md`
-- `codex-v8-plan.md`
+- `docs/history/claude-v7-plan.md`
+- `docs/plans/codex-v8-plan.md`
 - older review documents under `docs/`
 
 ## What Production Currently Uses

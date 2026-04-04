@@ -19,9 +19,9 @@ The monthly workflow is the only place where a model stack becomes operational.
 
 v9 research is complete and documented in:
 
-- `codex-v9-plan.md`
-- `V9_RESULTS_SUMMARY.md`
-- `V9_CLOSEOUT_AND_V91_NEXT.md`
+- `docs/plans/codex-v9-plan.md`
+- `docs/results/V9_RESULTS_SUMMARY.md`
+- `docs/closeouts/V9_CLOSEOUT_AND_V91_NEXT.md`
 
 It introduced:
 
@@ -35,9 +35,9 @@ It introduced:
 
 v11 research is now also complete and documented in:
 
-- `codex-v11-plan.md`
-- `V11_RESULTS_SUMMARY.md`
-- `V11_CLOSEOUT_AND_V12_NEXT.md`
+- `docs/plans/codex-v11-plan.md`
+- `docs/results/V11_RESULTS_SUMMARY.md`
+- `docs/closeouts/V11_CLOSEOUT_AND_V12_NEXT.md`
 
 It added:
 
@@ -50,9 +50,9 @@ It added:
 
 v12 shadow-promotion work is now also complete and documented in:
 
-- `codex-v12-plan.md`
-- `V12_RESULTS_SUMMARY.md`
-- `V12_CLOSEOUT_AND_V13_NEXT.md`
+- `docs/plans/codex-v12-plan.md`
+- `docs/results/V12_RESULTS_SUMMARY.md`
+- `docs/closeouts/V12_CLOSEOUT_AND_V13_NEXT.md`
 
 It added:
 
@@ -64,8 +64,8 @@ It added:
 
 v13 production-facing recommendation-layer work is now also documented in:
 
-- `codex-v13-plan.md`
-- `V13_RESULTS_SUMMARY.md`
+- `docs/plans/codex-v13-plan.md`
+- `docs/results/V13_RESULTS_SUMMARY.md`
 
 It adds:
 

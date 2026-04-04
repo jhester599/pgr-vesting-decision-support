@@ -70,12 +70,12 @@ The repo now has explicit operating boundaries:
 - Active recommendation-layer pilot:
   - v13 `live_with_shadow` recommendation-layer mode
 - Historical planning and review artifacts:
-  - `claude-v7-plan.md`
-  - `codex-v8-plan.md`
-  - `codex-v9-plan.md`
+  - `docs/history/claude-v7-plan.md`
+  - `docs/plans/codex-v8-plan.md`
+  - `docs/plans/codex-v9-plan.md`
   - older roadmap / research review files in `docs/`
 
-See [POST_V9_BASELINE.md](POST_V9_BASELINE.md) and
+See [POST_V9_BASELINE.md](docs/baselines/POST_V9_BASELINE.md) and
 [docs/model-governance.md](docs/model-governance.md) for the authoritative
 boundary and promotion policy.
 
@@ -147,13 +147,13 @@ python -m pytest -q
 ## Docs Map
 
 - Baseline / current state:
-  - [POST_V9_BASELINE.md](POST_V9_BASELINE.md)
-  - [V10_1_RESULTS_SUMMARY.md](V10_1_RESULTS_SUMMARY.md)
-  - [V11_RESULTS_SUMMARY.md](V11_RESULTS_SUMMARY.md)
-  - [V11_CLOSEOUT_AND_V12_NEXT.md](V11_CLOSEOUT_AND_V12_NEXT.md)
-  - [V12_RESULTS_SUMMARY.md](V12_RESULTS_SUMMARY.md)
-  - [V12_CLOSEOUT_AND_V13_NEXT.md](V12_CLOSEOUT_AND_V13_NEXT.md)
-  - [V13_RESULTS_SUMMARY.md](V13_RESULTS_SUMMARY.md)
+  - [POST_V9_BASELINE.md](docs/baselines/POST_V9_BASELINE.md)
+  - [V10_1_RESULTS_SUMMARY.md](docs/results/V10_1_RESULTS_SUMMARY.md)
+  - [V11_RESULTS_SUMMARY.md](docs/results/V11_RESULTS_SUMMARY.md)
+  - [V11_CLOSEOUT_AND_V12_NEXT.md](docs/closeouts/V11_CLOSEOUT_AND_V12_NEXT.md)
+  - [V12_RESULTS_SUMMARY.md](docs/results/V12_RESULTS_SUMMARY.md)
+  - [V12_CLOSEOUT_AND_V13_NEXT.md](docs/closeouts/V12_CLOSEOUT_AND_V13_NEXT.md)
+  - [V13_RESULTS_SUMMARY.md](docs/results/V13_RESULTS_SUMMARY.md)
 - Architecture and operations:
   - [docs/architecture.md](docs/architecture.md)
   - [docs/workflows.md](docs/workflows.md)
@@ -189,7 +189,7 @@ benchmark universe and leaner Ridge/GBT-centered candidates rather than model
 class expansion.
 
 The v9 closeout is documented in
-[V9_CLOSEOUT_AND_V91_NEXT.md](V9_CLOSEOUT_AND_V91_NEXT.md).
+[V9_CLOSEOUT_AND_V91_NEXT.md](docs/closeouts/V9_CLOSEOUT_AND_V91_NEXT.md).
 
 ## Notes on v12
 
