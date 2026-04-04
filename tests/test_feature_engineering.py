@@ -17,6 +17,7 @@ import config
 
 from src.processing.feature_engineering import (
     build_feature_matrix,
+    build_feature_matrix_from_db,
     get_feature_columns,
     get_model_feature_columns,
     get_X_y,
@@ -193,6 +194,136 @@ class TestBuildFeatureMatrix:
             assert col not in df.columns, (
                 f"Column {col} should be dropped when fewer than 60 observations."
             )
+
+    def test_v15_derived_features_built_from_existing_inputs(
+        self, price_history, dividend_history, split_history, tmp_path, monkeypatch
+    ):
+        """Key v15 derived features should be emitted when their source inputs exist."""
+        import config, src.processing.feature_engineering as fe
+
+        monkeypatch.setattr(config, "DATA_PROCESSED_DIR", str(tmp_path))
+        monkeypatch.setattr(config, "WFO_MIN_GAINSHARE_OBS", 1)
+        monkeypatch.setattr(fe, "_PROCESSED_PATH", str(tmp_path / "fm_v15.parquet"))
+
+        month_ends = pd.date_range("2010-01-31", periods=96, freq="ME")
+        pgr_monthly = pd.DataFrame(
+            {
+                "combined_ratio": np.linspace(96.0, 90.0, len(month_ends)),
+                "pif_total": np.linspace(1_000_000, 1_600_000, len(month_ends)),
+                "pif_growth_yoy": np.linspace(0.01, 0.08, len(month_ends)),
+                "net_premiums_written": np.linspace(800.0, 1400.0, len(month_ends)),
+                "net_premiums_earned": np.linspace(780.0, 1360.0, len(month_ends)),
+                "underwriting_income": np.linspace(20.0, 140.0, len(month_ends)),
+                "unearned_premium_growth_yoy": np.linspace(0.01, 0.10, len(month_ends)),
+                "roe_net_income_ttm": np.linspace(0.08, 0.22, len(month_ends)),
+                "book_value_per_share": np.linspace(20.0, 75.0, len(month_ends)),
+                "investment_income": np.linspace(40.0, 120.0, len(month_ends)),
+                "investment_book_yield": np.linspace(0.025, 0.055, len(month_ends)),
+                "fixed_income_duration": np.linspace(3.2, 4.4, len(month_ends)),
+            },
+            index=month_ends,
+        )
+
+        fred_macro = pd.DataFrame(
+            {
+                "T10Y2Y": np.linspace(2.0, 0.5, len(month_ends)),
+                "GS5": np.linspace(2.5, 3.0, len(month_ends)),
+                "GS2": np.linspace(1.0, 2.0, len(month_ends)),
+                "GS10": np.linspace(2.2, 4.0, len(month_ends)),
+                "T10YIE": np.linspace(1.5, 2.4, len(month_ends)),
+                "BAA10Y": np.linspace(1.2, 2.1, len(month_ends)),
+                "BAMLH0A0HYM2": np.linspace(3.5, 5.0, len(month_ends)),
+                "NFCI": np.linspace(-0.5, 0.2, len(month_ends)),
+                "VIXCLS": np.linspace(15.0, 22.0, len(month_ends)),
+                "CUSR0000SETA02": np.linspace(100.0, 140.0, len(month_ends)),
+                "CUSR0000SAM2": np.linspace(100.0, 130.0, len(month_ends)),
+                "PCU5241265241261": np.linspace(100.0, 150.0, len(month_ends)),
+            },
+            index=month_ends,
+        )
+
+        df = build_feature_matrix(
+            price_history,
+            dividend_history,
+            split_history,
+            pgr_monthly=pgr_monthly,
+            fred_macro=fred_macro,
+            force_refresh=True,
+        )
+
+        expected_cols = {
+            "monthly_combined_ratio_delta",
+            "pif_growth_acceleration",
+            "npw_per_pif_yoy",
+            "npw_vs_npe_spread_pct",
+            "underwriting_margin_ttm",
+            "book_value_per_share_growth_yoy",
+            "duration_rate_shock_3m",
+            "severity_index_yoy",
+            "rate_adequacy_gap_yoy",
+            "breakeven_inflation_10y",
+            "breakeven_momentum_3m",
+            "real_yield_change_6m",
+            "baa10y_spread",
+        }
+        missing = expected_cols.difference(df.columns)
+        assert not missing, f"Expected v15-derived columns missing from matrix: {sorted(missing)}"
+
+    def test_v18_price_relative_features_built_from_existing_prices(
+        self, monkeypatch, price_history
+    ) -> None:
+        """Benchmark-side v18 relative features should be derivable from existing prices."""
+        from src.database import db_client
+
+        def _make_scaled_prices(scale: float) -> pd.DataFrame:
+            scaled = price_history.copy()
+            scaled["open"] *= scale
+            scaled["high"] *= scale
+            scaled["low"] *= scale
+            scaled["close"] *= scale
+            return scaled
+
+        empty_dividends = pd.DataFrame(
+            columns=["amount", "source"],
+            index=pd.DatetimeIndex([], name="ex_date"),
+        )
+        empty_splits = pd.DataFrame(
+            columns=["split_ratio", "numerator", "denominator"],
+            index=pd.DatetimeIndex([], name="split_date"),
+        )
+
+        price_map = {
+            "PGR": _make_scaled_prices(1.00),
+            "VWO": _make_scaled_prices(0.85),
+            "VXUS": _make_scaled_prices(0.80),
+            "GLD": _make_scaled_prices(1.20),
+            "BND": _make_scaled_prices(0.75),
+            "DBC": _make_scaled_prices(1.05),
+            "VOO": _make_scaled_prices(0.95),
+            "VFH": _make_scaled_prices(0.90),
+            "ALL": _make_scaled_prices(0.88),
+            "TRV": _make_scaled_prices(0.92),
+            "CB": _make_scaled_prices(0.94),
+            "HIG": _make_scaled_prices(0.89),
+        }
+
+        monkeypatch.setattr(db_client, "get_prices", lambda conn, ticker, *args, **kwargs: price_map.get(ticker, pd.DataFrame()))
+        monkeypatch.setattr(db_client, "get_dividends", lambda conn, ticker: empty_dividends)
+        monkeypatch.setattr(db_client, "get_splits", lambda conn, ticker: empty_splits)
+        monkeypatch.setattr(db_client, "get_pgr_fundamentals", lambda conn: pd.DataFrame())
+        monkeypatch.setattr(db_client, "get_pgr_edgar_monthly", lambda conn: pd.DataFrame())
+        monkeypatch.setattr(db_client, "get_fred_macro", lambda conn, series: pd.DataFrame())
+
+        df = build_feature_matrix_from_db(conn=None, force_refresh=True)
+
+        expected_cols = {
+            "vwo_vxus_spread_6m",
+            "gold_vs_treasury_6m",
+            "commodity_equity_momentum",
+            "pgr_vs_peers_6m",
+        }
+        missing = expected_cols.difference(df.columns)
+        assert not missing, f"Expected v18 price-relative columns missing from matrix: {sorted(missing)}"
 
 
 # ---------------------------------------------------------------------------

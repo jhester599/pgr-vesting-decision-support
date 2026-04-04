@@ -1,0 +1,52 @@
+candidate_name,model_type,candidate_feature,replace_feature,candidate_available_now,replacement_present_in_model,priority_rank,category,likely_source,implementation_difficulty,likely_signal_quality,research_source,status,notes
+gbt_lean_plus_two,gbt,ppi_auto_ins_yoy,vmt_yoy,True,True,1,shared_regime,FRED,low,medium-high,chatgpt,queued_available,Immediate repo-ready test
+gbt_lean_plus_two,gbt,used_car_cpi_yoy,vmt_yoy,True,True,2,shared_regime,FRED,low,medium,chatgpt;claude,queued_available,Pair with medical CPI later
+gbt_lean_plus_two,gbt,medical_cpi_yoy,vmt_yoy,True,True,3,shared_regime,FRED,low,medium,chatgpt,queued_available,Pair with used car CPI later
+ridge_lean_v1,ridge,cr_acceleration,combined_ratio_ttm,True,True,4,PGR_specific,EDGAR derived,low,high,gemini;claude,queued_available,Immediate stand-in for monthly combined ratio delta
+gbt_lean_plus_two,gbt,pgr_vs_peers_6m,mom_3m,True,True,5,PGR_specific,prices,low,high,claude,queued_available,Immediate repo-ready relative feature
+ridge_lean_v1,ridge,unearned_premium_growth_yoy,investment_income_growth_yoy,True,True,6,PGR_specific,EDGAR derived,low,medium-high,chatgpt,queued_available,Already available but not in current winner
+ridge_lean_v1,ridge,pif_growth_yoy,npw_growth_yoy,True,True,7,PGR_specific,EDGAR derived,low,medium,gemini;claude,queued_available,Existing feature to retest in Ridge
+gbt_lean_plus_two,gbt,rate_adequacy_gap_yoy,vmt_yoy,True,True,8,PGR_specific,FRED,medium,high,chatgpt;claude,queued_engineer,Highest-priority new feature
+gbt_lean_plus_two,gbt,severity_index_yoy,vmt_yoy,True,True,9,shared_regime,FRED,low,medium-high,chatgpt,queued_engineer,Build from existing CPI components
+gbt_lean_plus_two,gbt,auto_pricing_power_spread,vmt_yoy,False,True,10,PGR_specific,FRED,low,medium-high,geminipro,queued_engineer,Test against rate adequacy family
+ridge_lean_v1,ridge,monthly_combined_ratio_delta,combined_ratio_ttm,True,True,11,PGR_specific,EDGAR,low,high,gemini,queued_engineer,Separate from acceleration concept
+gbt_lean_plus_two,gbt,pif_growth_acceleration,pif_growth_yoy,True,True,12,PGR_specific,EDGAR,medium,medium-high,gemini,queued_engineer,Tree-friendly growth regime feature
+ridge_lean_v1,ridge,npw_per_pif_yoy,npw_growth_yoy,True,True,13,PGR_specific,EDGAR,medium,high,chatgpt;claude,queued_engineer,Strong consensus pricing decomposition
+ridge_lean_v1,ridge,npw_vs_npe_spread_pct,npw_growth_yoy,True,True,14,PGR_specific,EDGAR,medium,medium,chatgpt;claude,queued_engineer,Use after npw per pif
+ridge_lean_v1,ridge,underwriting_margin_ttm,combined_ratio_ttm,True,True,15,PGR_specific,EDGAR,medium,high,chatgpt,queued_engineer,Strong Ridge candidate
+gbt_lean_plus_two,gbt,reserve_to_npe_ratio,credit_spread_hy,False,True,16,PGR_specific,EDGAR,medium,medium,chatgpt,queued_engineer,Lower priority than margin and pricing family
+ridge_lean_v1,ridge,reserve_to_npe_ratio,credit_spread_hy,False,True,16,PGR_specific,EDGAR,medium,medium,chatgpt,queued_engineer,Lower priority than margin and pricing family
+ridge_lean_v1,ridge,book_value_per_share_growth_yoy,roe_net_income_ttm,True,True,17,PGR_specific,EDGAR,medium,medium-high,claude,queued_engineer,Strong balance-sheet candidate
+gbt_lean_plus_two,gbt,duration_rate_shock_3m,real_rate_10y,True,True,18,shared_regime,EDGAR plus FRED,medium,high,chatgpt,queued_engineer,High-value benchmark-aware feature
+ridge_lean_v1,ridge,duration_rate_shock_3m,real_rate_10y,True,True,18,shared_regime,EDGAR plus FRED,medium,high,chatgpt,queued_engineer,High-value benchmark-aware feature
+ridge_lean_v1,ridge,direct_channel_pif_share_ttm,investment_income_growth_yoy,False,True,19,PGR_specific,EDGAR,medium,medium,claude,queued_engineer,Use if channel data is clean
+ridge_lean_v1,ridge,channel_mix_direct_pct_yoy,investment_income_growth_yoy,False,True,20,PGR_specific,EDGAR,medium,medium,chatgpt,queued_engineer,Variant of direct channel thesis
+ridge_lean_v1,ridge,realized_gain_to_net_income_ratio,investment_income_growth_yoy,False,True,21,PGR_specific,EDGAR,medium,medium,chatgpt,queued_engineer,Secondary quality feature
+ridge_lean_v1,ridge,unrealized_gain_pct_equity,roe_net_income_ttm,False,True,22,PGR_specific,EDGAR,medium,medium,chatgpt,queued_engineer,Test after duration rate shock
+ridge_lean_v1,ridge,loss_ratio_ttm,combined_ratio_ttm,False,True,23,PGR_specific,EDGAR,medium,high,chatgpt,queued_engineer,Phase-two decomposition test
+ridge_lean_v1,ridge,expense_ratio_ttm,combined_ratio_ttm,False,True,24,PGR_specific,EDGAR,medium,medium-high,chatgpt,queued_engineer,Pair with loss ratio after individual tests
+gbt_lean_plus_two,gbt,usd_broad_return_3m,nfci,False,True,25,benchmark_predictive,FRED,low,high,chatgpt;claude,queued_engineer,Highest-priority benchmark feature
+ridge_lean_v1,ridge,usd_broad_return_3m,nfci,False,True,25,benchmark_predictive,FRED,low,high,chatgpt;claude,queued_engineer,Highest-priority benchmark feature
+gbt_lean_plus_two,gbt,usd_momentum_6m,nfci,False,True,26,benchmark_predictive,FRED,low,medium-high,geminipro,queued_engineer,Test after 3m version
+gbt_lean_plus_two,gbt,wti_return_3m,yield_curvature,False,True,27,benchmark_predictive,FRED,low,high,chatgpt,queued_engineer,High-priority commodity benchmark feature
+ridge_lean_v1,ridge,wti_return_3m,yield_curvature,False,True,27,benchmark_predictive,FRED,low,high,chatgpt,queued_engineer,High-priority commodity benchmark feature
+ridge_lean_v1,ridge,mortgage_spread_30y_10y,yield_curvature,False,True,28,benchmark_predictive,FRED,low,medium,chatgpt;gemini,queued_engineer,Strong Ridge benchmark candidate
+gbt_lean_plus_two,gbt,baa10y_spread,credit_spread_hy,True,True,29,shared_regime,FRED,low,medium,chatgpt;gemini,queued_engineer,Test before harder credit variants
+ridge_lean_v1,ridge,baa10y_spread,credit_spread_hy,True,True,29,shared_regime,FRED,low,medium,chatgpt;gemini,queued_engineer,Test before harder credit variants
+ridge_lean_v1,ridge,credit_spread_ratio,credit_spread_hy,False,True,30,shared_regime,FRED,medium,medium,geminipro,deferred_harder,Build only if easy point-in-time IG source exists
+gbt_lean_plus_two,gbt,breakeven_inflation_10y,yield_curvature,True,True,31,benchmark_predictive,FRED,low,medium-high,claude,queued_engineer,Level version first
+ridge_lean_v1,ridge,breakeven_inflation_10y,yield_curvature,True,True,31,benchmark_predictive,FRED,low,medium-high,claude,queued_engineer,Level version first
+gbt_lean_plus_two,gbt,breakeven_momentum_3m,vol_63d,True,True,32,benchmark_predictive,FRED,low,medium,geminipro,queued_engineer,Use after breakeven level
+gbt_lean_plus_two,gbt,real_yield_change_6m,real_rate_10y,True,True,33,shared_regime,FRED,low,high,geminipro,queued_engineer,Compare to existing real rate level
+ridge_lean_v1,ridge,real_yield_change_6m,real_rate_10y,True,True,33,shared_regime,FRED,low,high,geminipro,queued_engineer,Compare to existing real rate level
+ridge_lean_v1,ridge,term_premium_10y,yield_slope,False,True,34,benchmark_predictive,FRED,low,medium,gemini,queued_engineer,Lower priority than mortgage spread and real yield
+gbt_lean_plus_two,gbt,gold_vs_treasury_6m,mom_12m,False,True,35,benchmark_predictive,prices,low,medium,geminipro,queued_engineer,Useful tree regime switch
+gbt_lean_plus_two,gbt,commodity_equity_momentum,mom_6m,False,True,36,benchmark_predictive,prices,low,medium,gemini,queued_engineer,Secondary cross-asset feature
+ridge_lean_v1,ridge,legal_services_ppi_relative,vix,False,True,37,PGR_specific,FRED,low,medium,gemini,queued_engineer,Social inflation test
+gbt_lean_plus_two,gbt,vwo_vxus_spread_6m,mom_6m,False,True,39,benchmark_predictive,prices,low,low-medium,geminipro,queued_engineer,Low priority international spread
+ridge_lean_v1,ridge,pgr_price_to_book_relative,roe_net_income_ttm,False,True,41,PGR_specific,market data plus valuation,high,medium-high,gemini,deferred_harder,Prefer before PE relative
+ridge_lean_v1,ridge,pgr_pe_vs_market_pe,roe_net_income_ttm,False,True,42,PGR_specific,market data plus valuation,medium,medium,geminipro,deferred_harder,Lower priority than P to B
+ridge_lean_v1,ridge,equity_risk_premium,yield_curvature,False,True,43,benchmark_predictive,market data plus FRED,medium,high,geminipro;gemini,deferred_harder,High value if sourced cleanly
+ridge_lean_v1,ridge,pgr_premium_to_surplus,npw_growth_yoy,False,True,45,PGR_specific,EDGAR,medium-high,medium,gemini,deferred_harder,Useful but not first wave
+gbt_lean_plus_two,gbt,excess_bond_premium_proxy,credit_spread_hy,False,True,46,shared_regime,FRED plus model,high,medium-high,claude,deferred_harder,Stretch item after simpler credit features
+ridge_lean_v1,ridge,excess_bond_premium_proxy,credit_spread_hy,False,True,46,shared_regime,FRED plus model,high,medium-high,claude,deferred_harder,Stretch item after simpler credit features
