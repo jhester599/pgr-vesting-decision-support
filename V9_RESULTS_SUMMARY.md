@@ -54,6 +54,8 @@ New scripts:
 - `scripts/policy_evaluation.py`
 - `scripts/pooled_benchmark_experiments.py`
 - `scripts/candidate_model_bakeoff.py`
+- `scripts/confirmatory_classifier_experiments.py`
+- `scripts/classifier_feature_selection.py`
 
 Production-safe research hook:
 
@@ -72,6 +74,8 @@ New tests:
 - `tests/test_policy_evaluation.py`
 - `tests/test_pooled_benchmark_experiments.py`
 - `tests/test_candidate_model_bakeoff.py`
+- `tests/test_confirmatory_classifier_experiments.py`
+- `tests/test_classifier_feature_selection.py`
 - `tests/test_wfo_engine.py`
 
 ### Outputs generated
@@ -92,6 +96,12 @@ The v9 outputs were written to `results/v9/`, including:
 - `candidate_model_bakeoff_summary_20260403.csv`
 - `weekly_snapshot_experiments_detail_20260403.csv`
 - `weekly_snapshot_experiments_summary_20260403.csv`
+- `confirmatory_classifier_detail_20260403.csv`
+- `confirmatory_classifier_summary_20260403.csv`
+- `classifier_feature_selection_detail_20260403.csv`
+- `classifier_feature_selection_summary_20260403.csv`
+- `classifier_forward_selection_trace_20260403.csv`
+- `classifier_feature_selection_recommendation_20260403.md`
 
 ## Key Findings
 
@@ -407,6 +417,121 @@ Interpretation:
 - weekly carry-forward snapshots are therefore not the next best promotion path
   right now
 
+## 11. A confirmatory classifier was worth testing, but it did not improve policy outcomes
+
+Because return magnitude is noisier than simple direction, v9 also tested a
+confirmatory classifier on the reduced `balanced_core7` universe in
+`confirmatory_classifier_summary_20260403.csv`.
+
+The idea was not to replace regression outright. Instead, it tested whether a
+binary outperform-probability model could improve decisions by:
+
+- acting alone as a classifier-only rule
+- or confirming a positive regression signal before the policy holds
+
+The confirmatory classifier used the same lean candidate feature sets and the
+same production-style purged WFO splits.
+
+Best classifier metrics by candidate:
+
+- `ridge_lean_v1`
+  - mean accuracy: `61.1%`
+  - mean balanced accuracy: `62.1%`
+  - mean Brier score: `0.297`
+- `gbt_lean_plus_two`
+  - mean accuracy: `56.3%`
+  - mean balanced accuracy: `52.4%`
+  - mean Brier score: `0.320`
+- `elasticnet_lean_v1`
+  - mean accuracy: `53.0%`
+  - mean balanced accuracy: `56.4%`
+  - mean Brier score: `0.355`
+
+But the more important result is decision utility:
+
+- `ridge_lean_v1` regression sign-policy mean return: `0.0699`
+- best classifier-only variant for Ridge: `0.0610`
+- best hybrid confirm variant for Ridge: `0.0593`
+- `gbt_lean_plus_two` regression sign-policy mean return: `0.0652`
+- best classifier-only / hybrid variants for GBT: all below `0.0494`
+- `elasticnet_lean_v1` regression sign-policy mean return: `0.0636`
+- best classifier-only / hybrid variants for ElasticNet: all below `0.0484`
+
+Interpretation:
+
+- the categorical framing is reasonable enough to test
+- but in this first real run, the classifier added friction rather than value
+- requiring classifier confirmation reduced hold frequency, but it reduced mean
+  policy return even more
+- the classifier is therefore not ready to become the primary v9.1 promotion
+  path, and it should not replace the lean regression candidates
+
+The most defensible use of this idea going forward is as a research diagnostic,
+not as the current lead production candidate.
+
+## 12. Ridge-specific classifier feature selection made the classifier more credible
+
+Because the untuned confirmatory classifier looked directionally reasonable but
+not decision-useful, v9 also ran a one-feature-at-a-time Ridge-classifier sweep
+and greedy forward selection in `classifier_feature_selection_summary_20260403.csv`.
+
+This was intentionally classifier-specific:
+
+- regression candidate stayed fixed at `ridge_lean_v1`
+- the classifier itself was tuned separately
+- every available feature was tested one at a time
+- then the classifier was built forward one feature at a time
+
+Best single feature:
+
+- `investment_book_yield`
+  - mean balanced accuracy: `0.6135`
+  - mean Brier score: `0.2608`
+  - mean hybrid policy return: `0.0675`
+  - hybrid uplift vs regression sign: `-0.0024`
+
+That single feature alone was already much better than the untuned Ridge
+confirmatory classifier and almost neutral relative to the regression sign rule.
+
+Best tuned classifier set from forward selection:
+
+- `investment_book_yield`
+- `roe`
+- `npw_growth_yoy`
+- `buyback_yield`
+- `credit_spread_hy`
+- `gainshare_est`
+- `unearned_premium_growth_yoy`
+- `roe_net_income_ttm`
+- `nfci`
+- `combined_ratio_ttm`
+- `investment_income_growth_yoy`
+- `yield_slope`
+
+Metrics for that 12-feature tuned classifier:
+
+- mean balanced accuracy: `0.6736`
+- mean Brier score: `0.2332`
+- mean hybrid policy return: `0.0688`
+- hybrid uplift vs regression sign: `-0.0011`
+
+Interpretation:
+
+- the categorical model is more promising after model-specific feature tuning
+- it still does not clearly beat the lean regression sign-policy
+- but it now comes very close while providing meaningfully better
+  classification-style metrics
+- the leanest tradeoff candidate is the single-feature
+  `investment_book_yield` classifier
+- the strongest accuracy candidate is the 12-feature tuned Ridge classifier
+
+Current recommendation:
+
+- do not replace the lean regression candidate with the classifier
+- do keep the tuned Ridge classifier as an active sidecar research candidate
+- if the classifier is used next, treat it as an abstention / confidence aid
+  rather than a hard confirmation gate
+
 ## What Changed Most During v9
 
 The most important shifts from the start of v9 to the current state are:
@@ -420,6 +545,8 @@ The most important shifts from the start of v9 to the current state are:
    a more complex architecture.
 7. Higher-frequency carry-forward snapshots did not provide enough incremental
    value to justify moving away from the monthly cadence yet.
+8. A confirmatory classifier was worth testing, but it did not outperform the
+   simpler lean regression sign-policy decisions.
 
 ## What Did Not Work
 
@@ -431,6 +558,7 @@ The following did not solve the core problem:
 - using the full 21-benchmark universe
 - relying on the current tiered action map as the best policy layer
 - increasing effective row count via weekly carry-forward snapshots
+- using a binary confirmatory classifier as an immediate decision-layer upgrade
 
 ## Recommended Next Steps
 
@@ -473,7 +601,24 @@ The current evidence says:
 
 That is a better next step than TFT or RL.
 
-## 5. Only consider a new architecture after the lean candidate is tested
+## 5. Keep the confirmatory classifier as a sidecar diagnostic, not a lead candidate
+
+The binary classifier experiments were a reasonable extension of v9, but the
+results did not justify promotion:
+
+- classifier-only rules underperformed the lean regression sign-policy
+- hybrid confirmation rules underperformed even more
+- the extra model is not yet earning its complexity cost
+
+The classifier can still remain useful as:
+
+- a research cross-check
+- a future abstention / confidence diagnostic
+- a possible tie-breaker if later lean candidates become better calibrated
+
+But it should not lead the next production-candidate bakeoff.
+
+## 6. Only consider a new architecture after the lean candidate is tested
 
 If the reduced-universe lean-candidate ensemble still fails:
 
@@ -485,7 +630,7 @@ If the reduced-universe lean-candidate ensemble still fails:
 Only if the lean candidate clearly stabilizes should a more complex model be
 considered as a controlled research branch.
 
-## 6. Do not prioritize daily or every-third-day interpolation work yet
+## 7. Do not prioritize daily or every-third-day interpolation work yet
 
 The weekly pilot was the lowest-risk version of the higher-frequency idea:
 

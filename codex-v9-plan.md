@@ -449,6 +449,20 @@ but weak magnitude accuracy.
 4. optional thresholded outperform target:
    - for example outperform by more than +3%
 
+### Additional v9.3 requirement
+
+Test binary classification in two distinct roles:
+
+1. as a standalone replacement target
+2. as a confirmatory sidecar model that can gate a positive regression signal
+
+The confirmatory use case should be evaluated explicitly rather than assumed to
+help by default.
+
+If the confirmatory classifier shows promise, continue with a model-specific
+feature-selection pass rather than assuming the regression feature set is also
+best for classification.
+
 ### Required metrics
 
 For regression:
@@ -472,9 +486,18 @@ For classification:
 Is a calibrated classifier with a simple decision rule more useful than a noisy
 regression model with unstable magnitude predictions?
 
+Secondary question:
+
+Can a binary outperform-probability model improve policy outcomes when used only
+to confirm a positive regression signal?
+
 ### Acceptance criteria
 
 - provides a direct recommendation on regression vs classification vs thresholded targets
+- explicitly states whether a confirmatory classifier should be:
+  - promoted
+  - retained as research-only
+  - or dropped
 
 ---
 
@@ -787,6 +810,7 @@ Before closing v9.x, confirm:
 - [ ] feature-cost report exists and runs
 - [ ] feature-diet outputs include stability and sample-size metrics
 - [ ] target formulation experiments completed
+- [ ] confirmatory-classifier experiments completed
 - [ ] reduced benchmark-universe experiments completed
 - [ ] regime-slice backtests completed
 - [ ] policy evaluation completed
