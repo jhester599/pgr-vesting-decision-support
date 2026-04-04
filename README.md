@@ -38,6 +38,11 @@ Status as of 2026-04-04:
   baseline over a rolling 12-month review window, writes side-by-side dry-run
   memos under `results/v12/`, and tests whether the recommendation layer
   should be simplified before any new model stack is promoted.
+- `v13.x` is the first production-facing follow-through from that result. It
+  keeps the live model stack intact, but adds a configurable recommendation-
+  layer pilot, explicit existing-holdings guidance, diversification-first
+  redeploy guidance, and a simpler-baseline cross-check to the monthly report
+  and email.
 
 ## Production vs. Research
 
@@ -62,6 +67,8 @@ The repo now has explicit operating boundaries:
   - classifier-sidecar confidence work from v9
   - v11 diversification-first candidates and policy recommendations
   - v12 shadow-baseline recommendation-layer study
+- Active recommendation-layer pilot:
+  - v13 `live_with_shadow` recommendation-layer mode
 - Historical planning and review artifacts:
   - `claude-v7-plan.md`
   - `codex-v8-plan.md`
@@ -129,6 +136,8 @@ python -m pytest -q
 - `results/v11/`: diversification-first research outputs from the v11 loop
 - `results/v12/`: shadow-promotion comparisons between the live stack and the
   simpler diversification-first baseline
+- `results/v13/`: reserved for future v13 follow-up runs if the recommendation
+  layer is promoted further
 - `scripts/`: runnable CLI entrypoints for production and research tasks
 - `results/monthly_decisions/`: committed production monthly decision outputs
 - `results/v9/`: committed research outputs from the v9 program
@@ -144,6 +153,7 @@ python -m pytest -q
   - [V11_CLOSEOUT_AND_V12_NEXT.md](V11_CLOSEOUT_AND_V12_NEXT.md)
   - [V12_RESULTS_SUMMARY.md](V12_RESULTS_SUMMARY.md)
   - [V12_CLOSEOUT_AND_V13_NEXT.md](V12_CLOSEOUT_AND_V13_NEXT.md)
+  - [V13_RESULTS_SUMMARY.md](V13_RESULTS_SUMMARY.md)
 - Architecture and operations:
   - [docs/architecture.md](docs/architecture.md)
   - [docs/workflows.md](docs/workflows.md)
@@ -190,3 +200,16 @@ finding is that the live stack changed directional signals several times while
 still landing on the same `DEFER-TO-TAX-DEFAULT` 50% sell action, whereas the
 shadow baseline was steadier and easier to explain. That makes recommendation-
 layer simplification the most plausible next promotion candidate.
+
+## Notes on v13
+
+v13 does not promote a new model stack either. Instead, it promotes the best
+usefulness improvements from v11-v12 into the production-facing report and
+email:
+
+- simpler-baseline cross-checks
+- existing-holdings lot guidance
+- diversification-first redeploy guidance
+
+That makes the monthly output more useful immediately for the upcoming run,
+while still keeping the live model stack unchanged.

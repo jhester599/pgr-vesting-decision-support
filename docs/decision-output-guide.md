@@ -87,6 +87,26 @@ The shadow memos are meant to answer a practical question:
 They are review artifacts only. They do not change the live workflow on their
 own.
 
+## v13 Recommendation-Layer Pilot
+
+v13 brings part of that shadow-study output into the production-facing monthly
+communication.
+
+The report and email can now include:
+
+- `Existing Holdings Guidance`
+- `Redeploy Guidance`
+- `Simple-Baseline Cross-Check`
+
+Under the default `live_with_shadow` mode:
+
+- the live model stack still determines the official recommendation
+- the simpler baseline is shown as a cross-check
+- the report explicitly distinguishes:
+  - what to do with the next vest
+  - what to do with already-held shares
+  - where sold exposure should go if redeployed
+
 ## Diagnostic Report
 
 The diagnostic report is the technical appendix. It includes:

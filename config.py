@@ -210,6 +210,42 @@ KELLY_MAX_POSITION: float = 0.20      # v4.1: reduced from 0.30 (Meulbroek 2005:
 ENSEMBLE_MODELS: list[str] = ["elasticnet", "ridge", "bayesian_ridge", "gbt"]
 
 # ---------------------------------------------------------------------------
+# v13 recommendation-layer promotion study
+# ---------------------------------------------------------------------------
+# Keep the live model stack unchanged, but allow the monthly report/email layer
+# to include or eventually promote the simpler diversification-first baseline
+# that performed best in the v11/v12 recommendation studies.
+RECOMMENDATION_LAYER_MODE: str = os.getenv("RECOMMENDATION_LAYER_MODE", "live_with_shadow")
+RECOMMENDATION_LAYER_VALID_MODES: tuple[str, ...] = (
+    "live_only",
+    "live_with_shadow",
+    "shadow_promoted",
+)
+V13_SHADOW_BASELINE_STRATEGY: str = "historical_mean"
+V13_SHADOW_BASELINE_POLICY: str = "neutral_band_3pct"
+V13_SHADOW_FORECAST_UNIVERSE: list[str] = [
+    "VOO",
+    "VXUS",
+    "VWO",
+    "VMBS",
+    "BND",
+    "GLD",
+    "DBC",
+    "VDE",
+    "VFH",
+]
+V13_REDEPLOY_UNIVERSE: list[str] = [
+    "VOO",
+    "VXUS",
+    "VWO",
+    "VMBS",
+    "BND",
+    "GLD",
+    "DBC",
+    "VDE",
+]
+
+# ---------------------------------------------------------------------------
 # v4.4 — STCG Tax Boundary Guard
 # ---------------------------------------------------------------------------
 # Minimum predicted 6M alpha required to justify selling a lot still in the

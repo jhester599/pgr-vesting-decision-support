@@ -27,13 +27,23 @@ from src.tax.capital_gains import load_position_lots
 _DEFAULT_LOTS_PATH = Path("data/processed/position_lots.csv")
 
 
+def _clean_markdown_cell(value: str) -> str:
+    """Strip simple markdown emphasis from extracted table cells."""
+    cleaned = value.strip()
+    while cleaned.startswith("**") and cleaned.endswith("**") and len(cleaned) >= 4:
+        cleaned = cleaned[2:-2].strip()
+    while cleaned.startswith("`") and cleaned.endswith("`") and len(cleaned) >= 2:
+        cleaned = cleaned[1:-1].strip()
+    return cleaned
+
+
 def _extract_report_value(body: str, field: str) -> str | None:
     match = re.search(rf"\| {re.escape(field)} \| \*\*(.+?)\*\* \|", body)
     if match:
-        return match.group(1)
+        return _clean_markdown_cell(match.group(1))
     match = re.search(rf"\| {re.escape(field)} \| (.+?) \|", body)
     if match:
-        return match.group(1)
+        return _clean_markdown_cell(match.group(1))
     return None
 
 
@@ -66,10 +76,10 @@ def _extract_markdown_tables(text: str) -> list[list[str]]:
 def _parse_markdown_table(lines: list[str]) -> list[dict[str, str]]:
     if len(lines) < 2:
         return []
-    headers = [cell.strip() for cell in lines[0].strip().strip("|").split("|")]
+    headers = [_clean_markdown_cell(cell) for cell in lines[0].strip().strip("|").split("|")]
     rows: list[dict[str, str]] = []
     for line in lines[2:]:
-        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        cells = [_clean_markdown_cell(cell) for cell in line.strip().strip("|").split("|")]
         if len(cells) != len(headers):
             continue
         rows.append(dict(zip(headers, cells)))
@@ -81,6 +91,15 @@ def _extract_section(body: str, heading: str) -> str:
     return match.group(1) if match else ""
 
 
+def _extract_section_bullets(body: str, heading: str) -> list[str]:
+    section = _extract_section(body, heading)
+    return [
+        line.strip()[2:]
+        for line in section.splitlines()
+        if line.strip().startswith("- ")
+    ]
+
+
 def _extract_table_by_header(body: str, header_name: str) -> list[dict[str, str]]:
     for table_lines in _extract_markdown_tables(body):
         if table_lines and table_lines[0].strip().startswith(f"| {header_name} |"):
@@ -89,7 +108,9 @@ def _extract_table_by_header(body: str, header_name: str) -> list[dict[str, str]
 
 
 def _extract_next_vest_data(body: str) -> dict[str, str]:
-    section = _extract_section(body, "Per-Benchmark Signals")
+    section = _extract_section(body, "Next Vest Decision")
+    if not section:
+        section = _extract_section(body, "Per-Benchmark Signals")
     for table_lines in _extract_markdown_tables(section):
         if table_lines and table_lines[0].strip().startswith("| Field | Value |"):
             rows = _parse_markdown_table(table_lines)
@@ -99,6 +120,14 @@ def _extract_next_vest_data(body: str) -> dict[str, str]:
                 if row.get("Field")
             }
     return {}
+
+
+def _extract_shadow_check(body: str) -> list[dict[str, str]]:
+    section = _extract_section(body, "Simple-Baseline Cross-Check")
+    for table_lines in _extract_markdown_tables(section):
+        if table_lines and table_lines[0].strip().startswith("| Path |"):
+            return _parse_markdown_table(table_lines)
+    return []
 
 
 def _extract_as_of_date(body: str) -> date | None:
@@ -241,6 +270,8 @@ def build_email_summary(body: str, lots_csv_path: str | Path | None = None) -> s
     predicted = _extract_report_value(body, "Predicted 6M Relative Return") or "n/a"
     exec_lines = _extract_executive_summary(body)
     existing_guidance = _build_existing_shares_guidance(body, lots_csv_path)
+    shadow_rows = _extract_shadow_check(body)
+    redeploy_lines = _extract_section_bullets(body, "Redeploy Guidance")
 
     lines = [
         "PGR Monthly Decision Summary",
@@ -257,6 +288,16 @@ def build_email_summary(body: str, lots_csv_path: str | Path | None = None) -> s
         lines += ["", "Existing shares already held:"]
         lines.append(existing_guidance["headline"])
         lines.extend(f"- {line}" for line in existing_guidance["bullets"])
+    if shadow_rows:
+        lines += ["", "Simple-baseline cross-check:"]
+        for row in shadow_rows:
+            lines.append(
+                f"- {row.get('Path', 'Path')}: {row.get('Recommendation Mode', 'n/a')}, "
+                f"sell {row.get('Sell %', 'n/a')}, predicted {row.get('Predicted 6M Return', 'n/a')}"
+            )
+    if redeploy_lines:
+        lines += ["", "If redeploying sold exposure:"]
+        lines.extend(f"- {line}" for line in redeploy_lines)
 
     lines += [
         "",
@@ -367,6 +408,8 @@ def build_email_html(body: str, lots_csv_path: str | Path | None = None) -> str:
     existing_guidance = _build_existing_shares_guidance(body, lots_csv_path)
     benchmark_table = _build_benchmark_html_table(body)
     scenario_table = _build_scenario_html_table(body)
+    shadow_rows = _extract_shadow_check(body)
+    redeploy_lines = _extract_section_bullets(body, "Redeploy Guidance")
     mode_badge = {
         "ACTIONABLE": _html_badge("ACTIONABLE", "#0f766e"),
         "MONITORING-ONLY": _html_badge("MONITORING ONLY", "#a16207"),
@@ -414,6 +457,50 @@ def build_email_html(body: str, lots_csv_path: str | Path | None = None) -> str:
         for line in executive_summary
     )
 
+    shadow_section = ""
+    if shadow_rows:
+        shadow_html = "".join(
+            "<tr>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700;'>{escape(row.get('Path', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;'>{escape(row.get('Recommendation Mode', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;'>{escape(row.get('Sell %', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;'>{escape(row.get('Predicted 6M Return', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;'>{escape(row.get('Aggregate OOS R^2', ''))}</td>"
+            "</tr>"
+            for row in shadow_rows
+        )
+        shadow_section = (
+            "<div style='margin-top:20px;padding:20px;border:1px solid #dbeafe;border-radius:16px;background:#f8fbff;'>"
+            "<h2 style='margin:0 0 12px 0;font-size:20px;color:#0f172a;'>Simple-baseline cross-check</h2>"
+            "<p style='margin:0 0 12px 0;color:#334155;line-height:1.5;'>"
+            "This compares the live production recommendation layer to the steadier diversification-first baseline tested in v12."
+            "</p>"
+            "<table style='width:100%;border-collapse:collapse;font-size:13px;'>"
+            "<thead><tr>"
+            "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Path</th>"
+            "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Mode</th>"
+            "<th style='text-align:right;padding:8px;border-bottom:2px solid #cbd5e1;'>Sell %</th>"
+            "<th style='text-align:right;padding:8px;border-bottom:2px solid #cbd5e1;'>Predicted</th>"
+            "<th style='text-align:right;padding:8px;border-bottom:2px solid #cbd5e1;'>OOS R²</th>"
+            "</tr></thead><tbody>"
+            f"{shadow_html}"
+            "</tbody></table>"
+            "</div>"
+        )
+
+    redeploy_section = ""
+    if redeploy_lines:
+        redeploy_html = "".join(
+            f"<li style='margin:0 0 8px 0;'>{escape(line)}</li>"
+            for line in redeploy_lines
+        )
+        redeploy_section = (
+            "<div style='margin-top:20px;padding:20px;border:1px solid #dbeafe;border-radius:16px;background:#f8fbff;'>"
+            "<h2 style='margin:0 0 12px 0;font-size:20px;color:#0f172a;'>If redeploying sold exposure</h2>"
+            f"<ul style='margin:0 0 0 20px;padding:0;color:#334155;line-height:1.5;'>{redeploy_html}</ul>"
+            "</div>"
+        )
+
     return (
         "<html><body style='margin:0;padding:0;background:#f3f6fb;font-family:Segoe UI,Arial,sans-serif;color:#0f172a;'>"
         "<div style='max-width:960px;margin:0 auto;padding:24px 14px;'>"
@@ -448,6 +535,8 @@ def build_email_html(body: str, lots_csv_path: str | Path | None = None) -> str:
         "The scenario table below is still useful for tax framing, but it is not the primary recommendation when the mode is not actionable.</p>"
         "</div>"
         + existing_section +
+        redeploy_section +
+        shadow_section +
         "<div style='margin-top:20px;padding:20px;border:1px solid #e2e8f0;border-radius:16px;background:#ffffff;'>"
         "<h2 style='margin:0 0 12px 0;font-size:20px;color:#0f172a;'>Tax scenario view for the next tranche</h2>"
         f"{scenario_table}"

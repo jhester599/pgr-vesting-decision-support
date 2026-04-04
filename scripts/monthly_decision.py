@@ -62,6 +62,23 @@ from src.processing.feature_engineering import (
 )
 from src.processing.multi_total_return import load_relative_return_matrix
 import numpy as np
+from src.research.evaluation import evaluate_baseline_strategy, reconstruct_baseline_predictions
+from src.research.v11 import (
+    add_destination_roles,
+    recommend_redeploy_buckets,
+    summarize_existing_holdings_actions,
+)
+from src.research.v12 import (
+    SnapshotSummary,
+    aggregate_health_from_prediction_frames,
+    build_existing_holdings_markdown_lines,
+    build_redeploy_markdown_lines,
+    build_shadow_check_lines,
+    confidence_from_hit_rate,
+    sell_pct_from_policy,
+    signal_from_prediction,
+)
+from src.research.diversification import score_benchmarks_against_pgr
 
 from src.models.calibration import (
     CalibrationResult,
@@ -116,10 +133,10 @@ _ETF_DESCRIPTIONS: dict[str, str] = {
 }
 
 _MODEL_VERSION_LABEL = (
-    "v10.1 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, "
+    "v13.0 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, "
     "inverse-variance weighting, C(8,2)=28 CPCV paths, "
     "post-v9 baseline reconciliation, migrations, CI/workflow hardening, "
-    "and run-manifest support)"
+    "run-manifest support, and v13 recommendation-layer cross-checks)"
 )
 
 
@@ -911,6 +928,175 @@ def _build_provisional_vest_scenario(
     }
 
 
+def _current_baseline_prediction(y_aligned: pd.Series) -> float:
+    """Current-point forecast for the historical-mean baseline."""
+    window = min(len(y_aligned), config.WFO_TRAIN_WINDOW_MONTHS)
+    return float(y_aligned.iloc[-window:].mean())
+
+
+def _build_shadow_baseline_summary(
+    conn,
+    as_of: date,
+    target_horizon_months: int = 6,
+) -> tuple[SnapshotSummary | None, pd.DataFrame]:
+    """Build the v13 simpler-baseline recommendation-layer cross-check."""
+    df_full = build_feature_matrix_from_db(conn, force_refresh=True)
+    X_event = df_full.loc[df_full.index <= pd.Timestamp(as_of)]
+    if X_event.empty:
+        return None, pd.DataFrame()
+
+    signal_rows: list[dict[str, object]] = []
+    prediction_frames: list[pd.DataFrame] = []
+    for benchmark in config.V13_SHADOW_FORECAST_UNIVERSE:
+        rel_series = load_relative_return_matrix(conn, benchmark, target_horizon_months)
+        if rel_series.empty:
+            continue
+        try:
+            X_aligned, y_aligned = get_X_y_relative(X_event, rel_series, drop_na_target=True)
+        except ValueError:
+            continue
+        if X_aligned.empty or y_aligned.empty:
+            continue
+
+        metrics = evaluate_baseline_strategy(
+            X_aligned,
+            y_aligned,
+            strategy=config.V13_SHADOW_BASELINE_STRATEGY,
+            target_horizon_months=target_horizon_months,
+        )
+        pred_series, realized = reconstruct_baseline_predictions(
+            X_aligned,
+            y_aligned,
+            strategy=config.V13_SHADOW_BASELINE_STRATEGY,
+            target_horizon_months=target_horizon_months,
+        )
+        current_pred = _current_baseline_prediction(y_aligned)
+        signal_rows.append(
+            {
+                "benchmark": benchmark,
+                "predicted_relative_return": current_pred,
+                "ic": float(metrics["ic"]),
+                "hit_rate": float(metrics["hit_rate"]),
+                "signal": signal_from_prediction(current_pred),
+                "confidence_tier": confidence_from_hit_rate(float(metrics["hit_rate"])),
+            }
+        )
+        prediction_frames.append(
+            pd.DataFrame(
+                {
+                    "y_hat": pred_series.values,
+                    "y_true": realized.values,
+                }
+            )
+        )
+
+    if not signal_rows:
+        return None, pd.DataFrame()
+
+    shadow_signals = pd.DataFrame(signal_rows).set_index("benchmark").sort_index()
+    aggregate_health = aggregate_health_from_prediction_frames(prediction_frames, target_horizon_months)
+    consensus, mean_pred, mean_ic, mean_hr, _, confidence_tier = _consensus_signal(shadow_signals)
+    recommendation_mode = _determine_recommendation_mode(
+        consensus,
+        mean_pred,
+        mean_ic,
+        mean_hr,
+        aggregate_health,
+        representative_cpcv=None,
+    )
+    if recommendation_mode["mode"] == "actionable":
+        sell_pct = sell_pct_from_policy(mean_pred, config.V13_SHADOW_BASELINE_POLICY)
+    else:
+        sell_pct = float(recommendation_mode["sell_pct"])
+
+    return (
+        SnapshotSummary(
+            label="shadow",
+            as_of=as_of,
+            candidate_name=f"baseline_{config.V13_SHADOW_BASELINE_STRATEGY}",
+            policy_name=config.V13_SHADOW_BASELINE_POLICY,
+            consensus=consensus,
+            confidence_tier=confidence_tier,
+            recommendation_mode=str(recommendation_mode["label"]),
+            sell_pct=sell_pct,
+            mean_predicted=mean_pred,
+            mean_ic=mean_ic,
+            mean_hit_rate=mean_hr,
+            aggregate_oos_r2=float(aggregate_health["oos_r2"]) if aggregate_health is not None else float("nan"),
+            aggregate_nw_ic=float(aggregate_health["nw_ic"]) if aggregate_health is not None else float("nan"),
+        ),
+        shadow_signals,
+    )
+
+
+def _build_existing_holdings_guidance(conn, as_of: date) -> list[dict[str, object]]:
+    """Build tax-bucketed guidance for already-held PGR shares."""
+    lots_path = Path("data/processed/position_lots.csv")
+    if not lots_path.exists():
+        return []
+    lots = load_position_lots(str(lots_path))
+    if not lots:
+        return []
+    prices = db_client.get_prices(conn, "PGR", end_date=str(as_of))
+    if prices.empty:
+        return []
+    current_price = float(prices["close"].iloc[-1])
+    return [
+        {
+            "vest_date": action.vest_date,
+            "shares": action.shares,
+            "cost_basis_per_share": action.cost_basis_per_share,
+            "tax_bucket": action.tax_bucket,
+            "unrealized_gain": action.unrealized_gain,
+            "unrealized_return": action.unrealized_return,
+            "rationale": action.rationale,
+        }
+        for action in summarize_existing_holdings_actions(
+            lots,
+            current_price=current_price,
+            sell_date=as_of,
+        )
+    ]
+
+
+def _build_redeploy_guidance(conn) -> list[dict[str, object]]:
+    """Build diversification-first redeploy buckets for production messaging."""
+    scoreboard = score_benchmarks_against_pgr(conn, config.V13_REDEPLOY_UNIVERSE)
+    if scoreboard.empty:
+        return []
+    scoreboard["composite_score"] = 0.0
+    scoreboard = add_destination_roles(scoreboard)
+    return recommend_redeploy_buckets(scoreboard, config.V13_REDEPLOY_UNIVERSE)
+
+
+def _mode_payload_from_summary(summary: SnapshotSummary) -> dict[str, str | float]:
+    """Convert a snapshot label back into the report's recommendation-mode payload."""
+    label = summary.recommendation_mode
+    if label == "ACTIONABLE":
+        return {
+            "mode": "actionable",
+            "label": label,
+            "sell_pct": summary.sell_pct,
+            "summary": "The simpler diversification-first baseline is active and strong enough to influence the vest decision.",
+            "action_note": "Use the simpler diversification-first baseline as the active recommendation layer for this run.",
+        }
+    if label == "DEFER-TO-TAX-DEFAULT":
+        return {
+            "mode": "defer-to-tax-default",
+            "label": label,
+            "sell_pct": summary.sell_pct,
+            "summary": "The simpler diversification-first baseline is active, but still points back to the default diversification and tax-discipline rule.",
+            "action_note": "Use the simpler diversification-first baseline, which still defers to the default vesting rule.",
+        }
+    return {
+        "mode": "monitoring-only",
+        "label": label,
+        "sell_pct": summary.sell_pct,
+        "summary": "The simpler diversification-first baseline is active, but only supports monitoring rather than a prediction-led change.",
+        "action_note": "Use the simpler diversification-first baseline as monitoring evidence only.",
+    }
+
+
 def _build_executive_summary_lines(
     as_of: date,
     consensus: str,
@@ -970,6 +1156,11 @@ def _write_recommendation_md(
     cal_result: CalibrationResult | None = None,
     aggregate_health: dict | None = None,
     recommendation_mode: dict[str, str | float] | None = None,
+    live_summary: SnapshotSummary | None = None,
+    shadow_summary: SnapshotSummary | None = None,
+    existing_holdings: list[dict[str, object]] | None = None,
+    redeploy_buckets: list[dict[str, object]] | None = None,
+    recommendation_layer_label: str | None = None,
 ) -> None:
     """Write the human-readable recommendation report."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1003,6 +1194,7 @@ def _write_recommendation_md(
         f"**As-of Date:** {as_of}  ",
         f"**Run Date:** {run_date}  ",
         f"**Model Version:** {_MODEL_VERSION_LABEL}  ",
+        f"**Recommendation Layer:** {recommendation_layer_label or config.RECOMMENDATION_LAYER_MODE}  ",
         "",
         "---",
         "",
@@ -1118,16 +1310,30 @@ def _write_recommendation_md(
             "Recommended action at next vesting event: **DEFAULT 50% SALE** for risk management.",
         ]
 
-    # Per-benchmark table — include confidence columns when available
+    # Recommendation-layer support sections
     lines += [
         "",
         "---",
         "",
-        "## Per-Benchmark Signals",
-        "",
     ]
 
     lines += _build_vest_decision_lines(next_vest_summary, recommendation_mode, sell_pct)
+    if existing_holdings:
+        lines += build_existing_holdings_markdown_lines(existing_holdings)
+    if redeploy_buckets:
+        lines += build_redeploy_markdown_lines(redeploy_buckets)
+    if (
+        config.RECOMMENDATION_LAYER_MODE in {"live_with_shadow", "shadow_promoted"}
+        and live_summary is not None
+        and shadow_summary is not None
+    ):
+        lines += build_shadow_check_lines(live_summary, shadow_summary)
+
+    # Per-benchmark table — include confidence columns when available
+    lines += [
+        "## Per-Benchmark Signals",
+        "",
+    ]
 
     show_cal_col = has_calibrated and "calibrated_prob_outperform" in signals.columns
     show_ci_col = "ci_lower" in signals.columns and not signals.empty
@@ -1786,6 +1992,13 @@ def main(
 ) -> None:
     as_of = _resolve_as_of_date(as_of_date_str)
     run_date = date.today()
+    layer_mode = config.RECOMMENDATION_LAYER_MODE
+    if layer_mode not in config.RECOMMENDATION_LAYER_VALID_MODES:
+        print(
+            "  [Recommendation Layer] "
+            f"Unknown mode '{layer_mode}', defaulting to 'live_with_shadow'."
+        )
+        layer_mode = "live_with_shadow"
 
     print(f"\n{'[DRY RUN] ' if dry_run else ''}PGR Monthly Decision — as-of {as_of}")
     print(f"Run date: {run_date}")
@@ -1856,18 +2069,61 @@ def main(
         diagnostics.get("representative_cpcv"),
     )
     sell_pct = float(recommendation_mode["sell_pct"])
+    mean_cal = (
+        float(signals["calibrated_prob_outperform"].mean())
+        if "calibrated_prob_outperform" in signals.columns and not signals.empty
+        else None
+    )
+    live_summary = SnapshotSummary(
+        label="live",
+        as_of=as_of,
+        candidate_name="production_4_model_ensemble",
+        policy_name="current_production_mapping",
+        consensus=consensus,
+        confidence_tier=confidence_tier,
+        recommendation_mode=str(recommendation_mode["label"]),
+        sell_pct=sell_pct,
+        mean_predicted=mean_pred,
+        mean_ic=mean_ic,
+        mean_hit_rate=mean_hr,
+        aggregate_oos_r2=float(aggregate_health["oos_r2"]) if aggregate_health is not None else float("nan"),
+        aggregate_nw_ic=float(aggregate_health["nw_ic"]) if aggregate_health is not None else float("nan"),
+        calibrated_prob_outperform=mean_cal,
+    )
+    shadow_summary = None
+    if layer_mode in {"live_with_shadow", "shadow_promoted"}:
+        shadow_summary, _ = _build_shadow_baseline_summary(
+            conn,
+            as_of,
+            target_horizon_months=6,
+        )
+    active_recommendation_mode = recommendation_mode
+    recommendation_layer_label = "Live production recommendation layer"
+    if layer_mode == "live_with_shadow":
+        recommendation_layer_label = "Live production recommendation layer + v13 simpler-baseline cross-check"
+    elif layer_mode == "shadow_promoted" and shadow_summary is not None:
+        active_recommendation_mode = _mode_payload_from_summary(shadow_summary)
+        sell_pct = float(active_recommendation_mode["sell_pct"])
+        recommendation_layer_label = "v13 promoted simpler diversification-first baseline"
+    existing_holdings = _build_existing_holdings_guidance(conn, as_of)
+    redeploy_buckets = _build_redeploy_guidance(conn)
 
     print(f"\n  Consensus signal: {consensus} ({confidence_tier} CONFIDENCE)")
     print(f"  Predicted 6M relative return: {mean_pred:+.2%}")
     print(f"  P(outperform, raw): {mean_prob:.1%}")
     if "calibrated_prob_outperform" in signals.columns and not signals.empty:
-        mean_cal = float(signals["calibrated_prob_outperform"].mean())
         print(f"  P(outperform, calibrated): {mean_cal:.1%}")
     print(f"  Mean IC: {mean_ic:.4f}  |  Mean hit rate: {mean_hr:.1%}")
     if aggregate_health is not None:
         print(f"  Aggregate OOS R^2: {aggregate_health['oos_r2']:.2%}")
-    print(f"  Recommendation mode: {recommendation_mode['label']}")
+    print(f"  Recommendation mode: {active_recommendation_mode['label']}")
     print(f"  Sell %: {sell_pct:.0%}")
+    if shadow_summary is not None:
+        print(
+            "  Shadow baseline cross-check: "
+            f"{shadow_summary.recommendation_mode} / sell {shadow_summary.sell_pct:.0%} / "
+            f"{shadow_summary.mean_predicted:+.2%}"
+        )
 
     # Step 4: Write outputs
     out_dir = _output_dir(as_of)
@@ -1878,7 +2134,12 @@ def main(
         composite_confidence_tier=confidence_tier,
         cal_result=cal_result,
         aggregate_health=aggregate_health,
-        recommendation_mode=recommendation_mode,
+        recommendation_mode=active_recommendation_mode,
+        live_summary=live_summary,
+        shadow_summary=shadow_summary,
+        existing_holdings=existing_holdings,
+        redeploy_buckets=redeploy_buckets,
+        recommendation_layer_label=recommendation_layer_label,
     )
     _write_signals_csv(out_dir, signals)
     _append_decision_log(
@@ -1914,6 +2175,15 @@ def main(
             manifest_warnings.append(
                 f"Observation-to-feature report is {obs_report.get('verdict')} "
                 f"(ratio={obs_report.get('ratio', float('nan')):.2f})."
+            )
+    if shadow_summary is not None:
+        if shadow_summary.recommendation_mode != live_summary.recommendation_mode:
+            manifest_warnings.append(
+                "The v13 simpler-baseline cross-check disagrees with the live recommendation mode."
+            )
+        elif abs(shadow_summary.sell_pct - live_summary.sell_pct) > 1e-9:
+            manifest_warnings.append(
+                "The v13 simpler-baseline cross-check suggests a different sell percentage."
             )
 
     manifest = build_run_manifest(

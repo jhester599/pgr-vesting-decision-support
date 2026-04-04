@@ -62,6 +62,19 @@ It added:
 - an explicit check for whether recommendation-layer simplification should
   happen before any new model stack promotion
 
+v13 production-facing recommendation-layer work is now also documented in:
+
+- `codex-v13-plan.md`
+- `V13_RESULTS_SUMMARY.md`
+
+It adds:
+
+- a recommendation-layer mode switch with `live_only`, `live_with_shadow`, and
+  `shadow_promoted`
+- production report and email support for a simpler-baseline cross-check
+- explicit existing-holdings lot guidance
+- explicit diversification-first redeploy guidance
+
 ## Promotion Rule
 
 Research results do not become production behavior automatically.
@@ -100,6 +113,19 @@ The most promising next production change is narrower:
 - consider promoting the simpler diversification-first recommendation layer
 - keep model-stack promotion separate until a reduced-universe candidate
   clearly beats the baseline
+
+## Current v13 Default
+
+The current production-facing default is:
+
+- `RECOMMENDATION_LAYER_MODE=live_with_shadow`
+
+This means:
+
+- the live 4-model monthly stack still drives the official recommendation
+- the simpler v12 baseline is surfaced as a cross-check
+- usefulness improvements from v11-v12 are now part of the production report
+  and email path
 
 ## Classifier Sidecar Policy
 
