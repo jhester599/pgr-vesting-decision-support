@@ -146,6 +146,21 @@ It adds:
 - a direct check for whether those swaps reduce the pair's directional disagreement with the promoted simpler baseline
 - a final v18 gate on whether the resulting pair should advance at all
 
+v19 feature-completion work is now also documented in:
+
+- `docs/plans/codex-v19-plan.md`
+- `docs/results/V19_RESULTS_SUMMARY.md`
+- `docs/closeouts/V19_CLOSEOUT_AND_V20_NEXT.md`
+
+It adds:
+
+- public-macro backfill for the deferred benchmark-side and valuation ideas
+- the remaining EDGAR-derived insurance-quality features
+- a complete tested / blocked traceability matrix for all 46 original v15
+  inventory rows
+- an explicit closeout of the features that remain impossible without new
+  source classes
+
 ## Promotion Rule
 
 Research results do not become production behavior automatically.
@@ -313,6 +328,34 @@ So the current conclusion is:
 - keep the current live production cross-check unchanged
 - keep `ensemble_ridge_gbt_v16` as the leading research candidate
 - do not advance the v18 swaps to another promotion gate
+
+## Current v19 Conclusion
+
+v19 closes the original feature-inventory question, but it still does not
+justify a production prediction-layer change.
+
+What v19 proved:
+
+- the repo has now evaluated essentially the full original feature queue
+- `44 / 46` original v15 feature ideas were tested
+- only `2 / 46` remain blocked, and both are blocked for clear source reasons
+- the best newly resolved positive additions were:
+  - `pgr_pe_vs_market_pe`
+  - `usd_broad_return_3m`
+  - `auto_pricing_power_spread`
+
+What v19 did not prove:
+
+- that the newly completed feature inventory is enough to replace the current
+  live production cross-check
+
+So the current conclusion is:
+
+- keep the v13.1 recommendation layer unchanged
+- keep the current live production cross-check unchanged
+- treat the feature-inventory question as substantially closed
+- move next to a narrow synthesis / promotion-readiness study rather than
+  another broad feature sweep
 
 ## Classifier Sidecar Policy
 

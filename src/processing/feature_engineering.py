@@ -472,6 +472,157 @@ def build_feature_matrix(
                 fill_method=None,
             )
 
+        # pgr_premium_to_surplus: trailing written premium over equity, an
+        # insurer-specific operating-leverage / capital-strain signal.
+        if (
+            "net_premiums_written" in pgr_monthly.columns
+            and "shareholders_equity" in pgr_monthly.columns
+            and not pgr_monthly["net_premiums_written"].isna().all()
+            and not pgr_monthly["shareholders_equity"].isna().all()
+        ):
+            npw_monthly = pgr_monthly["net_premiums_written"].reindex(
+                monthly_dates, method="ffill"
+            )
+            equity_monthly = pgr_monthly["shareholders_equity"].reindex(
+                monthly_dates, method="ffill"
+            )
+            npw_ttm = npw_monthly.rolling(12, min_periods=6).sum()
+            valid_equity = equity_monthly.where(equity_monthly.abs() > 1e-12)
+            df["pgr_premium_to_surplus"] = npw_ttm / valid_equity
+
+        # reserve_to_npe_ratio: reserves scaled by trailing earned premium.
+        if (
+            "loss_lae_reserves" in pgr_monthly.columns
+            and "net_premiums_earned" in pgr_monthly.columns
+            and not pgr_monthly["loss_lae_reserves"].isna().all()
+            and not pgr_monthly["net_premiums_earned"].isna().all()
+        ):
+            reserves_monthly = pgr_monthly["loss_lae_reserves"].reindex(
+                monthly_dates, method="ffill"
+            )
+            npe_monthly = pgr_monthly["net_premiums_earned"].reindex(
+                monthly_dates, method="ffill"
+            )
+            npe_ttm = npe_monthly.rolling(12, min_periods=6).sum()
+            valid_npe_ttm = npe_ttm.where(npe_ttm.abs() > 1e-12)
+            df["reserve_to_npe_ratio"] = reserves_monthly / valid_npe_ttm
+
+        # direct_channel_pif_share_ttm and channel_mix_direct_pct_yoy capture
+        # the structural and changing share of the direct auto channel.
+        if (
+            "pif_direct_auto" in pgr_monthly.columns
+            and "pif_total_personal_lines" in pgr_monthly.columns
+            and not pgr_monthly["pif_direct_auto"].isna().all()
+            and not pgr_monthly["pif_total_personal_lines"].isna().all()
+        ):
+            direct_pif = pgr_monthly["pif_direct_auto"].reindex(
+                monthly_dates, method="ffill"
+            )
+            personal_lines_pif = pgr_monthly["pif_total_personal_lines"].reindex(
+                monthly_dates, method="ffill"
+            )
+            valid_personal_lines_pif = personal_lines_pif.where(personal_lines_pif > 0)
+            direct_share = direct_pif / valid_personal_lines_pif
+            df["direct_channel_pif_share_ttm"] = direct_share.rolling(
+                12, min_periods=6
+            ).mean()
+            df["channel_mix_direct_pct_yoy"] = direct_share - direct_share.shift(12)
+
+        # realized_gain_to_net_income_ratio: earnings-quality check on how much
+        # of reported net income is coming from realized gains.
+        if (
+            "total_net_realized_gains" in pgr_monthly.columns
+            and "net_income" in pgr_monthly.columns
+            and not pgr_monthly["total_net_realized_gains"].isna().all()
+            and not pgr_monthly["net_income"].isna().all()
+        ):
+            realized_gains = pgr_monthly["total_net_realized_gains"].reindex(
+                monthly_dates, method="ffill"
+            )
+            net_income_monthly = pgr_monthly["net_income"].reindex(
+                monthly_dates, method="ffill"
+            )
+            realized_gains_ttm = realized_gains.rolling(12, min_periods=6).sum()
+            net_income_ttm = net_income_monthly.rolling(12, min_periods=6).sum()
+            valid_net_income_ttm = net_income_ttm.where(net_income_ttm.abs() > 1e-12)
+            df["realized_gain_to_net_income_ratio"] = (
+                realized_gains_ttm / valid_net_income_ttm
+            )
+
+        # unrealized_gain_pct_equity: OCI-style capital buffer relative to equity.
+        if (
+            "net_unrealized_gains_fixed" in pgr_monthly.columns
+            and "shareholders_equity" in pgr_monthly.columns
+            and not pgr_monthly["net_unrealized_gains_fixed"].isna().all()
+            and not pgr_monthly["shareholders_equity"].isna().all()
+        ):
+            unrealized_fixed = pgr_monthly["net_unrealized_gains_fixed"].reindex(
+                monthly_dates, method="ffill"
+            )
+            equity_monthly = pgr_monthly["shareholders_equity"].reindex(
+                monthly_dates, method="ffill"
+            )
+            valid_equity = equity_monthly.where(equity_monthly.abs() > 1e-12)
+            df["unrealized_gain_pct_equity"] = unrealized_fixed / valid_equity
+
+        # loss_ratio_ttm and expense_ratio_ttm decompose underwriting quality.
+        if (
+            "losses_lae" in pgr_monthly.columns
+            and "net_premiums_earned" in pgr_monthly.columns
+            and not pgr_monthly["losses_lae"].isna().all()
+            and not pgr_monthly["net_premiums_earned"].isna().all()
+        ):
+            losses_monthly = pgr_monthly["losses_lae"].reindex(
+                monthly_dates, method="ffill"
+            )
+            npe_monthly = pgr_monthly["net_premiums_earned"].reindex(
+                monthly_dates, method="ffill"
+            )
+            losses_ttm = losses_monthly.rolling(12, min_periods=6).sum()
+            npe_ttm = npe_monthly.rolling(12, min_periods=6).sum()
+            valid_npe_ttm = npe_ttm.where(npe_ttm.abs() > 1e-12)
+            df["loss_ratio_ttm"] = 100.0 * losses_ttm / valid_npe_ttm
+        elif (
+            "loss_lae_ratio" in pgr_monthly.columns
+            and not pgr_monthly["loss_lae_ratio"].isna().all()
+        ):
+            loss_ratio_monthly = pgr_monthly["loss_lae_ratio"].reindex(
+                monthly_dates, method="ffill"
+            )
+            df["loss_ratio_ttm"] = loss_ratio_monthly.rolling(12, min_periods=6).mean()
+
+        if (
+            "policy_acquisition_costs" in pgr_monthly.columns
+            and "other_underwriting_expenses" in pgr_monthly.columns
+            and "net_premiums_earned" in pgr_monthly.columns
+            and not pgr_monthly["policy_acquisition_costs"].isna().all()
+            and not pgr_monthly["other_underwriting_expenses"].isna().all()
+            and not pgr_monthly["net_premiums_earned"].isna().all()
+        ):
+            acq_monthly = pgr_monthly["policy_acquisition_costs"].reindex(
+                monthly_dates, method="ffill"
+            )
+            other_uw_monthly = pgr_monthly["other_underwriting_expenses"].reindex(
+                monthly_dates, method="ffill"
+            )
+            npe_monthly = pgr_monthly["net_premiums_earned"].reindex(
+                monthly_dates, method="ffill"
+            )
+            expense_ttm = (acq_monthly + other_uw_monthly).rolling(12, min_periods=6).sum()
+            npe_ttm = npe_monthly.rolling(12, min_periods=6).sum()
+            valid_npe_ttm = npe_ttm.where(npe_ttm.abs() > 1e-12)
+            df["expense_ratio_ttm"] = 100.0 * expense_ttm / valid_npe_ttm
+        elif (
+            "expense_ratio" in pgr_monthly.columns
+            and not pgr_monthly["expense_ratio"].isna().all()
+        ):
+            expense_ratio_monthly = pgr_monthly["expense_ratio"].reindex(
+                monthly_dates, method="ffill"
+            )
+            df["expense_ratio_ttm"] = expense_ratio_monthly.rolling(
+                12, min_periods=6
+            ).mean()
+
         # --- P2.1: Investment portfolio features ---
         # investment_income_growth_yoy: YoY growth in net investment income.
         # Rising growth signals either rate-environment uplift (reinvesting
@@ -578,6 +729,10 @@ def build_feature_matrix(
         "underwriting_income_growth_yoy", "underwriting_margin_ttm",
         "unearned_premium_growth_yoy", "unearned_premium_to_npw_ratio",
         "roe_net_income_ttm", "roe_trend", "book_value_per_share_growth_yoy",
+        "pgr_premium_to_surplus", "reserve_to_npe_ratio",
+        "direct_channel_pif_share_ttm", "channel_mix_direct_pct_yoy",
+        "realized_gain_to_net_income_ratio", "unrealized_gain_pct_equity",
+        "loss_ratio_ttm", "expense_ratio_ttm",
         "investment_income_growth_yoy", "investment_book_yield",
         "duration_rate_shock_3m",
         "buyback_yield", "buyback_acceleration",
@@ -653,6 +808,31 @@ def build_feature_matrix(
             vmt = fred_aligned["TRFVOLUSM227NFWA"]
             df["vmt_yoy"] = vmt.pct_change(periods=12, fill_method=None)
 
+        # Research-only public macro series loaded into fred_macro_monthly by v19.
+        if "DTWEXBGS" in fred_aligned.columns:
+            usd_index = fred_aligned["DTWEXBGS"]
+            df["usd_broad_return_3m"] = usd_index.pct_change(3, fill_method=None)
+            df["usd_momentum_6m"] = usd_index.pct_change(6, fill_method=None)
+
+        if "DCOILWTICO" in fred_aligned.columns:
+            wti = fred_aligned["DCOILWTICO"].replace(0, np.nan)
+            df["wti_return_3m"] = wti.pct_change(3, fill_method=None)
+
+        if all(s in fred_aligned.columns for s in ("MORTGAGE30US", "GS10")):
+            df["mortgage_spread_30y_10y"] = fred_aligned["MORTGAGE30US"] - fred_aligned["GS10"]
+
+        if "THREEFYTP10" in fred_aligned.columns:
+            df["term_premium_10y"] = fred_aligned["THREEFYTP10"]
+
+        if all(s in fred_aligned.columns for s in ("WPU45110101", "PPIACO")):
+            legal_ppi_yoy = fred_aligned["WPU45110101"].pct_change(12, fill_method=None)
+            broad_ppi_yoy = fred_aligned["PPIACO"].pct_change(12, fill_method=None)
+            df["legal_services_ppi_relative"] = legal_ppi_yoy - broad_ppi_yoy
+
+        if "MRTSSM447USN" in fred_aligned.columns:
+            gas_sales = fred_aligned["MRTSSM447USN"].replace(0, np.nan)
+            df["gasoline_retail_sales_delta"] = gas_sales.pct_change(12, fill_method=None)
+
         # ------------------------------------------------------------------
         # v4.5 PGR-specific severity and pricing features
         # ------------------------------------------------------------------
@@ -691,9 +871,20 @@ def build_feature_matrix(
                 fill_method=None,
             )
 
+        if "CUSR0000SETE" in fred_aligned.columns:
+            df["motor_vehicle_ins_cpi_yoy"] = fred_aligned["CUSR0000SETE"].pct_change(
+                12,
+                fill_method=None,
+            )
+
         if {"ppi_auto_ins_yoy", "severity_index_yoy"}.issubset(df.columns):
             df["rate_adequacy_gap_yoy"] = (
                 df["ppi_auto_ins_yoy"] - df["severity_index_yoy"]
+            )
+
+        if {"ppi_auto_ins_yoy", "motor_vehicle_ins_cpi_yoy"}.issubset(df.columns):
+            df["auto_pricing_power_spread"] = (
+                df["ppi_auto_ins_yoy"] - df["motor_vehicle_ins_cpi_yoy"]
             )
 
         # pgr_vs_kie_6m: PGR trailing 6M return minus KIE trailing 6M return.
@@ -733,6 +924,32 @@ def build_feature_matrix(
 
         if "commodity_equity_momentum" in fred_aligned.columns:
             df["commodity_equity_momentum"] = fred_aligned["commodity_equity_momentum"]
+
+        if {"credit_spread_hy", "baa10y_spread"}.issubset(df.columns):
+            valid_ig = df["baa10y_spread"].where(df["baa10y_spread"].abs() > 1e-12)
+            df["credit_spread_ratio"] = df["credit_spread_hy"] / valid_ig
+            df["excess_bond_premium_proxy"] = df["credit_spread_hy"] - df["baa10y_spread"]
+
+        if all(s in fred_aligned.columns for s in ("SP500_PE_RATIO_MULTPL",)):
+            valid_market_pe = fred_aligned["SP500_PE_RATIO_MULTPL"].where(
+                fred_aligned["SP500_PE_RATIO_MULTPL"] > 0
+            )
+            if "pe_ratio" in df.columns:
+                valid_pe = df["pe_ratio"].where(df["pe_ratio"] > 0)
+                df["pgr_pe_vs_market_pe"] = valid_pe / valid_market_pe
+
+        if all(s in fred_aligned.columns for s in ("SP500_PRICE_TO_BOOK_MULTPL",)):
+            valid_market_pb = fred_aligned["SP500_PRICE_TO_BOOK_MULTPL"].where(
+                fred_aligned["SP500_PRICE_TO_BOOK_MULTPL"] > 0
+            )
+            if "pb_ratio" in df.columns:
+                valid_pb = df["pb_ratio"].where(df["pb_ratio"] > 0)
+                df["pgr_price_to_book_relative"] = valid_pb / valid_market_pb
+
+        if all(s in fred_aligned.columns for s in ("SP500_EARNINGS_YIELD_MULTPL", "GS10")):
+            df["equity_risk_premium"] = (
+                fred_aligned["SP500_EARNINGS_YIELD_MULTPL"] - fred_aligned["GS10"]
+            )
 
     # ------------------------------------------------------------------
     # Target variable: 6-month forward DRIP total return
@@ -915,7 +1132,11 @@ def build_feature_matrix_from_db(
         )
 
     # v3.0+: load FRED macro + v3.1/v4.5 PGR-specific series if the table is populated
-    all_fred_series = list(config.FRED_SERIES_MACRO) + list(config.FRED_SERIES_PGR)
+    all_fred_series = (
+        list(config.FRED_SERIES_MACRO)
+        + list(config.FRED_SERIES_PGR)
+        + list(getattr(config, "V19_PUBLIC_MACRO_SERIES", []))
+    )
     fred_raw = db_client.get_fred_macro(conn, all_fred_series)
     if not fred_raw.empty:
         # Apply publication lags to prevent FRED revision look-ahead bias (v4.1)

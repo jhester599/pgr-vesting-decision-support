@@ -1,4 +1,4 @@
-# PGR Vesting Decision Support - v18 bias study + v13.1 production baseline
+# PGR Vesting Decision Support - v19 feature completion + v13.1 production baseline
 
 PGR Vesting Decision Support is a tax-aware decision-support system for unwinding
 a concentrated Progressive Corporation (`PGR`) RSU position in a taxable
@@ -71,6 +71,12 @@ Status as of 2026-04-04:
   Ridge+GBT pair. The v18 conclusion is `keep_v16_as_research_only`: the best
   swaps improved reduced-universe metrics again, but they did not reduce the
   candidate's directional disagreement with the promoted simpler baseline.
+- `v19.x` is a completed remaining-feature closure pass. It backfilled public
+  macro and valuation series, implemented the unresolved EDGAR-derived feature
+  ideas, and produced a final traceability matrix for all 46 original v15
+  feature candidates. The v19 conclusion is that `44 / 46` were fully tested
+  and `2 / 46` are now explicitly blocked by missing source classes rather than
+  left queued.
 
 ## Production vs. Research
 
@@ -128,6 +134,20 @@ The repo now has explicit operating boundaries:
     - keep the current live production cross-check unchanged
     - keep `ensemble_ridge_gbt_v16` as the leading research candidate
     - do not advance the v18 benchmark-side swaps to another promotion gate
+- Active v19 status:
+  - full original v15 feature inventory closed out
+  - `44 / 46` original feature ideas tested through the swap framework
+  - blocked source gaps:
+    - `pgr_cr_vs_peer_cr`
+    - `pgr_fcf_yield`
+  - strongest newly resolved positive additions:
+    - `pgr_pe_vs_market_pe`
+    - `usd_broad_return_3m`
+    - `auto_pricing_power_spread`
+  - current decision:
+    - keep the v13.1 recommendation layer unchanged
+    - keep the current live production cross-check unchanged
+    - move next to a narrow synthesis / promotion-readiness study, not another broad feature sweep
 - Historical planning and review artifacts:
   - `docs/history/claude-v7-plan.md`
   - `docs/plans/codex-v8-plan.md`
@@ -224,6 +244,9 @@ python -m pytest -q
   - [V17_CLOSEOUT_AND_V18_NEXT.md](docs/closeouts/V17_CLOSEOUT_AND_V18_NEXT.md)
   - [V18_RESULTS_SUMMARY.md](docs/results/V18_RESULTS_SUMMARY.md)
   - [V18_CLOSEOUT_AND_V19_NEXT.md](docs/closeouts/V18_CLOSEOUT_AND_V19_NEXT.md)
+  - [codex-v19-plan.md](docs/plans/codex-v19-plan.md)
+  - [V19_RESULTS_SUMMARY.md](docs/results/V19_RESULTS_SUMMARY.md)
+  - [V19_CLOSEOUT_AND_V20_NEXT.md](docs/closeouts/V19_CLOSEOUT_AND_V20_NEXT.md)
 - Architecture and operations:
   - [docs/architecture.md](docs/architecture.md)
   - [docs/workflows.md](docs/workflows.md)
