@@ -3,7 +3,11 @@ from __future__ import annotations
 import pandas as pd
 
 from scripts.policy_evaluation import summarize_policy_evaluation
-from src.research.policy_metrics import evaluate_policy_series, hold_fraction_from_policy
+from src.research.policy_metrics import (
+    evaluate_hold_fraction_series,
+    evaluate_policy_series,
+    hold_fraction_from_policy,
+)
 
 
 def test_hold_fraction_from_policy_maps_expected_actions():
@@ -19,6 +23,16 @@ def test_evaluate_policy_series_reports_uplift_vs_sell_all():
     assert summary.n_obs == 2
     assert summary.mean_policy_return == 0.05
     assert summary.uplift_vs_sell_all == 0.05
+
+
+def test_evaluate_hold_fraction_series_supports_custom_gate():
+    hold_fraction = pd.Series([1.0, 0.0], index=pd.date_range("2024-01-31", periods=2, freq="ME"))
+    realized = pd.Series([0.08, -0.04], index=hold_fraction.index)
+    summary = evaluate_hold_fraction_series(hold_fraction, realized)
+    assert summary.n_obs == 2
+    assert summary.mean_policy_return == 0.04
+    assert summary.avg_hold_fraction == 0.5
+    assert summary.uplift_vs_sell_50 == 0.03
 
 
 def test_summarize_policy_evaluation_groups_rows():

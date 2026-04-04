@@ -59,13 +59,12 @@ def hold_fraction_from_policy(
     raise ValueError(f"Unknown policy_name '{policy_name}'.")
 
 
-def evaluate_policy_series(
-    predicted: pd.Series,
+def evaluate_hold_fraction_series(
+    hold_fraction: pd.Series,
     realized_relative_return: pd.Series,
-    policy_name: str,
 ) -> PolicySummary:
-    """Evaluate decision utility for a given prediction series and policy."""
-    aligned = pd.concat([predicted, realized_relative_return], axis=1).dropna()
+    """Evaluate decision utility from an explicit hold-fraction series."""
+    aligned = pd.concat([hold_fraction, realized_relative_return], axis=1).dropna()
     if aligned.empty:
         return PolicySummary(
             n_obs=0,
@@ -81,10 +80,9 @@ def evaluate_policy_series(
             capture_ratio=float("nan"),
         )
 
-    predicted_aligned = aligned.iloc[:, 0]
+    hold_fraction_aligned = aligned.iloc[:, 0].clip(lower=0.0, upper=1.0)
     realized = aligned.iloc[:, 1]
-    hold_fraction = hold_fraction_from_policy(predicted_aligned, policy_name)
-    policy_return = hold_fraction * realized
+    policy_return = hold_fraction_aligned * realized
     oracle_return = realized.clip(lower=0.0)
     sell_50_return = 0.5 * realized
     hold_all_return = realized
@@ -98,7 +96,7 @@ def evaluate_policy_series(
 
     return PolicySummary(
         n_obs=int(len(aligned)),
-        avg_hold_fraction=float(hold_fraction.mean()),
+        avg_hold_fraction=float(hold_fraction_aligned.mean()),
         mean_policy_return=float(policy_return.mean()),
         median_policy_return=float(policy_return.median()),
         cumulative_policy_return=float(policy_return.sum()),
@@ -109,3 +107,22 @@ def evaluate_policy_series(
         uplift_vs_hold_all=float((policy_return - hold_all_return).mean()),
         capture_ratio=capture_ratio,
     )
+
+
+def evaluate_policy_series(
+    predicted: pd.Series,
+    realized_relative_return: pd.Series,
+    policy_name: str,
+) -> PolicySummary:
+    """Evaluate decision utility for a given prediction series and policy."""
+    aligned = pd.concat([predicted, realized_relative_return], axis=1).dropna()
+    if aligned.empty:
+        return evaluate_hold_fraction_series(
+            pd.Series(dtype=float, name="hold_fraction"),
+            pd.Series(dtype=float, name="y_true"),
+        )
+
+    predicted_aligned = aligned.iloc[:, 0]
+    realized = aligned.iloc[:, 1]
+    hold_fraction = hold_fraction_from_policy(predicted_aligned, policy_name)
+    return evaluate_hold_fraction_series(hold_fraction, realized)
