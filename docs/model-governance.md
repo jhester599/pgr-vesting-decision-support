@@ -74,6 +74,8 @@ It adds:
 - production report and email support for a simpler-baseline cross-check
 - explicit existing-holdings lot guidance
 - explicit diversification-first redeploy guidance
+- a promoted v13.1 default that uses the simpler diversification-first
+  recommendation layer while keeping the live stack visible as a cross-check
 
 ## Promotion Rule
 
@@ -118,12 +120,12 @@ The most promising next production change is narrower:
 
 The current production-facing default is:
 
-- `RECOMMENDATION_LAYER_MODE=live_with_shadow`
+- `RECOMMENDATION_LAYER_MODE=shadow_promoted`
 
 This means:
 
-- the live 4-model monthly stack still drives the official recommendation
-- the simpler v12 baseline is surfaced as a cross-check
+- the simpler v12 baseline now drives the official recommendation layer
+- the live 4-model monthly stack is still surfaced as a cross-check
 - usefulness improvements from v11-v12 are now part of the production report
   and email path
 

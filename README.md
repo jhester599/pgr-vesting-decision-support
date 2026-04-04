@@ -38,11 +38,11 @@ Status as of 2026-04-04:
   baseline over a rolling 12-month review window, writes side-by-side dry-run
   memos under `results/v12/`, and tests whether the recommendation layer
   should be simplified before any new model stack is promoted.
-- `v13.x` is the first production-facing follow-through from that result. It
-  keeps the live model stack intact, but adds a configurable recommendation-
-  layer pilot, explicit existing-holdings guidance, diversification-first
-  redeploy guidance, and a simpler-baseline cross-check to the monthly report
-  and email.
+- `v13.x` is the production-facing follow-through from that result. It keeps
+  the live model stack intact, promotes the steadier diversification-first
+  recommendation layer, and adds explicit existing-holdings guidance,
+  diversification-first redeploy guidance, and a live-stack cross-check to the
+  monthly report and email.
 
 ## Production vs. Research
 
@@ -67,8 +67,8 @@ The repo now has explicit operating boundaries:
   - classifier-sidecar confidence work from v9
   - v11 diversification-first candidates and policy recommendations
   - v12 shadow-baseline recommendation-layer study
-- Active recommendation-layer pilot:
-  - v13 `live_with_shadow` recommendation-layer mode
+- Active recommendation-layer default:
+  - v13.1 `shadow_promoted` recommendation-layer mode
 - Historical planning and review artifacts:
   - `docs/history/claude-v7-plan.md`
   - `docs/plans/codex-v8-plan.md`
@@ -205,11 +205,12 @@ layer simplification the most plausible next promotion candidate.
 
 v13 does not promote a new model stack either. Instead, it promotes the best
 usefulness improvements from v11-v12 into the production-facing report and
-email:
+email, and now also promotes the steadier recommendation layer:
 
 - simpler-baseline cross-checks
 - existing-holdings lot guidance
 - diversification-first redeploy guidance
+- simpler diversification-first recommendation layer as the active default
 
-That makes the monthly output more useful immediately for the upcoming run,
-while still keeping the live model stack unchanged.
+That makes the monthly output more useful immediately while still keeping the
+live model stack unchanged.

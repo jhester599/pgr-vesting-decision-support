@@ -208,14 +208,29 @@ def build_shadow_comparison_lines(
 def build_shadow_check_lines(
     live_summary: SnapshotSummary,
     shadow_summary: SnapshotSummary,
+    *,
+    active_path: str = "live",
 ) -> list[str]:
     """Render a compact shadow-baseline comparison for production reports."""
     same_action = abs(live_summary.sell_pct - shadow_summary.sell_pct) < 1e-9
-    comparison_line = (
-        "The simpler diversification-first baseline independently lands on the same vest action."
-        if same_action
-        else "The simpler diversification-first baseline would lead to a different vest action, so treat the current output as less settled."
-    )
+    if active_path == "shadow":
+        comparison_line = (
+            "The promoted simpler diversification-first layer and the live stack still land on the same vest action."
+            if same_action
+            else "The promoted simpler diversification-first layer disagrees with the live stack, so treat the live prediction as a diagnostic rather than the active instruction."
+        )
+        note_line = (
+            "v13.1 promotes the simpler diversification-first baseline as the active recommendation layer while retaining the live model stack as a cross-check."
+        )
+    else:
+        comparison_line = (
+            "The simpler diversification-first baseline independently lands on the same vest action."
+            if same_action
+            else "The simpler diversification-first baseline would lead to a different vest action, so treat the current output as less settled."
+        )
+        note_line = (
+            "v13 keeps the live model stack in place, but uses this simpler baseline as a recommendation-layer cross-check because it was steadier in the v12 shadow study."
+        )
     return [
         "## Simple-Baseline Cross-Check",
         "",
@@ -225,7 +240,7 @@ def build_shadow_check_lines(
         f"| Simpler baseline | `{shadow_summary.candidate_name}` | `{shadow_summary.policy_name}` | {shadow_summary.consensus} | **{shadow_summary.recommendation_mode}** | **{shadow_summary.sell_pct:.0%}** | {shadow_summary.mean_predicted:+.2%} | {shadow_summary.aggregate_oos_r2:.2%} |",
         "",
         f"> {comparison_line}",
-        "> v13 keeps the live model stack in place, but uses this simpler baseline as a recommendation-layer cross-check because it was steadier in the v12 shadow study.",
+        f"> {note_line}",
         "",
     ]
 
