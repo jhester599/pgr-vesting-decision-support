@@ -33,6 +33,11 @@ Status as of 2026-04-04:
   bakeoffs, policy redesign, sidecar classifier review, and production-like
   dry-run recommendation memos. The current v11 conclusion is still
   `do not promote a live model change yet`.
+- `v12.x` is a shadow-promotion study layered on top of v11. It compares the
+  live production monthly stack against the simpler diversification-first
+  baseline over a rolling 12-month review window, writes side-by-side dry-run
+  memos under `results/v12/`, and tests whether the recommendation layer
+  should be simplified before any new model stack is promoted.
 
 ## Production vs. Research
 
@@ -56,6 +61,7 @@ The repo now has explicit operating boundaries:
   - v9 candidate production recommendations that have not yet been promoted
   - classifier-sidecar confidence work from v9
   - v11 diversification-first candidates and policy recommendations
+  - v12 shadow-baseline recommendation-layer study
 - Historical planning and review artifacts:
   - `claude-v7-plan.md`
   - `codex-v8-plan.md`
@@ -121,6 +127,8 @@ python -m pytest -q
 - `src/reporting/`: report and email rendering helpers
 - `src/research/`: v9 research harnesses and policy evaluation utilities
 - `results/v11/`: diversification-first research outputs from the v11 loop
+- `results/v12/`: shadow-promotion comparisons between the live stack and the
+  simpler diversification-first baseline
 - `scripts/`: runnable CLI entrypoints for production and research tasks
 - `results/monthly_decisions/`: committed production monthly decision outputs
 - `results/v9/`: committed research outputs from the v9 program
@@ -134,6 +142,8 @@ python -m pytest -q
   - [V10_1_RESULTS_SUMMARY.md](V10_1_RESULTS_SUMMARY.md)
   - [V11_RESULTS_SUMMARY.md](V11_RESULTS_SUMMARY.md)
   - [V11_CLOSEOUT_AND_V12_NEXT.md](V11_CLOSEOUT_AND_V12_NEXT.md)
+  - [V12_RESULTS_SUMMARY.md](V12_RESULTS_SUMMARY.md)
+  - [V12_CLOSEOUT_AND_V13_NEXT.md](V12_CLOSEOUT_AND_V13_NEXT.md)
 - Architecture and operations:
   - [docs/architecture.md](docs/architecture.md)
   - [docs/workflows.md](docs/workflows.md)
@@ -170,3 +180,13 @@ class expansion.
 
 The v9 closeout is documented in
 [V9_CLOSEOUT_AND_V91_NEXT.md](V9_CLOSEOUT_AND_V91_NEXT.md).
+
+## Notes on v12
+
+v12 did not promote a new production model stack either. It shadow-tested the
+best v11 policy row, `baseline_historical_mean` with `neutral_band_3pct`,
+against the live monthly stack over 12 recent monthly snapshots. The main
+finding is that the live stack changed directional signals several times while
+still landing on the same `DEFER-TO-TAX-DEFAULT` 50% sell action, whereas the
+shadow baseline was steadier and easier to explain. That makes recommendation-
+layer simplification the most plausible next promotion candidate.

@@ -48,6 +48,20 @@ It added:
 - policy redesign around simpler sell / hold / neutral logic
 - production-like dry-run recommendation memos with lot-level guidance
 
+v12 shadow-promotion work is now also complete and documented in:
+
+- `codex-v12-plan.md`
+- `V12_RESULTS_SUMMARY.md`
+- `V12_CLOSEOUT_AND_V13_NEXT.md`
+
+It added:
+
+- a rolling 12-month shadow comparison between the live monthly stack and the
+  simpler diversification-first baseline
+- side-by-side dry-run memos under `results/v12/dry_runs/`
+- an explicit check for whether recommendation-layer simplification should
+  happen before any new model stack promotion
+
 ## Promotion Rule
 
 Research results do not become production behavior automatically.
@@ -75,6 +89,17 @@ A candidate should only be promoted when it demonstrates:
 - Provisional:
   - candidates under consideration for future production use
   - diversification-aware redeploy policies not yet promoted
+  - v12 shadow-baseline recommendation behavior
+
+## Current Recommendation-Layer Conclusion
+
+After v12, the repo still does not recommend promoting a new live model stack.
+
+The most promising next production change is narrower:
+
+- consider promoting the simpler diversification-first recommendation layer
+- keep model-stack promotion separate until a reduced-universe candidate
+  clearly beats the baseline
 
 ## Classifier Sidecar Policy
 
