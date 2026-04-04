@@ -1,4 +1,4 @@
-# PGR Vesting Decision Support - v11 research + v10.1 production baseline
+# PGR Vesting Decision Support - v14 research + v13.1 production baseline
 
 PGR Vesting Decision Support is a tax-aware decision-support system for unwinding
 a concentrated Progressive Corporation (`PGR`) RSU position in a taxable
@@ -43,6 +43,11 @@ Status as of 2026-04-04:
   recommendation layer, and adds explicit existing-holdings guidance,
   diversification-first redeploy guidance, and a live-stack cross-check to the
   monthly report and email.
+- `v14.x` is a narrow post-v13 prediction-layer study. It keeps the promoted
+  v13.1 recommendation layer fixed, retests reduced benchmark universes, and
+  compares the live 4-model stack against lean Ridge/GBT-centered replacement
+  candidates. The current v14 conclusion is `continue shadowing, do not
+  promote yet`, with `ensemble_ridge_gbt` as the leading v15 candidate.
 
 ## Production vs. Research
 
@@ -67,8 +72,12 @@ The repo now has explicit operating boundaries:
   - classifier-sidecar confidence work from v9
   - v11 diversification-first candidates and policy recommendations
   - v12 shadow-baseline recommendation-layer study
+  - v14 reduced-universe replacement candidate shadowing
 - Active recommendation-layer default:
   - v13.1 `shadow_promoted` recommendation-layer mode
+- Active prediction-layer conclusion:
+  - keep the live 4-model stack for now; carry `ensemble_ridge_gbt` into v15
+    fixed-budget feature replacement work
 - Historical planning and review artifacts:
   - `docs/history/claude-v7-plan.md`
   - `docs/plans/codex-v8-plan.md`
@@ -136,8 +145,8 @@ python -m pytest -q
 - `results/v11/`: diversification-first research outputs from the v11 loop
 - `results/v12/`: shadow-promotion comparisons between the live stack and the
   simpler diversification-first baseline
-- `results/v13/`: reserved for future v13 follow-up runs if the recommendation
-  layer is promoted further
+- `results/v14/`: reduced-universe prediction-layer bakeoffs, minimal feature
+  surgery, and shadow review outputs
 - `scripts/`: runnable CLI entrypoints for production and research tasks
 - `results/monthly_decisions/`: committed production monthly decision outputs
 - `results/v9/`: committed research outputs from the v9 program
@@ -154,6 +163,8 @@ python -m pytest -q
   - [V12_RESULTS_SUMMARY.md](docs/results/V12_RESULTS_SUMMARY.md)
   - [V12_CLOSEOUT_AND_V13_NEXT.md](docs/closeouts/V12_CLOSEOUT_AND_V13_NEXT.md)
   - [V13_RESULTS_SUMMARY.md](docs/results/V13_RESULTS_SUMMARY.md)
+  - [V14_RESULTS_SUMMARY.md](docs/results/V14_RESULTS_SUMMARY.md)
+  - [V14_CLOSEOUT_AND_V15_NEXT.md](docs/closeouts/V14_CLOSEOUT_AND_V15_NEXT.md)
 - Architecture and operations:
   - [docs/architecture.md](docs/architecture.md)
   - [docs/workflows.md](docs/workflows.md)
@@ -214,3 +225,13 @@ email, and now also promotes the steadier recommendation layer:
 
 That makes the monthly output more useful immediately while still keeping the
 live model stack unchanged.
+
+## Notes on v14
+
+v14 kept the promoted v13.1 recommendation layer fixed and retested the
+underlying prediction layer on a reduced, diversification-aware benchmark
+universe. The best replacement candidate was `ensemble_ridge_gbt`, which
+improved on the reduced-universe live stack and stayed close to the
+`historical_mean` baseline, but still did not earn immediate promotion. The
+main v14 recommendation is to use fixed-budget feature replacement in v15
+rather than reopening broader methodology expansion.

@@ -1,0 +1,4 @@
+universe_name,benchmarks,n_benchmarks,contextual_only_count,mean_diversification_score,best_nonbaseline_candidate,best_nonbaseline_policy_return,best_nonbaseline_oos_r2,best_nonbaseline_div_utility
+v13_redeploy_core8,"VOO,VXUS,VWO,VMBS,BND,GLD,DBC,VDE",8,0,0.4585199670345559,ensemble_ridge_gbt,0.07160155339563187,-0.24563578997058486,0.07228802977423779
+balanced_core7,"VXUS,VEA,VHT,VPU,BNDX,BND,VNQ",7,0,0.41253039107727135,ridge_lean_v1,0.06803524356524869,-0.24135688947362957,0.06917207539789835
+v13_forecast_core9,"VOO,VXUS,VWO,VMBS,BND,GLD,DBC,VDE,VFH",9,1,0.44417416671497095,ridge_lean_v1,0.06663566988740925,-0.6391836319811459,0.05896670061096484
