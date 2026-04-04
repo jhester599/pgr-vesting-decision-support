@@ -39,12 +39,14 @@ import math
 import os
 import re
 import sys
+import warnings
 from datetime import date, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pandas as pd
+from sklearn.exceptions import ConvergenceWarning
 
 import config
 from src.database import db_client
@@ -219,7 +221,7 @@ def _generate_signals(
 
     X_current = X_event.iloc[[-1]]
     diagnostics: dict[str, object] = {
-        "obs_feature_report": compute_obs_feature_ratio(X_event, warn=True),
+        "obs_feature_report": compute_obs_feature_ratio(X_event, warn=False),
         "representative_cpcv": None,
     }
 
@@ -1802,9 +1804,22 @@ def main(
 
     # Step 2: Generate signals (ensemble: ElasticNet + Ridge + BayesianRidge + GBT)
     print(f"\nGenerating ensemble signals (as-of {as_of})...")
-    signals, ensemble_results, diagnostics = _generate_signals(
-        conn, as_of, target_horizon_months=6
-    )
+    with warnings.catch_warnings(record=True) as captured_warnings:
+        warnings.simplefilter("always", category=ConvergenceWarning)
+        signals, ensemble_results, diagnostics = _generate_signals(
+            conn, as_of, target_horizon_months=6
+        )
+
+    convergence_warnings = [
+        w for w in captured_warnings if issubclass(w.category, ConvergenceWarning)
+    ]
+    if convergence_warnings:
+        print(
+            "  [Modeling] "
+            f"{len(convergence_warnings)} convergence warnings were suppressed "
+            "during WFO fitting. Results completed; consider stronger regularisation "
+            "or leaner feature sets if this count grows."
+        )
 
     # Step 2.5: Calibrate P(outperform) using Platt / isotonic on OOS fold history
     print("  Calibrating probabilities...")
@@ -1884,19 +1899,19 @@ def main(
     _plot_calibration_curve(out_dir, cal_probs, cal_outcomes, cal_result)
 
     snapshot = db_client.get_operational_snapshot(conn)
-    warnings: list[str] = []
+    manifest_warnings: list[str] = []
     if aggregate_health is not None and aggregate_health["oos_r2"] < config.DIAG_MIN_OOS_R2:
-        warnings.append(
+        manifest_warnings.append(
             f"Aggregate OOS R^2 below threshold: {aggregate_health['oos_r2']:.2%} < {config.DIAG_MIN_OOS_R2:.2%}."
         )
     if diagnostics.get("representative_cpcv") is not None:
         verdict = diagnostics["representative_cpcv"].stability_verdict
         if verdict == "FAIL":
-            warnings.append("Representative CPCV verdict is FAIL.")
+            manifest_warnings.append("Representative CPCV verdict is FAIL.")
     if diagnostics.get("obs_feature_report") is not None:
         obs_report = diagnostics["obs_feature_report"]
         if obs_report.get("verdict") != "OK":
-            warnings.append(
+            manifest_warnings.append(
                 f"Observation-to-feature report is {obs_report.get('verdict')} "
                 f"(ratio={obs_report.get('ratio', float('nan')):.2f})."
             )
@@ -1908,7 +1923,7 @@ def main(
         schema_version=snapshot["schema_version"],
         latest_dates=snapshot["latest_dates"],
         row_counts=snapshot["row_counts"],
-        warnings=warnings,
+        warnings=manifest_warnings,
         outputs=[
             str(out_dir / "recommendation.md"),
             str(out_dir / "diagnostic.md"),

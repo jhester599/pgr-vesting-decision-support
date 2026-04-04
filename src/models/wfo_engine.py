@@ -39,10 +39,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Literal
+import warnings
 
 import numpy as np
 import pandas as pd
-from scipy.stats import spearmanr
+from scipy.stats import ConstantInputWarning, spearmanr
 from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.pipeline import Pipeline
@@ -105,8 +106,7 @@ class WFOResult:
     @property
     def information_coefficient(self) -> float:
         """Spearman rank correlation between y_true and y_hat (out-of-sample)."""
-        corr, _ = spearmanr(self.y_true_all, self.y_hat_all)
-        return float(corr)
+        return _safe_spearman_ic(self.y_true_all, self.y_hat_all)
 
     @property
     def mean_absolute_error(self) -> float:
@@ -133,6 +133,34 @@ class WFOResult:
 # ---------------------------------------------------------------------------
 # Main engine
 # ---------------------------------------------------------------------------
+
+def _safe_spearman_ic(
+    y_true: np.ndarray | list[float],
+    y_hat: np.ndarray | list[float],
+) -> float:
+    """Return a warning-free Spearman IC for possibly constant arrays.
+
+    scipy.stats.spearmanr emits ConstantInputWarning when either side is constant.
+    In this project that condition simply means the fold/path has no rank
+    discrimination, so we treat it as IC = 0.0 rather than surfacing log noise.
+    """
+    y_true_arr = np.asarray(y_true, dtype=float)
+    y_hat_arr = np.asarray(y_hat, dtype=float)
+
+    valid = np.isfinite(y_true_arr) & np.isfinite(y_hat_arr)
+    if valid.sum() < 2:
+        return float("nan")
+
+    y_true_clean = y_true_arr[valid]
+    y_hat_clean = y_hat_arr[valid]
+
+    if np.nanstd(y_true_clean) == 0.0 or np.nanstd(y_hat_clean) == 0.0:
+        return 0.0
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", ConstantInputWarning)
+        corr, _ = spearmanr(y_true_clean, y_hat_clean)
+    return float(corr) if np.isfinite(corr) else 0.0
 
 def run_wfo(
     X: pd.DataFrame,
@@ -583,8 +611,7 @@ def run_cpcv(
             split_y_hat.extend(y_hat.tolist())
 
         if len(split_y_true) >= 2:
-            ic_val, _ = _spearmanr(split_y_true, split_y_hat)
-            split_ics.append(float(ic_val) if np.isfinite(ic_val) else float("nan"))
+            split_ics.append(_safe_spearman_ic(split_y_true, split_y_hat))
 
     # Recombined paths: each path is a non-overlapping sequence of test observations
     path_ics: list[float] = []
@@ -602,8 +629,7 @@ def run_cpcv(
                         path_y_true.extend(y_arr[test_idx][valid].tolist())
                         path_y_hat_vals.extend(all_y_hat[test_idx][valid].tolist())
                 if len(path_y_true) >= 2:
-                    ic_p, _ = _spearmanr(path_y_true, path_y_hat_vals)
-                    path_ics.append(float(ic_p) if np.isfinite(ic_p) else float("nan"))
+                    path_ics.append(_safe_spearman_ic(path_y_true, path_y_hat_vals))
         except Exception:  # noqa: BLE001
             path_ics = []
 

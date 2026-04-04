@@ -17,7 +17,12 @@ import numpy as np
 import pandas as pd
 
 import config
-from src.models.wfo_engine import run_wfo, predict_current, WFOResult, FoldResult
+from src.models.wfo_engine import (
+    FoldResult,
+    WFOResult,
+    predict_current,
+    run_wfo,
+)
 from src.models.regularized_models import (
     build_lasso_pipeline,
     build_ridge_pipeline,
@@ -259,6 +264,28 @@ class TestWFOOutputStructure:
         total_oos = sum(f.n_test for f in result.folds)
         assert len(result.y_true_all) == total_oos
         assert len(result.y_hat_all) == total_oos
+
+    def test_information_coefficient_returns_zero_for_constant_predictions(self):
+        fold = FoldResult(
+            fold_idx=0,
+            train_start=pd.Timestamp("2020-01-31"),
+            train_end=pd.Timestamp("2024-12-31"),
+            test_start=pd.Timestamp("2025-01-31"),
+            test_end=pd.Timestamp("2025-06-30"),
+            y_true=np.array([0.01, -0.02, 0.03]),
+            y_hat=np.array([0.0, 0.0, 0.0]),
+            optimal_alpha=0.1,
+            feature_importances={"mom_3m": 1.0},
+            n_train=60,
+            n_test=3,
+        )
+        fold._test_dates = [
+            pd.Timestamp("2025-01-31"),
+            pd.Timestamp("2025-02-28"),
+            pd.Timestamp("2025-03-31"),
+        ]
+        result = WFOResult(folds=[fold], benchmark="VTI", target_horizon=6, model_type="ridge")
+        assert result.information_coefficient == pytest.approx(0.0)
 
 
 # ---------------------------------------------------------------------------

@@ -58,7 +58,7 @@ def build_lasso_pipeline(alphas: np.ndarray | None = None) -> Pipeline:
     lasso = LassoCV(
         alphas=alphas,
         cv=_make_inner_cv(),
-        max_iter=10_000,
+        max_iter=50_000,
         fit_intercept=True,
         selection="cyclic",
     )
@@ -123,7 +123,7 @@ def build_elasticnet_pipeline(
         l1_ratio=l1_ratios,
         alphas=alphas,
         cv=TimeSeriesSplit(n_splits=cv_splits),
-        max_iter=10_000,
+        max_iter=50_000,
         fit_intercept=True,
         selection="cyclic",
     )
