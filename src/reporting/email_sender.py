@@ -130,6 +130,13 @@ def _extract_shadow_check(body: str) -> list[dict[str, str]]:
     return []
 
 
+def _extract_recommendation_layer(body: str) -> str | None:
+    match = re.search(r"\*\*Recommendation Layer:\*\*\s+(.+?)\s{2,}", body)
+    if match:
+        return _clean_markdown_cell(match.group(1))
+    return None
+
+
 def _extract_as_of_date(body: str) -> date | None:
     match = re.search(r"\*\*As-of Date:\*\*\s+(\d{4}-\d{2}-\d{2})", body)
     if not match:
@@ -271,6 +278,7 @@ def build_email_summary(body: str, lots_csv_path: str | Path | None = None) -> s
     exec_lines = _extract_executive_summary(body)
     existing_guidance = _build_existing_shares_guidance(body, lots_csv_path)
     shadow_rows = _extract_shadow_check(body)
+    recommendation_layer = _extract_recommendation_layer(body) or ""
     redeploy_lines = _extract_section_bullets(body, "Redeploy Guidance")
 
     lines = [
@@ -290,6 +298,8 @@ def build_email_summary(body: str, lots_csv_path: str | Path | None = None) -> s
         lines.extend(f"- {line}" for line in existing_guidance["bullets"])
     if shadow_rows:
         lines += ["", "Simple-baseline cross-check:"]
+        if recommendation_layer:
+            lines.append(f"- Active layer: {recommendation_layer}")
         for row in shadow_rows:
             lines.append(
                 f"- {row.get('Path', 'Path')}: {row.get('Recommendation Mode', 'n/a')}, "
@@ -409,6 +419,7 @@ def build_email_html(body: str, lots_csv_path: str | Path | None = None) -> str:
     benchmark_table = _build_benchmark_html_table(body)
     scenario_table = _build_scenario_html_table(body)
     shadow_rows = _extract_shadow_check(body)
+    recommendation_layer = _extract_recommendation_layer(body) or ""
     redeploy_lines = _extract_section_bullets(body, "Redeploy Guidance")
     mode_badge = {
         "ACTIONABLE": _html_badge("ACTIONABLE", "#0f766e"),
@@ -471,9 +482,10 @@ def build_email_html(body: str, lots_csv_path: str | Path | None = None) -> str:
         )
         shadow_section = (
             "<div style='margin-top:20px;padding:20px;border:1px solid #dbeafe;border-radius:16px;background:#f8fbff;'>"
-            "<h2 style='margin:0 0 12px 0;font-size:20px;color:#0f172a;'>Simple-baseline cross-check</h2>"
+            "<h2 style='margin:0 0 12px 0;font-size:20px;color:#0f172a;'>Recommendation-layer cross-check</h2>"
+            f"<p style='margin:0 0 12px 0;color:#334155;line-height:1.5;'><strong>Active layer:</strong> {escape(recommendation_layer or 'n/a')}</p>"
             "<p style='margin:0 0 12px 0;color:#334155;line-height:1.5;'>"
-            "This compares the live production recommendation layer to the steadier diversification-first baseline tested in v12."
+            "This compares the active recommendation layer to the alternate path so the monthly memo stays honest about whether the simpler baseline and live stack agree."
             "</p>"
             "<table style='width:100%;border-collapse:collapse;font-size:13px;'>"
             "<thead><tr>"

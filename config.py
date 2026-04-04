@@ -215,7 +215,7 @@ ENSEMBLE_MODELS: list[str] = ["elasticnet", "ridge", "bayesian_ridge", "gbt"]
 # Keep the live model stack unchanged, but allow the monthly report/email layer
 # to include or eventually promote the simpler diversification-first baseline
 # that performed best in the v11/v12 recommendation studies.
-RECOMMENDATION_LAYER_MODE: str = os.getenv("RECOMMENDATION_LAYER_MODE", "live_with_shadow")
+RECOMMENDATION_LAYER_MODE: str = os.getenv("RECOMMENDATION_LAYER_MODE", "shadow_promoted")
 RECOMMENDATION_LAYER_VALID_MODES: tuple[str, ...] = (
     "live_only",
     "live_with_shadow",

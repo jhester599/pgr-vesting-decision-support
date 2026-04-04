@@ -4,7 +4,7 @@ Created: 2026-04-04
 
 ## Goal
 
-Implement the safest production-ready improvements from v11 and v12 without promoting a new model stack.
+Implement the safest production-ready improvements from v11 and v12 without promoting a new model stack, then promote the simpler recommendation layer if it remains steadier and equally actionable.
 
 ## What Changed
 
@@ -24,10 +24,11 @@ Implement the safest production-ready improvements from v11 and v12 without prom
 
 ## Current Default
 
-- `RECOMMENDATION_LAYER_MODE=live_with_shadow`
+- `RECOMMENDATION_LAYER_MODE=shadow_promoted`
 
-This keeps the live production model stack as the active recommendation source
-while surfacing the steadier diversification-first baseline as a cross-check.
+This keeps the live production model stack in place for prediction generation,
+but promotes the steadier diversification-first baseline as the active
+recommendation layer while retaining the live stack as a cross-check.
 
 ## April Dry-Run Result
 
@@ -50,11 +51,11 @@ now explicitly answer:
 
 ## Conclusion
 
-v13 improves usefulness now, without overstating confidence or prematurely
-promoting a new model stack.
+v13.1 improves usefulness now, without promoting a new model stack.
 
-The next decision is narrower than a full model promotion:
+The promoted recommendation-layer default is now:
 
-- continue observing `live_with_shadow`
-- if the simpler cross-check remains steadier and equally actionable, consider
-  promoting the recommendation layer before promoting any new model stack
+- simpler diversification-first baseline is the active recommendation layer
+- live 4-model production stack remains visible as a diagnostic cross-check
+- existing-holdings lot guidance and redeploy guidance remain part of the
+  production report and email

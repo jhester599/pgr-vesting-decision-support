@@ -133,10 +133,10 @@ _ETF_DESCRIPTIONS: dict[str, str] = {
 }
 
 _MODEL_VERSION_LABEL = (
-    "v13.0 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, "
+    "v13.1 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, "
     "inverse-variance weighting, C(8,2)=28 CPCV paths, "
     "post-v9 baseline reconciliation, migrations, CI/workflow hardening, "
-    "run-manifest support, and v13 recommendation-layer cross-checks)"
+    "run-manifest support, and a promoted v13.1 recommendation layer)"
 )
 
 
@@ -1327,7 +1327,11 @@ def _write_recommendation_md(
         and live_summary is not None
         and shadow_summary is not None
     ):
-        lines += build_shadow_check_lines(live_summary, shadow_summary)
+        lines += build_shadow_check_lines(
+            live_summary,
+            shadow_summary,
+            active_path="shadow" if config.RECOMMENDATION_LAYER_MODE == "shadow_promoted" else "live",
+        )
 
     # Per-benchmark table — include confidence columns when available
     lines += [
@@ -1996,9 +2000,9 @@ def main(
     if layer_mode not in config.RECOMMENDATION_LAYER_VALID_MODES:
         print(
             "  [Recommendation Layer] "
-            f"Unknown mode '{layer_mode}', defaulting to 'live_with_shadow'."
+            f"Unknown mode '{layer_mode}', defaulting to 'shadow_promoted'."
         )
-        layer_mode = "live_with_shadow"
+        layer_mode = "shadow_promoted"
 
     print(f"\n{'[DRY RUN] ' if dry_run else ''}PGR Monthly Decision — as-of {as_of}")
     print(f"Run date: {run_date}")
@@ -2104,7 +2108,7 @@ def main(
     elif layer_mode == "shadow_promoted" and shadow_summary is not None:
         active_recommendation_mode = _mode_payload_from_summary(shadow_summary)
         sell_pct = float(active_recommendation_mode["sell_pct"])
-        recommendation_layer_label = "v13 promoted simpler diversification-first baseline"
+        recommendation_layer_label = "v13.1 promoted simpler diversification-first recommendation layer + live-stack cross-check"
     existing_holdings = _build_existing_holdings_guidance(conn, as_of)
     redeploy_buckets = _build_redeploy_guidance(conn)
 

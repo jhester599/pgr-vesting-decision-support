@@ -98,10 +98,10 @@ The report and email can now include:
 - `Redeploy Guidance`
 - `Simple-Baseline Cross-Check`
 
-Under the default `live_with_shadow` mode:
+Under the current `shadow_promoted` default:
 
-- the live model stack still determines the official recommendation
-- the simpler baseline is shown as a cross-check
+- the simpler diversification-first baseline determines the official recommendation layer
+- the live model stack is shown as a cross-check
 - the report explicitly distinguishes:
   - what to do with the next vest
   - what to do with already-held shares

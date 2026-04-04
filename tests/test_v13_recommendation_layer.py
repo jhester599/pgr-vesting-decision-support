@@ -133,3 +133,44 @@ def test_recommendation_report_includes_v13_sections(monkeypatch, tmp_path: Path
     assert "## Existing Holdings Guidance" in content
     assert "## Redeploy Guidance" in content
     assert "## Simple-Baseline Cross-Check" in content
+
+
+def test_shadow_promoted_cross_check_mentions_active_layer() -> None:
+    live_summary = SnapshotSummary(
+        label="live",
+        as_of=date(2026, 4, 4),
+        candidate_name="production_4_model_ensemble",
+        policy_name="current_production_mapping",
+        consensus="OUTPERFORM",
+        confidence_tier="LOW",
+        recommendation_mode="DEFER-TO-TAX-DEFAULT",
+        sell_pct=0.5,
+        mean_predicted=0.02,
+        mean_ic=0.04,
+        mean_hit_rate=0.53,
+        aggregate_oos_r2=-1.20,
+        aggregate_nw_ic=0.01,
+    )
+    shadow_summary = SnapshotSummary(
+        label="shadow",
+        as_of=date(2026, 4, 4),
+        candidate_name="baseline_historical_mean",
+        policy_name="neutral_band_3pct",
+        consensus="OUTPERFORM",
+        confidence_tier="LOW",
+        recommendation_mode="DEFER-TO-TAX-DEFAULT",
+        sell_pct=0.5,
+        mean_predicted=0.05,
+        mean_ic=-0.01,
+        mean_hit_rate=0.61,
+        aggregate_oos_r2=-0.16,
+        aggregate_nw_ic=-0.01,
+    )
+
+    lines = monthly_decision.build_shadow_check_lines(
+        live_summary,
+        shadow_summary,
+        active_path="shadow",
+    )
+    joined = "\n".join(lines)
+    assert "promotes the simpler diversification-first baseline as the active recommendation layer" in joined

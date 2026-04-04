@@ -369,6 +369,7 @@ class TestBuildEmailMessage:
         # PGR Monthly Decision — April 2026
 
         **As-of Date:** 2026-04-03
+        **Recommendation Layer:** v13.1 promoted simpler diversification-first recommendation layer + live-stack cross-check
 
         ## Executive Summary
 
@@ -469,6 +470,7 @@ class TestBuildEmailMessage:
         assert "What's changed:" in body
         assert "Existing shares already held:" in body
         assert "Simple-baseline cross-check:" in body
+        assert "Active layer: v13.1 promoted simpler diversification-first recommendation layer + live-stack cross-check" in body
         assert "If redeploying sold exposure:" in body
         assert "Full report:" in body
 
@@ -486,7 +488,8 @@ class TestBuildEmailMessage:
         assert "<html>" in html_body
         assert "New vested shares" in html_body
         assert "Existing shares already held" in html_body
-        assert "Simple-baseline cross-check" in html_body
+        assert "Recommendation-layer cross-check" in html_body
+        assert "Active layer:" in html_body
         assert "If redeploying sold exposure" in html_body
         assert "Benchmark detail" in html_body
         assert "Loss lots first" in html_body
