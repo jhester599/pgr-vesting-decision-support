@@ -1,0 +1,4 @@
+universe_name,benchmarks,n_benchmarks
+top8_composite,"BNDX,VHT,VPU,BND,VXUS,VNQ,VMBS,VEA",8
+diversified_top8,"VXUS,VIG,BNDX,VNQ,VHT,VPU,BND,VEA",8
+balanced_core7,"VXUS,VEA,VHT,VPU,BNDX,BND,VNQ",7

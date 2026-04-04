@@ -141,6 +141,7 @@ def run_wfo(
     target_horizon_months: int = 6,
     benchmark: str = "",
     purge_buffer: int | None = None,
+    feature_columns: list[str] | None = None,
 ) -> WFOResult:
     """
     Run Walk-Forward Optimization on the feature matrix.
@@ -174,6 +175,9 @@ def run_wfo(
                                horizons and ``config.WFO_PURGE_BUFFER_12M``
                                (3) for 12M horizons.  Pass ``0`` to reproduce
                                v2.7 behavior (gap = target_horizon only).
+        feature_columns:       Optional explicit feature subset for research
+                               experiments. When provided, bypasses the
+                               model-specific production feature overrides.
 
     Returns:
         WFOResult containing per-fold FoldResults and aggregate metrics.
@@ -188,7 +192,12 @@ def run_wfo(
             "y contains NaN values. Call get_X_y(df, drop_na_target=True) first."
         )
 
-    selected_cols = get_model_feature_columns(X, model_type=model_type)
+    if feature_columns is not None:
+        selected_cols = [col for col in feature_columns if col in X.columns]
+        if not selected_cols:
+            raise ValueError("feature_columns did not match any columns in X.")
+    else:
+        selected_cols = get_model_feature_columns(X, model_type=model_type)
     X = X[selected_cols].copy()
 
     # v3.0: resolve purge buffer — default from config based on horizon

@@ -332,7 +332,10 @@ def build_feature_matrix(
             # 3-month trailing average: smooths single-weather-event spikes
             df["underwriting_income_3m"] = uw_monthly.rolling(3, min_periods=2).mean()
             # YoY growth rate: positive slope = margin expansion trend
-            df["underwriting_income_growth_yoy"] = uw_monthly.pct_change(periods=12)
+            df["underwriting_income_growth_yoy"] = uw_monthly.pct_change(
+                periods=12,
+                fill_method=None,
+            )
 
         # --- P2.3: Unearned premium reserve growth (earned-premium pipeline) ---
         # unearned_premium_growth_yoy is pre-computed in DB (12M pct_change).
@@ -391,7 +394,10 @@ def build_feature_matrix(
             inv_inc = pgr_monthly["investment_income"].reindex(
                 monthly_dates, method="ffill"
             )
-            df["investment_income_growth_yoy"] = inv_inc.pct_change(periods=12)
+            df["investment_income_growth_yoy"] = inv_inc.pct_change(
+                periods=12,
+                fill_method=None,
+            )
 
         # investment_book_yield: current yield on the fixed-income portfolio.
         # Rising book yield = portfolio rolling into higher-coupon bonds,
@@ -525,12 +531,15 @@ def build_feature_matrix(
         # insurance_cpi_mom3m: 3-month momentum of motor vehicle insurance CPI
         if "CUSR0000SETC01" in fred_aligned.columns:
             ins_cpi = fred_aligned["CUSR0000SETC01"]
-            df["insurance_cpi_mom3m"] = ins_cpi.pct_change(periods=3)
+            df["insurance_cpi_mom3m"] = ins_cpi.pct_change(
+                periods=3,
+                fill_method=None,
+            )
 
         # vmt_yoy: year-over-year % change in vehicle miles traveled
         if "TRFVOLUSM227NFWA" in fred_aligned.columns:
             vmt = fred_aligned["TRFVOLUSM227NFWA"]
-            df["vmt_yoy"] = vmt.pct_change(periods=12)
+            df["vmt_yoy"] = vmt.pct_change(periods=12, fill_method=None)
 
         # ------------------------------------------------------------------
         # v4.5 PGR-specific severity and pricing features
@@ -540,12 +549,18 @@ def build_feature_matrix(
         # Rising used car prices drive higher total-loss settlement costs, a direct
         # headwind to PGR's combined ratio; the 2021–22 spike was a major headwind.
         if "CUSR0000SETA02" in fred_aligned.columns:
-            df["used_car_cpi_yoy"] = fred_aligned["CUSR0000SETA02"].pct_change(12)
+            df["used_car_cpi_yoy"] = fred_aligned["CUSR0000SETA02"].pct_change(
+                12,
+                fill_method=None,
+            )
 
         # medical_cpi_yoy: YoY % change in medical care CPI (CUSR0000SAM2).
         # Bodily injury and PIP claim severity tracks medical inflation directly.
         if "CUSR0000SAM2" in fred_aligned.columns:
-            df["medical_cpi_yoy"] = fred_aligned["CUSR0000SAM2"].pct_change(12)
+            df["medical_cpi_yoy"] = fred_aligned["CUSR0000SAM2"].pct_change(
+                12,
+                fill_method=None,
+            )
 
         # ppi_auto_ins_yoy: YoY % change in PPI for Private Passenger Auto Insurance
         # (PCU5241265241261).  Replaces the originally planned CUSR0000SETC01 (motor
@@ -554,7 +569,10 @@ def build_feature_matrix(
         # that carriers have pricing power and are raising premiums.
         # Validated 2026-03-29: partial IC=0.353 (p<0.0001), hit-rate 76.1%.
         if "PCU5241265241261" in fred_aligned.columns:
-            df["ppi_auto_ins_yoy"] = fred_aligned["PCU5241265241261"].pct_change(12)
+            df["ppi_auto_ins_yoy"] = fred_aligned["PCU5241265241261"].pct_change(
+                12,
+                fill_method=None,
+            )
 
         # pgr_vs_kie_6m: PGR trailing 6M return minus KIE trailing 6M return.
         # Captures PGR's idiosyncratic alpha vs. the broad insurance sector (KIE =
@@ -786,8 +804,8 @@ def build_feature_matrix_from_db(
 
             pgr_m = _monthly_close(pgr_prices_raw)
             kie_m = _monthly_close(kie_prices_raw)
-            pgr_6m = pgr_m.pct_change(6)
-            kie_6m = kie_m.pct_change(6)
+            pgr_6m = pgr_m.pct_change(6, fill_method=None)
+            kie_6m = kie_m.pct_change(6, fill_method=None)
             pgr_vs_kie = (pgr_6m - kie_6m).rename("pgr_vs_kie_6m")
             pgr_vs_kie.index = pgr_vs_kie.index + pd.offsets.MonthEnd(0)
             if fred_raw.empty:
@@ -817,8 +835,8 @@ def build_feature_matrix_from_db(
             peer_monthly_df = pd.concat(
                 [_m_close(df) for df in available_peer_frames], axis=1
             )
-            peer_composite_6m = peer_monthly_df.pct_change(6).mean(axis=1)
-            pgr_6m_v60 = pgr_m_v60.pct_change(6)
+            peer_composite_6m = peer_monthly_df.pct_change(6, fill_method=None).mean(axis=1)
+            pgr_6m_v60 = pgr_m_v60.pct_change(6, fill_method=None)
             pgr_vs_peers = (pgr_6m_v60 - peer_composite_6m).rename("pgr_vs_peers_6m")
             pgr_vs_peers.index = pgr_vs_peers.index + pd.offsets.MonthEnd(0)
             if fred_raw.empty:
@@ -842,8 +860,8 @@ def build_feature_matrix_from_db(
 
             pgr_m_vfh = _mc_vfh(prices)
             vfh_m = _mc_vfh(vfh_prices_raw)
-            pgr_6m_vfh = pgr_m_vfh.pct_change(6)
-            vfh_6m = vfh_m.pct_change(6)
+            pgr_6m_vfh = pgr_m_vfh.pct_change(6, fill_method=None)
+            vfh_6m = vfh_m.pct_change(6, fill_method=None)
             pgr_vs_vfh = (pgr_6m_vfh - vfh_6m).rename("pgr_vs_vfh_6m")
             pgr_vs_vfh.index = pgr_vs_vfh.index + pd.offsets.MonthEnd(0)
             if fred_raw.empty:
