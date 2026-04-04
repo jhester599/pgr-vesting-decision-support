@@ -1,4 +1,4 @@
-# PGR Vesting Decision Support - v10.1
+# PGR Vesting Decision Support - v11 research + v10.1 production baseline
 
 PGR Vesting Decision Support is a tax-aware decision-support system for unwinding
 a concentrated Progressive Corporation (`PGR`) RSU position in a taxable
@@ -8,7 +8,7 @@ make a more disciplined decision at each vest.
 
 ## Current Status
 
-Status as of 2026-04-03:
+Status as of 2026-04-04:
 
 - `v7.x` is fully implemented in runtime code: the ablation work, tax scenario
   framework, EDGAR parser hardening, monthly report cleanup, and
@@ -27,6 +27,12 @@ Status as of 2026-04-03:
   production boundaries, improves workflow safety and CI, introduces explicit
   schema migrations, adds run manifests, documents artifact policy, and makes
   the codebase easier to operate and extend safely.
+- `v11.x` is an implemented research loop focused on accuracy and usefulness
+  under a diversification-first objective. It adds a canonical `results/v11/`
+  scoreboard, diversification-aware universe selection, reduced-universe
+  bakeoffs, policy redesign, sidecar classifier review, and production-like
+  dry-run recommendation memos. The current v11 conclusion is still
+  `do not promote a live model change yet`.
 
 ## Production vs. Research
 
@@ -49,6 +55,7 @@ The repo now has explicit operating boundaries:
 - Provisional:
   - v9 candidate production recommendations that have not yet been promoted
   - classifier-sidecar confidence work from v9
+  - v11 diversification-first candidates and policy recommendations
 - Historical planning and review artifacts:
   - `claude-v7-plan.md`
   - `codex-v8-plan.md`
@@ -113,6 +120,7 @@ python -m pytest -q
 - `src/portfolio/`: vesting recommendation and portfolio-allocation logic
 - `src/reporting/`: report and email rendering helpers
 - `src/research/`: v9 research harnesses and policy evaluation utilities
+- `results/v11/`: diversification-first research outputs from the v11 loop
 - `scripts/`: runnable CLI entrypoints for production and research tasks
 - `results/monthly_decisions/`: committed production monthly decision outputs
 - `results/v9/`: committed research outputs from the v9 program
@@ -124,6 +132,8 @@ python -m pytest -q
 - Baseline / current state:
   - [POST_V9_BASELINE.md](POST_V9_BASELINE.md)
   - [V10_1_RESULTS_SUMMARY.md](V10_1_RESULTS_SUMMARY.md)
+  - [V11_RESULTS_SUMMARY.md](V11_RESULTS_SUMMARY.md)
+  - [V11_CLOSEOUT_AND_V12_NEXT.md](V11_CLOSEOUT_AND_V12_NEXT.md)
 - Architecture and operations:
   - [docs/architecture.md](docs/architecture.md)
   - [docs/workflows.md](docs/workflows.md)

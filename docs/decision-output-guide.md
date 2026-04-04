@@ -44,6 +44,32 @@ using the lot file in `data/processed/position_lots.csv`.
 
 The logic is intended as guidance, not an automated trade instruction.
 
+The preferred order remains:
+
+- loss lots first
+- LTCG gain lots next
+- avoid STCG gains unless the model edge is unusually strong
+
+## Diversification-Aware Redeploy Guidance
+
+v11 research adds a second layer of recommendation logic:
+
+- some funds are useful as forecast benchmarks
+- not all of them are good destinations for capital leaving a concentrated PGR
+  position
+
+When the project discusses redeployment, it should prefer buckets that reduce
+single-stock concentration:
+
+- broad US equity
+- international equity
+- fixed income
+- real assets
+
+Funds that remain too correlated with PGR, such as `VFH` or `KIE`, may still
+appear as contextual benchmarks, but they should not normally be presented as
+preferred redeployment destinations.
+
 ## Diagnostic Report
 
 The diagnostic report is the technical appendix. It includes:

@@ -16,6 +16,8 @@ FIXED_POLICIES: tuple[str, ...] = (
 SIGNAL_POLICIES: tuple[str, ...] = (
     "sign_hold_vs_sell",
     "tiered_25_50_100",
+    "neutral_band_2pct",
+    "neutral_band_3pct",
 )
 
 
@@ -54,6 +56,20 @@ def hold_fraction_from_policy(
             predicted > 0.15,
             0.75,
             np.where(predicted > 0.05, 0.50, 0.0),
+        )
+        return pd.Series(hold_fraction, index=predicted.index, name="hold_fraction")
+    if policy_name == "neutral_band_2pct":
+        hold_fraction = np.where(
+            predicted > 0.02,
+            1.0,
+            np.where(predicted < -0.02, 0.0, 0.5),
+        )
+        return pd.Series(hold_fraction, index=predicted.index, name="hold_fraction")
+    if policy_name == "neutral_band_3pct":
+        hold_fraction = np.where(
+            predicted > 0.03,
+            1.0,
+            np.where(predicted < -0.03, 0.0, 0.5),
         )
         return pd.Series(hold_fraction, index=predicted.index, name="hold_fraction")
     raise ValueError(f"Unknown policy_name '{policy_name}'.")
