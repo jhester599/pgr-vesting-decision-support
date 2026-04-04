@@ -407,6 +407,23 @@ class TestBuildEmailMessage:
         | SELL_NOW_STCG | 2026-07-17 | 37% | +0.00% | $1,396.94 | 100.0% |
         | HOLD_TO_LTCG | 2027-07-18 | 20% | +8.36% | $1,592.33 | 67.4% |
 
+        ## Existing Holdings Guidance
+
+        - LOSS: 2025-01-21 @ $240.00 (1.00 share(s)). Trim loss lots first when reducing concentration.
+        - LTCG: 2024-01-01 @ $161.00 (1.00 share(s)). After losses, trim LTCG gain lots next.
+
+        ## Redeploy Guidance
+
+        - Broad US Equity: VOO. Broad US equity diversifies away from single-stock risk.
+        - Fixed Income: BND, VMBS. Fixed income is the cleanest concentration-reduction bucket when model confidence is weak.
+
+        ## Simple-Baseline Cross-Check
+
+        | Path | Candidate | Policy | Signal | Recommendation Mode | Sell % | Predicted 6M Return | Aggregate OOS R^2 |
+        |------|-----------|--------|--------|---------------------|--------|---------------------|------------------|
+        | Live production | `production_4_model_ensemble` | `current_production_mapping` | OUTPERFORM | **ACTIONABLE** | **20%** | +6.00% | -20.00% |
+        | Simpler baseline | `baseline_historical_mean` | `neutral_band_3pct` | OUTPERFORM | **ACTIONABLE** | **20%** | +5.00% | -10.00% |
+
         | Benchmark | Description | Predicted Return | CI Lower | CI Upper | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |
         |-----------|-------------|------------------|----------|----------|----|----------|--------|--------|------------|--------|
         | VTI | Total Stock Market | +6.95% | -29.14% | +43.05% | 0.0407 | 51.6% | 70.9% | 59.3% | HIGH | NEUTRAL |
@@ -451,6 +468,8 @@ class TestBuildEmailMessage:
         assert "Recommendation mode: ACTIONABLE" in body
         assert "What's changed:" in body
         assert "Existing shares already held:" in body
+        assert "Simple-baseline cross-check:" in body
+        assert "If redeploying sold exposure:" in body
         assert "Full report:" in body
 
     def test_html_body_attached_and_contains_structured_sections(self, tmp_path):
@@ -467,6 +486,8 @@ class TestBuildEmailMessage:
         assert "<html>" in html_body
         assert "New vested shares" in html_body
         assert "Existing shares already held" in html_body
+        assert "Simple-baseline cross-check" in html_body
+        assert "If redeploying sold exposure" in html_body
         assert "Benchmark detail" in html_body
         assert "Loss lots first" in html_body
 

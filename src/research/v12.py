@@ -203,3 +203,65 @@ def build_shadow_comparison_lines(
         "",
     ]
     return lines
+
+
+def build_shadow_check_lines(
+    live_summary: SnapshotSummary,
+    shadow_summary: SnapshotSummary,
+) -> list[str]:
+    """Render a compact shadow-baseline comparison for production reports."""
+    same_action = abs(live_summary.sell_pct - shadow_summary.sell_pct) < 1e-9
+    comparison_line = (
+        "The simpler diversification-first baseline independently lands on the same vest action."
+        if same_action
+        else "The simpler diversification-first baseline would lead to a different vest action, so treat the current output as less settled."
+    )
+    return [
+        "## Simple-Baseline Cross-Check",
+        "",
+        "| Path | Candidate | Policy | Signal | Recommendation Mode | Sell % | Predicted 6M Return | Aggregate OOS R^2 |",
+        "|------|-----------|--------|--------|---------------------|--------|---------------------|------------------|",
+        f"| Live production | `{live_summary.candidate_name}` | `{live_summary.policy_name}` | {live_summary.consensus} | **{live_summary.recommendation_mode}** | **{live_summary.sell_pct:.0%}** | {live_summary.mean_predicted:+.2%} | {live_summary.aggregate_oos_r2:.2%} |",
+        f"| Simpler baseline | `{shadow_summary.candidate_name}` | `{shadow_summary.policy_name}` | {shadow_summary.consensus} | **{shadow_summary.recommendation_mode}** | **{shadow_summary.sell_pct:.0%}** | {shadow_summary.mean_predicted:+.2%} | {shadow_summary.aggregate_oos_r2:.2%} |",
+        "",
+        f"> {comparison_line}",
+        "> v13 keeps the live model stack in place, but uses this simpler baseline as a recommendation-layer cross-check because it was steadier in the v12 shadow study.",
+        "",
+    ]
+
+
+def build_existing_holdings_markdown_lines(existing_holdings: list[dict[str, Any]]) -> list[str]:
+    """Render markdown guidance for already-held PGR lots."""
+    lines = ["## Existing Holdings Guidance", ""]
+    if not existing_holdings:
+        return lines + ["- Existing-lot guidance unavailable.", ""]
+    for row in existing_holdings[:6]:
+        lines.append(
+            "- "
+            f"{row['tax_bucket']}: {row['vest_date']} @ ${row['cost_basis_per_share']:.2f} "
+            f"({row['shares']:.2f} share(s)). {row['rationale']}"
+        )
+    lines.append("")
+    return lines
+
+
+def build_redeploy_markdown_lines(redeploy_buckets: list[dict[str, Any]]) -> list[str]:
+    """Render markdown guidance for diversification-first redeploy buckets."""
+    lines = ["## Redeploy Guidance", ""]
+    if not redeploy_buckets:
+        return lines + ["- Redeploy guidance unavailable.", ""]
+    title_map = {
+        "broad_us_equity": "Broad US Equity",
+        "international_equity": "International Equity",
+        "fixed_income": "Fixed Income",
+        "real_assets": "Real Assets",
+        "sector_context": "Sector Context",
+    }
+    for row in redeploy_buckets:
+        bucket_name = title_map.get(str(row["bucket"]), str(row["bucket"]).replace("_", " ").title())
+        lines.append(
+            "- "
+            f"{bucket_name}: {row['example_funds']}. {row['note']}"
+        )
+    lines.append("")
+    return lines
