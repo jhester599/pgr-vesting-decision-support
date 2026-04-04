@@ -1,0 +1,4 @@
+as_of,candidate_name,policy_name,signal,recommendation_mode,sell_pct,mean_prediction,mean_ic,mean_hit_rate,mean_oos_r2,memo_path
+2026-02-28,ridge_lean_v1,neutral_band_3pct,OUTPERFORM,DEFER-TO-TAX-DEFAULT,0.5,0.04299998599585153,0.2595544197470378,0.638512474913337,-0.6391836319811459,results\v11\dry_runs\2026-02-28.md
+2026-03-31,ridge_lean_v1,neutral_band_3pct,OUTPERFORM,DEFER-TO-TAX-DEFAULT,0.5,0.04254075435445707,0.2595544197470378,0.638512474913337,-0.6391836319811459,results\v11\dry_runs\2026-03-31.md
+2026-04-02,ridge_lean_v1,neutral_band_3pct,OUTPERFORM,DEFER-TO-TAX-DEFAULT,0.5,0.04254075435445707,0.2595544197470378,0.638512474913337,-0.6391836319811459,results\v11\dry_runs\2026-04-02.md
