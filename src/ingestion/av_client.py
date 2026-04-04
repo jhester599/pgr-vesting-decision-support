@@ -19,6 +19,7 @@ from typing import Any
 import requests
 
 import config
+from src.ingestion.provider_registry import get_provider_spec
 
 
 # ---------------------------------------------------------------------------
@@ -48,13 +49,15 @@ def _save_counts(counts: dict) -> None:
 
 def _increment_av_count() -> int:
     """Increment today's Alpha Vantage request counter; raise if limit exceeded."""
+    provider = get_provider_spec("av")
     counts = _load_counts()
     today = datetime.utcnow().strftime("%Y-%m-%d")
     av_key = f"av_{today}"
     counts[av_key] = counts.get(av_key, 0) + 1
-    if counts[av_key] > config.AV_DAILY_LIMIT:
+    limit = provider.daily_limit or config.AV_DAILY_LIMIT
+    if provider.enforce_limit and counts[av_key] > limit:
         raise RuntimeError(
-            f"Alpha Vantage daily request limit ({config.AV_DAILY_LIMIT}) reached for {today}. "
+            f"Alpha Vantage daily request limit ({limit}) reached for {today}. "
             "Use cached data or wait until tomorrow."
         )
     _save_counts(counts)

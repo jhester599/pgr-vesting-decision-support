@@ -2,7 +2,7 @@
 SQLite database client for the PGR Vesting Decision Support v2 engine.
 
 Responsibilities:
-  - Schema initialization (idempotent CREATE TABLE IF NOT EXISTS)
+  - Schema initialization and versioned migrations
   - Bulk upsert operations for prices, dividends, splits, and fundamentals
   - API rate-limit tracking (replaces the v1 JSON counter file)
   - Typed query helpers returning pandas DataFrames
@@ -29,6 +29,8 @@ from typing import Any
 import pandas as pd
 
 import config
+from src.database import migration_runner
+from src.ingestion.provider_registry import get_provider_limit
 
 
 # ---------------------------------------------------------------------------
@@ -81,29 +83,14 @@ def _add_column_if_missing(
         conn.commit()
 
 
-def initialize_schema(conn: sqlite3.Connection) -> None:
-    """Execute schema.sql to create all tables if they do not yet exist.
+def _apply_legacy_column_reconciliation(conn: sqlite3.Connection) -> None:
+    """Backfill historically added columns for older live databases.
 
-    Also runs idempotent ``ALTER TABLE`` migrations so that databases created
-    before a schema column addition are brought up to date automatically.
-
-    This operation is fully idempotent: running it on an already-initialised
-    and fully-migrated database is a safe no-op.
-
-    Args:
-        conn: An open SQLite connection returned by :func:`get_connection`.
+    v10.1 introduces explicit migration files, but many existing databases in
+    the field were created before that policy existed. This reconciliation step
+    keeps those databases compatible while future changes should prefer ordered
+    migration files under ``src/database/migrations/``.
     """
-    schema_path = Path(__file__).with_name("schema.sql")
-    sql = schema_path.read_text(encoding="utf-8")
-    conn.executescript(sql)
-    conn.commit()
-
-    # ---------------------------------------------------------------------------
-    # Idempotent column migrations
-    # Add any columns introduced after the initial schema creation so that live
-    # databases are automatically brought up to date on the next initialize_schema
-    # call (e.g., during weekly_fetch.py or monthly_decision.py start-up).
-    # ---------------------------------------------------------------------------
     # v6.x: book_value_per_share added to pgr_edgar_monthly
     _add_column_if_missing(conn, "pgr_edgar_monthly", "book_value_per_share", "REAL")
     # v6.x: eps_basic added to pgr_edgar_monthly (monthly EPS from 8-K; used for pe_ratio)
@@ -150,6 +137,21 @@ def initialize_schema(conn: sqlite3.Connection) -> None:
     _add_column_if_missing(conn, "pgr_edgar_monthly", "underwriting_income", "REAL")
     _add_column_if_missing(conn, "pgr_edgar_monthly", "unearned_premium_growth_yoy", "REAL")
     _add_column_if_missing(conn, "pgr_edgar_monthly", "buyback_yield", "REAL")
+
+
+def initialize_schema(conn: sqlite3.Connection) -> None:
+    """Initialize the operational schema and apply ordered migrations safely.
+
+    This method is idempotent and serves two purposes:
+
+    1. apply ordered SQL migrations for fresh or already-migrated databases
+    2. reconcile legacy databases that predate the migration framework
+
+    Args:
+        conn: An open SQLite connection returned by :func:`get_connection`.
+    """
+    migration_runner.apply_migrations(conn)
+    _apply_legacy_column_reconciliation(conn)
     # v8.9: broaden live EDGAR schema toward the historical CSV layout
     _add_column_if_missing(conn, "pgr_edgar_monthly", "filing_date", "TEXT")
     _add_column_if_missing(conn, "pgr_edgar_monthly", "filing_type", "TEXT")
@@ -883,7 +885,20 @@ def log_api_request(
             to the current UTC date.
     """
     today = utc_date or datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
-    limit = config.AV_DAILY_LIMIT if api == "av" else config.FMP_DAILY_LIMIT
+    limit = get_provider_limit(api)
+
+    if limit is None:
+        conn.execute(
+            """
+            INSERT INTO api_request_log (api, date, endpoint, count)
+            VALUES (?, ?, ?, 1)
+            ON CONFLICT (api, date, endpoint)
+            DO UPDATE SET count = count + 1
+            """,
+            (api, today, endpoint),
+        )
+        conn.commit()
+        return
 
     current = get_api_request_count(conn, api, today)
     if current >= limit:
@@ -924,6 +939,44 @@ def get_api_request_count(
         (api, today),
     ).fetchone()
     return int(row[0]) if row else 0
+
+
+def get_schema_version(conn: sqlite3.Connection) -> str | None:
+    """Return the latest applied schema migration id."""
+    return migration_runner.current_schema_version(conn)
+
+
+def get_table_row_count(conn: sqlite3.Connection, table: str) -> int:
+    """Return the row count for a table."""
+    row = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
+    return int(row[0]) if row else 0
+
+
+def get_table_max_date(conn: sqlite3.Connection, table: str, column: str) -> str | None:
+    """Return the maximum ISO date-like value from ``table.column``."""
+    row = conn.execute(f"SELECT MAX({column}) FROM {table}").fetchone()
+    return str(row[0]) if row and row[0] is not None else None
+
+
+def get_operational_snapshot(conn: sqlite3.Connection) -> dict[str, Any]:
+    """Return a compact snapshot for workflow summaries and manifests."""
+    snapshot: dict[str, Any] = {
+        "schema_version": get_schema_version(conn),
+        "row_counts": {},
+        "latest_dates": {},
+    }
+    table_specs = {
+        "daily_prices": "date",
+        "daily_dividends": "ex_date",
+        "pgr_fundamentals_quarterly": "period_end",
+        "pgr_edgar_monthly": "month_end",
+        "fred_macro_monthly": "month_end",
+        "monthly_relative_returns": "date",
+    }
+    for table, date_col in table_specs.items():
+        snapshot["row_counts"][table] = get_table_row_count(conn, table)
+        snapshot["latest_dates"][f"{table}.{date_col}"] = get_table_max_date(conn, table, date_col)
+    return snapshot
 
 
 # ---------------------------------------------------------------------------

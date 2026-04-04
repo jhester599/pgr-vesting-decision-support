@@ -34,6 +34,10 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: monthly-decision-report
+  cancel-in-progress: false
+
 jobs:
   monthly-decision:
     name: Generate monthly PGR decision report
@@ -75,6 +79,38 @@ jobs:
           fi
 
           python scripts/monthly_decision.py $AS_OF_FLAG $DRY_FLAG $FRED_FLAG
+
+      - name: Verify monthly artifacts and write summary
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          base = Path("results/monthly_decisions")
+          latest_dir = sorted(p for p in base.iterdir() if p.is_dir())[-1]
+          expected = [
+              latest_dir / "recommendation.md",
+              latest_dir / "diagnostic.md",
+              latest_dir / "signals.csv",
+              latest_dir / "run_manifest.json",
+          ]
+          missing = [str(path) for path in expected if not path.exists()]
+          if missing:
+              raise SystemExit(f"Missing monthly artifacts: {missing}")
+          manifest = json.loads((latest_dir / "run_manifest.json").read_text(encoding="utf-8"))
+          summary = [
+              "## Monthly Decision Report",
+              "",
+              f"- Output folder: `{latest_dir}`",
+              f"- Schema version: `{manifest.get('schema_version')}`",
+              f"- Git SHA: `{manifest.get('git_sha')}`",
+              f"- Warnings: `{len(manifest.get('warnings', []))}`",
+          ]
+          with open("workflow_summary.md", "w", encoding="utf-8") as fh:
+              fh.write("\n".join(summary) + "\n")
+          PY
+          cat workflow_summary.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Commit results
         # Skip commit on dry-run; only commit if there are changes
