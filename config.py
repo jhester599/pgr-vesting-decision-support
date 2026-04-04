@@ -81,6 +81,27 @@ FRED_SERIES_PGR: list[str] = [
 ]
 
 # ---------------------------------------------------------------------------
+# v19 research-only public macro series
+# ---------------------------------------------------------------------------
+# These are loaded from public endpoints during the v19 feature-completion
+# cycle, then stored in fred_macro_monthly for point-in-time-safe reuse by the
+# research harness. They are intentionally separate from the production FRED
+# fetch lists because some come from BLS or Multpl rather than the FRED API.
+V19_PUBLIC_MACRO_SERIES: list[str] = [
+    "DTWEXBGS",                     # Broad trade-weighted USD index
+    "DCOILWTICO",                   # WTI spot oil price
+    "MORTGAGE30US",                 # 30-year fixed mortgage rate
+    "WPU45110101",                  # PPI: legal services
+    "PPIACO",                       # PPI: all commodities
+    "MRTSSM447USN",                 # Retail sales: gasoline stations
+    "THREEFYTP10",                  # ACM / NY Fed 10Y term premium
+    "CUSR0000SETE",                 # CPI: motor vehicle insurance (BLS)
+    "SP500_PE_RATIO_MULTPL",        # S&P 500 PE ratio (Multpl monthly table)
+    "SP500_EARNINGS_YIELD_MULTPL",  # S&P 500 earnings yield (Multpl monthly table)
+    "SP500_PRICE_TO_BOOK_MULTPL",   # S&P 500 price-to-book ratio (Multpl monthly table)
+]
+
+# ---------------------------------------------------------------------------
 # Cache paths (v1 JSON/parquet cache — retained for migration compatibility)
 # ---------------------------------------------------------------------------
 DATA_RAW_DIR: str = os.path.join("data", "raw")
@@ -414,6 +435,17 @@ FRED_SERIES_LAGS: dict = {
     "CUSR0000SETA02":    1,   # Used car CPI; monthly BLS release (v4.5)
     "CUSR0000SAM2":      1,   # Medical care CPI; monthly BLS release (v4.5)
     "PCU5241265241261":  1,   # PPI: Private Passenger Auto Insurance (v4.5)
+    "DTWEXBGS":          1,   # Broad trade-weighted USD index
+    "DCOILWTICO":        1,   # WTI spot price
+    "MORTGAGE30US":      1,   # Freddie Mac mortgage rate
+    "WPU45110101":       1,   # Legal services PPI
+    "PPIACO":            1,   # Broad PPI
+    "MRTSSM447USN":      1,   # Gasoline retail sales
+    "THREEFYTP10":       1,   # 10Y term premium
+    "CUSR0000SETE":      1,   # Motor vehicle insurance CPI (BLS)
+    "SP500_PE_RATIO_MULTPL": 1,          # Research-only monthly market valuation proxy
+    "SP500_EARNINGS_YIELD_MULTPL": 1,    # Research-only monthly market valuation proxy
+    "SP500_PRICE_TO_BOOK_MULTPL": 1,     # Research-only monthly market valuation proxy
     "BAA10Y":            1,
     "BAMLH0A0HYM2":      1,
     "T10Y2Y":            1,
