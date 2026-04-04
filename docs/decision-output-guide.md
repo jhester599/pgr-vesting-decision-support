@@ -70,6 +70,23 @@ Funds that remain too correlated with PGR, such as `VFH` or `KIE`, may still
 appear as contextual benchmarks, but they should not normally be presented as
 preferred redeployment destinations.
 
+## v12 Shadow Memos
+
+The v12 study adds side-by-side shadow memos under `results/v12/dry_runs/`.
+
+Each memo compares:
+
+- the live production monthly stack
+- the simpler diversification-first baseline selected in v11
+
+The shadow memos are meant to answer a practical question:
+
+- would the simpler baseline produce steadier and more useful monthly guidance,
+  even before any model-stack promotion?
+
+They are review artifacts only. They do not change the live workflow on their
+own.
+
 ## Diagnostic Report
 
 The diagnostic report is the technical appendix. It includes:
