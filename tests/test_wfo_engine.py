@@ -404,6 +404,21 @@ class TestWFOResultMetadata:
         assert summary["benchmark"] == "BND"
         assert summary["target_horizon"] == 12
 
+    def test_explicit_feature_columns_override_model_defaults(self, synthetic_dataset):
+        """Research callers can force a custom feature subset regardless of config."""
+        X, y = synthetic_dataset
+        forced_cols = ["mom_3m", "vol_63d"]
+        result = run_wfo(
+            X,
+            y,
+            model_type="elasticnet",
+            benchmark="VTI",
+            feature_columns=forced_cols,
+        )
+        assert result.folds, "Expected at least one fold."
+        importances = result.folds[0].feature_importances
+        assert set(importances).issubset(set(forced_cols))
+
 
 # ---------------------------------------------------------------------------
 # v2 predict_current tests
