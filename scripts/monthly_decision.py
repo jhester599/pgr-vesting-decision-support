@@ -85,6 +85,7 @@ from src.research.v27 import (
     render_redeploy_portfolio_markdown_lines,
     v27_investable_redeploy_universe,
 )
+from src.research.v29 import benchmark_role_for_ticker, build_confidence_snapshot
 
 from src.models.calibration import (
     CalibrationResult,
@@ -1194,6 +1195,7 @@ def _write_recommendation_md(
     redeploy_buckets: list[dict[str, object]] | None = None,
     redeploy_portfolio: dict[str, object] | None = None,
     recommendation_layer_label: str | None = None,
+    representative_cpcv: CPCVResult | None = None,
 ) -> None:
     """Write the human-readable recommendation report."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1220,6 +1222,12 @@ def _write_recommendation_md(
         }
     previous_summary = _load_previous_decision_summary(as_of)
     next_vest_summary = _build_provisional_vest_scenario(conn, as_of, mean_predicted, mean_cal_prob)
+    confidence_snapshot = build_confidence_snapshot(
+        mean_ic=mean_ic,
+        mean_hr=mean_hr,
+        aggregate_health=aggregate_health,
+        representative_cpcv=representative_cpcv,
+    )
 
     lines = [
         f"# PGR Monthly Decision Report — {as_of.strftime('%B %Y')}",
@@ -1271,6 +1279,7 @@ def _write_recommendation_md(
     lines += [
         f"| Mean IC (across benchmarks) | {mean_ic:.4f} |",
         f"| Mean Hit Rate | {mean_hr:.1%} |",
+        f"| Aggregate OOS R^2 | {aggregate_health['oos_r2']:.2%} |" if aggregate_health is not None else "| Aggregate OOS R^2 | n/a |",
         "",
         "> **Note:** The sell % recommendation is used only at actual vesting events",
         "> (January and July).  Monthly reports are monitoring tools, not trade signals.",
@@ -1282,7 +1291,7 @@ def _write_recommendation_md(
             ">",
             "> **Calibration:** Phase 1 — P(outperform) uses uncalibrated BayesianRidge posteriors.",
             f"> Platt scaling activates at n ≥ {config.CALIBRATION_MIN_OBS_PLATT} OOS observations.",
-        ]
+        ] 
     else:
         method_label = "Platt scaling" if cal_result.method == "platt" else "Platt → Isotonic"
         lines += [
@@ -1292,6 +1301,22 @@ def _write_recommendation_md(
             f"ECE = {cal_result.ece:.1%} "
             f"[95% CI: {cal_result.ece_ci_lower:.1%}–{cal_result.ece_ci_upper:.1%}].",
         ]
+
+    lines += [
+        "",
+        "---",
+        "",
+        "## Confidence Snapshot",
+        "",
+        f"- {confidence_snapshot['summary']}",
+        "",
+        "| Check | Current | Threshold | Status | Meaning |",
+        "|-------|---------|-----------|--------|---------|",
+    ]
+    for row in confidence_snapshot["rows"]:
+        lines.append(
+            f"| {row['check']} | {row['current']} | {row['threshold']} | **{row['status']}** | {row['meaning']} |"
+        )
 
     lines += [
         "",
@@ -1372,6 +1397,9 @@ def _write_recommendation_md(
     lines += [
         "## Per-Benchmark Signals",
         "",
+        "- Predicted Return is from the perspective of PGR versus each fund. Positive means PGR is expected to outperform that fund; negative means the fund is expected to outperform PGR.",
+        "- Benchmark Role distinguishes realistic buy candidates from contextual or forecast-only comparison funds.",
+        "",
     ]
 
     show_cal_col = has_calibrated and "calibrated_prob_outperform" in signals.columns
@@ -1379,33 +1407,34 @@ def _write_recommendation_md(
 
     if has_confidence and show_cal_col and show_ci_col:
         lines += [
-            "| Benchmark | Description | Predicted Return | CI Lower | CI Upper | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |",
-            "|-----------|-------------|----------------|----------|----------|----|----------|--------|--------|------------|--------|",
+            "| Benchmark | Benchmark Role | Description | Predicted Return | CI Lower | CI Upper | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |",
+            "|-----------|----------------|-------------|----------------|----------|----------|----|----------|--------|--------|------------|--------|",
         ]
     elif has_confidence and show_cal_col:
         lines += [
-            "| Benchmark | Description | Predicted Return | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |",
-            "|-----------|-------------|----------------|----|----------|--------|--------|------------|--------|",
+            "| Benchmark | Benchmark Role | Description | Predicted Return | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |",
+            "|-----------|----------------|-------------|----------------|----|----------|--------|--------|------------|--------|",
         ]
     elif has_confidence and show_ci_col:
         lines += [
-            "| Benchmark | Description | Predicted Return | CI Lower | CI Upper | IC | Hit Rate | P(Outperform) | Confidence | Signal |",
-            "|-----------|-------------|----------------|----------|----------|----|----------|---------------|------------|--------|",
+            "| Benchmark | Benchmark Role | Description | Predicted Return | CI Lower | CI Upper | IC | Hit Rate | P(Outperform) | Confidence | Signal |",
+            "|-----------|----------------|-------------|----------------|----------|----------|----|----------|---------------|------------|--------|",
         ]
     elif has_confidence:
         lines += [
-            "| Benchmark | Description | Predicted Return | IC | Hit Rate | P(Outperform) | Confidence | Signal |",
-            "|-----------|-------------|----------------|----|----------|---------------|------------|--------|",
+            "| Benchmark | Benchmark Role | Description | Predicted Return | IC | Hit Rate | P(Outperform) | Confidence | Signal |",
+            "|-----------|----------------|-------------|----------------|----|----------|---------------|------------|--------|",
         ]
     else:
         lines += [
-            "| Benchmark | Description | Predicted Return | IC | Hit Rate | Signal |",
-            "|-----------|-------------|----------------|----|----------|--------|",
+            "| Benchmark | Benchmark Role | Description | Predicted Return | IC | Hit Rate | Signal |",
+            "|-----------|----------------|-------------|----------------|----|----------|--------|",
         ]
 
     if not signals.empty:
         for ticker, row in signals.iterrows():
             desc = _ETF_DESCRIPTIONS.get(str(ticker), str(ticker))
+            role = benchmark_role_for_ticker(str(ticker))["role"]
             pred = f"{row['predicted_relative_return']:+.2%}" if not pd.isna(row.get("predicted_relative_return")) else "n/a"
             ic_val = f"{row['ic']:.4f}" if not pd.isna(row.get("ic")) else "n/a"
             hr_val = f"{row['hit_rate']:.1%}" if not pd.isna(row.get("hit_rate")) else "n/a"
@@ -1416,22 +1445,22 @@ def _write_recommendation_md(
                 prob_raw = f"{row['prob_outperform']:.1%}" if not pd.isna(row.get("prob_outperform")) else "n/a"
                 prob_cal = f"{row['calibrated_prob_outperform']:.1%}" if not pd.isna(row.get("calibrated_prob_outperform")) else "n/a"
                 tier = row.get("confidence_tier", "n/a")
-                lines.append(f"| {ticker} | {desc} | {pred} | {ci_lo_str} | {ci_hi_str} | {ic_val} | {hr_val} | {prob_raw} | {prob_cal} | {tier} | {sig} |")
+                lines.append(f"| {ticker} | {role} | {desc} | {pred} | {ci_lo_str} | {ci_hi_str} | {ic_val} | {hr_val} | {prob_raw} | {prob_cal} | {tier} | {sig} |")
             elif has_confidence and show_cal_col:
                 prob_raw = f"{row['prob_outperform']:.1%}" if not pd.isna(row.get("prob_outperform")) else "n/a"
                 prob_cal = f"{row['calibrated_prob_outperform']:.1%}" if not pd.isna(row.get("calibrated_prob_outperform")) else "n/a"
                 tier = row.get("confidence_tier", "n/a")
-                lines.append(f"| {ticker} | {desc} | {pred} | {ic_val} | {hr_val} | {prob_raw} | {prob_cal} | {tier} | {sig} |")
+                lines.append(f"| {ticker} | {role} | {desc} | {pred} | {ic_val} | {hr_val} | {prob_raw} | {prob_cal} | {tier} | {sig} |")
             elif has_confidence and show_ci_col:
                 prob = f"{row['prob_outperform']:.1%}" if not pd.isna(row.get("prob_outperform")) else "n/a"
                 tier = row.get("confidence_tier", "n/a")
-                lines.append(f"| {ticker} | {desc} | {pred} | {ci_lo_str} | {ci_hi_str} | {ic_val} | {hr_val} | {prob} | {tier} | {sig} |")
+                lines.append(f"| {ticker} | {role} | {desc} | {pred} | {ci_lo_str} | {ci_hi_str} | {ic_val} | {hr_val} | {prob} | {tier} | {sig} |")
             elif has_confidence:
                 prob = f"{row['prob_outperform']:.1%}" if not pd.isna(row.get("prob_outperform")) else "n/a"
                 tier = row.get("confidence_tier", "n/a")
-                lines.append(f"| {ticker} | {desc} | {pred} | {ic_val} | {hr_val} | {prob} | {tier} | {sig} |")
+                lines.append(f"| {ticker} | {role} | {desc} | {pred} | {ic_val} | {hr_val} | {prob} | {tier} | {sig} |")
             else:
-                lines.append(f"| {ticker} | {desc} | {pred} | {ic_val} | {hr_val} | {sig} |")
+                lines.append(f"| {ticker} | {role} | {desc} | {pred} | {ic_val} | {hr_val} | {sig} |")
 
     # v7.3 — Tax Context section
     lines += _build_tax_context_lines(mean_predicted, mean_cal_prob, as_of=as_of)
@@ -1454,10 +1483,14 @@ def _write_signals_csv(out_dir: Path, signals: pd.DataFrame) -> None:
     if signals.empty:
         pd.DataFrame(columns=[
             "benchmark", "predicted_relative_return", "ic", "hit_rate",
-            "signal", "prob_outperform", "confidence_tier",
+            "signal", "prob_outperform", "confidence_tier", "benchmark_role",
         ]).to_csv(path, index=False)
     else:
-        signals.reset_index().to_csv(path, index=False)
+        export = signals.reset_index()
+        export["benchmark_role"] = export["benchmark"].map(
+            lambda ticker: benchmark_role_for_ticker(str(ticker))["role"]
+        )
+        export.to_csv(path, index=False)
     print(f"  Wrote {path}")
 
 
@@ -2210,6 +2243,7 @@ def main(
         redeploy_buckets=redeploy_buckets,
         redeploy_portfolio=redeploy_portfolio,
         recommendation_layer_label=recommendation_layer_label,
+        representative_cpcv=diagnostics.get("representative_cpcv"),
     )
     _write_signals_csv(out_dir, signals)
     _append_decision_log(

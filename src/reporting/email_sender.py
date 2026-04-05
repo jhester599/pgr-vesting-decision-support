@@ -138,6 +138,14 @@ def _extract_redeploy_portfolio_rows(body: str) -> list[dict[str, str]]:
     return []
 
 
+def _extract_confidence_snapshot_rows(body: str) -> list[dict[str, str]]:
+    section = _extract_section(body, "Confidence Snapshot")
+    for table_lines in _extract_markdown_tables(section):
+        if table_lines and table_lines[0].strip().startswith("| Check |"):
+            return _parse_markdown_table(table_lines)
+    return []
+
+
 def _extract_recommendation_layer(body: str) -> str | None:
     match = re.search(r"\*\*Recommendation Layer:\*\*\s+(.+?)\s{2,}", body)
     if match:
@@ -289,6 +297,7 @@ def build_email_summary(body: str, lots_csv_path: str | Path | None = None) -> s
     recommendation_layer = _extract_recommendation_layer(body) or ""
     redeploy_lines = _extract_section_bullets(body, "Redeploy Guidance")
     redeploy_portfolio_rows = _extract_redeploy_portfolio_rows(body)
+    confidence_rows = _extract_confidence_snapshot_rows(body)
 
     lines = [
         "PGR Monthly Decision Summary",
@@ -305,6 +314,10 @@ def build_email_summary(body: str, lots_csv_path: str | Path | None = None) -> s
         lines += ["", "Existing shares already held:"]
         lines.append(existing_guidance["headline"])
         lines.extend(f"- {line}" for line in existing_guidance["bullets"])
+    if confidence_rows:
+        lines += ["", "Confidence checks:"]
+        for row in confidence_rows:
+            lines.append(f"- {row.get('Check', '')}: {row.get('Current', '')} / {row.get('Status', '')}")
     if shadow_rows:
         lines += ["", "Simple-baseline cross-check:"]
         if recommendation_layer:
@@ -362,6 +375,7 @@ def _build_benchmark_html_table(body: str) -> str:
         html_rows.append(
             "<tr>"
             f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700;'>{escape(row.get('Benchmark', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;'>{escape(row.get('Benchmark Role', ''))}</td>"
             f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;'>{escape(row.get('Description', ''))}</td>"
             f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;'>{escape(row.get('Predicted Return', ''))}</td>"
             f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;'>{escape(ci_range)}</td>"
@@ -374,6 +388,7 @@ def _build_benchmark_html_table(body: str) -> str:
         "<table style='width:100%;border-collapse:collapse;font-size:13px;'>"
         "<thead><tr>"
         "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Benchmark</th>"
+        "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Role</th>"
         "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Description</th>"
         "<th style='text-align:right;padding:8px;border-bottom:2px solid #cbd5e1;'>Predicted</th>"
         "<th style='text-align:right;padding:8px;border-bottom:2px solid #cbd5e1;'>80% CI</th>"
@@ -391,31 +406,26 @@ def _build_scenario_html_table(body: str) -> str:
     if not scenario_rows:
         return ""
     html_rows = []
-    rename = {
-        "SELL_NOW_STCG": "Sell at vest (STCG)",
-        "HOLD_TO_LTCG": "Hold to LTCG date",
-        "HOLD_FOR_LOSS": "Hold for downside / loss case",
-    }
     for row in scenario_rows:
         html_rows.append(
             "<tr>"
-            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700;'>{escape(rename.get(row.get('Scenario', ''), row.get('Scenario', '')))}</td>"
-            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;'>{escape(row.get('Sell Date', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700;'>{escape(row.get('Scenario', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;'>{escape(row.get('Timing', row.get('Sell Date', '')))}</td>"
             f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;'>{escape(row.get('Tax Rate', ''))}</td>"
             f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;'>{escape(row.get('Predicted Return', ''))}</td>"
-            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;'>{escape(row.get('Net Proceeds', ''))}</td>"
             f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;'>{escape(row.get('Probability', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;'>{escape(row.get('Use when', ''))}</td>"
             "</tr>"
         )
     return (
         "<table style='width:100%;border-collapse:collapse;font-size:13px;'>"
         "<thead><tr>"
         "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Scenario</th>"
-        "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Date</th>"
+        "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Timing</th>"
         "<th style='text-align:right;padding:8px;border-bottom:2px solid #cbd5e1;'>Tax rate</th>"
         "<th style='text-align:right;padding:8px;border-bottom:2px solid #cbd5e1;'>Predicted return</th>"
-        "<th style='text-align:right;padding:8px;border-bottom:2px solid #cbd5e1;'>Net proceeds</th>"
         "<th style='text-align:right;padding:8px;border-bottom:2px solid #cbd5e1;'>Probability</th>"
+        "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Use when</th>"
         "</tr></thead><tbody>"
         + "".join(html_rows)
         + "</tbody></table>"
@@ -462,6 +472,8 @@ def build_email_html(body: str, lots_csv_path: str | Path | None = None) -> str:
     predicted = _extract_report_value(body, "Predicted 6M Relative Return") or "n/a"
     mean_ic = _extract_report_value(body, "Mean IC (across benchmarks)") or "n/a"
     mean_hr = _extract_report_value(body, "Mean Hit Rate") or "n/a"
+    mean_cal = _extract_report_value(body, "P(Outperform, calibrated)") or "n/a"
+    oos_r2 = _extract_report_value(body, "Aggregate OOS R^2") or "n/a"
     executive_summary = _extract_executive_summary(body)
     next_vest_data = _extract_next_vest_data(body)
     existing_guidance = _build_existing_shares_guidance(body, lots_csv_path)
@@ -471,11 +483,35 @@ def build_email_html(body: str, lots_csv_path: str | Path | None = None) -> str:
     recommendation_layer = _extract_recommendation_layer(body) or ""
     redeploy_lines = _extract_section_bullets(body, "Redeploy Guidance")
     redeploy_portfolio_table = _build_redeploy_portfolio_html_table(body)
+    confidence_rows = _extract_confidence_snapshot_rows(body)
     mode_badge = {
         "ACTIONABLE": _html_badge("ACTIONABLE", "#0f766e"),
         "MONITORING-ONLY": _html_badge("MONITORING ONLY", "#a16207"),
         "DEFER-TO-TAX-DEFAULT": _html_badge("DEFER TO TAX DEFAULT", "#9a3412"),
     }.get(mode, _html_badge(mode, "#475569"))
+
+    confidence_badges = {
+        row.get("Check", ""): _html_badge(
+            row.get("Status", "UNKNOWN"),
+            {
+                "PASS": "#166534",
+                "FAIL": "#991b1b",
+                "UNKNOWN": "#475569",
+            }.get(row.get("Status", "UNKNOWN"), "#475569"),
+        )
+        for row in confidence_rows
+    }
+
+    if mode == "DEFER-TO-TAX-DEFAULT":
+        lead_text = (
+            f"The model leans {escape(signal.lower())}, but the quality checks still point to the default 50% vest sale."
+        )
+    elif mode == "MONITORING-ONLY":
+        lead_text = (
+            f"The model leans {escape(signal.lower())}, but the signal is still better treated as monitoring evidence than as a trading edge."
+        )
+    else:
+        lead_text = "The model direction and the quality gate both support a prediction-led decision this month."
 
     existing_section = ""
     if existing_guidance:
@@ -576,6 +612,30 @@ def build_email_html(body: str, lots_csv_path: str | Path | None = None) -> str:
             "</div>"
         )
 
+    confidence_section = ""
+    if confidence_rows:
+        confidence_section = (
+            "<div style='margin-top:20px;padding:20px;border:1px solid #dbeafe;border-radius:16px;background:#f8fbff;'>"
+            "<h2 style='margin:0 0 10px 0;font-size:20px;color:#0f172a;'>Confidence snapshot</h2>"
+            "<table style='width:100%;border-collapse:collapse;font-size:13px;'>"
+            "<thead><tr>"
+            "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Check</th>"
+            "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Current</th>"
+            "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Threshold</th>"
+            "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Status</th>"
+            "</tr></thead><tbody>"
+            + "".join(
+                "<tr>"
+                f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700;'>{escape(row.get('Check', ''))}</td>"
+                f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;'>{escape(row.get('Current', ''))}</td>"
+                f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;'>{escape(row.get('Threshold', ''))}</td>"
+                f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;'>{confidence_badges.get(row.get('Check', ''), '')}</td>"
+                "</tr>"
+                for row in confidence_rows
+            )
+            + "</tbody></table></div>"
+        )
+
     return (
         "<html><body style='margin:0;padding:0;background:#f3f6fb;font-family:Segoe UI,Arial,sans-serif;color:#0f172a;'>"
         "<div style='max-width:960px;margin:0 auto;padding:24px 14px;'>"
@@ -584,14 +644,16 @@ def build_email_html(body: str, lots_csv_path: str | Path | None = None) -> str:
         "<p style='margin:0 0 10px 0;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;'>PGR Monthly Decision</p>"
         f"<h1 style='margin:0 0 10px 0;font-size:28px;line-height:1.2;color:#0f172a;'>{escape(_recommendation_headline(body))}</h1>"
         f"<div style='margin:0 0 14px 0;'>{mode_badge}</div>"
-        f"<p style='margin:0 0 18px 0;font-size:16px;line-height:1.6;color:#334155;'>Model view: <strong>{escape(signal)}</strong>. "
-        "This email separates the model direction from whether that direction is strong enough to drive an action.</p>"
+        f"<p style='margin:0 0 18px 0;font-size:16px;line-height:1.6;color:#334155;'>{lead_text}</p>"
         "<table role='presentation' style='width:100%;border-collapse:separate;border-spacing:12px 12px;'>"
         "<tr>"
-        f"<td style='width:33%;background:#eff6ff;border:1px solid #bfdbfe;border-radius:16px;padding:16px;vertical-align:top;'><div style='font-size:12px;color:#1d4ed8;font-weight:700;text-transform:uppercase;'>Predicted 6M return</div><div style='font-size:24px;font-weight:800;color:#0f172a;margin-top:6px;'>{escape(predicted)}</div></td>"
-        f"<td style='width:33%;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:16px;vertical-align:top;'><div style='font-size:12px;color:#475569;font-weight:700;text-transform:uppercase;'>Mean IC</div><div style='font-size:24px;font-weight:800;color:#0f172a;margin-top:6px;'>{escape(mean_ic)}</div></td>"
-        f"<td style='width:33%;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:16px;vertical-align:top;'><div style='font-size:12px;color:#475569;font-weight:700;text-transform:uppercase;'>Mean hit rate</div><div style='font-size:24px;font-weight:800;color:#0f172a;margin-top:6px;'>{escape(mean_hr)}</div></td>"
+        f"<td style='width:20%;background:#eff6ff;border:1px solid #bfdbfe;border-radius:16px;padding:16px;vertical-align:top;'><div style='font-size:12px;color:#1d4ed8;font-weight:700;text-transform:uppercase;'>Predicted 6M relative return</div><div style='font-size:24px;font-weight:800;color:#0f172a;margin-top:6px;'>{escape(predicted)}</div><div style='margin-top:8px;font-size:12px;color:#475569;'>PGR vs. the benchmark set</div></td>"
+        f"<td style='width:20%;background:#eff6ff;border:1px solid #bfdbfe;border-radius:16px;padding:16px;vertical-align:top;'><div style='font-size:12px;color:#1d4ed8;font-weight:700;text-transform:uppercase;'>P(outperform)</div><div style='font-size:24px;font-weight:800;color:#0f172a;margin-top:6px;'>{escape(mean_cal)}</div><div style='margin-top:8px;font-size:12px;color:#475569;'>Calibrated probability</div></td>"
+        f"<td style='width:20%;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:16px;vertical-align:top;'><div style='font-size:12px;color:#475569;font-weight:700;text-transform:uppercase;'>Mean IC</div><div style='font-size:24px;font-weight:800;color:#0f172a;margin-top:6px;'>{escape(mean_ic)}</div><div style='margin-top:8px;'>{confidence_badges.get('Mean IC', '')}</div></td>"
+        f"<td style='width:20%;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:16px;vertical-align:top;'><div style='font-size:12px;color:#475569;font-weight:700;text-transform:uppercase;'>Mean hit rate</div><div style='font-size:24px;font-weight:800;color:#0f172a;margin-top:6px;'>{escape(mean_hr)}</div><div style='margin-top:8px;'>{confidence_badges.get('Mean hit rate', '')}</div></td>"
+        f"<td style='width:20%;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:16px;vertical-align:top;'><div style='font-size:12px;color:#475569;font-weight:700;text-transform:uppercase;'>Aggregate OOS R^2</div><div style='font-size:24px;font-weight:800;color:#0f172a;margin-top:6px;'>{escape(oos_r2)}</div><div style='margin-top:8px;'>{confidence_badges.get('Aggregate OOS R^2', '')}</div></td>"
         "</tr></table>"
+        f"{confidence_section}"
         "<div style='margin-top:20px;padding:20px;border:1px solid #dbeafe;border-radius:16px;background:#f8fbff;'>"
         "<h2 style='margin:0 0 10px 0;font-size:20px;color:#0f172a;'>What's changed</h2>"
         f"<ul style='margin:0 0 0 20px;padding:0;color:#334155;line-height:1.5;'>{executive_html}</ul>"
@@ -614,12 +676,13 @@ def build_email_html(body: str, lots_csv_path: str | Path | None = None) -> str:
         redeploy_portfolio_section +
         shadow_section +
         "<div style='margin-top:20px;padding:20px;border:1px solid #e2e8f0;border-radius:16px;background:#ffffff;'>"
-        "<h2 style='margin:0 0 12px 0;font-size:20px;color:#0f172a;'>Tax scenario view for the next tranche</h2>"
+        "<h2 style='margin:0 0 12px 0;font-size:20px;color:#0f172a;'>Tax timing scenarios for the next tranche</h2>"
+        "<p style='margin:0 0 12px 0;color:#475569;line-height:1.5;'>These scenarios are informational unless the recommendation mode is ACTIONABLE. They help explain timing tradeoffs; they do not override the main vest instruction by themselves.</p>"
         f"{scenario_table}"
         "</div>"
         "<div style='margin-top:20px;padding:20px;border:1px solid #e2e8f0;border-radius:16px;background:#ffffff;'>"
         "<h2 style='margin:0 0 12px 0;font-size:20px;color:#0f172a;'>Benchmark detail</h2>"
-        "<p style='margin:0 0 12px 0;color:#475569;line-height:1.5;'>Detailed benchmark signal detail is kept below the main decision memo so the recommendation stays readable on desktop and mobile.</p>"
+        "<p style='margin:0 0 12px 0;color:#475569;line-height:1.5;'>Detailed benchmark signal detail is kept below the main decision memo so the recommendation stays readable on desktop and mobile. Predicted return is always from the perspective of PGR versus each fund, and the role column shows whether a fund is a buy candidate, optional substitute, or forecast-only context.</p>"
         f"{benchmark_table}"
         "</div>"
         "</div></div></body></html>"
