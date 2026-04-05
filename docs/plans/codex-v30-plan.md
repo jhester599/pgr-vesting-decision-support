@@ -25,6 +25,7 @@ version tags:
 - `v30.10` - rewrite README as a landing page
 - `v30.11` - align script-level EDGAR fetcher logging and headers
 - `v30.12` - add logging fallbacks to initial fetch
+- `v30.13` - add logging fallbacks to bootstrap
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -147,3 +148,11 @@ dry-run tests to assert on logged output instead of captured stdout.
 - migrate `scripts/initial_fetch.py` to the shared logging scaffold
 - preserve exception context for FRED and loader-level broad catches
 - add focused tests for those fallback logs
+
+## v30.13 Scope
+
+`v30.13` continues the Tier 3.3 fallback sweep in `scripts/bootstrap.py`:
+
+- migrate bootstrap orchestration output to the shared logging scaffold
+- preserve exception context when the delegated monthly decision run fails
+- add focused tests for the bootstrap fallback path
