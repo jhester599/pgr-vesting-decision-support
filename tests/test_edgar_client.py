@@ -13,9 +13,11 @@ All tests use synthetic in-memory companyfacts dicts; no HTTP calls are made.
 from __future__ import annotations
 
 import math
+from unittest.mock import MagicMock
 
 import pytest
 
+import config
 from src.ingestion.edgar_client import (
     _extract_flow_concept,
     _extract_instant_concept,
@@ -393,3 +395,43 @@ class TestFetchPGRFundamentalsQuarterly:
         assert "2023-03-31" in period_ends
         assert "2023-06-30" in period_ends
         assert len(records) == 2
+
+
+class TestEdgarHeaders:
+    def test_build_edgar_headers_uses_env_override(self, monkeypatch):
+        monkeypatch.setenv("EDGAR_USER_AGENT", "Unit Test qa@example.com")
+        headers = config.build_edgar_headers("data.sec.gov")
+        assert headers["User-Agent"] == "Unit Test qa@example.com"
+        assert headers["Host"] == "data.sec.gov"
+
+    def test_build_edgar_headers_falls_back_to_generic_value(self, monkeypatch):
+        monkeypatch.delenv("EDGAR_USER_AGENT", raising=False)
+        headers = config.build_edgar_headers()
+        assert headers["User-Agent"] == config.EDGAR_USER_AGENT_FALLBACK
+        assert "Host" not in headers
+
+    def test_fetch_companyfacts_uses_configured_edgar_user_agent(
+        self, monkeypatch, tmp_path
+    ):
+        monkeypatch.setattr("src.ingestion.edgar_client._cache_path", lambda: str(tmp_path / "companyfacts.json"))
+        monkeypatch.setattr("src.ingestion.edgar_client._is_cache_valid", lambda *args, **kwargs: False)
+        monkeypatch.setenv("EDGAR_USER_AGENT", "Header Test test@example.com")
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"facts": {}}
+        mock_response.raise_for_status = MagicMock()
+
+        captured: dict[str, object] = {}
+
+        def _mock_get(url, headers=None, timeout=None):
+            captured["url"] = url
+            captured["headers"] = headers
+            captured["timeout"] = timeout
+            return mock_response
+
+        monkeypatch.setattr("src.ingestion.edgar_client.requests.get", _mock_get)
+
+        from src.ingestion.edgar_client import fetch_companyfacts
+
+        assert fetch_companyfacts(force_refresh=True) == {"facts": {}}
+        assert captured["headers"]["User-Agent"] == "Header Test test@example.com"
