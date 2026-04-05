@@ -17,6 +17,7 @@ version tags:
 - `v30.2` - data-freshness preflight checks
 - `v30.3` - Black-Litterman fallback visibility, only if BL is promoted into the live monthly path
 - `v30.4` - shared retry/backoff helper for core provider clients
+- `v30.5` - lightweight monthly workflow integration test
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -62,3 +63,12 @@ runtime behavior:
 - central retry/backoff helper in `src/ingestion/http_utils.py`
 - wire the helper into the core AV, FRED, and EDGAR clients
 - add focused regression tests so the new session-based request path is covered
+
+## v30.5 Scope
+
+`v30.5` adds one thin end-to-end monthly pipeline test:
+
+- call `scripts.monthly_decision.main()` directly
+- stub the expensive modeling and plotting steps
+- verify the workflow still produces `recommendation.md`, `signals.csv`,
+  `diagnostic.md`, and `run_manifest.json`
