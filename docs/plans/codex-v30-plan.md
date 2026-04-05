@@ -24,6 +24,7 @@ version tags:
 - `v30.9` - migrate peer fetch entrypoint to structured logging
 - `v30.10` - rewrite README as a landing page
 - `v30.11` - align script-level EDGAR fetcher logging and headers
+- `v30.12` - add logging fallbacks to initial fetch
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -138,3 +139,11 @@ dry-run tests to assert on logged output instead of captured stdout.
 - route `scripts/edgar_8k_fetcher.py` through the shared logging setup
 - reuse the central env-backed EDGAR header builder for script-side HTTP calls
 - add focused tests around the script-level `_get()` helper
+
+## v30.12 Scope
+
+`v30.12` hardens the one-time bootstrap script's fallback paths:
+
+- migrate `scripts/initial_fetch.py` to the shared logging scaffold
+- preserve exception context for FRED and loader-level broad catches
+- add focused tests for those fallback logs
