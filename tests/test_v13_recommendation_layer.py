@@ -125,6 +125,43 @@ def test_recommendation_report_includes_v13_sections(monkeypatch, tmp_path: Path
                 "note": "Fixed income is the cleanest concentration-reduction bucket when model confidence is weak.",
             }
         ],
+        redeploy_portfolio={
+            "rows": [
+                type(
+                    "RedeployRow",
+                    (),
+                    {
+                        "ticker": "VOO",
+                        "allocation": 0.40,
+                        "sleeve": "Broad US equity core",
+                        "rationale": "Core US beta sleeve.",
+                        "corr_to_pgr": 0.14,
+                        "predicted_relative_return": -0.04,
+                        "signal_view": "Preferred this month",
+                        "benchmark_outperform_prob": 0.60,
+                    },
+                )(),
+                type(
+                    "RedeployRow",
+                    (),
+                    {
+                        "ticker": "BND",
+                        "allocation": 0.05,
+                        "sleeve": "Bond ballast",
+                        "rationale": "Small stabilizer sleeve.",
+                        "corr_to_pgr": 0.04,
+                        "predicted_relative_return": 0.01,
+                        "signal_view": "Keep near base",
+                        "benchmark_outperform_prob": 0.47,
+                    },
+                )(),
+            ],
+            "tilt_strength": 0.35,
+            "total_equity": 0.95,
+            "total_bonds": 0.05,
+            "universe": ["VOO", "VGT", "SCHD", "VXUS", "VWO", "BND"],
+            "note": "The current project universe does not yet include a dedicated small-cap ETF.",
+        },
         recommendation_layer_label="Live production recommendation layer + v13 simpler-baseline cross-check",
     )
 
@@ -132,6 +169,7 @@ def test_recommendation_report_includes_v13_sections(monkeypatch, tmp_path: Path
     assert "Recommendation Layer" in content
     assert "## Existing Holdings Guidance" in content
     assert "## Redeploy Guidance" in content
+    assert "## Suggested Redeploy Portfolio" in content
     assert "## Simple-Baseline Cross-Check" in content
 
 

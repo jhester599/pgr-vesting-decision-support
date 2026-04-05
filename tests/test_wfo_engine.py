@@ -24,6 +24,7 @@ from src.models.wfo_engine import (
     run_wfo,
 )
 from src.models.regularized_models import (
+    build_elasticnet_pipeline,
     build_lasso_pipeline,
     build_ridge_pipeline,
     get_feature_importances,
@@ -190,6 +191,20 @@ class TestWFOTemporalIntegrity:
         pipeline = build_ridge_pipeline()
         assert "scaler" in pipeline.named_steps
 
+    def test_ridge_inner_cv_uses_total_gap(self):
+        pipeline = build_ridge_pipeline(target_horizon_months=6)
+        model = pipeline.named_steps["model"]
+        assert getattr(model.cv, "gap", None) == (
+            config.WFO_EMBARGO_MONTHS_6M + config.WFO_PURGE_BUFFER_6M
+        )
+
+    def test_elasticnet_inner_cv_uses_total_gap(self):
+        pipeline = build_elasticnet_pipeline(target_horizon_months=12)
+        model = pipeline.named_steps["model"]
+        assert getattr(model.cv, "gap", None) == (
+            config.WFO_EMBARGO_MONTHS_12M + config.WFO_PURGE_BUFFER_12M
+        )
+
     def test_each_fold_independent_model(self, synthetic_dataset):
         """
         Each fold must produce a new fitted model. Verify that the
@@ -218,13 +233,25 @@ class TestWFOInputValidation:
             run_wfo(X, y_with_nan)
 
     def test_raises_on_too_small_dataset(self):
-        """Dataset with fewer rows than TRAIN + TEST window must raise ValueError."""
-        n = config.WFO_TRAIN_WINDOW_MONTHS + config.WFO_TEST_WINDOW_MONTHS - 1
+        """Dataset with fewer rows than TRAIN + GAP + TEST must raise ValueError."""
+        total_gap = config.WFO_EMBARGO_MONTHS_6M + config.WFO_PURGE_BUFFER_6M
+        n = config.WFO_TRAIN_WINDOW_MONTHS + total_gap + config.WFO_TEST_WINDOW_MONTHS - 1
         rng = np.random.default_rng(0)
         dates = pd.bdate_range("2020-01-01", periods=n, freq="BME")
         X = pd.DataFrame({"f1": rng.normal(size=n)}, index=dates)
         y = pd.Series(rng.normal(size=n), index=dates, name="target_6m_return")
         with pytest.raises(ValueError, match="Dataset has only"):
+            run_wfo(X, y)
+
+    def test_requires_total_gap_even_if_train_and_test_windows_fit(self):
+        total_gap = config.WFO_EMBARGO_MONTHS_6M + config.WFO_PURGE_BUFFER_6M
+        n = config.WFO_TRAIN_WINDOW_MONTHS + config.WFO_TEST_WINDOW_MONTHS
+        assert n < config.WFO_TRAIN_WINDOW_MONTHS + total_gap + config.WFO_TEST_WINDOW_MONTHS
+        rng = np.random.default_rng(1)
+        dates = pd.bdate_range("2020-01-01", periods=n, freq="BME")
+        X = pd.DataFrame({"f1": rng.normal(size=n)}, index=dates)
+        y = pd.Series(rng.normal(size=n), index=dates, name="target_6m_return")
+        with pytest.raises(ValueError, match="GAP="):
             run_wfo(X, y)
 
 

@@ -1,6 +1,6 @@
 # V20 Results Summary
 
-Created: 2026-04-04
+Created: 2026-04-05
 
 ## Scope
 
@@ -21,11 +21,11 @@ Created: 2026-04-04
 ## Top Metric Row
 
 - Candidate: `ensemble_ridge_gbt_v18`
-- Mean sign-policy return: `0.0771`
-- Mean neutral-band return: `0.0761`
-- Mean OOS R^2: `-0.1991`
-- Mean IC: `0.2232`
-- Mean hit rate: `0.6606`
+- Mean sign-policy return: `0.0798`
+- Mean neutral-band return: `0.0775`
+- Mean OOS R^2: `-0.1424`
+- Mean IC: `0.1911`
+- Mean hit rate: `0.6857`
 
 ## Best-Candidate Review Behavior
 
@@ -39,9 +39,9 @@ Created: 2026-04-04
 
 ## Output Artifacts
 
-- `results/v20/v20_candidate_metric_detail_20260404.csv`
-- `results/v20/v20_candidate_metric_summary_20260404.csv`
-- `results/v20/v20_shadow_review_detail_20260404.csv`
-- `results/v20/v20_shadow_review_summary_20260404.csv`
-- `results/v20/v20_promotion_decision_20260404.csv`
-- `results/v20/v20_candidate_manifest_20260404.csv`
+- `results/v20/v20_candidate_metric_detail_20260405.csv`
+- `results/v20/v20_candidate_metric_summary_20260405.csv`
+- `results/v20/v20_shadow_review_detail_20260405.csv`
+- `results/v20/v20_shadow_review_summary_20260405.csv`
+- `results/v20/v20_promotion_decision_20260405.csv`
+- `results/v20/v20_candidate_manifest_20260405.csv`

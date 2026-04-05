@@ -22,6 +22,7 @@ from src.processing.feature_engineering import (
     get_model_feature_columns,
     get_X_y,
     _apply_edgar_lag,
+    _normalize_pgr_monthly_columns,
 )
 
 
@@ -478,6 +479,28 @@ class TestEdgarLag:
             assert original_date not in result.index, (
                 f"Date {original_date} should not be in shifted result index"
             )
+
+    def test_edgar_lag_snaps_weekend_month_end_to_business_month_end(self):
+        dates = pd.DatetimeIndex([pd.Timestamp("2020-02-29")], name="date")
+        df = pd.DataFrame({"combined_ratio_ttm": [95.0]}, index=dates)
+
+        result = _apply_edgar_lag(df)
+
+        assert result.index[0].dayofweek < 5
+        assert result.index[0] == pd.Timestamp("2020-04-30")
+
+
+class TestPgrMonthlyNormalization:
+    def test_normalizes_legacy_roe_column_name(self):
+        raw = pd.DataFrame(
+            {"roe_net_income_trailing_12m": [0.12]},
+            index=pd.DatetimeIndex([pd.Timestamp("2020-01-31")], name="date"),
+        )
+
+        normalized = _normalize_pgr_monthly_columns(raw)
+
+        assert "roe_net_income_ttm" in normalized.columns
+        assert normalized.iloc[0]["roe_net_income_ttm"] == pytest.approx(0.12)
 
 
 # ---------------------------------------------------------------------------

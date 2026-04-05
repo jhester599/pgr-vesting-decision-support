@@ -1,0 +1,2 @@
+status,recommended_candidate,rationale
+continue_research_keep_current_cross_check,ensemble_ridge_gbt_v18,"The best assembled v20 stack improved reduced-universe metrics, but it still diverged too much from the promoted simpler baseline to replace the current live cross-check."

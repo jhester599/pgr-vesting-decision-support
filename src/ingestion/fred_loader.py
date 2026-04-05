@@ -128,7 +128,8 @@ def fetch_all_fred_macro(
     Fetch multiple FRED series and join them into a single month-end DataFrame.
 
     Each series is individually fetched, then resampled to month-end frequency
-    using the last available observation in each calendar month.  A forward-fill
+    using the last available observation on the final business day of each month.
+    A forward-fill
     of up to 5 periods is applied to handle series that are not available on the
     last calendar day of the month (e.g. daily yield curve data).
 
@@ -146,7 +147,7 @@ def fetch_all_fred_macro(
                                  look-ahead bias from FRED data revisions (v4.1).
 
     Returns:
-        DataFrame with a DatetimeIndex (month-end, last calendar day) and one
+        DataFrame with a DatetimeIndex (month-end, last business day) and one
         column per series_id.  Missing observations are NaN.  Index is sorted
         ascending.
     """
@@ -164,8 +165,8 @@ def fetch_all_fred_macro(
         if df.empty:
             continue
 
-        # Resample to month-end; take last observation in each month
-        monthly = df.resample("ME").last()
+        # Resample to the last business day of month; take the final observation.
+        monthly = df.resample("BME").last()
         # Forward-fill to handle occasional end-of-month data gaps
         monthly = monthly.ffill(limit=5)
         frames.append(monthly)

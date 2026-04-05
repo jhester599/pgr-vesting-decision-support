@@ -80,6 +80,11 @@ from src.research.v12 import (
 )
 from src.research.diversification import score_benchmarks_against_pgr
 from src.research.v22 import build_promoted_cross_check_summary
+from src.research.v27 import (
+    recommend_redeploy_portfolio,
+    render_redeploy_portfolio_markdown_lines,
+    v27_investable_redeploy_universe,
+)
 
 from src.models.calibration import (
     CalibrationResult,
@@ -1063,12 +1068,37 @@ def _build_existing_holdings_guidance(conn, as_of: date) -> list[dict[str, objec
 
 def _build_redeploy_guidance(conn) -> list[dict[str, object]]:
     """Build diversification-first redeploy buckets for production messaging."""
-    scoreboard = score_benchmarks_against_pgr(conn, config.V13_REDEPLOY_UNIVERSE)
+    investable_universe = v27_investable_redeploy_universe()
+    scoreboard = score_benchmarks_against_pgr(conn, investable_universe)
     if scoreboard.empty:
         return []
     scoreboard["composite_score"] = 0.0
     scoreboard = add_destination_roles(scoreboard)
-    return recommend_redeploy_buckets(scoreboard, config.V13_REDEPLOY_UNIVERSE)
+    return recommend_redeploy_buckets(scoreboard, investable_universe)
+
+
+def _build_redeploy_portfolio(
+    conn,
+    signals: pd.DataFrame,
+    recommendation_mode: dict[str, str | float] | None,
+) -> dict[str, object] | None:
+    """Build the concrete monthly redeploy portfolio recommendation."""
+    if signals.empty:
+        return None
+    investable_universe = v27_investable_redeploy_universe()
+    scoreboard = score_benchmarks_against_pgr(conn, investable_universe)
+    if scoreboard.empty:
+        return None
+    mode_label = (
+        str(recommendation_mode.get("label", "DEFER-TO-TAX-DEFAULT"))
+        if recommendation_mode is not None
+        else "DEFER-TO-TAX-DEFAULT"
+    )
+    return recommend_redeploy_portfolio(
+        signals=signals,
+        diversification_scoreboard=scoreboard,
+        recommendation_mode_label=mode_label,
+    )
 
 
 def _mode_payload_from_summary(summary: SnapshotSummary) -> dict[str, str | float]:
@@ -1162,6 +1192,7 @@ def _write_recommendation_md(
     shadow_summary: SnapshotSummary | None = None,
     existing_holdings: list[dict[str, object]] | None = None,
     redeploy_buckets: list[dict[str, object]] | None = None,
+    redeploy_portfolio: dict[str, object] | None = None,
     recommendation_layer_label: str | None = None,
 ) -> None:
     """Write the human-readable recommendation report."""
@@ -1324,6 +1355,8 @@ def _write_recommendation_md(
         lines += build_existing_holdings_markdown_lines(existing_holdings)
     if redeploy_buckets:
         lines += build_redeploy_markdown_lines(redeploy_buckets)
+    if redeploy_portfolio:
+        lines += render_redeploy_portfolio_markdown_lines(redeploy_portfolio)
     if (
         config.RECOMMENDATION_LAYER_MODE in {"live_with_shadow", "shadow_promoted"}
         and live_summary is not None
@@ -2133,6 +2166,11 @@ def main(
         )
     existing_holdings = _build_existing_holdings_guidance(conn, as_of)
     redeploy_buckets = _build_redeploy_guidance(conn)
+    redeploy_portfolio = _build_redeploy_portfolio(
+        conn,
+        signals,
+        active_recommendation_mode,
+    )
 
     print(f"\n  Consensus signal: {consensus} ({confidence_tier} CONFIDENCE)")
     print(f"  Predicted 6M relative return: {mean_pred:+.2%}")
@@ -2170,6 +2208,7 @@ def main(
         shadow_summary=shadow_summary,
         existing_holdings=existing_holdings,
         redeploy_buckets=redeploy_buckets,
+        redeploy_portfolio=redeploy_portfolio,
         recommendation_layer_label=recommendation_layer_label,
     )
     _write_signals_csv(out_dir, signals)

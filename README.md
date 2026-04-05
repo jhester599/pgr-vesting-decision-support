@@ -1,4 +1,4 @@
-# PGR Vesting Decision Support - v24 benchmark-definition validation + v13.1 production baseline
+# PGR Vesting Decision Support - v26 corrected cross-check production baseline
 
 PGR Vesting Decision Support is a tax-aware decision-support system for unwinding
 a concentrated Progressive Corporation (`PGR`) RSU position in a taxable
@@ -8,7 +8,7 @@ make a more disciplined decision at each vest.
 
 ## Current Status
 
-Status as of 2026-04-04:
+Status as of 2026-04-05:
 
 - `v7.x` is fully implemented in runtime code: the ablation work, tax scenario
   framework, EDGAR parser hardening, monthly report cleanup, and
@@ -100,6 +100,21 @@ Status as of 2026-04-04:
   replacing `VOO` with `VTI` improves the reduced forecast universe. The
   answer is no: `VTI` adds raw history, but it does not improve the leading
   candidate enough to justify replacing `VOO`.
+- `v25.x` is now complete. It is the correctness-first cycle prompted by
+  external peer reviews: monthly index conventions were normalized, inner-CV /
+  WFO / CPCV integrity issues were fixed, silent-failure guards were added,
+  and the promotion-sensitive `v20-v24` studies were rerun on the corrected
+  foundation. The key result survived: `ensemble_ridge_gbt_v18` remains the
+  right visible cross-check candidate, and `v24` still concludes `keep_voo`.
+- `v26.x` is now complete. It is a narrow productionization pass on top of
+  `v25`: the remaining historical-comparison warning noise was cleaned up, the
+  promoted visible cross-check was validated again through the monthly dry-run
+  path, and the corrected repo state is now ready to package as the next PR.
+- `v27.x` adds a repeatable redeploy-portfolio answer to the monthly workflow.
+  It turns external portfolio-allocation research into a bounded, backtested
+  sell-proceeds portfolio recommendation that stays above 90% equities,
+  separates buyable funds from contextual benchmarks, and now appears in both
+  `recommendation.md` and the monthly email.
 
 ## Production vs. Research
 
@@ -201,6 +216,22 @@ The repo now has explicit operating boundaries:
     - keep the v13.1 recommendation layer unchanged
     - use `ensemble_ridge_gbt_v18` as the visible production cross-check
     - keep the underlying 4-model production signal path unchanged for now
+- Active v27 status:
+  - redeploy-portfolio layer complete
+  - current decision:
+    - keep the v13.1 recommendation layer unchanged
+    - keep `ensemble_ridge_gbt_v18` as the visible production cross-check
+    - include a `Suggested Redeploy Portfolio` section in each monthly report
+      and email
+    - use a pruned investable redeploy universe:
+      - `VOO`
+      - `VGT`
+      - `SCHD`
+      - `VXUS`
+      - `VWO`
+      - `BND`
+    - keep contextual funds such as `VFH` and `KIE` out of the default buy list
+      even if they remain useful forecast benchmarks
 - Active v23 status:
   - extended-history proxy validation complete
   - research-only stitched-history window:

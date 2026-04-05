@@ -162,6 +162,15 @@ def _safe_spearman_ic(
         corr, _ = spearmanr(y_true_clean, y_hat_clean)
     return float(corr) if np.isfinite(corr) else 0.0
 
+
+def _min_required_observations(total_gap: int) -> int:
+    """Return the minimum rows needed for one valid WFO split."""
+    return (
+        config.WFO_TRAIN_WINDOW_MONTHS
+        + total_gap
+        + config.WFO_TEST_WINDOW_MONTHS
+    )
+
 def run_wfo(
     X: pd.DataFrame,
     y: pd.Series,
@@ -246,12 +255,13 @@ def run_wfo(
         available // config.WFO_TEST_WINDOW_MONTHS,
     )
 
-    if n < config.WFO_TRAIN_WINDOW_MONTHS + config.WFO_TEST_WINDOW_MONTHS:
+    min_required = _min_required_observations(total_gap)
+    if n < min_required:
         raise ValueError(
             f"Dataset has only {n} observations. Need at least "
-            f"{config.WFO_TRAIN_WINDOW_MONTHS + config.WFO_TEST_WINDOW_MONTHS} "
+            f"{min_required} "
             f"(TRAIN_WINDOW={config.WFO_TRAIN_WINDOW_MONTHS} + "
-            f"TEST_WINDOW={config.WFO_TEST_WINDOW_MONTHS})."
+            f"GAP={total_gap} + TEST_WINDOW={config.WFO_TEST_WINDOW_MONTHS})."
         )
 
     tscv = TimeSeriesSplit(
@@ -284,15 +294,24 @@ def run_wfo(
             X_test[np.isnan(X_test[:, col_i]), col_i] = train_medians[col_i]
 
         if model_type == "elasticnet":
-            pipeline: Pipeline = build_elasticnet_pipeline()
+            pipeline: Pipeline = build_elasticnet_pipeline(
+                target_horizon_months=target_horizon_months,
+                purge_buffer=purge_buffer,
+            )
         elif model_type == "lasso":
-            pipeline = build_lasso_pipeline()
+            pipeline = build_lasso_pipeline(
+                target_horizon_months=target_horizon_months,
+                purge_buffer=purge_buffer,
+            )
         elif model_type == "bayesian_ridge":
             pipeline = build_bayesian_ridge_pipeline()
         elif model_type == "gbt":
             pipeline = build_gbt_pipeline()
         else:
-            pipeline = build_ridge_pipeline()
+            pipeline = build_ridge_pipeline(
+                target_horizon_months=target_horizon_months,
+                purge_buffer=purge_buffer,
+            )
         pipeline.fit(X_train, y_train)
         y_hat = pipeline.predict(X_test)
 
@@ -395,15 +414,21 @@ def predict_current(
 
     prediction_std = 0.0
     if model_type == "elasticnet":
-        pipeline: Pipeline = build_elasticnet_pipeline()
+        pipeline: Pipeline = build_elasticnet_pipeline(
+            target_horizon_months=wfo_result.target_horizon,
+        )
     elif model_type == "lasso":
-        pipeline = build_lasso_pipeline()
+        pipeline = build_lasso_pipeline(
+            target_horizon_months=wfo_result.target_horizon,
+        )
     elif model_type == "bayesian_ridge":
         pipeline = build_bayesian_ridge_pipeline()
     elif model_type == "gbt":
         pipeline = build_gbt_pipeline()
     else:
-        pipeline = build_ridge_pipeline()
+        pipeline = build_ridge_pipeline(
+            target_horizon_months=wfo_result.target_horizon,
+        )
     pipeline.fit(X_recent, y_recent)
 
     if model_type == "bayesian_ridge" and hasattr(pipeline, "predict_with_std"):
@@ -541,8 +566,6 @@ def run_cpcv(
         ImportError: If skfolio is not installed.
     """
     from skfolio.model_selection import CombinatorialPurgedCV
-    from scipy.stats import spearmanr as _spearmanr
-
     if n_folds is None:
         n_folds = config.CPCV_N_FOLDS
     if n_test_folds is None:
@@ -567,9 +590,8 @@ def run_cpcv(
     )
 
     # Collect per-split predictions
-    n_obs = len(X_arr)
-    all_y_hat = np.full(n_obs, np.nan)
     split_ics: list[float] = []
+    split_predictions: list[list[tuple[np.ndarray, np.ndarray, np.ndarray]]] = []
 
     splits = list(cv.split(X_arr))
     n_splits = len(splits)
@@ -586,32 +608,44 @@ def run_cpcv(
 
         # Build and fit model
         if model_type == "elasticnet":
-            pipeline = build_elasticnet_pipeline()
+            pipeline = build_elasticnet_pipeline(
+                target_horizon_months=target_horizon_months,
+                purge_buffer=0,
+            )
         elif model_type == "lasso":
-            pipeline = build_lasso_pipeline()
+            pipeline = build_lasso_pipeline(
+                target_horizon_months=target_horizon_months,
+                purge_buffer=0,
+            )
         elif model_type == "bayesian_ridge":
             pipeline = build_bayesian_ridge_pipeline()
         elif model_type == "gbt":
             pipeline = build_gbt_pipeline()
         else:
-            pipeline = build_ridge_pipeline()
+            pipeline = build_ridge_pipeline(
+                target_horizon_months=target_horizon_months,
+                purge_buffer=0,
+            )
         pipeline.fit(X_train, y_train)
 
         # Predict on all test index arrays for this split
         split_y_true: list[float] = []
         split_y_hat: list[float] = []
+        split_records: list[tuple[np.ndarray, np.ndarray, np.ndarray]] = []
 
         for test_idx in test_idx_list:
             X_test = X_arr[test_idx].copy()
             for col_i in range(X_test.shape[1]):
                 X_test[np.isnan(X_test[:, col_i]), col_i] = train_medians[col_i]
             y_hat = pipeline.predict(X_test)
-            all_y_hat[test_idx] = y_hat
-            split_y_true.extend(y_arr[test_idx].tolist())
+            y_true = y_arr[test_idx].copy()
+            split_y_true.extend(y_true.tolist())
             split_y_hat.extend(y_hat.tolist())
+            split_records.append((test_idx.copy(), y_true, np.asarray(y_hat)))
 
         if len(split_y_true) >= 2:
             split_ics.append(_safe_spearman_ic(split_y_true, split_y_hat))
+        split_predictions.append(split_records)
 
     # Recombined paths: each path is a non-overlapping sequence of test observations
     path_ics: list[float] = []
@@ -623,11 +657,10 @@ def run_cpcv(
                 path_y_true: list[float] = []
                 path_y_hat_vals: list[float] = []
                 for sid in path_split_ids:
-                    _, test_idx_list_s = splits[sid]
-                    for test_idx in test_idx_list_s:
-                        valid = ~np.isnan(all_y_hat[test_idx])
-                        path_y_true.extend(y_arr[test_idx][valid].tolist())
-                        path_y_hat_vals.extend(all_y_hat[test_idx][valid].tolist())
+                    for _, y_true_vals, y_hat_vals in split_predictions[sid]:
+                        valid = np.isfinite(y_true_vals) & np.isfinite(y_hat_vals)
+                        path_y_true.extend(y_true_vals[valid].tolist())
+                        path_y_hat_vals.extend(y_hat_vals[valid].tolist())
                 if len(path_y_true) >= 2:
                     path_ics.append(_safe_spearman_ic(path_y_true, path_y_hat_vals))
         except Exception:  # noqa: BLE001

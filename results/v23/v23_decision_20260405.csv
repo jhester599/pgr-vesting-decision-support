@@ -1,0 +1,2 @@
+status,recommended_path,rationale,common_start,common_end,n_common_dates
+extended_history_confirms_candidate,ensemble_ridge_gbt_v18,The leading candidate retained or improved its historical behavior versus the simpler baseline even after extending the benchmark histories with research-only proxies.,2013-04-30,2025-09-30,150

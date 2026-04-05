@@ -418,6 +418,19 @@ class TestBuildEmailMessage:
         - Broad US Equity: VOO. Broad US equity diversifies away from single-stock risk.
         - Fixed Income: BND, VMBS. Fixed income is the cleanest concentration-reduction bucket when model confidence is weak.
 
+        ## Suggested Redeploy Portfolio
+
+        - Default posture: `95%` equities / `5%` bonds across the curated investable universe.
+
+        | Fund | Allocation | Sleeve | Why it is included | PGR Correlation | Relative Signal | P(Benchmark Beats PGR) |
+        |------|------------|--------|--------------------|-----------------|-----------------|------------------------|
+        | VOO | 40% | Broad US equity core | Core US beta sleeve that keeps the portfolio equity-heavy without recreating single-stock PGR risk. | 0.14 | Preferred this month (-4.0%) | 60.0% |
+        | VGT | 21% | Technology tilt | Growth engine and explicit tech tilt when the relative signal supports owning more innovation exposure than a pure core index. | 0.36 | Highest-conviction buy (-6.0%) | 63.0% |
+        | SCHD | 14% | Value / dividend tilt | Closest current project proxy for a value sleeve. | 0.29 | Supportive (-2.0%) | 53.0% |
+        | VXUS | 11% | International core | Primary geographic diversifier away from a US employer-stock concentration. | 0.28 | Preferred this month (-3.0%) | 57.0% |
+        | VWO | 9% | Emerging-markets satellite | Higher-growth international sleeve kept modest because it is more volatile than the core international allocation. | 0.30 | Keep near base (-1.0%) | 52.0% |
+        | BND | 5% | Bond ballast | Small stabilizer sleeve kept intentionally light so the redeploy portfolio stays above 90% equities in normal months. | 0.04 | Keep near base (+1.0%) | 47.0% |
+
         ## Simple-Baseline Cross-Check
 
         | Path | Candidate | Policy | Signal | Recommendation Mode | Sell % | Predicted 6M Return | Aggregate OOS R^2 |
@@ -472,6 +485,7 @@ class TestBuildEmailMessage:
         assert "Simple-baseline cross-check:" in body
         assert "Active layer: v13.1 promoted simpler diversification-first recommendation layer + live-stack cross-check" in body
         assert "If redeploying sold exposure:" in body
+        assert "Suggested redeploy portfolio:" in body
         assert "Full report:" in body
 
     def test_html_body_attached_and_contains_structured_sections(self, tmp_path):
@@ -491,6 +505,7 @@ class TestBuildEmailMessage:
         assert "Recommendation-layer cross-check" in html_body
         assert "Active layer:" in html_body
         assert "If redeploying sold exposure" in html_body
+        assert "Suggested redeploy portfolio" in html_body
         assert "Benchmark detail" in html_body
         assert "Loss lots first" in html_body
 

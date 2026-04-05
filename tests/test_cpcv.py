@@ -15,6 +15,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
+from unittest.mock import patch
 
 from src.models.wfo_engine import CPCVResult, run_cpcv
 
@@ -161,3 +162,43 @@ class TestCPCVEdgeCases:
         # v5.0: CPCV_N_FOLDS=8, CPCV_N_TEST_FOLDS=2 → C(8,2)=28 splits
         expected_splits = math.comb(config.CPCV_N_FOLDS, config.CPCV_N_TEST_FOLDS)
         assert result.n_splits == expected_splits
+
+    def test_recombined_paths_use_split_specific_predictions(self):
+        """Recombined paths must not reuse overwritten predictions from other splits."""
+        X, y = _make_data(n=8)
+        y.iloc[3] = 1.0
+        y.iloc[4] = 2.0
+
+        class FakeCPCV:
+            def __init__(self, *args, **kwargs):
+                self.n_test_paths = 1
+                self.recombined_paths = [[0]]
+
+            def split(self, X_arr):
+                return [
+                    (np.array([0, 1, 2, 5, 6, 7]), [np.array([3, 4])]),
+                    (np.array([0, 1, 2, 5, 6, 7]), [np.array([3, 4])]),
+                ]
+
+        class FakePipeline:
+            def __init__(self, predictions):
+                self._predictions = np.asarray(predictions, dtype=float)
+
+            def fit(self, X_train, y_train):
+                return self
+
+            def predict(self, X_test):
+                return self._predictions.copy()
+
+        pipelines = [
+            FakePipeline([1.0, 2.0]),
+            FakePipeline([-1.0, -2.0]),
+        ]
+
+        with patch("skfolio.model_selection.CombinatorialPurgedCV", FakeCPCV), patch(
+            "src.models.wfo_engine.build_ridge_pipeline",
+            side_effect=lambda **kwargs: pipelines.pop(0),
+        ):
+            result = run_cpcv(X, y, model_type="ridge", n_folds=4, n_test_folds=1)
+
+        assert result.path_ics == pytest.approx([1.0])

@@ -1,0 +1,22 @@
+benchmark,status,reason
+VTI,optional_substitute,"Broad-market substitute for VOO, but kept off the main list to avoid redundant US core funds."
+VOO,keep_for_redeploy,Core US equity sleeve.
+VGT,keep_for_redeploy,Technology tilt.
+VHT,not_preferred_for_redeploy,Sector sleeve not central to the preferred broad-market redeploy policy.
+VFH,contextual_only,Too close to PGR's financial-sector exposure to be a preferred redeploy target.
+VIS,not_preferred_for_redeploy,Sector sleeve not central to the preferred broad-market redeploy policy.
+VDE,not_preferred_for_redeploy,Energy is too narrow for the default sell-proceeds answer.
+VPU,not_preferred_for_redeploy,Utilities are too defensive and narrow for the default equity-heavy answer.
+KIE,contextual_only,"Useful insurance context benchmark, but not a concentration-reduction destination."
+VXUS,keep_for_redeploy,International core.
+VEA,not_preferred_for_redeploy,Redundant with VXUS + VWO as the preferred international combination.
+VWO,keep_for_redeploy,Emerging-markets satellite.
+VIG,optional_substitute,"Reasonable quality/dividend substitute, but secondary to SCHD for the stated value-tilt preference."
+SCHD,keep_for_redeploy,Value / dividend proxy.
+BND,keep_for_redeploy,Single bond sleeve.
+BNDX,not_preferred_for_redeploy,Second bond sleeve is unnecessary in the preferred >90% equity profile.
+VCIT,not_preferred_for_redeploy,Credit sleeve is narrower than the preferred single-core bond fund.
+VMBS,not_preferred_for_redeploy,Mortgage sleeve is narrower than the preferred single-core bond fund.
+VNQ,not_preferred_for_redeploy,"Real estate is optional, not part of the preferred repeatable default."
+GLD,not_preferred_for_redeploy,"Gold may diversify, but it was not part of the preferred equity-heavy redeploy framework."
+DBC,not_preferred_for_redeploy,"Broad commodities may diversify, but not part of the preferred repeatable default."
