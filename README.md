@@ -1,4 +1,4 @@
-# PGR Vesting Decision Support - v19 feature completion + v13.1 production baseline
+# PGR Vesting Decision Support - v24 benchmark-definition validation + v13.1 production baseline
 
 PGR Vesting Decision Support is a tax-aware decision-support system for unwinding
 a concentrated Progressive Corporation (`PGR`) RSU position in a taxable
@@ -77,6 +77,29 @@ Status as of 2026-04-04:
   feature candidates. The v19 conclusion is that `44 / 46` were fully tested
   and `2 / 46` are now explicitly blocked by missing source classes rather than
   left queued.
+- `v20.x` is a completed synthesis and promotion-readiness gate. It assembled
+  the strongest confirmed v16-v19 Ridge/GBT swap combinations into a small set
+  of replacement stacks and compared them against the reduced live production
+  cross-check, the `historical_mean` baseline, and the promoted simpler
+  baseline over a 12-month monthly review window. The v20 conclusion is still
+  `continue_research_keep_current_cross_check`.
+- `v21.x` is a completed point-in-time historical comparison study. It fixes
+  the narrow-window shadow-gate methodology by comparing the current live
+  reduced cross-check and the leading v16-v20 assembled candidates over the
+  full common evaluable history instead of a recent slice. The v21 conclusion
+  is `promote_candidate_cross_check`, with `ensemble_ridge_gbt_v18` now
+  clearing the historical agreement gate versus the promoted simpler baseline.
+- `v22.x` is the narrow implementation step from that result. It keeps the
+  promoted simpler diversification-first recommendation layer active and swaps
+  the visible monthly cross-check to `ensemble_ridge_gbt_v18`.
+- `v23.x` is a completed research-only extended-history proxy study. It uses
+  stitched pre-inception benchmark proxies for `VOO`, `VXUS`, and `VMBS` to
+  extend the common evaluable OOS window backward and confirm whether the
+  `v21` cross-check promotion result still holds. It does.
+- `v24.x` is a completed benchmark-definition study. It tests whether simply
+  replacing `VOO` with `VTI` improves the reduced forecast universe. The
+  answer is no: `VTI` adds raw history, but it does not improve the leading
+  candidate enough to justify replacing `VOO`.
 
 ## Production vs. Research
 
@@ -148,6 +171,63 @@ The repo now has explicit operating boundaries:
     - keep the v13.1 recommendation layer unchanged
     - keep the current live production cross-check unchanged
     - move next to a narrow synthesis / promotion-readiness study, not another broad feature sweep
+- Active v20 status:
+  - synthesis / promotion-readiness study complete
+  - best metric row:
+    - `ensemble_ridge_gbt_v18`
+  - best assembled best-of-confirmed stack:
+    - `ensemble_ridge_gbt_v20_best`
+  - key blocker:
+    - the leading assembled stacks still show `0.0%` signal agreement with the promoted simpler baseline over the 12-month review window
+    - `ensemble_ridge_gbt_v18` remained `UNDERPERFORM` in every reviewed month
+  - current decision:
+    - keep the v13.1 recommendation layer unchanged
+    - keep the current live production cross-check unchanged
+    - focus next on blocked-source work or narrower calibration diagnostics rather than another generic feature sweep
+- Active v21 status:
+  - point-in-time historical comparison complete
+  - common evaluable window:
+    - `2016-10-31` through `2025-09-30`
+  - historical result:
+    - `ensemble_ridge_gbt_v18` achieved `81.5%` signal agreement with the promoted simpler baseline
+    - current live reduced cross-check achieved `64.8%`
+  - current decision:
+    - `ensemble_ridge_gbt_v18` is now the leading candidate to replace the current live production cross-check
+    - keep the v13.1 recommendation layer unchanged
+    - move next to a narrow production-promotion implementation / validation step rather than more generic feature hunting
+- Active v22 status:
+  - visible cross-check promotion complete
+  - current decision:
+    - keep the v13.1 recommendation layer unchanged
+    - use `ensemble_ridge_gbt_v18` as the visible production cross-check
+    - keep the underlying 4-model production signal path unchanged for now
+- Active v23 status:
+  - extended-history proxy validation complete
+  - research-only stitched-history window:
+    - `2013-04-30` through `2025-09-30`
+  - historical result:
+    - `ensemble_ridge_gbt_v18` achieved `78.7%` signal agreement with the promoted simpler baseline
+    - current live reduced cross-check achieved `57.3%`
+  - proxy caveat:
+    - `VXUS <- VEA + VWO` and `VMBS <- BND` are strong research proxies
+    - `VOO <- VTI` extends history usefully but is a looser proxy than ideal
+  - current decision:
+    - keep the v13.1 recommendation layer unchanged
+    - keep `ensemble_ridge_gbt_v18` as the visible production cross-check
+    - treat the promotion result as confirmed over the longer stitched-history window
+- Active v24 status:
+  - VTI-for-VOO replacement study complete
+  - scenarios tested:
+    - current `VOO`-based reduced universe
+    - actual `VTI` replacement universe
+    - stitched-history `VTI` replacement universe
+  - result:
+    - the current `VOO`-based universe remains best
+    - `VTI` did not improve policy return, OOS R^2, or shadow agreement enough to justify replacement
+  - current decision:
+    - keep `VOO` in the reduced forecast universe
+    - keep the v13.1 recommendation layer unchanged
+    - keep `ensemble_ridge_gbt_v18` as the visible production cross-check
 - Historical planning and review artifacts:
   - `docs/history/claude-v7-plan.md`
   - `docs/plans/codex-v8-plan.md`

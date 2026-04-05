@@ -79,6 +79,7 @@ from src.research.v12 import (
     signal_from_prediction,
 )
 from src.research.diversification import score_benchmarks_against_pgr
+from src.research.v22 import build_promoted_cross_check_summary
 
 from src.models.calibration import (
     CalibrationResult,
@@ -136,7 +137,8 @@ _MODEL_VERSION_LABEL = (
     "v13.1 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, "
     "inverse-variance weighting, C(8,2)=28 CPCV paths, "
     "post-v9 baseline reconciliation, migrations, CI/workflow hardening, "
-    "run-manifest support, and a promoted v13.1 recommendation layer)"
+    "run-manifest support, a promoted v13.1 recommendation layer, and a "
+    "v22-promoted visible cross-check)"
 )
 
 
@@ -2078,7 +2080,7 @@ def main(
         if "calibrated_prob_outperform" in signals.columns and not signals.empty
         else None
     )
-    live_summary = SnapshotSummary(
+    fallback_live_summary = SnapshotSummary(
         label="live",
         as_of=as_of,
         candidate_name="production_4_model_ensemble",
@@ -2094,6 +2096,21 @@ def main(
         aggregate_nw_ic=float(aggregate_health["nw_ic"]) if aggregate_health is not None else float("nan"),
         calibrated_prob_outperform=mean_cal,
     )
+    live_summary = fallback_live_summary
+    if layer_mode in {"live_with_shadow", "shadow_promoted"}:
+        try:
+            promoted_summary = build_promoted_cross_check_summary(
+                conn,
+                as_of,
+                target_horizon_months=6,
+            )
+            if promoted_summary is not None:
+                live_summary = promoted_summary
+        except Exception as exc:  # noqa: BLE001
+            print(
+                "  [Cross-check] WARNING: promoted v22 cross-check build failed; "
+                f"falling back to the current production ensemble snapshot ({exc})."
+            )
     shadow_summary = None
     if layer_mode in {"live_with_shadow", "shadow_promoted"}:
         shadow_summary, _ = _build_shadow_baseline_summary(
@@ -2104,11 +2121,16 @@ def main(
     active_recommendation_mode = recommendation_mode
     recommendation_layer_label = "Live production recommendation layer"
     if layer_mode == "live_with_shadow":
-        recommendation_layer_label = "Live production recommendation layer + v13 simpler-baseline cross-check"
+        recommendation_layer_label = (
+            "Live production recommendation layer + v22 visible cross-check + v13 simpler-baseline cross-check"
+        )
     elif layer_mode == "shadow_promoted" and shadow_summary is not None:
         active_recommendation_mode = _mode_payload_from_summary(shadow_summary)
         sell_pct = float(active_recommendation_mode["sell_pct"])
-        recommendation_layer_label = "v13.1 promoted simpler diversification-first recommendation layer + live-stack cross-check"
+        recommendation_layer_label = (
+            "v13.1 promoted simpler diversification-first recommendation layer + "
+            "v22 promoted visible cross-check"
+        )
     existing_holdings = _build_existing_holdings_guidance(conn, as_of)
     redeploy_buckets = _build_redeploy_guidance(conn)
 
@@ -2124,7 +2146,12 @@ def main(
     print(f"  Sell %: {sell_pct:.0%}")
     if shadow_summary is not None:
         print(
-            "  Shadow baseline cross-check: "
+            "  Visible cross-check: "
+            f"{live_summary.candidate_name} / {live_summary.recommendation_mode} / "
+            f"sell {live_summary.sell_pct:.0%} / {live_summary.mean_predicted:+.2%}"
+        )
+        print(
+            "  Simpler baseline: "
             f"{shadow_summary.recommendation_mode} / sell {shadow_summary.sell_pct:.0%} / "
             f"{shadow_summary.mean_predicted:+.2%}"
         )

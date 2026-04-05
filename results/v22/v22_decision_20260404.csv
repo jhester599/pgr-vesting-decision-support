@@ -1,0 +1,2 @@
+status,recommended_path,as_of,rationale
+implemented_visible_cross_check_promotion,ensemble_ridge_gbt_v18,2026-04-04,v22 promotes the v21 historical winner as the visible production cross-check while keeping the v13.1 simpler diversification-first recommendation layer unchanged.
