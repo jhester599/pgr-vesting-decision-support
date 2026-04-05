@@ -13,8 +13,7 @@ Covers:
 
 from __future__ import annotations
 
-import io
-import sys
+import logging
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
@@ -247,6 +246,7 @@ class TestPeerFetchDryRun:
         mock_price_cls,
         mock_init_schema,
         mock_get_conn,
+        caplog,
     ) -> None:
         mock_conn = self._make_mock_conn()
         mock_get_conn.return_value = mock_conn
@@ -259,20 +259,15 @@ class TestPeerFetchDryRun:
         mock_div_loader.fetch_for_tickers.return_value = {t: None for t in config.PEER_TICKER_UNIVERSE}
         mock_div_cls.return_value = mock_div_loader
 
-        captured = io.StringIO()
-        sys.stdout = captured
-        try:
-            from scripts.peer_fetch import main
-            main(dry_run=True)
-        finally:
-            sys.stdout = sys.__stdout__
+        from scripts.peer_fetch import main
 
-        output = captured.getvalue()
-        # Should show projected 8 calls (4 prices + 4 dividends)
+        with caplog.at_level(logging.INFO):
+            with patch("scripts.peer_fetch.configure_logging"):
+                main(dry_run=True)
+
         expected_calls = len(config.PEER_TICKER_UNIVERSE) * 2  # prices + dividends
-        assert str(expected_calls) in output, (
-            f"Expected '{expected_calls}' in dry-run output; got:\n{output}"
-        )
+        assert f"Projected AV calls: {expected_calls}/{config.AV_DAILY_LIMIT}" in caplog.text
+        assert f"[DRY RUN] Projected API calls: AV {expected_calls}/{config.AV_DAILY_LIMIT}" in caplog.text
 
     @patch("scripts.peer_fetch.db_client.get_connection")
     @patch("scripts.peer_fetch.db_client.initialize_schema")
@@ -286,6 +281,7 @@ class TestPeerFetchDryRun:
         mock_price_cls,
         mock_init_schema,
         mock_get_conn,
+        caplog,
     ) -> None:
         mock_conn = self._make_mock_conn()
         mock_get_conn.return_value = mock_conn
@@ -298,14 +294,11 @@ class TestPeerFetchDryRun:
         mock_div_loader.fetch_for_tickers.return_value = {t: None for t in config.PEER_TICKER_UNIVERSE}
         mock_div_cls.return_value = mock_div_loader
 
-        captured = io.StringIO()
-        sys.stdout = captured
-        try:
-            from scripts.peer_fetch import main
-            main(dry_run=True)
-        finally:
-            sys.stdout = sys.__stdout__
+        from scripts.peer_fetch import main
 
-        output = captured.getvalue()
+        with caplog.at_level(logging.INFO):
+            with patch("scripts.peer_fetch.configure_logging"):
+                main(dry_run=True)
+
         for ticker in config.PEER_TICKER_UNIVERSE:
-            assert ticker in output, f"Expected {ticker} in dry-run output"
+            assert ticker in caplog.text, f"Expected {ticker} in peer-fetch logs"

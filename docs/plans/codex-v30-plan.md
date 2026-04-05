@@ -21,6 +21,7 @@ version tags:
 - `v30.6` - extend retry helper into batch AV loaders
 - `v30.7` - add production logging scaffold for weekly fetch
 - `v30.8` - add operational logging to monthly decision fallbacks
+- `v30.9` - migrate peer fetch entrypoint to structured logging
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -112,3 +113,9 @@ paths:
 - route FRED, CPCV, cross-check, and freshness fallback messaging through
   structured logging
 - add focused tests that assert exception context is preserved
+
+## v30.9 Scope
+
+`v30.9` keeps the production entry points aligned by migrating
+`scripts/peer_fetch.py` to the shared logging scaffold and refreshing its
+dry-run tests to assert on logged output instead of captured stdout.
