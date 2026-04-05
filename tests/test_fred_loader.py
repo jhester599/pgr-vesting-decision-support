@@ -127,6 +127,20 @@ class TestFetchAllFredMacro:
         assert len(df) == 1
         assert df.index[0].day == 31  # last day of Jan
 
+    def test_monthly_resampling_uses_last_business_day(self, monkeypatch):
+        monkeypatch.setattr(config, "FRED_API_KEY", "test-key")
+        daily_obs = [
+            {"date": f"2021-07-{d:02d}", "value": "1.0"}
+            for d in [1, 15, 30]
+        ]
+        mock_resp = _make_fred_response("T10Y2Y", daily_obs)
+
+        with patch("src.ingestion.fred_loader.requests.get", return_value=mock_resp):
+            df = fetch_all_fred_macro(["T10Y2Y"])
+
+        assert len(df) == 1
+        assert df.index[0] == pd.Timestamp("2021-07-30")
+
     def test_multiple_series_joined(self, monkeypatch):
         monkeypatch.setattr(config, "FRED_API_KEY", "test-key")
         obs = [{"date": "2024-01-31", "value": "1.0"}]

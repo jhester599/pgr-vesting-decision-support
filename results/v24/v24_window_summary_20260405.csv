@@ -1,0 +1,4 @@
+scenario_name,common_start,common_end,n_common_dates
+current_voo_actual,2016-10-31,2025-09-30,108
+vti_replacement_actual,2016-10-31,2025-09-30,108
+vti_replacement_stitched,2013-04-30,2025-09-30,150

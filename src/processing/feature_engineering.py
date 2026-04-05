@@ -76,6 +76,7 @@ Feature groups:
 
 import os
 import sqlite3
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -113,6 +114,23 @@ def _apply_fred_lags(fred_df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
+def _snap_to_business_month_end_index(index: pd.Index) -> pd.DatetimeIndex:
+    """Normalize any timestamp-like index to the last business day of month."""
+    dt_index = pd.DatetimeIndex(pd.to_datetime(index))
+    calendar_month_end = dt_index + pd.offsets.MonthEnd(0)
+    snapped = [pd.offsets.BMonthEnd().rollback(ts) for ts in calendar_month_end]
+    return pd.DatetimeIndex(snapped, name=dt_index.name)
+
+
+def _resample_last_business_month_end(
+    values: pd.Series | pd.DataFrame,
+) -> pd.Series | pd.DataFrame:
+    """Resample a daily/irregular series to last-business-day month-end."""
+    result = values.copy()
+    result.index = pd.DatetimeIndex(pd.to_datetime(result.index))
+    return result.resample("BME").last()
+
+
 def _apply_edgar_lag(edgar_df: pd.DataFrame) -> pd.DataFrame:
     """
     Shift EDGAR fundamental data by the filing lag to prevent look-ahead bias.
@@ -131,8 +149,8 @@ def _apply_edgar_lag(edgar_df: pd.DataFrame) -> pd.DataFrame:
     if lag <= 0:
         return edgar_df
     result = edgar_df.shift(lag, freq="MS")
-    # Snap back to month-end after the MonthStart shift
-    result.index = result.index + pd.offsets.MonthEnd(0)
+    # Snap back to business month-end after the MonthStart shift
+    result.index = _snap_to_business_month_end_index(result.index)
     return result
 
 
@@ -147,6 +165,34 @@ _VOL_WINDOWS: dict[str, int] = {
     "vol_21d": 21,
     "vol_63d": 63,
 }
+
+
+def _normalize_pgr_monthly_columns(pgr_monthly: pd.DataFrame) -> pd.DataFrame:
+    """Apply compatibility renames for known EDGAR monthly schema variants."""
+    result = pgr_monthly.copy()
+    if (
+        "roe_net_income_ttm" not in result.columns
+        and "roe_net_income_trailing_12m" in result.columns
+    ):
+        result = result.rename(
+            columns={"roe_net_income_trailing_12m": "roe_net_income_ttm"}
+        )
+    return result
+
+
+def _warn_if_all_null(
+    df: pd.DataFrame,
+    columns: list[str],
+    label: str,
+) -> None:
+    """Warn when an expected feature group is present structurally but empty."""
+    existing = [col for col in columns if col in df.columns]
+    if existing and df[existing].isna().all().all():
+        warnings.warn(
+            f"{label} feature group is present but all-null: {existing}",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +229,7 @@ def build_feature_matrix(
         ``target_6m_return`` as the final column.
     """
     # Resample daily prices to month-end (last business day)
-    monthly_close = price_history["close"].resample("BME").last()
+    monthly_close = _resample_last_business_month_end(price_history["close"])
     monthly_dates = monthly_close.index
 
     df = pd.DataFrame(index=monthly_dates)
@@ -254,6 +300,7 @@ def build_feature_matrix(
     # PGR-specific Gainshare features (optional, from EDGAR cache)
     # ------------------------------------------------------------------
     if pgr_monthly is not None and not pgr_monthly.empty:
+        pgr_monthly = _normalize_pgr_monthly_columns(pgr_monthly)
         # Trailing 12-month combined ratio (rolling mean of monthly values)
         if "combined_ratio" in pgr_monthly.columns:
             cr_monthly = pgr_monthly["combined_ratio"].reindex(
@@ -951,6 +998,27 @@ def build_feature_matrix(
                 fred_aligned["SP500_EARNINGS_YIELD_MULTPL"] - fred_aligned["GS10"]
             )
 
+    if pgr_monthly is not None and not pgr_monthly.empty:
+        _warn_if_all_null(
+            df,
+            ["roe_net_income_ttm", "roe_trend"],
+            "EDGAR ROE",
+        )
+    if fred_macro is not None and not fred_macro.empty:
+        _warn_if_all_null(
+            df,
+            [
+                "yield_slope",
+                "yield_curvature",
+                "real_rate_10y",
+                "credit_spread_ig",
+                "credit_spread_hy",
+                "nfci",
+                "vix",
+            ],
+            "FRED macro",
+        )
+
     # ------------------------------------------------------------------
     # Target variable: 6-month forward DRIP total return
     # ------------------------------------------------------------------
@@ -1075,12 +1143,7 @@ def build_feature_matrix_from_db(
     #   this in a future sprint once that column is added to the DB schema.
     fundamentals = None
     if not prices.empty:
-        monthly_close_vals = (
-            prices["close"].copy()
-            .pipe(lambda s: s.set_axis(pd.to_datetime(s.index)))
-            .resample("ME")
-            .last()
-        )
+        monthly_close_vals = _resample_last_business_month_end(prices["close"].copy())
         monthly_fundamentals = pd.DataFrame(index=monthly_close_vals.index)
 
         # pe_ratio from monthly EPS (8-K supplements, lag already applied)
@@ -1102,9 +1165,9 @@ def build_feature_matrix_from_db(
         if not fundamentals_raw.empty and "roe" in fundamentals_raw.columns:
             roe_q = fundamentals_raw["roe"].copy()
             roe_q.index = pd.to_datetime(roe_q.index)
-            roe_monthly = roe_q.resample("ME").last().ffill()
+            roe_monthly = _resample_last_business_month_end(roe_q).ffill()
             roe_monthly = roe_monthly.shift(config.EDGAR_FILING_LAG_MONTHS, freq="MS")
-            roe_monthly.index = roe_monthly.index + pd.offsets.MonthEnd(0)
+            roe_monthly.index = _snap_to_business_month_end_index(roe_monthly.index)
             monthly_fundamentals["roe"] = roe_monthly.reindex(
                 monthly_fundamentals.index, method="ffill"
             )
@@ -1153,14 +1216,13 @@ def build_feature_matrix_from_db(
                 """Resample daily prices to month-end close."""
                 close = price_df["close"].copy()
                 close.index = pd.to_datetime(close.index)
-                return close.resample("ME").last()
+                return _resample_last_business_month_end(close)
 
             pgr_m = _monthly_close(pgr_prices_raw)
             kie_m = _monthly_close(kie_prices_raw)
             pgr_6m = pgr_m.pct_change(6, fill_method=None)
             kie_6m = kie_m.pct_change(6, fill_method=None)
             pgr_vs_kie = (pgr_6m - kie_6m).rename("pgr_vs_kie_6m")
-            pgr_vs_kie.index = pgr_vs_kie.index + pd.offsets.MonthEnd(0)
             if fred_raw.empty:
                 fred_raw = pgr_vs_kie.to_frame()
             else:
@@ -1182,7 +1244,7 @@ def build_feature_matrix_from_db(
                 """Resample daily prices to month-end close."""
                 c = price_df["close"].copy()
                 c.index = pd.to_datetime(c.index)
-                return c.resample("ME").last()
+                return _resample_last_business_month_end(c)
 
             pgr_m_v60 = _m_close(prices)
             peer_monthly_df = pd.concat(
@@ -1191,7 +1253,6 @@ def build_feature_matrix_from_db(
             peer_composite_6m = peer_monthly_df.pct_change(6, fill_method=None).mean(axis=1)
             pgr_6m_v60 = pgr_m_v60.pct_change(6, fill_method=None)
             pgr_vs_peers = (pgr_6m_v60 - peer_composite_6m).rename("pgr_vs_peers_6m")
-            pgr_vs_peers.index = pgr_vs_peers.index + pd.offsets.MonthEnd(0)
             if fred_raw.empty:
                 fred_raw = pgr_vs_peers.to_frame()
             else:
@@ -1209,14 +1270,13 @@ def build_feature_matrix_from_db(
                 """Resample daily prices to month-end close."""
                 c = price_df["close"].copy()
                 c.index = pd.to_datetime(c.index)
-                return c.resample("ME").last()
+                return _resample_last_business_month_end(c)
 
             pgr_m_vfh = _mc_vfh(prices)
             vfh_m = _mc_vfh(vfh_prices_raw)
             pgr_6m_vfh = pgr_m_vfh.pct_change(6, fill_method=None)
             vfh_6m = vfh_m.pct_change(6, fill_method=None)
             pgr_vs_vfh = (pgr_6m_vfh - vfh_6m).rename("pgr_vs_vfh_6m")
-            pgr_vs_vfh.index = pgr_vs_vfh.index + pd.offsets.MonthEnd(0)
             if fred_raw.empty:
                 fred_raw = pgr_vs_vfh.to_frame()
             else:
@@ -1238,7 +1298,7 @@ def build_feature_matrix_from_db(
         def _monthly_close_generic(price_df: pd.DataFrame) -> pd.Series:
             close = price_df["close"].copy()
             close.index = pd.to_datetime(close.index)
-            return close.resample("ME").last()
+            return _resample_last_business_month_end(close)
 
         synthetic_frames: list[pd.Series] = []
 
@@ -1249,7 +1309,6 @@ def build_feature_matrix_from_db(
                 vwo_m.pct_change(6, fill_method=None)
                 - vxus_m.pct_change(6, fill_method=None)
             ).rename("vwo_vxus_spread_6m")
-            vwo_vxus_spread.index = vwo_vxus_spread.index + pd.offsets.MonthEnd(0)
             synthetic_frames.append(vwo_vxus_spread)
 
         if not gld_prices_raw.empty and not bnd_prices_raw.empty:
@@ -1259,7 +1318,6 @@ def build_feature_matrix_from_db(
                 gld_m.pct_change(6, fill_method=None)
                 - bnd_m.pct_change(6, fill_method=None)
             ).rename("gold_vs_treasury_6m")
-            gold_vs_treasury.index = gold_vs_treasury.index + pd.offsets.MonthEnd(0)
             synthetic_frames.append(gold_vs_treasury)
 
         if not dbc_prices_raw.empty and not voo_prices_raw.empty:
@@ -1269,7 +1327,6 @@ def build_feature_matrix_from_db(
                 dbc_m.pct_change(6, fill_method=None)
                 - voo_m.pct_change(6, fill_method=None)
             ).rename("commodity_equity_momentum")
-            commodity_equity.index = commodity_equity.index + pd.offsets.MonthEnd(0)
             synthetic_frames.append(commodity_equity)
 
         for synthetic_series in synthetic_frames:

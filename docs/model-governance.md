@@ -194,6 +194,56 @@ It adds:
 - a final v21 gate on whether any candidate is actually cleaner historically
   than the current live cross-check
 
+v22-v24 promotion-validation work is now also documented in:
+
+- `docs/plans/codex-v22-plan.md`
+- `docs/plans/codex-v23-plan.md`
+- `docs/plans/codex-v24-plan.md`
+- `docs/results/V22_RESULTS_SUMMARY.md`
+- `docs/results/V23_RESULTS_SUMMARY.md`
+- `docs/results/V24_RESULTS_SUMMARY.md`
+- `docs/closeouts/V23_CLOSEOUT_AND_V24_NEXT.md`
+- `docs/closeouts/V24_CLOSEOUT_AND_V25_NEXT.md`
+
+It adds:
+
+- the narrow implementation path that promotes `ensemble_ridge_gbt_v18` as the
+  visible cross-check while leaving the simpler recommendation layer unchanged
+- a stitched-history validation that extends the common evaluable window back
+  to `2013-04-30`
+- a direct test of `VOO` versus `VTI`, which still ends with `keep_voo`
+
+v25 correctness-validation work is now also documented in:
+
+- `docs/results/V25_PEER_REVIEW_SYNTHESIS.md`
+- `docs/plans/codex-v25-plan.md`
+- `docs/results/V25_RESULTS_SUMMARY.md`
+- `docs/closeouts/V25_CLOSEOUT_AND_V26_NEXT.md`
+
+It adds:
+
+- canonical last-business-day month-end handling across the active production
+  feature paths
+- gap-aware inner CV for the regularized models
+- a corrected WFO minimum-length guard using `TRAIN + GAP + TEST`
+- corrected CPCV recombined-path provenance
+- reruns of the promotion-sensitive `v20-v24` studies on the corrected
+  foundation
+
+v26 productionization-cleanup work is now also documented in:
+
+- `docs/plans/codex-v26-plan.md`
+- `docs/results/V26_RESULTS_SUMMARY.md`
+- `docs/closeouts/V26_CLOSEOUT_AND_V27_NEXT.md`
+
+It adds:
+
+- cleanup of the remaining invalid-divide warning noise in the historical
+  comparison layer
+- a fresh monthly dry run on the corrected `v25` foundation
+- explicit confirmation that the active recommendation layer and the promoted
+  visible cross-check remain unchanged
+
 ## Promotion Rule
 
 Research results do not become production behavior automatically.

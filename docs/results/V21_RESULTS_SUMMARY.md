@@ -1,6 +1,6 @@
 # V21 Results Summary
 
-Created: 2026-04-04
+Created: 2026-04-05
 
 ## Scope
 
@@ -22,30 +22,30 @@ Created: 2026-04-04
 ## Top Metric Row
 
 - Candidate: `ensemble_ridge_gbt_v18`
-- Mean sign-policy return: `0.0771`
-- Mean OOS R^2: `-0.1991`
-- Mean IC: `0.2232`
-- Mean hit rate: `0.6606`
+- Mean sign-policy return: `0.0798`
+- Mean OOS R^2: `-0.1424`
+- Mean IC: `0.1911`
+- Mean hit rate: `0.6857`
 
 ## Current Live Historical Behavior
 
-- Signal agreement with shadow baseline: `64.8%`
-- Signal changes: `18`
-- Outperform / neutral / underperform mix: `64.8%` / `25.9%` / `9.3%`
+- Signal agreement with shadow baseline: `63.0%`
+- Signal changes: `16`
+- Outperform / neutral / underperform mix: `63.0%` / `25.0%` / `12.0%`
 
 ## Recommended-Path Historical Behavior
 
 - Path: `ensemble_ridge_gbt_v18`
-- Signal agreement with shadow baseline: `81.5%`
-- Signal agreement with live cross-check: `70.4%`
-- Signal changes: `16`
-- Outperform / neutral / underperform mix: `81.5%` / `13.0%` / `5.6%`
+- Signal agreement with shadow baseline: `84.3%`
+- Signal agreement with live cross-check: `73.1%`
+- Signal changes: `15`
+- Outperform / neutral / underperform mix: `84.3%` / `8.3%` / `7.4%`
 
 ## Output Artifacts
 
-- `results/v21/v21_candidate_metric_summary_20260404.csv`
-- `results/v21/v21_historical_review_detail_20260404.csv`
-- `results/v21/v21_historical_review_summary_20260404.csv`
-- `results/v21/v21_slice_summary_20260404.csv`
-- `results/v21/v21_promotion_decision_20260404.csv`
-- `results/v21/v21_model_manifest_20260404.csv`
+- `results/v21/v21_candidate_metric_summary_20260405.csv`
+- `results/v21/v21_historical_review_detail_20260405.csv`
+- `results/v21/v21_historical_review_summary_20260405.csv`
+- `results/v21/v21_slice_summary_20260405.csv`
+- `results/v21/v21_promotion_decision_20260405.csv`
+- `results/v21/v21_model_manifest_20260405.csv`

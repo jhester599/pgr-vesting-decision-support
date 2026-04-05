@@ -1,6 +1,6 @@
 # v23 Extended-History Proxy Study Plan
 
-Created: 2026-04-04
+Created: 2026-04-05
 
 ## Objective
 

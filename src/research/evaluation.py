@@ -99,10 +99,19 @@ def iter_wfo_splits(
         raise ValueError("X and y must have the same number of rows.")
     if y.isna().any():
         raise ValueError("y must not contain NaN values.")
-    if len(X) < config.WFO_TRAIN_WINDOW_MONTHS + config.WFO_TEST_WINDOW_MONTHS:
+    total_gap = _resolve_total_gap(
+        target_horizon_months=target_horizon_months,
+        purge_buffer=purge_buffer,
+    )
+    min_required = (
+        config.WFO_TRAIN_WINDOW_MONTHS
+        + total_gap
+        + config.WFO_TEST_WINDOW_MONTHS
+    )
+    if len(X) < min_required:
         raise ValueError(
             f"Dataset has only {len(X)} observations; need at least "
-            f"{config.WFO_TRAIN_WINDOW_MONTHS + config.WFO_TEST_WINDOW_MONTHS}."
+            f"{min_required}."
         )
 
     splitter = build_wfo_splitter(

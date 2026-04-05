@@ -26,19 +26,75 @@ from __future__ import annotations
 import numpy as np
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.linear_model import BayesianRidge, ElasticNetCV, LassoCV, RidgeCV
-from sklearn.model_selection import TimeSeriesSplit
+from sklearn.model_selection import BaseCrossValidator, TimeSeriesSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 import config
 
 
-def _make_inner_cv() -> TimeSeriesSplit:
+def _resolve_total_gap(
+    target_horizon_months: int = 6,
+    purge_buffer: int | None = None,
+) -> int:
+    """Return the production-equivalent gap used for inner CV tuning."""
+    if purge_buffer is None:
+        purge_buffer = (
+            config.WFO_PURGE_BUFFER_6M
+            if target_horizon_months <= 6
+            else config.WFO_PURGE_BUFFER_12M
+        )
+    return target_horizon_months + purge_buffer
+
+
+class AdaptiveGapTimeSeriesSplit(BaseCrossValidator):
+    """TimeSeriesSplit wrapper that shrinks n_splits when the configured gap is large."""
+
+    def __init__(self, n_splits: int = 3, gap: int = 0):
+        self.n_splits = n_splits
+        self.gap = gap
+
+    def _resolve_splitter(self, X) -> TimeSeriesSplit:
+        for n_splits in range(self.n_splits, 1, -1):
+            splitter = TimeSeriesSplit(n_splits=n_splits, gap=self.gap)
+            try:
+                list(splitter.split(X))
+                return splitter
+            except ValueError:
+                continue
+        raise ValueError(
+            f"Unable to construct inner TimeSeriesSplit with gap={self.gap} for {len(X)} rows."
+        )
+
+    def get_n_splits(self, X=None, y=None, groups=None) -> int:
+        if X is None:
+            return self.n_splits
+        return self._resolve_splitter(X).get_n_splits(X, y, groups)
+
+    def split(self, X, y=None, groups=None):
+        yield from self._resolve_splitter(X).split(X, y, groups)
+
+
+def _make_inner_cv(
+    n_splits: int = 3,
+    target_horizon_months: int = 6,
+    purge_buffer: int | None = None,
+) -> AdaptiveGapTimeSeriesSplit:
     """Inner cross-validator for alpha tuning — uses TimeSeriesSplit, never KFold."""
-    return TimeSeriesSplit(n_splits=3)
+    return AdaptiveGapTimeSeriesSplit(
+        n_splits=n_splits,
+        gap=_resolve_total_gap(
+            target_horizon_months=target_horizon_months,
+            purge_buffer=purge_buffer,
+        ),
+    )
 
 
-def build_lasso_pipeline(alphas: np.ndarray | None = None) -> Pipeline:
+def build_lasso_pipeline(
+    alphas: np.ndarray | None = None,
+    target_horizon_months: int = 6,
+    purge_buffer: int | None = None,
+) -> Pipeline:
     """
     Return a sklearn Pipeline of [StandardScaler → LassoCV].
 
@@ -57,7 +113,10 @@ def build_lasso_pipeline(alphas: np.ndarray | None = None) -> Pipeline:
 
     lasso = LassoCV(
         alphas=alphas,
-        cv=_make_inner_cv(),
+        cv=_make_inner_cv(
+            target_horizon_months=target_horizon_months,
+            purge_buffer=purge_buffer,
+        ),
         max_iter=50_000,
         fit_intercept=True,
         selection="cyclic",
@@ -65,7 +124,11 @@ def build_lasso_pipeline(alphas: np.ndarray | None = None) -> Pipeline:
     return Pipeline([("scaler", StandardScaler()), ("model", lasso)])
 
 
-def build_ridge_pipeline(alphas: np.ndarray | None = None) -> Pipeline:
+def build_ridge_pipeline(
+    alphas: np.ndarray | None = None,
+    target_horizon_months: int = 6,
+    purge_buffer: int | None = None,
+) -> Pipeline:
     """
     Return a sklearn Pipeline of [StandardScaler → RidgeCV].
 
@@ -81,7 +144,10 @@ def build_ridge_pipeline(alphas: np.ndarray | None = None) -> Pipeline:
 
     ridge = RidgeCV(
         alphas=alphas,
-        cv=_make_inner_cv(),
+        cv=_make_inner_cv(
+            target_horizon_months=target_horizon_months,
+            purge_buffer=purge_buffer,
+        ),
         fit_intercept=True,
     )
     return Pipeline([("scaler", StandardScaler()), ("model", ridge)])
@@ -91,6 +157,8 @@ def build_elasticnet_pipeline(
     l1_ratios: list[float] | None = None,
     alphas: np.ndarray | None = None,
     cv_splits: int = 3,
+    target_horizon_months: int = 6,
+    purge_buffer: int | None = None,
 ) -> Pipeline:
     """
     Return a sklearn Pipeline of [StandardScaler → ElasticNetCV].
@@ -122,7 +190,11 @@ def build_elasticnet_pipeline(
     enet = ElasticNetCV(
         l1_ratio=l1_ratios,
         alphas=alphas,
-        cv=TimeSeriesSplit(n_splits=cv_splits),
+        cv=_make_inner_cv(
+            n_splits=cv_splits,
+            target_horizon_months=target_horizon_months,
+            purge_buffer=purge_buffer,
+        ),
         max_iter=50_000,
         fit_intercept=True,
         selection="cyclic",

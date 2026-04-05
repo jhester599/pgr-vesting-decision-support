@@ -192,7 +192,11 @@ def load(force_refresh: bool = False, apply_filing_lag: bool = True) -> pd.DataF
     # v4.1: shift index forward by EDGAR_FILING_LAG_MONTHS to prevent look-ahead bias
     if apply_filing_lag:
         df = df.shift(config.EDGAR_FILING_LAG_MONTHS, freq="MS")
-        df.index = df.index + pd.offsets.MonthEnd(0)
+        calendar_month_end = pd.DatetimeIndex(df.index) + pd.offsets.MonthEnd(0)
+        df.index = pd.DatetimeIndex(
+            [pd.offsets.BMonthEnd().rollback(ts) for ts in calendar_month_end],
+            name=df.index.name,
+        )
 
     os.makedirs(config.DATA_PROCESSED_DIR, exist_ok=True)
     df.to_parquet(_PROCESSED_PATH)

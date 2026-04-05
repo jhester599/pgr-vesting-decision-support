@@ -1,6 +1,6 @@
 # V23 Results Summary
 
-Created: 2026-04-04
+Created: 2026-04-05
 
 ## Scope
 
@@ -12,7 +12,6 @@ Created: 2026-04-04
 - `VOO` pre-inception history: proxy with `VTI`.
 - `VXUS` pre-inception history: proxy with a fitted `VEA` + `VWO` blend.
 - `VMBS` pre-inception history: proxy with `BND`.
-- Proxy caveat: `VXUS <- VEA + VWO` and `VMBS <- BND` are very strong research proxies, while `VOO <- VTI` is directionally useful but looser than ideal.
 
 ## Extended Historical Window
 
@@ -37,22 +36,22 @@ Created: 2026-04-04
 
 ### ensemble_ridge_gbt_v18
 
-- Signal agreement with shadow baseline: `78.7%`
-- Mean aggregate OOS R^2: `-0.4330`
-- Signal changes: `27`
-- OUT / NEUTRAL / UNDER: `73.3%` / `22.7%` / `4.0%`
+- Signal agreement with shadow baseline: `80.7%`
+- Mean aggregate OOS R^2: `-0.4599`
+- Signal changes: `22`
+- OUT / NEUTRAL / UNDER: `76.7%` / `18.0%` / `5.3%`
 
 ### ensemble_ridge_gbt_v20_best
 
 - Signal agreement with shadow baseline: `78.0%`
-- Mean aggregate OOS R^2: `-0.4414`
-- Signal changes: `33`
+- Mean aggregate OOS R^2: `-0.7188`
+- Signal changes: `22`
 - OUT / NEUTRAL / UNDER: `74.0%` / `20.7%` / `5.3%`
 
 ### live_production_ensemble_reduced
 
-- Signal agreement with shadow baseline: `57.3%`
-- Mean aggregate OOS R^2: `-0.7855`
-- Signal changes: `24`
-- OUT / NEUTRAL / UNDER: `57.3%` / `35.3%` / `7.3%`
+- Signal agreement with shadow baseline: `58.7%`
+- Mean aggregate OOS R^2: `-1.4126`
+- Signal changes: `23`
+- OUT / NEUTRAL / UNDER: `56.0%` / `35.3%` / `8.7%`
 

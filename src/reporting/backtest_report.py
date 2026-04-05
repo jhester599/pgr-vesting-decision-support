@@ -160,9 +160,17 @@ def compute_newey_west_ic(
     from scipy.stats import t as t_dist
     p_value = 2 * t_dist.sf(abs(t_stat), df=len(y_ranked) - 2)
 
-    # Recover Spearman IC from the slope (scale by std(ranks))
-    n = len(y_ranked)
-    ic = float(np.corrcoef(rankdata(y_hat), rankdata(y_true))[0, 1])
+    # Recover Spearman IC directly from the ranked series, but fail closed when
+    # either side is constant to avoid noisy runtime warnings in historical
+    # comparison studies.
+    ranked_y_hat = rankdata(y_hat)
+    ranked_y_true = rankdata(y_true)
+    if np.nanstd(ranked_y_hat) == 0.0 or np.nanstd(ranked_y_true) == 0.0:
+        ic = 0.0
+    else:
+        ic = float(np.corrcoef(ranked_y_hat, ranked_y_true)[0, 1])
+        if not np.isfinite(ic):
+            ic = 0.0
 
     return ic, float(p_value)
 
