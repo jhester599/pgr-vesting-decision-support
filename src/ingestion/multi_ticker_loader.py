@@ -36,6 +36,7 @@ from src.ingestion.exceptions import (  # noqa: F401 (re-exported)
     AVRateLimitAdvisory,
     AVRateLimitError,
 )
+from src.ingestion.http_utils import build_retry_session
 
 # Alpha Vantage endpoint details
 _AV_BASE = config.AV_BASE_URL
@@ -123,7 +124,8 @@ def _av_request(
         # for outputsize=full).
     }
 
-    resp = requests.get(_AV_BASE, params=params, timeout=30)
+    session = build_retry_session()
+    resp = session.get(_AV_BASE, params=params, timeout=30)
     resp.raise_for_status()
     data = resp.json()
 

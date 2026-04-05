@@ -18,6 +18,7 @@ version tags:
 - `v30.3` - Black-Litterman fallback visibility, only if BL is promoted into the live monthly path
 - `v30.4` - shared retry/backoff helper for core provider clients
 - `v30.5` - lightweight monthly workflow integration test
+- `v30.6` - extend retry helper into batch AV loaders
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -72,3 +73,22 @@ runtime behavior:
 - stub the expensive modeling and plotting steps
 - verify the workflow still produces `recommendation.md`, `signals.csv`,
   `diagnostic.md`, and `run_manifest.json`
+
+## v30.6 Scope
+
+`v30.6` extends the shared retry helper into the Alpha Vantage batch loaders:
+
+- `src/ingestion/multi_ticker_loader.py`
+- `src/ingestion/multi_dividend_loader.py`
+- refresh the existing batch-loader tests to mock the retry-session path
+
+## PR Checkpoint
+
+After `v30.6`, the branch is large enough to open a draft PR without waiting
+for the entire peer-review backlog:
+
+- the changes form a coherent reliability slice around ingestion and monthly
+  operations
+- the diff is still compact enough for review before riskier workflow changes
+- subsequent enhancements can continue as small follow-up commits on the same
+  branch or a successor branch if the scope shifts

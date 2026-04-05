@@ -21,6 +21,7 @@ import requests
 import config
 from src.database import db_client
 from src.ingestion.exceptions import AVRateLimitAdvisory, AVRateLimitError
+from src.ingestion.http_utils import build_retry_session
 
 _AV_BASE = config.AV_BASE_URL
 _AV_FUNCTION = "DIVIDENDS"
@@ -112,7 +113,8 @@ def _av_dividend_request(
         "apikey":   _resolve_api_key_for_request(),
     }
 
-    resp = requests.get(_AV_BASE, params=params, timeout=30)
+    session = build_retry_session()
+    resp = session.get(_AV_BASE, params=params, timeout=30)
     resp.raise_for_status()
     data = resp.json()
 
