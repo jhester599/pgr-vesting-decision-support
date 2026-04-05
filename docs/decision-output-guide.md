@@ -97,6 +97,7 @@ The report and email can now include:
 - `Existing Holdings Guidance`
 - `Redeploy Guidance`
 - `Simple-Baseline Cross-Check`
+- `Suggested Redeploy Portfolio`
 
 Under the current `shadow_promoted` default:
 
@@ -106,6 +107,40 @@ Under the current `shadow_promoted` default:
   - what to do with the next vest
   - what to do with already-held shares
   - where sold exposure should go if redeployed
+
+## v27 Suggested Redeploy Portfolio
+
+v27 adds a concrete buy list to the monthly workflow.
+
+The intent is to answer:
+
+- if the user sells some PGR shares, what should the proceeds be used for?
+
+The live monthly process now:
+
+- starts from a stable high-equity base portfolio
+- keeps stock exposure above `90%` in normal months
+- uses bounded monthly tilts from current projected relative returns and
+  confidence
+- limits the recommendation to a small investable set
+
+The live investable redeploy universe is:
+
+- `VOO`
+- `VGT`
+- `SCHD`
+- `VXUS`
+- `VWO`
+- `BND`
+
+Important distinction:
+
+- this is the monthly buy recommendation universe
+- it is narrower than the broader forecast benchmark universe
+
+That split allows the project to keep contextual forecasting funds such as
+`VFH` or `KIE` without presenting them as preferred destinations for capital
+leaving a concentrated PGR position.
 
 ## Diagnostic Report
 

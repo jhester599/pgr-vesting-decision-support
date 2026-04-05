@@ -130,6 +130,14 @@ def _extract_shadow_check(body: str) -> list[dict[str, str]]:
     return []
 
 
+def _extract_redeploy_portfolio_rows(body: str) -> list[dict[str, str]]:
+    section = _extract_section(body, "Suggested Redeploy Portfolio")
+    for table_lines in _extract_markdown_tables(section):
+        if table_lines and table_lines[0].strip().startswith("| Fund |"):
+            return _parse_markdown_table(table_lines)
+    return []
+
+
 def _extract_recommendation_layer(body: str) -> str | None:
     match = re.search(r"\*\*Recommendation Layer:\*\*\s+(.+?)\s{2,}", body)
     if match:
@@ -280,6 +288,7 @@ def build_email_summary(body: str, lots_csv_path: str | Path | None = None) -> s
     shadow_rows = _extract_shadow_check(body)
     recommendation_layer = _extract_recommendation_layer(body) or ""
     redeploy_lines = _extract_section_bullets(body, "Redeploy Guidance")
+    redeploy_portfolio_rows = _extract_redeploy_portfolio_rows(body)
 
     lines = [
         "PGR Monthly Decision Summary",
@@ -308,6 +317,13 @@ def build_email_summary(body: str, lots_csv_path: str | Path | None = None) -> s
     if redeploy_lines:
         lines += ["", "If redeploying sold exposure:"]
         lines.extend(f"- {line}" for line in redeploy_lines)
+    if redeploy_portfolio_rows:
+        lines += ["", "Suggested redeploy portfolio:"]
+        for row in redeploy_portfolio_rows:
+            lines.append(
+                f"- {row.get('Fund', '')}: {row.get('Allocation', '')} "
+                f"({row.get('Sleeve', '')}) - {row.get('Relative Signal', '')}"
+            )
 
     lines += [
         "",
@@ -406,6 +422,39 @@ def _build_scenario_html_table(body: str) -> str:
     )
 
 
+def _build_redeploy_portfolio_html_table(body: str) -> str:
+    rows = _extract_redeploy_portfolio_rows(body)
+    if not rows:
+        return ""
+    html_rows = []
+    for row in rows:
+        html_rows.append(
+            "<tr>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700;'>{escape(row.get('Fund', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;'>{escape(row.get('Allocation', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;'>{escape(row.get('Sleeve', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;'>{escape(row.get('Why it is included', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;'>{escape(row.get('PGR Correlation', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;'>{escape(row.get('Relative Signal', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;'>{escape(row.get('P(Benchmark Beats PGR)', ''))}</td>"
+            "</tr>"
+        )
+    return (
+        "<table style='width:100%;border-collapse:collapse;font-size:13px;'>"
+        "<thead><tr>"
+        "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Fund</th>"
+        "<th style='text-align:right;padding:8px;border-bottom:2px solid #cbd5e1;'>Allocation</th>"
+        "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Sleeve</th>"
+        "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Why</th>"
+        "<th style='text-align:right;padding:8px;border-bottom:2px solid #cbd5e1;'>Corr</th>"
+        "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Signal</th>"
+        "<th style='text-align:right;padding:8px;border-bottom:2px solid #cbd5e1;'>P(Benchmark>PGR)</th>"
+        "</tr></thead><tbody>"
+        + "".join(html_rows)
+        + "</tbody></table>"
+    )
+
+
 def build_email_html(body: str, lots_csv_path: str | Path | None = None) -> str:
     """Build the HTML decision memo."""
     signal = _extract_report_value(body, "Signal") or "UNKNOWN"
@@ -421,6 +470,7 @@ def build_email_html(body: str, lots_csv_path: str | Path | None = None) -> str:
     shadow_rows = _extract_shadow_check(body)
     recommendation_layer = _extract_recommendation_layer(body) or ""
     redeploy_lines = _extract_section_bullets(body, "Redeploy Guidance")
+    redeploy_portfolio_table = _build_redeploy_portfolio_html_table(body)
     mode_badge = {
         "ACTIONABLE": _html_badge("ACTIONABLE", "#0f766e"),
         "MONITORING-ONLY": _html_badge("MONITORING ONLY", "#a16207"),
@@ -513,6 +563,19 @@ def build_email_html(body: str, lots_csv_path: str | Path | None = None) -> str:
             "</div>"
         )
 
+    redeploy_portfolio_section = ""
+    if redeploy_portfolio_table:
+        redeploy_portfolio_section = (
+            "<div style='margin-top:20px;padding:20px;border:1px solid #dbeafe;border-radius:16px;background:#f8fbff;'>"
+            "<h2 style='margin:0 0 12px 0;font-size:20px;color:#0f172a;'>Suggested redeploy portfolio</h2>"
+            "<p style='margin:0 0 12px 0;color:#334155;line-height:1.5;'>"
+            "This is the repeatable answer to the practical follow-up question after a partial PGR sale: what to buy with the proceeds. "
+            "The workflow keeps a stable high-equity base and then tilts the allocations modestly toward funds with stronger benchmark-outperformance signals and better diversification versus PGR."
+            "</p>"
+            f"{redeploy_portfolio_table}"
+            "</div>"
+        )
+
     return (
         "<html><body style='margin:0;padding:0;background:#f3f6fb;font-family:Segoe UI,Arial,sans-serif;color:#0f172a;'>"
         "<div style='max-width:960px;margin:0 auto;padding:24px 14px;'>"
@@ -548,6 +611,7 @@ def build_email_html(body: str, lots_csv_path: str | Path | None = None) -> str:
         "</div>"
         + existing_section +
         redeploy_section +
+        redeploy_portfolio_section +
         shadow_section +
         "<div style='margin-top:20px;padding:20px;border:1px solid #e2e8f0;border-radius:16px;background:#ffffff;'>"
         "<h2 style='margin:0 0 12px 0;font-size:20px;color:#0f172a;'>Tax scenario view for the next tranche</h2>"

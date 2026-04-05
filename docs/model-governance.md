@@ -244,6 +244,24 @@ It adds:
 - explicit confirmation that the active recommendation layer and the promoted
   visible cross-check remain unchanged
 
+v27 redeploy-portfolio work is now also documented in:
+
+- `docs/plans/codex-v27-plan.md`
+- `docs/results/V27_RESULTS_SUMMARY.md`
+- `docs/closeouts/V27_CLOSEOUT_AND_V28_NEXT.md`
+
+It adds:
+
+- archived external redeploy-portfolio research reports under
+  `docs/history/redeploy-portfolio-reports/`
+- a repeatable, backtested sell-proceeds portfolio recommendation
+- explicit separation between:
+  - the broader forecast benchmark universe
+  - the narrower monthly investable redeploy universe
+- a live monthly `Suggested Redeploy Portfolio` section for the report and email
+- a benchmark-pruning review for which funds should remain contextual only in
+  the buy recommendation
+
 ## Promotion Rule
 
 Research results do not become production behavior automatically.

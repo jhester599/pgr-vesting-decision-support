@@ -110,6 +110,11 @@ Status as of 2026-04-05:
   `v25`: the remaining historical-comparison warning noise was cleaned up, the
   promoted visible cross-check was validated again through the monthly dry-run
   path, and the corrected repo state is now ready to package as the next PR.
+- `v27.x` adds a repeatable redeploy-portfolio answer to the monthly workflow.
+  It turns external portfolio-allocation research into a bounded, backtested
+  sell-proceeds portfolio recommendation that stays above 90% equities,
+  separates buyable funds from contextual benchmarks, and now appears in both
+  `recommendation.md` and the monthly email.
 
 ## Production vs. Research
 
@@ -211,6 +216,22 @@ The repo now has explicit operating boundaries:
     - keep the v13.1 recommendation layer unchanged
     - use `ensemble_ridge_gbt_v18` as the visible production cross-check
     - keep the underlying 4-model production signal path unchanged for now
+- Active v27 status:
+  - redeploy-portfolio layer complete
+  - current decision:
+    - keep the v13.1 recommendation layer unchanged
+    - keep `ensemble_ridge_gbt_v18` as the visible production cross-check
+    - include a `Suggested Redeploy Portfolio` section in each monthly report
+      and email
+    - use a pruned investable redeploy universe:
+      - `VOO`
+      - `VGT`
+      - `SCHD`
+      - `VXUS`
+      - `VWO`
+      - `BND`
+    - keep contextual funds such as `VFH` and `KIE` out of the default buy list
+      even if they remain useful forecast benchmarks
 - Active v23 status:
   - extended-history proxy validation complete
   - research-only stitched-history window:
