@@ -1,0 +1,2 @@
+status,recommended_path,rationale
+promote_candidate_cross_check,ensemble_ridge_gbt_v18,The best v21 candidate improved on the reduced live stack and matched or exceeded the live cross-check's agreement with the promoted simpler baseline over the full historical window.

@@ -75,7 +75,8 @@ It adds:
 - explicit existing-holdings lot guidance
 - explicit diversification-first redeploy guidance
 - a promoted v13.1 default that uses the simpler diversification-first
-  recommendation layer while keeping the live stack visible as a cross-check
+  recommendation layer while keeping a visible cross-check in the monthly
+  output
 
 v14 reduced-universe prediction-layer work is now also documented in:
 
@@ -161,6 +162,38 @@ It adds:
 - an explicit closeout of the features that remain impossible without new
   source classes
 
+v20 synthesis / promotion-readiness work is now also documented in:
+
+- `docs/plans/codex-v20-plan.md`
+- `docs/results/V20_RESULTS_SUMMARY.md`
+- `docs/closeouts/V20_CLOSEOUT_AND_V21_NEXT.md`
+
+It adds:
+
+- one assembled set of best-of-confirmed Ridge / GBT replacement stacks
+- direct comparison against the reduced live production cross-check
+- direct comparison against the `historical_mean` baseline
+- a 12-month monthly shadow review that explicitly checks directional agreement
+  with the promoted simpler baseline
+- a final v20 gate on whether any assembled replacement stack is actually
+  promotion-ready
+
+v21 historical-comparison work is now also documented in:
+
+- `docs/plans/codex-v21-plan.md`
+- `docs/results/V21_RESULTS_SUMMARY.md`
+- `docs/closeouts/V21_CLOSEOUT_AND_V22_NEXT.md`
+
+It adds:
+
+- a point-in-time historical comparison over the full common evaluable window
+- a correction to the narrow recent-window shadow-gate interpretation used in
+  v17-v20
+- a direct comparison of the live reduced cross-check and the leading v16-v20
+  candidates against the promoted simpler baseline across history
+- a final v21 gate on whether any candidate is actually cleaner historically
+  than the current live cross-check
+
 ## Promotion Rule
 
 Research results do not become production behavior automatically.
@@ -226,6 +259,128 @@ The current narrowed conclusion is:
   baseline
 - the next step should be fixed-budget feature replacement in v15 rather than
   broader methodology expansion
+
+## Current v20 Conclusion
+
+v20 improves the replacement-candidate picture again, but still does not
+justify replacing the current live production cross-check.
+
+What v20 proved:
+
+- `ensemble_ridge_gbt_v18` is the strongest assembled reduced-universe metric
+  row
+- `ensemble_ridge_gbt_v20_best` is the strongest best-of-confirmed stack built
+  from the v16-v19 winning swaps
+- the assembled candidates materially improve on the reduced live production
+  cross-check in research metrics
+
+What v20 still blocks on:
+
+- the leading assembled candidates remain directionally misaligned with the
+  promoted simpler baseline
+- the best v20 metric row had `0.0%` signal agreement with the simpler
+  baseline over the 12-month review window
+- the best v20 metric row stayed `UNDERPERFORM` in every reviewed month, which
+  is not a cleaner user-facing cross-check than the current live path
+
+So the current next-step recommendation is:
+
+- keep the v13.1 recommendation layer unchanged
+- keep the current live production cross-check unchanged
+- avoid another generic feature sweep
+- focus next on blocked-source work or narrow calibration / sign-bias
+  diagnostics if further prediction-layer work is needed
+
+## Current v21 Conclusion
+
+v21 changes the promotion picture materially.
+
+What v21 proved:
+
+- the narrow recent-window result from v20 was not the right basis for the
+  final promotion decision
+- over the full common evaluable history, `ensemble_ridge_gbt_v18` is cleaner
+  than the current live reduced cross-check versus the promoted simpler
+  baseline
+- `ensemble_ridge_gbt_v18` achieved stronger historical agreement with the
+  simpler baseline than the current live reduced cross-check while also
+  preserving the reduced-universe metric improvement
+
+What v21 recommends now:
+
+- keep the v13.1 recommendation layer unchanged
+- treat `ensemble_ridge_gbt_v18` as the leading candidate for replacing the
+  current live production cross-check
+- move next to a narrow promotion / implementation step rather than another
+  generic feature sweep
+
+## Current v22 Conclusion
+
+v22 implements that promotion recommendation narrowly.
+
+What v22 changed:
+
+- the active recommendation layer is still the simpler diversification-first
+  baseline
+- the visible monthly cross-check is now `ensemble_ridge_gbt_v18`
+- the underlying 4-model production signal path remains unchanged
+
+So the current conclusion is:
+
+- keep the v13.1 recommendation layer unchanged
+- use `ensemble_ridge_gbt_v18` as the visible production cross-check
+- keep the broader 4-model signal path unchanged unless a later cycle
+  explicitly promotes a full replacement
+
+## Current v23 Conclusion
+
+v23 extends the benchmark-side historical validation materially.
+
+What v23 proved:
+
+- the v21 promotion result survives a longer research-only stitched-history
+  window
+- with pre-inception proxies for `VOO`, `VXUS`, and `VMBS`, the common
+  evaluable window extends back to `2013-04-30`
+- `ensemble_ridge_gbt_v18` still behaves much more like the promoted simpler
+  baseline than the reduced live production cross-check does
+
+Important proxy-quality caveat:
+
+- `VXUS <- VEA + VWO` and `VMBS <- BND` are strong research proxies
+- `VOO <- VTI` is usable for longer-window validation, but it is a looser
+  proxy than ideal and should not be silently promoted into production
+
+So the current conclusion is:
+
+- keep the v13.1 recommendation layer unchanged
+- keep `ensemble_ridge_gbt_v18` as the visible production cross-check
+- treat the v21/v22 promotion path as confirmed on a longer stitched-history
+  window
+- if further benchmark-history work is pursued, prioritize a cleaner S&P 500
+  pre-inception proxy before another broad model sweep
+
+## Current v24 Conclusion
+
+v24 answers a narrower benchmark-definition question directly.
+
+What v24 proved:
+
+- simply replacing `VOO` with `VTI` does not improve the reduced forecast
+  universe enough to justify changing it
+- the raw-history advantage of `VTI` is real, but it does not translate into a
+  better leading candidate under the current modeling and policy setup
+- even the stitched-history `VTI` scenario, while longer, was weaker than the
+  current `VOO`-based universe on policy return and agreement with the simpler
+  baseline
+
+So the current conclusion is:
+
+- keep `VOO` in the reduced forecast universe
+- keep the v13.1 recommendation layer unchanged
+- keep `ensemble_ridge_gbt_v18` as the visible production cross-check
+- if more history is pursued later, use explicit research-only proxy studies
+  rather than silently redefining the benchmark universe
 
 ## Current v15 Conclusion
 

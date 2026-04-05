@@ -213,14 +213,17 @@ def build_shadow_check_lines(
 ) -> list[str]:
     """Render a compact shadow-baseline comparison for production reports."""
     same_action = abs(live_summary.sell_pct - shadow_summary.sell_pct) < 1e-9
+    uses_promoted_cross_check = live_summary.candidate_name == "ensemble_ridge_gbt_v18"
     if active_path == "shadow":
         comparison_line = (
-            "The promoted simpler diversification-first layer and the live stack still land on the same vest action."
+            "The promoted simpler diversification-first layer and the visible cross-check still land on the same vest action."
             if same_action
-            else "The promoted simpler diversification-first layer disagrees with the live stack, so treat the live prediction as a diagnostic rather than the active instruction."
+            else "The promoted simpler diversification-first layer disagrees with the visible cross-check, so treat the cross-check as a diagnostic rather than the active instruction."
         )
         note_line = (
-            "v13.1 promotes the simpler diversification-first baseline as the active recommendation layer while retaining the live model stack as a cross-check."
+            "v22 keeps the simpler diversification-first baseline as the active recommendation layer while promoting `ensemble_ridge_gbt_v18` as the visible cross-check."
+            if uses_promoted_cross_check
+            else "v13.1 promotes the simpler diversification-first baseline as the active recommendation layer while retaining the live model stack as a cross-check."
         )
     else:
         comparison_line = (
@@ -236,7 +239,7 @@ def build_shadow_check_lines(
         "",
         "| Path | Candidate | Policy | Signal | Recommendation Mode | Sell % | Predicted 6M Return | Aggregate OOS R^2 |",
         "|------|-----------|--------|--------|---------------------|--------|---------------------|------------------|",
-        f"| Live production | `{live_summary.candidate_name}` | `{live_summary.policy_name}` | {live_summary.consensus} | **{live_summary.recommendation_mode}** | **{live_summary.sell_pct:.0%}** | {live_summary.mean_predicted:+.2%} | {live_summary.aggregate_oos_r2:.2%} |",
+        f"| Visible cross-check | `{live_summary.candidate_name}` | `{live_summary.policy_name}` | {live_summary.consensus} | **{live_summary.recommendation_mode}** | **{live_summary.sell_pct:.0%}** | {live_summary.mean_predicted:+.2%} | {live_summary.aggregate_oos_r2:.2%} |",
         f"| Simpler baseline | `{shadow_summary.candidate_name}` | `{shadow_summary.policy_name}` | {shadow_summary.consensus} | **{shadow_summary.recommendation_mode}** | **{shadow_summary.sell_pct:.0%}** | {shadow_summary.mean_predicted:+.2%} | {shadow_summary.aggregate_oos_r2:.2%} |",
         "",
         f"> {comparison_line}",

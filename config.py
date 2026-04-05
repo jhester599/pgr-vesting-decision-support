@@ -242,6 +242,13 @@ RECOMMENDATION_LAYER_VALID_MODES: tuple[str, ...] = (
     "live_with_shadow",
     "shadow_promoted",
 )
+# v22: keep the active recommendation layer unchanged, but replace the
+# previously displayed live-stack cross-check with the historically stronger
+# reduced-universe Ridge+GBT candidate selected in v21.
+V22_PROMOTED_CROSS_CHECK_CANDIDATE: str = os.getenv(
+    "V22_PROMOTED_CROSS_CHECK_CANDIDATE",
+    "ensemble_ridge_gbt_v18",
+)
 V13_SHADOW_BASELINE_STRATEGY: str = "historical_mean"
 V13_SHADOW_BASELINE_POLICY: str = "neutral_band_3pct"
 V13_SHADOW_FORECAST_UNIVERSE: list[str] = [
