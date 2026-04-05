@@ -1,0 +1,4 @@
+universe_name,description,benchmarks,n_benchmarks,n_keep_for_redeploy,n_contextual_only,n_optional_substitute,n_not_preferred_for_redeploy,buyable_share,review_start,review_end,review_months
+buyable_only,Pure buyable redeploy universe using only realistic default sell-proceeds destinations.,"VOO,VGT,SCHD,VXUS,VWO,BND",6,6,0,0,0,1.0,2017-10-31,2025-09-30,96
+buyable_plus_context,"Buyable redeploy universe plus the smallest contextual financial-sector sleeve (VFH, KIE).","VOO,VGT,SCHD,VXUS,VWO,BND,VFH,KIE",8,6,2,0,0,0.75,2017-10-31,2025-09-30,96
+current_reduced,Current reduced forecast universe promoted through v21-v24.,"VOO,VXUS,VWO,VMBS,BND,GLD,DBC,VDE",8,4,0,0,4,0.5,2016-10-31,2025-09-30,108

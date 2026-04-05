@@ -115,6 +115,12 @@ Status as of 2026-04-05:
   sell-proceeds portfolio recommendation that stays above 90% equities,
   separates buyable funds from contextual benchmarks, and now appears in both
   `recommendation.md` and the monthly email.
+- `v28.x` is a completed forecast-universe review. It tests whether the
+  broader reduced forecast benchmark list should be pruned to match the v27
+  buyable fund set more closely. The answer is no for now: the broader reduced
+  forecast universe still produces materially better policy utility and
+  historical agreement than the narrower buyable-first alternatives, so the
+  project should keep separate forecast and redeploy universes.
 
 ## Production vs. Research
 
@@ -232,6 +238,15 @@ The repo now has explicit operating boundaries:
       - `BND`
     - keep contextual funds such as `VFH` and `KIE` out of the default buy list
       even if they remain useful forecast benchmarks
+- Active v28 status:
+  - forecast-universe review complete
+  - current decision:
+    - keep the v13.1 recommendation layer unchanged
+    - keep `ensemble_ridge_gbt_v18` as the visible production cross-check
+    - keep the v27 redeploy universe pruned for the monthly buy answer
+    - keep the broader reduced forecast universe unchanged for now
+    - do not prune the prediction-layer benchmark universe to the buyable list
+      yet
 - Active v23 status:
   - extended-history proxy validation complete
   - research-only stitched-history window:
@@ -445,3 +460,28 @@ which improved mean sign-policy return versus both the baseline GBT and the
 `historical_mean` sign-policy baseline. OOS R² is still negative, so v15 should
 be treated as a successful feature-research milestone, not yet a final
 production-promotion decision.
+
+## Notes on v28
+
+v28 tested whether the broader forecast benchmark universe should be pruned to
+match the narrower investable redeploy universe from v27.
+
+It should not.
+
+The project now intentionally keeps:
+
+- a broader forecast universe for prediction context
+- a narrower investable universe for the monthly "what to buy" answer
+
+## Notes on v29
+
+v29 is an interpretation-layer update rather than a model change.
+
+It adds:
+
+- a compact confidence snapshot
+- benchmark-role labels in the report and email
+- clearer separation between buy candidates and forecast-only context
+
+That makes the monthly output easier to interpret without changing the current
+recommendation policy.

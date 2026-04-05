@@ -262,6 +262,24 @@ It adds:
 - a benchmark-pruning review for which funds should remain contextual only in
   the buy recommendation
 
+v28 forecast-universe review is now also documented in:
+
+- `docs/plans/codex-v28-plan.md`
+- `docs/results/V28_RESULTS_SUMMARY.md`
+- `docs/closeouts/V28_CLOSEOUT_AND_V29_NEXT.md`
+
+It adds:
+
+- a direct test of whether the forecast benchmark universe should be pruned to
+  align more closely with the v27 buyable redeploy universe
+- explicit comparison between:
+  - the current reduced forecast universe
+  - a buyable-only forecast universe
+  - a buyable-plus-context forecast universe
+- a governance conclusion that forecast and redeploy universes should remain
+  separate for now because the broader forecast set still performs materially
+  better
+
 ## Promotion Rule
 
 Research results do not become production behavior automatically.
@@ -594,3 +612,31 @@ v11 kept the classifier in that role. Even when the abstain-only overlay looked
 useful in research, it was still not promoted to primary-engine status.
 
 It is not the primary production decision engine.
+
+## Current v28 Conclusion
+
+v28 confirms that the project should keep separate universes for:
+
+- forecast benchmarking
+- user-facing redeploy recommendations
+
+The narrower buyable-first universes were conceptually cleaner, but they gave
+up too much on policy utility, agreement with the promoted simpler baseline,
+and review-window coverage.
+
+So the current governance rule is:
+
+- keep the broader reduced forecast universe
+- keep the narrower v27 redeploy universe for the buy answer
+
+## Current v29 Conclusion
+
+v29 does not change the model stack or recommendation policy.
+
+It changes how the monthly output explains the current system:
+
+- benchmark roles are explicit
+- the confidence gate is summarized near the top
+- forecast-only context is easier to distinguish from realistic buy candidates
+
+This is a presentation improvement, not a new promotion decision.

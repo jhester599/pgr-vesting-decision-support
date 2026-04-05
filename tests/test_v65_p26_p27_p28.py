@@ -368,12 +368,13 @@ class TestBuildEmailMessage:
     _SAMPLE_BODY = textwrap.dedent("""\
         # PGR Monthly Decision — April 2026
 
-        **As-of Date:** 2026-04-03
-        **Recommendation Layer:** v13.1 promoted simpler diversification-first recommendation layer + live-stack cross-check
+        **As-of Date:** 2026-04-03  
+        **Recommendation Layer:** v13.1 promoted simpler diversification-first recommendation layer + live-stack cross-check  
 
         ## Executive Summary
 
         - What changed since last month: Outlook weakened.
+        - Current model view: PGR is projected to outperform the benchmark set by +6.0% over the next 6 months. Recommendation mode remains ACTIONABLE.
         - What to do at the next vest: Default 50% sale.
 
         ---
@@ -386,10 +387,23 @@ class TestBuildEmailMessage:
         | Recommendation Mode | **ACTIONABLE** |
         | Recommended Sell % | **20%** |
         | Predicted 6M Relative Return | +6.00% |
+        | P(Outperform, calibrated) | 66.0% |
+        | Mean IC (across benchmarks) | 0.0800 |
+        | Mean Hit Rate | 56.0% |
+        | Aggregate OOS R^2 | -20.00% |
 
         ---
 
-        ## Per-Benchmark Signals
+        ## Confidence Snapshot
+
+        - 2/4 core gates pass. The signal may still be directionally interesting, but the quality gate remains too weak for a prediction-led vest action.
+
+        | Check | Current | Threshold | Status | Meaning |
+        |-------|---------|-----------|--------|---------|
+        | Mean IC | 0.0800 | >= 0.0700 | **PASS** | Cross-benchmark ranking signal. |
+        | Mean hit rate | 56.0% | >= 55.0% | **PASS** | Directional accuracy versus zero. |
+        | Aggregate OOS R^2 | -20.00% | >= 2.00% | **FAIL** | Calibration / fit versus a naive benchmark. |
+        | Representative CPCV | FAIL | not FAIL | **FAIL** | Stability across purged cross-validation paths. |
 
         ## Next Vest Decision
 
@@ -403,10 +417,10 @@ class TestBuildEmailMessage:
         | Average cost basis used | $133.38 |
         | Suggested default vest action | Sell 20% of the vesting tranche |
 
-        | Scenario | Sell Date | Tax Rate | Predicted Return | Net Proceeds | Probability |
-        |----------|-----------|----------|------------------|--------------|-------------|
-        | SELL_NOW_STCG | 2026-07-17 | 37% | +0.00% | $1,396.94 | 100.0% |
-        | HOLD_TO_LTCG | 2027-07-18 | 20% | +8.36% | $1,592.33 | 67.4% |
+        | Scenario | Timing | Tax Rate | Predicted Return | Probability | Use when |
+        |----------|--------|----------|------------------|-------------|----------|
+        | Sell at vest (STCG) | 2026-07-17 | 37% | +0.00% | 100.0% | Use the default diversification / tax-discipline rule or when the model edge is weak. |
+        | Hold to LTCG date | 2027-07-18 | 20% | +8.36% | 67.4% | Use only when the edge is strong enough to justify waiting for lower long-term tax treatment. |
 
         ## Existing Holdings Guidance
 
@@ -438,10 +452,15 @@ class TestBuildEmailMessage:
         | Live production | `production_4_model_ensemble` | `current_production_mapping` | OUTPERFORM | **ACTIONABLE** | **20%** | +6.00% | -20.00% |
         | Simpler baseline | `baseline_historical_mean` | `neutral_band_3pct` | OUTPERFORM | **ACTIONABLE** | **20%** | +5.00% | -10.00% |
 
-        | Benchmark | Description | Predicted Return | CI Lower | CI Upper | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |
-        |-----------|-------------|------------------|----------|----------|----|----------|--------|--------|------------|--------|
-        | VTI | Total Stock Market | +6.95% | -29.14% | +43.05% | 0.0407 | 51.6% | 70.9% | 59.3% | HIGH | NEUTRAL |
-        | VHT | Health Care | +6.03% | -28.35% | +40.41% | 0.1665 | 58.5% | 68.3% | 66.1% | MODERATE | OUTPERFORM |
+        ## Per-Benchmark Signals
+
+        - Predicted Return is from the perspective of PGR versus each fund. Positive means PGR is expected to outperform that fund; negative means the fund is expected to outperform PGR.
+        - Benchmark Role distinguishes realistic buy candidates from contextual or forecast-only comparison funds.
+
+        | Benchmark | Benchmark Role | Description | Predicted Return | CI Lower | CI Upper | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |
+        |-----------|----------------|-------------|------------------|----------|----------|----|----------|--------|--------|------------|--------|
+        | VTI | Forecast only | Total Stock Market | +7.0% | -29.1% | +43.1% | 0.0407 | 51.6% | 70.9% | 59.3% | HIGH | NEUTRAL |
+        | VHT | Forecast only | Health Care | +6.0% | -28.4% | +40.4% | 0.1665 | 58.5% | 68.3% | 66.1% | MODERATE | OUTPERFORM |
     """)
 
     def _write_lots(self, tmp_path: Path) -> Path:
@@ -482,6 +501,7 @@ class TestBuildEmailMessage:
         assert "Recommendation mode: ACTIONABLE" in body
         assert "What's changed:" in body
         assert "Existing shares already held:" in body
+        assert "Confidence checks:" in body
         assert "Simple-baseline cross-check:" in body
         assert "Active layer: v13.1 promoted simpler diversification-first recommendation layer + live-stack cross-check" in body
         assert "If redeploying sold exposure:" in body
@@ -502,6 +522,7 @@ class TestBuildEmailMessage:
         assert "<html>" in html_body
         assert "New vested shares" in html_body
         assert "Existing shares already held" in html_body
+        assert "Confidence snapshot" in html_body
         assert "Recommendation-layer cross-check" in html_body
         assert "Active layer:" in html_body
         assert "If redeploying sold exposure" in html_body

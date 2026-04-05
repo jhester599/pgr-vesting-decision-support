@@ -167,10 +167,12 @@ def test_recommendation_report_includes_v13_sections(monkeypatch, tmp_path: Path
 
     content = (tmp_path / "recommendation.md").read_text(encoding="utf-8")
     assert "Recommendation Layer" in content
+    assert "## Confidence Snapshot" in content
     assert "## Existing Holdings Guidance" in content
     assert "## Redeploy Guidance" in content
     assert "## Suggested Redeploy Portfolio" in content
     assert "## Simple-Baseline Cross-Check" in content
+    assert "Benchmark Role" in content
 
 
 def test_shadow_promoted_cross_check_mentions_active_layer() -> None:

@@ -125,11 +125,27 @@ def build_executive_summary_lines(
             f"IC {aggregate_health['nw_ic']:.4f}, hit rate {aggregate_health['agg_hit']:.1%}."
         )
 
+    if consensus == "OUTPERFORM" and mean_predicted >= 0:
+        model_view_line = (
+            f"PGR is projected to outperform the benchmark set by {mean_predicted:+.2%} over the next 6 months. "
+            f"Recommendation mode remains {recommendation_mode['label']}."
+        )
+    elif consensus == "UNDERPERFORM" and mean_predicted <= 0:
+        model_view_line = (
+            f"PGR is projected to lag the benchmark set by {mean_predicted:+.2%} over the next 6 months. "
+            f"Recommendation mode remains {recommendation_mode['label']}."
+        )
+    else:
+        model_view_line = (
+            f"Consensus signal is {consensus}, but the average relative-return forecast is {mean_predicted:+.2%} "
+            f"across benchmarks over the next 6 months. Recommendation mode remains {recommendation_mode['label']}."
+        )
+
     return [
         "## Executive Summary",
         "",
         f"- What changed since last month: {change_line}",
-        f"- Current model view: {consensus} with {confidence_tier.lower()} confidence and a 6M relative-return estimate of {mean_predicted:+.2%}.",
+        f"- Current model view: {model_view_line}",
         f"- How trustworthy it is: {quality_sentence} {health_line}",
         f"- What to do at the next vest: {next_vest_line}",
         f"- What would change the recommendation: {change_trigger}",
@@ -160,6 +176,12 @@ def build_vest_decision_lines(
         else "Because recommendation mode is not ACTIONABLE, do not treat the tax-engine ranking below as a standalone trading instruction."
     )
 
+    scenario_title = (
+        "Tax timing scenarios (action-supporting)"
+        if recommendation_mode["mode"] == "actionable"
+        else "Tax timing scenarios (informational)"
+    )
+
     lines = [
         "## Next Vest Decision",
         "",
@@ -176,15 +198,27 @@ def build_vest_decision_lines(
         f"> {recommendation_mode['action_note']}",
         "> The scenario table below is provisional and uses the current lot file as a proxy for the next vesting decision.",
         "",
-        "| Scenario | Sell Date | Tax Rate | Predicted Return | Net Proceeds | Probability |",
-        "|----------|-----------|----------|------------------|--------------|-------------|",
+        f"### {scenario_title}",
+        "",
+        "| Scenario | Timing | Tax Rate | Predicted Return | Probability | Use when |",
+        "|----------|--------|----------|------------------|-------------|----------|",
     ]
 
+    scenario_labels = {
+        "SELL_NOW_STCG": "Sell at vest (STCG)",
+        "HOLD_TO_LTCG": "Hold to LTCG date",
+        "HOLD_FOR_LOSS": "Hold for downside / loss case",
+    }
+    use_when_labels = {
+        "SELL_NOW_STCG": "Use the default diversification / tax-discipline rule or when the model edge is weak.",
+        "HOLD_TO_LTCG": "Use only when the edge is strong enough to justify waiting for lower long-term tax treatment.",
+        "HOLD_FOR_LOSS": "Use only when you are intentionally waiting for a downside or tax-loss outcome.",
+    }
     for scenario in scenario_result.scenarios:
         lines.append(
-            f"| {scenario.label} | {scenario.sell_date} | {scenario.tax_rate:.0%} | "
-            f"{scenario.predicted_return:+.2%} | ${scenario.net_proceeds:,.2f} | "
-            f"{scenario.probability:.1%} |"
+            f"| {scenario_labels.get(scenario.label, scenario.label)} | {scenario.sell_date} | {scenario.tax_rate:.0%} | "
+            f"{scenario.predicted_return:+.2%} | {scenario.probability:.1%} | "
+            f"{use_when_labels.get(scenario.label, 'Informational only.')} |"
         )
 
     lines += [

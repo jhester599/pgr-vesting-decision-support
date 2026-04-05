@@ -142,6 +142,36 @@ That split allows the project to keep contextual forecasting funds such as
 `VFH` or `KIE` without presenting them as preferred destinations for capital
 leaving a concentrated PGR position.
 
+## v29 Confidence And Benchmark Roles
+
+v29 improves interpretation rather than prediction.
+
+The report and email now include:
+
+- `Confidence Snapshot`
+- explicit `Benchmark Role` labels in per-benchmark detail
+
+The confidence snapshot summarizes:
+
+- mean IC
+- mean hit rate
+- aggregate OOS R^2
+- representative CPCV
+
+Benchmark roles are meant to prevent over-reading the forecast table. A fund
+can appear as:
+
+- `Buy candidate`
+- `Optional substitute`
+- `Context only`
+- `Forecast only`
+
+This preserves the v28 governance rule:
+
+- the forecast universe can stay broader than the monthly buy universe
+- but the user-facing output should say which funds are realistic destinations
+  for sold PGR proceeds
+
 ## Diagnostic Report
 
 The diagnostic report is the technical appendix. It includes:
