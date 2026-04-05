@@ -101,6 +101,7 @@ from src.reporting.backtest_report import (
     generate_rolling_ic_series,
 )
 from src.reporting.decision_rendering import (
+    build_data_freshness_lines as render_data_freshness_lines,
     build_executive_summary_lines as render_executive_summary_lines,
     build_vest_decision_lines as render_vest_decision_lines,
     determine_recommendation_mode as render_determine_recommendation_mode,
@@ -1196,6 +1197,7 @@ def _write_recommendation_md(
     redeploy_portfolio: dict[str, object] | None = None,
     recommendation_layer_label: str | None = None,
     representative_cpcv: CPCVResult | None = None,
+    freshness_report: dict[str, object] | None = None,
 ) -> None:
     """Write the human-readable recommendation report."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1250,6 +1252,7 @@ def _write_recommendation_md(
             previous_summary,
             next_vest_summary,
         ),
+        *render_data_freshness_lines(freshness_report),
         "## Consensus Signal",
         "",
         f"| Field | Value |",
@@ -2083,6 +2086,9 @@ def main(
     conn = db_client.get_connection(config.DB_PATH)
     db_client.initialize_schema(conn)
     db_client.warn_if_db_behind(conn, context="monthly_decision")
+    freshness_report = db_client.check_data_freshness(conn, run_date)
+    for message in freshness_report["warnings"]:
+        print(f"[data-freshness] WARNING: {message}")
 
     # Step 1: Refresh FRED data
     _fetch_fred_step(conn, dry_run=dry_run, skip_fred=skip_fred)
@@ -2244,6 +2250,7 @@ def main(
         redeploy_portfolio=redeploy_portfolio,
         recommendation_layer_label=recommendation_layer_label,
         representative_cpcv=diagnostics.get("representative_cpcv"),
+        freshness_report=freshness_report,
     )
     _write_signals_csv(out_dir, signals)
     _append_decision_log(
@@ -2265,6 +2272,7 @@ def main(
 
     snapshot = db_client.get_operational_snapshot(conn)
     manifest_warnings: list[str] = []
+    manifest_warnings.extend(freshness_report["warnings"])
     if aggregate_health is not None and aggregate_health["oos_r2"] < config.DIAG_MIN_OOS_R2:
         manifest_warnings.append(
             f"Aggregate OOS R^2 below threshold: {aggregate_health['oos_r2']:.2%} < {config.DIAG_MIN_OOS_R2:.2%}."

@@ -14,8 +14,8 @@ version tags:
 
 - `v30.0` - EDGAR identity and config hardening
 - `v30.1` - stale documentation header cleanup
-- `v30.2` - Black-Litterman fallback visibility in the monthly report
-- `v30.3` - data-freshness preflight checks
+- `v30.2` - data-freshness preflight checks
+- `v30.3` - Black-Litterman fallback visibility, only if BL is promoted into the live monthly path
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -38,3 +38,18 @@ runtime behavior:
 - The local virtualenv is currently missing `lxml`, which causes
   `tests/test_edgar_8k_fetcher.py` to fail for environment reasons unrelated to
   `v30.0`. Handle that separately from this config-hardening step.
+- The peer-review Black-Litterman fallback item is real in
+  `src/portfolio/black_litterman.py`, but the current monthly workflow still
+  renders redeploy guidance from the v27 heuristic portfolio builder rather
+  than a live BL optimizer. That makes BL fallback visibility a larger workflow
+  change than a quick report tweak on this baseline.
+
+## v30.2 Scope
+
+`v30.2` adds operational freshness checks around the existing DB snapshot:
+
+- evaluate latest price, FRED, and monthly EDGAR dates against explicit
+  thresholds
+- print preflight freshness warnings at monthly runtime
+- surface the same warnings in `recommendation.md`
+- carry freshness warnings into the run manifest

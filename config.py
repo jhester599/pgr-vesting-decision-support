@@ -67,6 +67,13 @@ AV_DAILY_LIMIT: int = 25
 # EDGAR and FRED are free public APIs with no enforced daily limit.
 
 # ---------------------------------------------------------------------------
+# Data freshness thresholds (peer-review operational safety checks)
+# ---------------------------------------------------------------------------
+DATA_FRESHNESS_MAX_PRICE_AGE_DAYS: int = 10
+DATA_FRESHNESS_MAX_FRED_AGE_DAYS: int = 45
+DATA_FRESHNESS_MAX_EDGAR_AGE_DAYS: int = 35
+
+# ---------------------------------------------------------------------------
 # FRED series lists
 # ---------------------------------------------------------------------------
 # v3.0: macro regime and credit spread features
