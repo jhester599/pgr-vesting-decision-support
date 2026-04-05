@@ -26,6 +26,7 @@ version tags:
 - `v30.11` - align script-level EDGAR fetcher logging and headers
 - `v30.12` - add logging fallbacks to initial fetch
 - `v30.13` - add logging fallbacks to bootstrap
+- `v30.14` - add logging fallback to v1 migration script
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -156,3 +157,11 @@ dry-run tests to assert on logged output instead of captured stdout.
 - migrate bootstrap orchestration output to the shared logging scaffold
 - preserve exception context when the delegated monthly decision run fails
 - add focused tests for the bootstrap fallback path
+
+## v30.14 Scope
+
+`v30.14` keeps the fallback sweep moving in the one-time migration helper:
+
+- migrate `scripts/migrate_v1_to_v2.py` to the shared logging scaffold
+- preserve exception context when the legacy EDGAR loader import/run fails
+- add focused tests for that migration fallback
