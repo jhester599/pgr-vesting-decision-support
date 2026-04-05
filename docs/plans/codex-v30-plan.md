@@ -22,6 +22,7 @@ version tags:
 - `v30.7` - add production logging scaffold for weekly fetch
 - `v30.8` - add operational logging to monthly decision fallbacks
 - `v30.9` - migrate peer fetch entrypoint to structured logging
+- `v30.10` - rewrite README as a landing page
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -119,3 +120,12 @@ paths:
 `v30.9` keeps the production entry points aligned by migrating
 `scripts/peer_fetch.py` to the shared logging scaffold and refreshing its
 dry-run tests to assert on logged output instead of captured stdout.
+
+## v30.10 Scope
+
+`v30.10` turns the repository root back into an onboarding page:
+
+- replace the version-history-heavy `README.md` with a concise landing page
+- link out to `docs/architecture.md`, `docs/operations-runbook.md`,
+  `docs/changelog.md`, and `ROADMAP.md`
+- keep detailed version history in dedicated docs instead of the repo root
