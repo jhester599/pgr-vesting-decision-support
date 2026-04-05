@@ -61,7 +61,7 @@ belongs in `src/`.
 - Cached raw provider payloads: `data/raw/`
 - Processed local inputs: `data/processed/`
 - Production artifacts: `results/monthly_decisions/`
-- Research artifacts: `results/v9/`
+- Versioned research artifacts: `results/v9/` through `results/v29/`
 
 ## Research vs. Production Boundary
 
@@ -74,7 +74,7 @@ Production code:
 Research code:
 
 - explores alternative benchmarks, targets, policies, and model subsets
-- writes to `results/v9/`
+- writes versioned outputs under `results/v9/` through `results/v29/`
 - should not silently modify production recommendations
 
 See [model-governance.md](model-governance.md) and
