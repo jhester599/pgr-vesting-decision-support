@@ -266,6 +266,79 @@ def warn_if_db_behind(
     return list(report["warnings"])
 
 
+def _coerce_iso_date(raw_value: str | None) -> date | None:
+    """Return a ``date`` from an ISO-like string, or ``None`` when absent."""
+    if raw_value is None:
+        return None
+    try:
+        return date.fromisoformat(str(raw_value)[:10])
+    except ValueError:
+        return None
+
+
+def check_data_freshness(
+    conn: sqlite3.Connection,
+    reference_date: date,
+    price_max_age_days: int = config.DATA_FRESHNESS_MAX_PRICE_AGE_DAYS,
+    fred_max_age_days: int = config.DATA_FRESHNESS_MAX_FRED_AGE_DAYS,
+    edgar_max_age_days: int = config.DATA_FRESHNESS_MAX_EDGAR_AGE_DAYS,
+) -> dict[str, Any]:
+    """Evaluate whether core feeds are fresh enough for a live monthly run."""
+    checks: list[tuple[str, str, str, int]] = [
+        ("Daily prices", "daily_prices", "date", price_max_age_days),
+        ("FRED macro", "fred_macro_monthly", "month_end", fred_max_age_days),
+        ("PGR monthly EDGAR", "pgr_edgar_monthly", "month_end", edgar_max_age_days),
+    ]
+
+    results: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    has_problem = False
+
+    for feed, table, column, max_age_days in checks:
+        latest_raw = get_table_max_date(conn, table, column)
+        latest_date = _coerce_iso_date(latest_raw)
+        if latest_date is None:
+            result = {
+                "feed": feed,
+                "table": table,
+                "column": column,
+                "max_age_days": max_age_days,
+                "latest_date": None,
+                "age_days": None,
+                "status": "MISSING",
+            }
+            warnings.append(
+                f"{feed} data is missing from {table}."
+            )
+            has_problem = True
+        else:
+            age_days = max(0, (reference_date - latest_date).days)
+            status = "OK" if age_days <= max_age_days else "STALE"
+            result = {
+                "feed": feed,
+                "table": table,
+                "column": column,
+                "max_age_days": max_age_days,
+                "latest_date": latest_date.isoformat(),
+                "age_days": age_days,
+                "status": status,
+            }
+            if status != "OK":
+                warnings.append(
+                    f"{feed} is stale: latest {latest_date.isoformat()} "
+                    f"({age_days} days old, limit {max_age_days})."
+                )
+                has_problem = True
+        results.append(result)
+
+    return {
+        "reference_date": reference_date.isoformat(),
+        "overall_status": "WARNING" if has_problem else "OK",
+        "checks": results,
+        "warnings": warnings,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Price helpers
 # ---------------------------------------------------------------------------

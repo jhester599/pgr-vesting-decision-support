@@ -231,3 +231,57 @@ def build_vest_decision_lines(
         "",
     ]
     return lines
+
+
+def build_data_freshness_lines(freshness_report: dict[str, Any] | None) -> list[str]:
+    """Render data freshness checks for recommendation.md."""
+    if freshness_report is None:
+        return []
+
+    status_note = (
+        "All monitored feeds are within freshness thresholds for this run."
+        if freshness_report.get("overall_status") == "OK"
+        else "Some upstream data is stale or missing. Treat this run with extra caution until the feeds refresh."
+    )
+
+    status_labels = {
+        "OK": "OK",
+        "STALE": "STALE",
+        "MISSING": "MISSING",
+    }
+
+    lines = [
+        "## Data Freshness",
+        "",
+        f"> {status_note}",
+        "",
+        "| Feed | Latest Date | Age | Limit | Status |",
+        "|------|-------------|-----|-------|--------|",
+    ]
+
+    for row in freshness_report.get("checks", []):
+        latest_date = row.get("latest_date") or "missing"
+        age_text = (
+            f"{row['age_days']} days"
+            if row.get("age_days") is not None
+            else "n/a"
+        )
+        lines.append(
+            f"| {row['feed']} | {latest_date} | {age_text} | "
+            f"{row['max_age_days']} days | **{status_labels.get(row['status'], row['status'])}** |"
+        )
+
+    if freshness_report.get("warnings"):
+        lines += [
+            "",
+            "Warnings:",
+        ]
+        for warning in freshness_report["warnings"]:
+            lines.append(f"- {warning}")
+
+    lines += [
+        "",
+        "---",
+        "",
+    ]
+    return lines

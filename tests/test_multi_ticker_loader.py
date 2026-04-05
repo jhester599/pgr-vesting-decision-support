@@ -46,6 +46,20 @@ def conn(tmp_path):
     c.close()
 
 
+@pytest.fixture(autouse=True)
+def av_api_key(monkeypatch):
+    monkeypatch.setattr(config, "AV_API_KEY", "test-key")
+
+
+def _mock_retry_session(response=None, side_effect=None):
+    session = MagicMock()
+    if side_effect is not None:
+        session.get.side_effect = side_effect
+    else:
+        session.get.return_value = response
+    return session
+
+
 # ---------------------------------------------------------------------------
 # _parse_av_daily
 # ---------------------------------------------------------------------------
@@ -128,57 +142,62 @@ class TestMultiTickerLoader:
             }
         }
 
-    @patch("src.ingestion.multi_ticker_loader.requests.get")
-    def test_fetch_ticker_prices_inserts_rows(self, mock_get, conn):
-        mock_get.return_value = MagicMock(
+    @patch("src.ingestion.multi_ticker_loader.build_retry_session")
+    def test_fetch_ticker_prices_inserts_rows(self, mock_build_session, conn):
+        mock_resp = MagicMock(
             status_code=200,
             json=lambda: self._av_response("VTI"),
         )
+        mock_build_session.return_value = _mock_retry_session(response=mock_resp)
         loader = MultiTickerLoader(conn)
         n = loader.fetch_ticker_prices("VTI")
         assert n == 3
 
-    @patch("src.ingestion.multi_ticker_loader.requests.get")
-    def test_fetch_ticker_prices_rows_in_db(self, mock_get, conn):
-        mock_get.return_value = MagicMock(
+    @patch("src.ingestion.multi_ticker_loader.build_retry_session")
+    def test_fetch_ticker_prices_rows_in_db(self, mock_build_session, conn):
+        mock_resp = MagicMock(
             status_code=200,
             json=lambda: self._av_response("VTI"),
         )
+        mock_build_session.return_value = _mock_retry_session(response=mock_resp)
         loader = MultiTickerLoader(conn)
         loader.fetch_ticker_prices("VTI")
         df = db_client.get_prices(conn, "VTI")
         assert len(df) == 3
 
-    @patch("src.ingestion.multi_ticker_loader.requests.get")
-    def test_fetch_ticker_prices_skip_if_fresh_today(self, mock_get, conn):
+    @patch("src.ingestion.multi_ticker_loader.build_retry_session")
+    def test_fetch_ticker_prices_skip_if_fresh_today(self, mock_build_session, conn):
         """Second call same day should skip HTTP (already fresh)."""
-        mock_get.return_value = MagicMock(
+        mock_resp = MagicMock(
             status_code=200,
             json=lambda: self._av_response("VTI"),
         )
+        mock_build_session.return_value = _mock_retry_session(response=mock_resp)
         loader = MultiTickerLoader(conn)
         loader.fetch_ticker_prices("VTI")   # first call → fetches
         n2 = loader.fetch_ticker_prices("VTI")  # second call → skips
         assert n2 == 0
-        assert mock_get.call_count == 1  # only one real HTTP call
+        assert mock_build_session.return_value.get.call_count == 1  # only one real HTTP call
 
-    @patch("src.ingestion.multi_ticker_loader.requests.get")
-    def test_force_refresh_bypasses_fresh_check(self, mock_get, conn):
-        mock_get.return_value = MagicMock(
+    @patch("src.ingestion.multi_ticker_loader.build_retry_session")
+    def test_force_refresh_bypasses_fresh_check(self, mock_build_session, conn):
+        mock_resp = MagicMock(
             status_code=200,
             json=lambda: self._av_response("VTI"),
         )
+        mock_build_session.return_value = _mock_retry_session(response=mock_resp)
         loader = MultiTickerLoader(conn)
         loader.fetch_ticker_prices("VTI")
         loader.fetch_ticker_prices("VTI", force_refresh=True)
-        assert mock_get.call_count == 2
+        assert mock_build_session.return_value.get.call_count == 2
 
-    @patch("src.ingestion.multi_ticker_loader.requests.get")
-    def test_fetch_all_prices_returns_dict(self, mock_get, conn):
-        mock_get.return_value = MagicMock(
+    @patch("src.ingestion.multi_ticker_loader.build_retry_session")
+    def test_fetch_all_prices_returns_dict(self, mock_build_session, conn):
+        mock_resp = MagicMock(
             status_code=200,
             json=lambda: self._av_response(),
         )
+        mock_build_session.return_value = _mock_retry_session(response=mock_resp)
         loader = MultiTickerLoader(conn)
         results = loader.fetch_all_prices(["VTI", "BND"], sleep_between=0)
         assert isinstance(results, dict)
@@ -202,9 +221,9 @@ class TestMultiTickerLoader:
         with pytest.raises(RuntimeError):
             loader.fetch_all_prices(["VTI"], sleep_between=0)
 
-    @patch("src.ingestion.multi_ticker_loader.requests.get")
+    @patch("src.ingestion.multi_ticker_loader.build_retry_session")
     def test_fetch_all_prices_information_skips_one_continues_rest(
-        self, mock_get, conn
+        self, mock_build_session, conn
     ):
         """'Information' advisory skips one ticker but the batch continues.
 
@@ -230,7 +249,7 @@ class TestMultiTickerLoader:
             mock_resp.json.return_value = self._av_response()
             return mock_resp
 
-        mock_get.side_effect = side_effect
+        mock_build_session.return_value = _mock_retry_session(side_effect=side_effect)
         loader = MultiTickerLoader(conn)
         results = loader.fetch_all_prices(tickers, sleep_between=0)
 
@@ -243,9 +262,9 @@ class TestMultiTickerLoader:
         assert results["GLD"] is not None
         assert results["GLD"] >= 0
 
-    @patch("src.ingestion.multi_ticker_loader.requests.get")
+    @patch("src.ingestion.multi_ticker_loader.build_retry_session")
     def test_fetch_all_prices_note_hard_stop_defers_remaining(
-        self, mock_get, conn
+        self, mock_build_session, conn
     ):
         """'Note' (hard quota) stops the batch and defers all remaining tickers.
 
@@ -271,7 +290,7 @@ class TestMultiTickerLoader:
             mock_resp.json.return_value = self._av_response()
             return mock_resp
 
-        mock_get.side_effect = side_effect
+        mock_build_session.return_value = _mock_retry_session(side_effect=side_effect)
         loader = MultiTickerLoader(conn)
         results = loader.fetch_all_prices(tickers, sleep_between=0)
 
@@ -282,8 +301,8 @@ class TestMultiTickerLoader:
         assert results["BND"] is None
         assert results["GLD"] is None
 
-    @patch("src.ingestion.multi_ticker_loader.requests.get")
-    def test_information_does_not_raise_av_rate_limit_error(self, mock_get, conn):
+    @patch("src.ingestion.multi_ticker_loader.build_retry_session")
+    def test_information_does_not_raise_av_rate_limit_error(self, mock_build_session, conn):
         """Regression: 'Information' must NOT raise AVRateLimitError.
 
         AVRateLimitError signals a hard quota stop; the soft 'Information'
@@ -298,7 +317,7 @@ class TestMultiTickerLoader:
         mock_resp.json.return_value = {
             "Information": "Standard API rate limit is 25 requests per day."
         }
-        mock_get.return_value = mock_resp
+        mock_build_session.return_value = _mock_retry_session(response=mock_resp)
 
         import sqlite3
         from src.database import db_client as _dbc
@@ -316,8 +335,8 @@ class TestMultiTickerLoader:
         except AVRateLimitError:
             pytest.fail("'Information' response must not raise AVRateLimitError")
 
-    @patch("src.ingestion.multi_ticker_loader.requests.get")
-    def test_note_raises_av_rate_limit_error(self, mock_get, conn):
+    @patch("src.ingestion.multi_ticker_loader.build_retry_session")
+    def test_note_raises_av_rate_limit_error(self, mock_build_session, conn):
         """'Note' response must raise AVRateLimitError (hard quota stop)."""
         from src.ingestion.exceptions import AVRateLimitError
         from src.ingestion.multi_ticker_loader import _av_request
@@ -327,7 +346,7 @@ class TestMultiTickerLoader:
         mock_resp.json.return_value = {
             "Note": "Thank you for using Alpha Vantage! Rate limit 25/day."
         }
-        mock_get.return_value = mock_resp
+        mock_build_session.return_value = _mock_retry_session(response=mock_resp)
 
         import sqlite3
         from src.database import db_client as _dbc
@@ -441,53 +460,57 @@ class TestMultiDividendLoader:
             ],
         }
 
-    @patch("src.ingestion.multi_dividend_loader.requests.get")
-    def test_fetch_dividends_inserts_rows(self, mock_get, conn):
-        mock_get.return_value = MagicMock(
+    @patch("src.ingestion.multi_dividend_loader.build_retry_session")
+    def test_fetch_dividends_inserts_rows(self, mock_build_session, conn):
+        mock_resp = MagicMock(
             status_code=200,
             json=lambda: self._av_div_response("VTI"),
         )
+        mock_build_session.return_value = _mock_retry_session(response=mock_resp)
         loader = MultiDividendLoader(conn)
         n = loader.fetch_dividends("VTI")
         assert n == 2
 
-    @patch("src.ingestion.multi_dividend_loader.requests.get")
-    def test_fetch_dividends_rows_in_db(self, mock_get, conn):
-        mock_get.return_value = MagicMock(
+    @patch("src.ingestion.multi_dividend_loader.build_retry_session")
+    def test_fetch_dividends_rows_in_db(self, mock_build_session, conn):
+        mock_resp = MagicMock(
             status_code=200,
             json=lambda: self._av_div_response("VTI"),
         )
+        mock_build_session.return_value = _mock_retry_session(response=mock_resp)
         loader = MultiDividendLoader(conn)
         loader.fetch_dividends("VTI")
         df = db_client.get_dividends(conn, "VTI")
         assert len(df) == 2
 
-    @patch("src.ingestion.multi_dividend_loader.requests.get")
-    def test_skip_if_fresh_today(self, mock_get, conn):
-        mock_get.return_value = MagicMock(
+    @patch("src.ingestion.multi_dividend_loader.build_retry_session")
+    def test_skip_if_fresh_today(self, mock_build_session, conn):
+        mock_resp = MagicMock(
             status_code=200,
             json=lambda: self._av_div_response("VTI"),
         )
+        mock_build_session.return_value = _mock_retry_session(response=mock_resp)
         loader = MultiDividendLoader(conn)
         loader.fetch_dividends("VTI")
         n2 = loader.fetch_dividends("VTI")
         assert n2 == 0
-        assert mock_get.call_count == 1
+        assert mock_build_session.return_value.get.call_count == 1
 
-    @patch("src.ingestion.multi_dividend_loader.requests.get")
-    def test_fetch_for_tickers_returns_dict(self, mock_get, conn):
-        mock_get.return_value = MagicMock(
+    @patch("src.ingestion.multi_dividend_loader.build_retry_session")
+    def test_fetch_for_tickers_returns_dict(self, mock_build_session, conn):
+        mock_resp = MagicMock(
             status_code=200,
             json=lambda: self._av_div_response(),
         )
+        mock_build_session.return_value = _mock_retry_session(response=mock_resp)
         loader = MultiDividendLoader(conn)
         results = loader.fetch_for_tickers(["VTI", "BND"], sleep_between=0)
         assert "VTI" in results
         assert "BND" in results
 
-    @patch("src.ingestion.multi_dividend_loader.requests.get")
+    @patch("src.ingestion.multi_dividend_loader.build_retry_session")
     def test_fetch_for_tickers_information_skips_one_continues_rest(
-        self, mock_get, conn
+        self, mock_build_session, conn
     ):
         """'Information' advisory on dividends skips one ticker; batch continues.
 
@@ -513,7 +536,7 @@ class TestMultiDividendLoader:
             mock_resp.json.return_value = self._av_div_response(symbol or "PGR")
             return mock_resp
 
-        mock_get.side_effect = side_effect
+        mock_build_session.return_value = _mock_retry_session(side_effect=side_effect)
         loader = MultiDividendLoader(conn)
         results = loader.fetch_for_tickers(tickers, sleep_between=0)
 
@@ -526,9 +549,9 @@ class TestMultiDividendLoader:
         assert results["BND"] is not None
         assert isinstance(results["BND"], int)
 
-    @patch("src.ingestion.multi_dividend_loader.requests.get")
+    @patch("src.ingestion.multi_dividend_loader.build_retry_session")
     def test_fetch_for_tickers_note_hard_stop_defers_remaining(
-        self, mock_get, conn
+        self, mock_build_session, conn
     ):
         """'Note' (hard quota) on dividends stops the batch; all remaining deferred."""
         tickers = ["PGR", "VTI", "BND"]
@@ -550,7 +573,7 @@ class TestMultiDividendLoader:
             mock_resp.json.return_value = self._av_div_response(symbol or "PGR")
             return mock_resp
 
-        mock_get.side_effect = side_effect
+        mock_build_session.return_value = _mock_retry_session(side_effect=side_effect)
         loader = MultiDividendLoader(conn)
         results = loader.fetch_for_tickers(tickers, sleep_between=0)
 
@@ -560,13 +583,14 @@ class TestMultiDividendLoader:
         assert results["VTI"] is None
         assert results["BND"] is None
 
-    @patch("src.ingestion.multi_dividend_loader.requests.get")
-    def test_idempotent_upsert_no_duplicates(self, mock_get, conn):
+    @patch("src.ingestion.multi_dividend_loader.build_retry_session")
+    def test_idempotent_upsert_no_duplicates(self, mock_build_session, conn):
         """Fetching the same dividends twice must not create duplicate rows."""
-        mock_get.return_value = MagicMock(
+        mock_resp = MagicMock(
             status_code=200,
             json=lambda: self._av_div_response("VTI"),
         )
+        mock_build_session.return_value = _mock_retry_session(response=mock_resp)
         loader = MultiDividendLoader(conn)
         loader.fetch_dividends("VTI", force_refresh=True)
         loader.fetch_dividends("VTI", force_refresh=True)

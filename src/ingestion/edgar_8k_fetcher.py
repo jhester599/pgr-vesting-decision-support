@@ -58,17 +58,6 @@ _SUBMISSIONS_URL: str = (
 _EDGAR_ARCHIVE: str = "https://www.sec.gov/Archives/edgar/data/80661"
 _INDEX_SUFFIX: str = "-index.html"
 
-# SEC requires a descriptive User-Agent with contact info.
-_HEADERS: dict[str, str] = {
-    "User-Agent": "Jeff Hester jeffrey.r.hester@gmail.com",
-    "Accept-Encoding": "gzip, deflate",
-    "Host": "data.sec.gov",
-}
-_ARCHIVE_HEADERS: dict[str, str] = {
-    "User-Agent": "Jeff Hester jeffrey.r.hester@gmail.com",
-    "Accept-Encoding": "gzip, deflate",
-}
-
 # Polite request delay (seconds) to stay well under the 10 req/s EDGAR limit.
 _REQUEST_DELAY: float = 0.15
 
@@ -84,11 +73,10 @@ _PIF_GROWTH_MAX: float = 0.10     # 10 % YoY PIF growth = max PIF score
 
 def _get(session: requests.Session, url: str, host: str = "www.sec.gov") -> str:
     """Fetch ``url``, honour rate limit, raise on HTTP error."""
-    headers = dict(_ARCHIVE_HEADERS)
     if "data.sec.gov" in url:
-        headers["Host"] = "data.sec.gov"
+        headers = config.build_edgar_headers("data.sec.gov")
     else:
-        headers["Host"] = host
+        headers = config.build_edgar_headers(host)
 
     time.sleep(_REQUEST_DELAY)
     resp = session.get(url, headers=headers, timeout=30)
@@ -110,7 +98,7 @@ def fetch_submissions(session: requests.Session) -> list[dict[str, Any]]:
         List of dicts with keys: ``accession``, ``filing_date``.
         Sorted descending by filing date (most recent first).
     """
-    headers = dict(_HEADERS)
+    headers = config.build_edgar_headers("data.sec.gov")
     time.sleep(_REQUEST_DELAY)
     resp = session.get(_SUBMISSIONS_URL, headers=headers, timeout=30)
     resp.raise_for_status()
@@ -146,7 +134,7 @@ def fetch_submissions(session: requests.Session) -> list[dict[str, Any]]:
             time.sleep(_REQUEST_DELAY)
             page_resp = session.get(
                 page_url,
-                headers=dict(_HEADERS) | {"Host": "data.sec.gov"},
+                headers=config.build_edgar_headers("data.sec.gov"),
                 timeout=30,
             )
             page_resp.raise_for_status()

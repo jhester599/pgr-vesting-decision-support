@@ -35,6 +35,7 @@ Options:
 from __future__ import annotations
 
 import argparse
+import logging
 import math
 import os
 import re
@@ -101,12 +102,17 @@ from src.reporting.backtest_report import (
     generate_rolling_ic_series,
 )
 from src.reporting.decision_rendering import (
+    build_data_freshness_lines as render_data_freshness_lines,
     build_executive_summary_lines as render_executive_summary_lines,
     build_vest_decision_lines as render_vest_decision_lines,
     determine_recommendation_mode as render_determine_recommendation_mode,
 )
+from src.logging_config import configure_logging
 from src.reporting.run_manifest import build_run_manifest, write_run_manifest
 from src.tax.capital_gains import compute_three_scenarios, load_position_lots
+
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -195,20 +201,23 @@ def _fetch_fred_step(conn, dry_run: bool = False, skip_fred: bool = False) -> No
     """Fetch the latest FRED macro series and upsert into the DB."""
     if skip_fred or dry_run:
         if skip_fred:
-            print("  [FRED] Skipping FRED fetch (--skip-fred).")
+            logger.info("[FRED] Skipping FRED fetch (--skip-fred).")
         else:
-            print("  [FRED] Dry run — skipping FRED HTTP calls.")
+            logger.info("[FRED] Dry run - skipping FRED HTTP calls.")
         return
 
     from src.ingestion.fred_loader import fetch_all_fred_macro, upsert_fred_to_db
 
-    print(f"  [FRED] Fetching {len(config.FRED_SERIES_MACRO)} macro series...")
+    logger.info("[FRED] Fetching %s macro series...", len(config.FRED_SERIES_MACRO))
     try:
         df = fetch_all_fred_macro(config.FRED_SERIES_MACRO)
         n = upsert_fred_to_db(conn, df)
-        print(f"  [FRED] {n} rows upserted.")
+        logger.info("[FRED] %s rows upserted.", n)
     except Exception as exc:  # noqa: BLE001
-        print(f"  [FRED] WARNING: fetch failed: {exc}. Continuing with cached data.")
+        logger.exception(
+            "[FRED] Fetch failed. Continuing with cached data. Error=%r",
+            exc,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -276,7 +285,10 @@ def _generate_signals(
                 benchmark="VTI",
             )
         except Exception as exc:  # noqa: BLE001
-            print(f"  [CPCV] WARNING: representative CPCV run failed: {exc}")
+            logger.exception(
+                "[CPCV] Representative CPCV run failed; continuing without CPCV diagnostic. Error=%r",
+                exc,
+            )
 
     # Train 4-model ensemble per benchmark (ElasticNet + Ridge + BayesianRidge + GBT)
     ensemble_results = run_ensemble_benchmarks(
@@ -1196,6 +1208,7 @@ def _write_recommendation_md(
     redeploy_portfolio: dict[str, object] | None = None,
     recommendation_layer_label: str | None = None,
     representative_cpcv: CPCVResult | None = None,
+    freshness_report: dict[str, object] | None = None,
 ) -> None:
     """Write the human-readable recommendation report."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1250,6 +1263,7 @@ def _write_recommendation_md(
             previous_summary,
             next_vest_summary,
         ),
+        *render_data_freshness_lines(freshness_report),
         "## Consensus Signal",
         "",
         f"| Field | Value |",
@@ -2062,33 +2076,37 @@ def main(
     dry_run: bool = False,
     skip_fred: bool = False,
 ) -> None:
+    configure_logging()
     as_of = _resolve_as_of_date(as_of_date_str)
     run_date = date.today()
     layer_mode = config.RECOMMENDATION_LAYER_MODE
     if layer_mode not in config.RECOMMENDATION_LAYER_VALID_MODES:
-        print(
-            "  [Recommendation Layer] "
-            f"Unknown mode '{layer_mode}', defaulting to 'shadow_promoted'."
+        logger.warning(
+            "[Recommendation Layer] Unknown mode '%s', defaulting to 'shadow_promoted'.",
+            layer_mode,
         )
         layer_mode = "shadow_promoted"
 
-    print(f"\n{'[DRY RUN] ' if dry_run else ''}PGR Monthly Decision — as-of {as_of}")
-    print(f"Run date: {run_date}")
+    logger.info("%sPGR Monthly Decision - as-of %s", "[DRY RUN] " if dry_run else "", as_of)
+    logger.info("Run date: %s", run_date)
 
     # Idempotency: skip if this month's report already exists
     if _already_ran(as_of) and not dry_run:
-        print(f"  Report for {as_of.strftime('%Y-%m')} already exists. Skipping.")
+        logger.info("Report for %s already exists. Skipping.", as_of.strftime("%Y-%m"))
         return
 
     conn = db_client.get_connection(config.DB_PATH)
     db_client.initialize_schema(conn)
     db_client.warn_if_db_behind(conn, context="monthly_decision")
+    freshness_report = db_client.check_data_freshness(conn, run_date)
+    for message in freshness_report["warnings"]:
+        logger.warning("[data-freshness] %s", message)
 
     # Step 1: Refresh FRED data
     _fetch_fred_step(conn, dry_run=dry_run, skip_fred=skip_fred)
 
     # Step 2: Generate signals (ensemble: ElasticNet + Ridge + BayesianRidge + GBT)
-    print(f"\nGenerating ensemble signals (as-of {as_of})...")
+    logger.info("Generating ensemble signals (as-of %s)...", as_of)
     with warnings.catch_warnings(record=True) as captured_warnings:
         warnings.simplefilter("always", category=ConvergenceWarning)
         signals, ensemble_results, diagnostics = _generate_signals(
@@ -2099,34 +2117,37 @@ def main(
         w for w in captured_warnings if issubclass(w.category, ConvergenceWarning)
     ]
     if convergence_warnings:
-        print(
-            "  [Modeling] "
-            f"{len(convergence_warnings)} convergence warnings were suppressed "
-            "during WFO fitting. Results completed; consider stronger regularisation "
-            "or leaner feature sets if this count grows."
+        logger.warning(
+            "[Modeling] %s convergence warnings were suppressed during WFO fitting. "
+            "Results completed; consider stronger regularisation or leaner feature sets if this count grows.",
+            len(convergence_warnings),
         )
 
     # Step 2.5: Calibrate P(outperform) using Platt / isotonic on OOS fold history
-    print("  Calibrating probabilities...")
+    logger.info("Calibrating probabilities...")
     signals, cal_result, cal_probs, cal_outcomes = _calibrate_signals(
         signals, ensemble_results, target_horizon_months=6
     )
-    print(
-        f"  Calibration: {cal_result.method} "
-        f"(n={cal_result.n_obs:,} OOS obs, ECE={cal_result.ece:.1%})"
+    logger.info(
+        "Calibration: %s (n=%s OOS obs, ECE=%s)",
+        cal_result.method,
+        f"{cal_result.n_obs:,}",
+        f"{cal_result.ece:.1%}",
     )
 
     # Step 2.7: Compute conformal prediction intervals (ACI / split conformal)
-    print("  Computing conformal prediction intervals...")
+    logger.info("Computing conformal prediction intervals...")
     signals = _compute_conformal_intervals(signals, ensemble_results)
     if "ci_lower" in signals.columns and not signals.empty:
         valid_ci = signals[["ci_lower", "ci_upper"]].dropna()
         if not valid_ci.empty:
             ci_lo_med = float(valid_ci["ci_lower"].median())
             ci_hi_med = float(valid_ci["ci_upper"].median())
-            print(
-                f"  {config.CONFORMAL_COVERAGE:.0%} CI (median across benchmarks): "
-                f"{ci_lo_med:+.2%} to {ci_hi_med:+.2%}"
+            logger.info(
+                "%s CI (median across benchmarks): %s to %s",
+                f"{config.CONFORMAL_COVERAGE:.0%}",
+                f"{ci_lo_med:+.2%}",
+                f"{ci_hi_med:+.2%}",
             )
 
     # Step 3: Compute consensus
@@ -2173,9 +2194,9 @@ def main(
             if promoted_summary is not None:
                 live_summary = promoted_summary
         except Exception as exc:  # noqa: BLE001
-            print(
-                "  [Cross-check] WARNING: promoted v22 cross-check build failed; "
-                f"falling back to the current production ensemble snapshot ({exc})."
+            logger.exception(
+                "[Cross-check] Promoted v22 cross-check build failed; falling back to the current production ensemble snapshot. Error=%r",
+                exc,
             )
     shadow_summary = None
     if layer_mode in {"live_with_shadow", "shadow_promoted"}:
@@ -2244,6 +2265,7 @@ def main(
         redeploy_portfolio=redeploy_portfolio,
         recommendation_layer_label=recommendation_layer_label,
         representative_cpcv=diagnostics.get("representative_cpcv"),
+        freshness_report=freshness_report,
     )
     _write_signals_csv(out_dir, signals)
     _append_decision_log(
@@ -2265,6 +2287,7 @@ def main(
 
     snapshot = db_client.get_operational_snapshot(conn)
     manifest_warnings: list[str] = []
+    manifest_warnings.extend(freshness_report["warnings"])
     if aggregate_health is not None and aggregate_health["oos_r2"] < config.DIAG_MIN_OOS_R2:
         manifest_warnings.append(
             f"Aggregate OOS R^2 below threshold: {aggregate_health['oos_r2']:.2%} < {config.DIAG_MIN_OOS_R2:.2%}."
@@ -2309,7 +2332,7 @@ def main(
     write_run_manifest(out_dir, manifest)
 
     conn.close()
-    print(f"\nDone. Results written to {out_dir}/")
+    logger.info("Done. Results written to %s/", out_dir)
 
 
 if __name__ == "__main__":

@@ -47,6 +47,7 @@ import pandas as pd
 import requests
 
 import config
+from src.ingestion.http_utils import build_retry_session
 
 
 # ---------------------------------------------------------------------------
@@ -57,12 +58,6 @@ PGR_CIK: str = "CIK0000080661"
 COMPANYFACTS_URL: str = (
     f"https://data.sec.gov/api/xbrl/companyfacts/{PGR_CIK}.json"
 )
-
-# Required by SEC EDGAR API terms of service.
-_EDGAR_HEADERS: dict[str, str] = {
-    "User-Agent": "Jeff Hester jeffrey.r.hester@gmail.com",
-    "Accept-Encoding": "gzip, deflate",
-}
 
 _CACHE_HOURS: int = 168  # 7 days
 
@@ -120,7 +115,12 @@ def fetch_companyfacts(force_refresh: bool = False) -> dict:
         with open(path, "r", encoding="utf-8") as fh:
             return json.load(fh)
 
-    resp = requests.get(COMPANYFACTS_URL, headers=_EDGAR_HEADERS, timeout=60)
+    session = build_retry_session()
+    resp = session.get(
+        COMPANYFACTS_URL,
+        headers=config.build_edgar_headers(),
+        timeout=60,
+    )
     resp.raise_for_status()
     data = resp.json()
 

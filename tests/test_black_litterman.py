@@ -19,6 +19,7 @@ import pytest
 
 import config
 from src.portfolio.black_litterman import (
+    BLDiagnostics,
     build_bl_weights,
     compute_equilibrium_returns,
     _ledoit_wolf_covariance,
@@ -158,6 +159,43 @@ class TestBuildBlWeights:
             expected = 1.0 / len(tickers)
             for v in weights.values():
                 assert abs(v - expected) < 0.05
+
+    def test_return_diagnostics_flags_no_positive_views_fallback(self):
+        tickers = ["VTI", "BND"]
+        returns = _make_returns(tickers)
+        signals = {
+            "VTI": _make_ensemble_result("VTI", mean_ic=-0.05),
+            "BND": _make_ensemble_result("BND", mean_ic=-0.10),
+        }
+        weights, diagnostics = build_bl_weights(
+            signals,
+            returns,
+            return_diagnostics=True,
+        )
+        assert isinstance(diagnostics, BLDiagnostics)
+        assert diagnostics.fallback_used is True
+        assert diagnostics.fallback_reason == "no_positive_views"
+        assert diagnostics.n_active_tickers == 2
+        assert diagnostics.n_view_tickers == 0
+        assert set(weights) == {"VTI", "BND"}
+
+    def test_return_diagnostics_flags_insufficient_overlap_history(self):
+        tickers = ["VTI", "BND"]
+        returns = _make_returns(tickers, n_months=20).copy()
+        returns.iloc[:12] = np.nan
+        signals = {t: _make_ensemble_result(t) for t in tickers}
+
+        weights, diagnostics = build_bl_weights(
+            signals,
+            returns,
+            return_diagnostics=True,
+        )
+
+        assert diagnostics.fallback_used is True
+        assert diagnostics.fallback_reason == "insufficient_overlap_history"
+        assert diagnostics.n_active_tickers == 2
+        assert diagnostics.n_view_tickers == 0
+        assert set(weights) == {"VTI", "BND"}
 
     def test_insufficient_data_raises(self):
         tickers = ["VTI", "BND"]

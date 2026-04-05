@@ -1,12 +1,12 @@
 # PGR Vesting Decision Support — Development Plan
-*Last updated: April 2026 | System version: v6.1*
+*Last updated: April 2026 | Archived planning baseline through v29*
 
 > Historical planning note: this document captures the pre-v6.5 backlog that fed
-> the later v6.5/v7.x work. For current completion status and the latest
-> enhancement roadmap, see `docs/history/SESSION_PROGRESS.md`,
-> `docs/history/claude-v7-plan.md`, and `docs/plans/codex-v8-plan.md`. The
-> production ensemble now also uses model-specific
-> feature sets from the completed v7.0/v8.x ablation work.
+> the later v6.5-v29 work. It is preserved for lineage, not as the current
+> system roadmap. For the active post-v29 enhancement queue, see
+> `docs/history/repo-peer-reviews/2026-04-05/claude_opus_peer_review_20260405.md`
+> and `docs/plans/codex-v30-plan.md`. For the earlier v7 handoff context, see
+> `docs/history/SESSION_PROGRESS.md` and `docs/history/claude-v7-plan.md`.
 
 ## Executive Summary
 

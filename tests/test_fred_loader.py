@@ -34,6 +34,13 @@ def _make_fred_response(series_id: str, observations: list[dict]) -> MagicMock:
     return mock_resp
 
 
+def _make_retry_session(mock_response: MagicMock) -> MagicMock:
+    """Build a mock retry-enabled session whose get() returns mock_response."""
+    mock_session = MagicMock()
+    mock_session.get.return_value = mock_response
+    return mock_session
+
+
 _SAMPLE_OBSERVATIONS = [
     {"date": "2024-01-31", "value": "0.35"},
     {"date": "2024-02-29", "value": "0.42"},
@@ -61,7 +68,10 @@ class TestFetchFredSeries:
         monkeypatch.setattr(config, "FRED_API_KEY", "test-key")
         mock_resp = _make_fred_response("T10Y2Y", _SAMPLE_OBSERVATIONS)
 
-        with patch("src.ingestion.fred_loader.requests.get", return_value=mock_resp):
+        with patch(
+            "src.ingestion.fred_loader.build_retry_session",
+            return_value=_make_retry_session(mock_resp),
+        ):
             df = fetch_fred_series("T10Y2Y", dry_run=False)
 
         assert "T10Y2Y" in df.columns
@@ -72,7 +82,10 @@ class TestFetchFredSeries:
         monkeypatch.setattr(config, "FRED_API_KEY", "test-key")
         mock_resp = _make_fred_response("T10Y2Y", _SAMPLE_OBSERVATIONS)
 
-        with patch("src.ingestion.fred_loader.requests.get", return_value=mock_resp):
+        with patch(
+            "src.ingestion.fred_loader.build_retry_session",
+            return_value=_make_retry_session(mock_resp),
+        ):
             df = fetch_fred_series("T10Y2Y", dry_run=False)
 
         # The "." sentinel on 2024-03-31 should be NaN
@@ -83,7 +96,10 @@ class TestFetchFredSeries:
         monkeypatch.setattr(config, "FRED_API_KEY", "test-key")
         mock_resp = _make_fred_response("T10Y2Y", [])
 
-        with patch("src.ingestion.fred_loader.requests.get", return_value=mock_resp):
+        with patch(
+            "src.ingestion.fred_loader.build_retry_session",
+            return_value=_make_retry_session(mock_resp),
+        ):
             df = fetch_fred_series("T10Y2Y", dry_run=False)
 
         assert df.empty
@@ -93,7 +109,10 @@ class TestFetchFredSeries:
         shuffled = _SAMPLE_OBSERVATIONS[::-1]  # reverse order
         mock_resp = _make_fred_response("T10Y2Y", shuffled)
 
-        with patch("src.ingestion.fred_loader.requests.get", return_value=mock_resp):
+        with patch(
+            "src.ingestion.fred_loader.build_retry_session",
+            return_value=_make_retry_session(mock_resp),
+        ):
             df = fetch_fred_series("T10Y2Y", dry_run=False)
 
         assert df.index.is_monotonic_increasing
@@ -120,7 +139,10 @@ class TestFetchAllFredMacro:
         ]
         mock_resp = _make_fred_response("T10Y2Y", daily_obs)
 
-        with patch("src.ingestion.fred_loader.requests.get", return_value=mock_resp):
+        with patch(
+            "src.ingestion.fred_loader.build_retry_session",
+            return_value=_make_retry_session(mock_resp),
+        ):
             df = fetch_all_fred_macro(["T10Y2Y"])
 
         # All daily obs in Jan 2024 → one month-end row
@@ -135,7 +157,10 @@ class TestFetchAllFredMacro:
         ]
         mock_resp = _make_fred_response("T10Y2Y", daily_obs)
 
-        with patch("src.ingestion.fred_loader.requests.get", return_value=mock_resp):
+        with patch(
+            "src.ingestion.fred_loader.build_retry_session",
+            return_value=_make_retry_session(mock_resp),
+        ):
             df = fetch_all_fred_macro(["T10Y2Y"])
 
         assert len(df) == 1
@@ -146,8 +171,8 @@ class TestFetchAllFredMacro:
         obs = [{"date": "2024-01-31", "value": "1.0"}]
 
         with patch(
-            "src.ingestion.fred_loader.requests.get",
-            return_value=_make_fred_response("T10Y2Y", obs),
+            "src.ingestion.fred_loader.build_retry_session",
+            return_value=_make_retry_session(_make_fred_response("T10Y2Y", obs)),
         ):
             df = fetch_all_fred_macro(["T10Y2Y", "GS10"])
 
@@ -163,7 +188,9 @@ class TestFetchAllFredMacro:
                 raise ValueError("Bad series")
             return _make_fred_response(sid, [{"date": "2024-01-31", "value": "1.0"}])
 
-        with patch("src.ingestion.fred_loader.requests.get", side_effect=side_effect):
+        mock_session = MagicMock()
+        mock_session.get.side_effect = side_effect
+        with patch("src.ingestion.fred_loader.build_retry_session", return_value=mock_session):
             # Should not raise; BAD_SERIES should be skipped
             df = fetch_all_fred_macro(["T10Y2Y", "BAD_SERIES"])
 
