@@ -19,6 +19,7 @@ version tags:
 - `v30.4` - shared retry/backoff helper for core provider clients
 - `v30.5` - lightweight monthly workflow integration test
 - `v30.6` - extend retry helper into batch AV loaders
+- `v30.7` - add production logging scaffold for weekly fetch
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -92,3 +93,11 @@ for the entire peer-review backlog:
 - the diff is still compact enough for review before riskier workflow changes
 - subsequent enhancements can continue as small follow-up commits on the same
   branch or a successor branch if the scope shifts
+
+## v30.7 Scope
+
+`v30.7` starts the logging migration with one production entry point:
+
+- add `src/logging_config.py` with a shared production log format
+- migrate `scripts/weekly_fetch.py` from `print()` to logging calls
+- add exception-context coverage for the weekly FRED fallback path
