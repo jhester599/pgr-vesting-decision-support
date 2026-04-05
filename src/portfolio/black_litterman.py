@@ -28,12 +28,24 @@ CPCV/WFO inputs:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 import pandas as pd
 from sklearn.covariance import LedoitWolf
 
 import config
 from src.models.multi_benchmark_wfo import EnsembleWFOResult
+
+
+@dataclass(frozen=True)
+class BLDiagnostics:
+    """Operational metadata about whether BL used a fallback allocation."""
+
+    fallback_used: bool
+    fallback_reason: str | None
+    n_active_tickers: int
+    n_view_tickers: int
 
 
 def _ledoit_wolf_covariance(returns_df: pd.DataFrame) -> pd.DataFrame:
@@ -58,7 +70,8 @@ def build_bl_weights(
     risk_aversion: float | None = None,
     view_confidence_scalar: float | None = None,
     market_weights: dict[str, float] | None = None,
-) -> dict[str, float]:
+    return_diagnostics: bool = False,
+) -> dict[str, float] | tuple[dict[str, float], BLDiagnostics]:
     """
     Compute Black-Litterman optimal ETF weights from ensemble WFO signals.
 
@@ -80,11 +93,15 @@ def build_bl_weights(
                                 in views (default: config.BL_VIEW_CONFIDENCE_SCALAR).
         market_weights:         Equal-weight market cap proxy if not provided.
                                 Dict mapping ETF ticker → weight (must sum to 1.0).
+        return_diagnostics:     If True, return ``(weights, diagnostics)`` where
+                                diagnostics includes whether a fallback path was
+                                used and why.
 
     Returns:
-        Dict mapping ETF ticker → portfolio weight (0–KELLY_MAX_POSITION).
-        Weights may not sum exactly to 1.0 because per-ETF caps are applied
-        before re-normalisation.  Returns equal weights if optimization fails.
+        Dict mapping ETF ticker → portfolio weight (0–KELLY_MAX_POSITION), or
+        ``(weights, diagnostics)`` when ``return_diagnostics=True``. Weights may
+        not sum exactly to 1.0 because per-ETF caps are applied before
+        re-normalisation. Returns equal weights if optimization fails.
 
     Raises:
         ImportError: If PyPortfolioOpt is not installed.
@@ -102,17 +119,47 @@ def build_bl_weights(
             f"Need at least 12 months of return data, got {returns_df.shape[0]}."
         )
 
+    def _finish(
+        weights: dict[str, float],
+        *,
+        fallback_used: bool,
+        fallback_reason: str | None,
+        n_active_tickers: int,
+        n_view_tickers: int,
+    ) -> dict[str, float] | tuple[dict[str, float], BLDiagnostics]:
+        diagnostics = BLDiagnostics(
+            fallback_used=fallback_used,
+            fallback_reason=fallback_reason,
+            n_active_tickers=n_active_tickers,
+            n_view_tickers=n_view_tickers,
+        )
+        if return_diagnostics:
+            return weights, diagnostics
+        return weights
+
     # Restrict to ETFs present in both signals and returns
     active_tickers = [
         t for t in ensemble_signals
         if t in returns_df.columns
     ]
     if not active_tickers:
-        return {}
+        return _finish(
+            {},
+            fallback_used=False,
+            fallback_reason=None,
+            n_active_tickers=0,
+            n_view_tickers=0,
+        )
 
     ret_subset = returns_df[active_tickers].dropna()
     if ret_subset.shape[0] < 12:
-        return {t: 1.0 / len(active_tickers) for t in active_tickers}
+        return _finish(
+            {t: 1.0 / len(active_tickers) for t in active_tickers},
+            fallback_used=True,
+            fallback_reason="insufficient_overlap_history",
+            n_active_tickers=len(active_tickers),
+            n_view_tickers=0,
+        )
 
     # 1. Ledoit-Wolf covariance
     cov_matrix = _ledoit_wolf_covariance(ret_subset)
@@ -159,7 +206,13 @@ def build_bl_weights(
 
     if not view_tickers:
         # No positive-IC views — return equal weights
-        return {t: 1.0 / len(active_tickers) for t in active_tickers}
+        return _finish(
+            {t: 1.0 / len(active_tickers) for t in active_tickers},
+            fallback_used=True,
+            fallback_reason="no_positive_views",
+            n_active_tickers=len(active_tickers),
+            n_view_tickers=0,
+        )
 
     # P matrix: identity rows for each view ticker
     n_views = len(view_tickers)
@@ -191,10 +244,22 @@ def build_bl_weights(
         ef = EfficientFrontier(bl_returns, bl_cov, weight_bounds=(0, config.KELLY_MAX_POSITION))
         ef.max_sharpe(risk_free_rate=0.04)  # 4% risk-free rate
         raw_weights = ef.clean_weights()
-        return dict(raw_weights)
+        return _finish(
+            dict(raw_weights),
+            fallback_used=False,
+            fallback_reason=None,
+            n_active_tickers=len(active_tickers),
+            n_view_tickers=len(view_tickers),
+        )
 
     except Exception:  # noqa: BLE001 — fall back to equal weight
-        return {t: 1.0 / len(active_tickers) for t in active_tickers}
+        return _finish(
+            {t: 1.0 / len(active_tickers) for t in active_tickers},
+            fallback_used=True,
+            fallback_reason="optimization_failure",
+            n_active_tickers=len(active_tickers),
+            n_view_tickers=len(view_tickers),
+        )
 
 
 def compute_equilibrium_returns(
