@@ -16,6 +16,7 @@ version tags:
 - `v30.1` - stale documentation header cleanup
 - `v30.2` - data-freshness preflight checks
 - `v30.3` - Black-Litterman fallback visibility, only if BL is promoted into the live monthly path
+- `v30.4` - shared retry/backoff helper for core provider clients
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -53,3 +54,11 @@ runtime behavior:
 - print preflight freshness warnings at monthly runtime
 - surface the same warnings in `recommendation.md`
 - carry freshness warnings into the run manifest
+
+## v30.4 Scope
+
+`v30.4` adds a small shared retry-enabled HTTP session for transient failures:
+
+- central retry/backoff helper in `src/ingestion/http_utils.py`
+- wire the helper into the core AV, FRED, and EDGAR clients
+- add focused regression tests so the new session-based request path is covered

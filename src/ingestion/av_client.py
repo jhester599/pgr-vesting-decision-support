@@ -19,6 +19,7 @@ from typing import Any
 import requests
 
 import config
+from src.ingestion.http_utils import build_retry_session
 from src.ingestion.provider_registry import get_provider_spec
 
 
@@ -120,7 +121,8 @@ def get(
         raise RuntimeError(
             "AV_API_KEY is not set. Add it to your .env file."
         )
-    response = requests.get(config.AV_BASE_URL, params=full_params, timeout=30)
+    session = build_retry_session()
+    response = session.get(config.AV_BASE_URL, params=full_params, timeout=30)
     response.raise_for_status()
     data = response.json()
 

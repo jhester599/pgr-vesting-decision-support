@@ -49,6 +49,7 @@ import requests
 
 import config
 from src.database.db_client import upsert_fred_macro
+from src.ingestion.http_utils import build_retry_session
 
 
 # ---------------------------------------------------------------------------
@@ -96,7 +97,8 @@ def fetch_fred_series(
         "file_type":         "json",
     }
 
-    resp = requests.get(config.FRED_BASE_URL, params=params, timeout=30)
+    session = build_retry_session()
+    resp = session.get(config.FRED_BASE_URL, params=params, timeout=30)
     resp.raise_for_status()
     data = resp.json()
 

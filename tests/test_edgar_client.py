@@ -429,7 +429,9 @@ class TestEdgarHeaders:
             captured["timeout"] = timeout
             return mock_response
 
-        monkeypatch.setattr("src.ingestion.edgar_client.requests.get", _mock_get)
+        mock_session = MagicMock()
+        mock_session.get.side_effect = _mock_get
+        monkeypatch.setattr("src.ingestion.edgar_client.build_retry_session", lambda: mock_session)
 
         from src.ingestion.edgar_client import fetch_companyfacts
 

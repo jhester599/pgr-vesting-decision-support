@@ -72,6 +72,8 @@ AV_DAILY_LIMIT: int = 25
 DATA_FRESHNESS_MAX_PRICE_AGE_DAYS: int = 10
 DATA_FRESHNESS_MAX_FRED_AGE_DAYS: int = 45
 DATA_FRESHNESS_MAX_EDGAR_AGE_DAYS: int = 35
+HTTP_RETRY_TOTAL: int = 3
+HTTP_RETRY_BACKOFF_FACTOR: float = 1.0
 
 # ---------------------------------------------------------------------------
 # FRED series lists

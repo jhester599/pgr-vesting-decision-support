@@ -47,6 +47,7 @@ import pandas as pd
 import requests
 
 import config
+from src.ingestion.http_utils import build_retry_session
 
 
 # ---------------------------------------------------------------------------
@@ -114,7 +115,8 @@ def fetch_companyfacts(force_refresh: bool = False) -> dict:
         with open(path, "r", encoding="utf-8") as fh:
             return json.load(fh)
 
-    resp = requests.get(
+    session = build_retry_session()
+    resp = session.get(
         COMPANYFACTS_URL,
         headers=config.build_edgar_headers(),
         timeout=60,
