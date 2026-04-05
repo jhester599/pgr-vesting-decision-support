@@ -20,6 +20,7 @@ version tags:
 - `v30.5` - lightweight monthly workflow integration test
 - `v30.6` - extend retry helper into batch AV loaders
 - `v30.7` - add production logging scaffold for weekly fetch
+- `v30.8` - add operational logging to monthly decision fallbacks
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -101,3 +102,13 @@ for the entire peer-review backlog:
 - add `src/logging_config.py` with a shared production log format
 - migrate `scripts/weekly_fetch.py` from `print()` to logging calls
 - add exception-context coverage for the weekly FRED fallback path
+
+## v30.8 Scope
+
+`v30.8` extends the logging scaffold into the monthly workflow's operational
+paths:
+
+- configure shared logging in `scripts/monthly_decision.py`
+- route FRED, CPCV, cross-check, and freshness fallback messaging through
+  structured logging
+- add focused tests that assert exception context is preserved
