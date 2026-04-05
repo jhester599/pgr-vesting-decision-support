@@ -23,6 +23,7 @@ version tags:
 - `v30.8` - add operational logging to monthly decision fallbacks
 - `v30.9` - migrate peer fetch entrypoint to structured logging
 - `v30.10` - rewrite README as a landing page
+- `v30.11` - align script-level EDGAR fetcher logging and headers
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -129,3 +130,11 @@ dry-run tests to assert on logged output instead of captured stdout.
 - link out to `docs/architecture.md`, `docs/operations-runbook.md`,
   `docs/changelog.md`, and `ROADMAP.md`
 - keep detailed version history in dedicated docs instead of the repo root
+
+## v30.11 Scope
+
+`v30.11` finishes a small production-script consistency pass:
+
+- route `scripts/edgar_8k_fetcher.py` through the shared logging setup
+- reuse the central env-backed EDGAR header builder for script-side HTTP calls
+- add focused tests around the script-level `_get()` helper
