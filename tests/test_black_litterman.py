@@ -16,6 +16,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
+from unittest.mock import patch
 
 import config
 from src.portfolio.black_litterman import (
@@ -203,6 +204,45 @@ class TestBuildBlWeights:
         signals = {t: _make_ensemble_result(t) for t in tickers}
         with pytest.raises(ValueError, match="12 months"):
             build_bl_weights(signals, short_returns)
+
+    def test_logs_and_falls_back_when_optimization_fails(self, caplog):
+        tickers = ["VTI", "BND"]
+        returns = _make_returns(tickers)
+        signals = {t: _make_ensemble_result(t) for t in tickers}
+
+        with caplog.at_level("ERROR"), patch(
+            "pypfopt.black_litterman.BlackLittermanModel.__init__",
+            side_effect=RuntimeError("synthetic optimizer failure"),
+        ):
+            weights, diagnostics = build_bl_weights(
+                signals,
+                returns,
+                return_diagnostics=True,
+            )
+
+        assert diagnostics.fallback_used is True
+        assert diagnostics.fallback_reason == "optimization_failure"
+        assert set(weights) == set(tickers)
+        assert "Black-Litterman optimization failed" in caplog.text
+        assert "synthetic optimizer failure" in caplog.text
+
+    def test_logs_view_prediction_extraction_failure_and_continues(self, caplog):
+        tickers = ["VTI", "BND"]
+        returns = _make_returns(tickers)
+        signals = {t: _make_ensemble_result(t) for t in tickers}
+
+        class BrokenResult:
+            @property
+            def y_hat_all(self):
+                raise RuntimeError("synthetic y_hat extraction failure")
+
+        signals["VTI"].model_results["elasticnet"] = BrokenResult()
+
+        with caplog.at_level("ERROR"):
+            weights = build_bl_weights(signals, returns)
+
+        assert isinstance(weights, dict)
+        assert "Could not extract BL view predictions for ticker VTI" in caplog.text
 
 
 class TestComputeEquilibriumReturns:

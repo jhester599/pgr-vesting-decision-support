@@ -29,6 +29,7 @@ version tags:
 - `v30.14` - add logging fallback to v1 migration script
 - `v30.15` - add exception-context logging to fred loader
 - `v30.16` - add logging for silent WFO benchmark/model skips
+- `v30.17` - add exception-context logging to BL fallback paths
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -183,3 +184,11 @@ dry-run tests to assert on logged output instead of captured stdout.
 - add module-level logging to `src/models/multi_benchmark_wfo.py`
 - log skipped ensemble members when one model fails for a benchmark
 - log live prediction failures while preserving the existing continue-on-error behavior
+
+## v30.17 Scope
+
+`v30.17` extends the same observability into the BL allocator:
+
+- add module-level logging to `src/portfolio/black_litterman.py`
+- log view-prediction extraction failures while still building remaining views
+- log optimization failures before falling back to equal weights
