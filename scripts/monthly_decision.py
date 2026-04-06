@@ -112,6 +112,7 @@ from src.models.conformal import (
     conformal_interval_from_ensemble,
 )
 from src.models.drift_monitor import ModelDriftSummary, summarize_latest_model_drift
+from src.portfolio.black_litterman import BLDiagnostics, build_bl_weights
 from src.models.wfo_engine import CPCVResult, WFOResult, run_cpcv
 from src.reporting.backtest_report import (
     compute_newey_west_ic,
@@ -1226,6 +1227,37 @@ def _build_redeploy_guidance(conn) -> list[dict[str, object]]:
     return recommend_redeploy_buckets(scoreboard, investable_universe)
 
 
+def _load_etf_monthly_returns(
+    conn,
+    tickers: list[str],
+    end_date: date,
+) -> pd.DataFrame:
+    """Load daily ETF prices, resample to month-end close, return pct_change matrix.
+
+    Used by the Black-Litterman diagnostic call to build the covariance matrix.
+    Tickers with no price data are silently excluded.
+
+    Returns:
+        DataFrame with tickers as columns and monthly returns as rows
+        (DatetimeIndex).  May be empty if no data is available.
+    """
+    frames: dict[str, pd.Series] = {}
+    for ticker in tickers:
+        try:
+            df = db_client.get_prices(conn, ticker, end_date=end_date.isoformat())
+        except Exception:  # noqa: BLE001
+            logger.warning("Could not load prices for %s; excluding from BL covariance", ticker, exc_info=True)
+            continue
+        if df.empty:
+            continue
+        monthly = df["close"].resample("ME").last().dropna()
+        frames[ticker] = monthly.pct_change().dropna()
+    if not frames:
+        return pd.DataFrame()
+    merged = pd.DataFrame(frames)
+    return merged.dropna(how="all")
+
+
 def _build_redeploy_portfolio(
     conn,
     signals: pd.DataFrame,
@@ -1408,6 +1440,7 @@ def _write_recommendation_md(
     freshness_report: dict[str, object] | None = None,
     model_drift_summary: ModelDriftSummary | None = None,
     policy_summary: dict[str, PolicySummary] | None = None,
+    bl_diagnostics: BLDiagnostics | None = None,
 ) -> None:
     """Write the human-readable recommendation report."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1615,6 +1648,42 @@ def _write_recommendation_md(
                 f"| {up_sell} | {up_hold} | {up_50} | {capture} |"
             )
         lines += [""]
+
+    # v34.0 — Portfolio Optimizer Status (Black-Litterman diagnostic shadow run)
+    lines += [
+        "",
+        "---",
+        "",
+        "## Portfolio Optimizer Status",
+        "",
+    ]
+    if bl_diagnostics is None:
+        lines += ["> Black-Litterman optimizer: not run (insufficient data or error during build).", ""]
+    elif bl_diagnostics.fallback_used:
+        reason_str = bl_diagnostics.fallback_reason or "unknown"
+        lines += [
+            f"> ⚠️ **Optimizer fallback active** — Black-Litterman optimization could not converge "
+            f"(`{reason_str}`).  Portfolio weights fall back to equal-weight allocation.  "
+            f"This does not affect the primary recommendation; it is a diagnostic indicator.",
+            "",
+            f"| Parameter | Value |",
+            f"|-----------|-------|",
+            f"| Optimizer | Black-Litterman (PyPortfolioOpt / Ledoit-Wolf) |",
+            f"| Status | ⚠️ Fallback — {reason_str} |",
+            f"| Active benchmarks | {bl_diagnostics.n_active_tickers} |",
+            f"| View tickers incorporated | {bl_diagnostics.n_view_tickers} |",
+            "",
+        ]
+    else:
+        lines += [
+            f"| Parameter | Value |",
+            f"|-----------|-------|",
+            f"| Optimizer | Black-Litterman (PyPortfolioOpt / Ledoit-Wolf) |",
+            f"| Status | ✅ Converged |",
+            f"| Active benchmarks | {bl_diagnostics.n_active_tickers} |",
+            f"| View tickers incorporated | {bl_diagnostics.n_view_tickers} |",
+            "",
+        ]
 
     lines += [
         "",
@@ -2658,6 +2727,27 @@ def main(
             exc_info=True,
         )
 
+    # v34.0 — Black-Litterman diagnostic shadow run (Tier 1.4)
+    # Calls build_bl_weights as a read-only diagnostic: the result is surfaced
+    # in the Portfolio Optimizer Status section of recommendation.md only.
+    # It does NOT alter the primary recommendation or redeploy portfolio weights.
+    bl_diagnostics: BLDiagnostics | None = None
+    try:
+        etf_returns_df = _load_etf_monthly_returns(conn, config.ETF_BENCHMARK_UNIVERSE, as_of)
+        if not etf_returns_df.empty and len(etf_returns_df) >= 12:
+            _, bl_diagnostics = build_bl_weights(  # type: ignore[misc]
+                ensemble_results,
+                etf_returns_df,
+                return_diagnostics=True,
+            )
+        else:
+            logger.info(
+                "BL diagnostic skipped: ETF return matrix has only %d rows (need ≥12).",
+                len(etf_returns_df),
+            )
+    except Exception:
+        logger.warning("BL diagnostic shadow run failed; Portfolio Optimizer section will show 'not run'", exc_info=True)
+
     out_dir = _output_dir(as_of)
     _write_recommendation_md(
         out_dir, as_of, run_date, conn, signals,
@@ -2677,6 +2767,7 @@ def main(
         freshness_report=freshness_report,
         model_drift_summary=model_drift_summary,
         policy_summary=policy_summary,
+        bl_diagnostics=bl_diagnostics,
     )
     _write_signals_csv(out_dir, signals)
     _append_decision_log(

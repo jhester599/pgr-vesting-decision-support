@@ -263,7 +263,7 @@ def _get_filing_doc_url(
         resp = _get(index_url)
         html = resp.text
     except Exception as exc:
-        log.debug("Cannot fetch index for %s: %s", accession_number, exc)
+        log.debug("Cannot fetch index for %s: %s", accession_number, exc, exc_info=True)
         return None
 
     # Extract all .htm hrefs from the filing index
@@ -409,6 +409,7 @@ def _read_exhibit_tables(html: str) -> list[pd.DataFrame]:
     try:
         return pd.read_html(io.StringIO(html), flavor="lxml")
     except Exception:
+        log.debug("_read_exhibit_tables: pd.read_html parse failed; returning empty list", exc_info=True)
         return []
 
 

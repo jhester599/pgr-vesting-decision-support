@@ -153,7 +153,7 @@ def fetch_submissions(session: requests.Session) -> list[dict[str, Any]]:
                         }
                     )
         except Exception as exc:
-            logger.warning("Could not fetch older filings page %s: %s", page_url, exc)
+            logger.warning("Could not fetch older filings page %s: %s", page_url, exc, exc_info=True)
 
     results.sort(key=lambda r: r["filing_date"], reverse=True)
     return results
@@ -315,7 +315,7 @@ def parse_exhibit(html: str) -> dict[str, Any]:
     try:
         tables = pd.read_html(io.StringIO(html), flavor="lxml")
     except Exception as exc:
-        logger.warning("read_html failed: %s", exc)
+        logger.warning("read_html failed: %s", exc, exc_info=True)
         return result
 
     # Scan all tables; use label matching rather than table-index heuristics
