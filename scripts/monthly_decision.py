@@ -58,6 +58,7 @@ from src.models.multi_benchmark_wfo import (
 from src.processing.feature_engineering import (
     build_feature_matrix_from_db,
     compute_obs_feature_ratio,
+    compute_vif,
     get_feature_columns,
     get_X_y_relative,
 )
@@ -265,9 +266,19 @@ def _generate_signals(
         return pd.DataFrame(), {}, {}
 
     X_current = X_event.iloc[[-1]]
+
+    # v32.1 — compute VIF for the feature matrix (safe; falls back to empty Series)
+    vif_series: pd.Series
+    try:
+        vif_series = compute_vif(X_event, feature_cols=feature_cols)
+    except Exception:
+        logger.warning("VIF computation failed; skipping multicollinearity diagnostics", exc_info=True)
+        vif_series = pd.Series(dtype=float)
+
     diagnostics: dict[str, object] = {
         "obs_feature_report": compute_obs_feature_ratio(X_event, warn=False),
         "representative_cpcv": None,
+        "vif_series": vif_series,
     }
 
     # Load relative return matrix for all benchmarks
@@ -1886,6 +1897,7 @@ def _write_diagnostic_report(
     representative_cpcv: CPCVResult | None = None,
     conformal_coverage_summary: ConformalCoverageBacktest | None = None,
     importance_stability: FeatureImportanceStability | None = None,
+    vif_series: pd.Series | None = None,
 ) -> None:
     """
     Write diagnostic.md alongside recommendation.md.
@@ -2081,6 +2093,49 @@ def _write_diagnostic_report(
                     f"| {int(row['mean_rank']):.0f} | {feat} | "
                     f"{row['mean_rank']:.1f} | {row['rank_std']:.1f} | "
                     f"{row['mean_importance']:.4f} |"
+                )
+            obs_feature_lines += [""]
+
+        # v32.1 — VIF multicollinearity subsection
+        if vif_series is not None and not vif_series.empty:
+            high_vif = vif_series[vif_series > config.VIF_HIGH_THRESHOLD]
+            warn_vif = vif_series[
+                (vif_series > config.VIF_WARN_THRESHOLD) &
+                (vif_series <= config.VIF_HIGH_THRESHOLD)
+            ]
+            if not high_vif.empty:
+                vif_overall = "❌ HIGH multicollinearity"
+            elif not warn_vif.empty:
+                vif_overall = "⚠️ MODERATE multicollinearity"
+            else:
+                vif_overall = "✅ LOW multicollinearity"
+            obs_feature_lines += [
+                "### Multicollinearity (VIF)",
+                "",
+                f"**Overall:** {vif_overall}  ",
+                f"Features flagged high (VIF > {config.VIF_HIGH_THRESHOLD:.0f}): "
+                f"**{len(high_vif)}**  ",
+                f"Features flagged moderate (VIF {config.VIF_WARN_THRESHOLD:.0f}–"
+                f"{config.VIF_HIGH_THRESHOLD:.0f}): **{len(warn_vif)}**  ",
+                "",
+                "> VIF measures how much variance in a feature is explained by the "
+                "other features. VIF > 10 indicates severe multicollinearity and "
+                "may cause unstable coefficient estimates.",
+                "",
+                "**All features by VIF (descending):**",
+                "",
+                "| Feature | VIF | Status |",
+                "|---------|-----|--------|",
+            ]
+            for feat, vif_val in vif_series.items():
+                if vif_val > config.VIF_HIGH_THRESHOLD:
+                    flag = "❌ HIGH"
+                elif vif_val > config.VIF_WARN_THRESHOLD:
+                    flag = "⚠️ MODERATE"
+                else:
+                    flag = "✅ OK"
+                obs_feature_lines.append(
+                    f"| {feat} | {vif_val:.2f} | {flag} |"
                 )
             obs_feature_lines += [""]
 
@@ -2520,6 +2575,7 @@ def main(
         representative_cpcv=diagnostics.get("representative_cpcv"),
         conformal_coverage_summary=conformal_coverage_summary,
         importance_stability=importance_stability,
+        vif_series=diagnostics.get("vif_series"),
     )
 
     # Step 5.1 (P2.7): Calibration reliability diagram

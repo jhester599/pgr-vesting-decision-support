@@ -1722,3 +1722,75 @@ def compute_obs_feature_ratio(
         "verdict": verdict,
         "message": message,
     }
+
+
+# ---------------------------------------------------------------------------
+# v32.1 — VIF multicollinearity check (Tier 4.2)
+# ---------------------------------------------------------------------------
+
+def compute_vif(
+    X: pd.DataFrame,
+    feature_cols: list[str] | None = None,
+) -> pd.Series:
+    """Compute Variance Inflation Factors for the feature matrix.
+
+    Uses OLS-based VIF (each feature regressed on all others) from
+    ``statsmodels.stats.outliers_influence.variance_inflation_factor``.
+    Rows with any NaN in the included columns are dropped before
+    computation.  Features exhibiting perfect collinearity (VIF → ∞ or
+    NaN due to rank-deficiency) are logged and excluded from the result.
+
+    Args:
+        X:            Feature matrix (rows = observations).
+        feature_cols: Subset of columns to evaluate.  Defaults to all
+                      numeric columns in ``X``.
+
+    Returns:
+        A ``pd.Series`` indexed by feature name containing VIF values,
+        sorted descending.  Returns an empty Series if fewer than 2
+        complete observations remain after dropping NaNs.
+    """
+    try:
+        from statsmodels.stats.outliers_influence import variance_inflation_factor
+    except ImportError:
+        logging.getLogger(__name__).warning(
+            "statsmodels not available; VIF computation skipped"
+        )
+        return pd.Series(dtype=float)
+
+    logger = logging.getLogger(__name__)
+
+    cols = feature_cols if feature_cols is not None else list(X.select_dtypes("number").columns)
+    if not cols:
+        return pd.Series(dtype=float)
+
+    Xsub = X[cols].dropna(how="any")
+    if len(Xsub) < 2:
+        logger.warning(
+            "compute_vif: fewer than 2 complete observations after dropping NaNs; "
+            "VIF not computed"
+        )
+        return pd.Series(dtype=float)
+
+    Xarr = Xsub.values.astype(float)
+    vif_values: dict[str, float] = {}
+    for i, col in enumerate(cols):
+        try:
+            val = float(variance_inflation_factor(Xarr, i))
+            if not np.isfinite(val):
+                logger.warning(
+                    "compute_vif: VIF for '%s' is non-finite (%.4g); "
+                    "possible perfect collinearity — excluded",
+                    col,
+                    val,
+                )
+                continue
+            vif_values[col] = val
+        except Exception:
+            logger.warning(
+                "compute_vif: failed to compute VIF for '%s'; excluded",
+                col,
+                exc_info=True,
+            )
+
+    return pd.Series(vif_values, dtype=float).sort_values(ascending=False)

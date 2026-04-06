@@ -437,6 +437,11 @@ DIAG_MIN_HIT_RATE: float = 0.55
 # CPCV positive paths (out of C(8,2)=28): ≥19 = good (~67%), 14–18 = marginal.
 # v5.0: updated from C(6,2)=15 thresholds (was: ≥13/15 good, 10–12 marginal).
 DIAG_CPCV_MIN_POSITIVE_PATHS: int = 19
+# Variance Inflation Factor thresholds for multicollinearity checks (v32.1).
+# VIF > HIGH_THRESHOLD is flagged as high multicollinearity (❌).
+# VIF > WARN_THRESHOLD is flagged as moderate multicollinearity (⚠️).
+VIF_HIGH_THRESHOLD: float = 10.0
+VIF_WARN_THRESHOLD: float = 5.0
 
 # ---------------------------------------------------------------------------
 # ETF launch dates — tickers with limited history need proxy backfill.
