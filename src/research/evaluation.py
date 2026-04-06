@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import logging
-from typing import Iterable
+from typing import Iterable, Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -379,7 +379,10 @@ def evaluate_wfo_model(
     result = run_wfo(
         X,
         y,
-        model_type=model_type,
+        model_type=cast(  # callers validate model_type before calling this helper
+            Literal["lasso", "ridge", "elasticnet", "bayesian_ridge", "gbt"],
+            model_type,
+        ),
         target_horizon_months=target_horizon_months,
         benchmark=benchmark,
         purge_buffer=purge_buffer,
@@ -392,7 +395,7 @@ def evaluate_wfo_model(
         y_true,
         target_horizon_months=target_horizon_months,
     )
-    metrics = {
+    metrics: dict[str, float | int | str] = {
         "n_obs": summary.n_obs,
         "ic": summary.ic,
         "hit_rate": summary.hit_rate,
@@ -556,3 +559,125 @@ def classify_research_gate(
     if oos_r2 < 0.0 or ic < 0.03 or hit_rate < 0.52:
         return "FAIL"
     return "MARGINAL"
+
+
+# ---------------------------------------------------------------------------
+# v32.0 — Feature importance stability across WFO folds (Tier 4.1)
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class FeatureImportanceStability:
+    """Stability summary for feature importances across WFO folds.
+
+    Attributes:
+        stability_score: Mean pairwise Spearman rank-correlation between
+            consecutive fold importance rankings.  Ranges [-1, 1]; values
+            ≥ 0.7 indicate stable feature rankings.
+        n_folds: Number of folds used to compute the metric.
+        per_feature: DataFrame with columns ``mean_rank``, ``rank_std``, and
+            ``mean_importance``, indexed by feature name.  Ranks are 1-based
+            (rank 1 = highest importance).
+        verdict: "STABLE" / "MARGINAL" / "UNSTABLE" based on stability_score.
+    """
+
+    stability_score: float
+    n_folds: int
+    per_feature: pd.DataFrame
+    verdict: str
+
+
+def compute_feature_importance_stability(
+    result: WFOResult,
+) -> FeatureImportanceStability | None:
+    """Compute feature importance stability across WFO folds.
+
+    For each consecutive pair of folds, the function converts each fold's
+    importance dict to a rank series (rank 1 = highest importance) and
+    computes the Spearman rank correlation.  The overall stability score is
+    the mean of these pairwise correlations.
+
+    Args:
+        result: A completed ``WFOResult`` whose folds each contain a
+            non-empty ``feature_importances`` dict.
+
+    Returns:
+        A ``FeatureImportanceStability`` instance, or ``None`` if there are
+        fewer than two folds or all folds have empty importance dicts.
+    """
+    folds_with_data = [
+        f for f in result.folds if f.feature_importances
+    ]
+    if len(folds_with_data) < 2:
+        return None
+
+    # Build per-fold rank series (rank 1 = most important).
+    fold_ranks: list[pd.Series] = []
+    for fold in folds_with_data:
+        imp = pd.Series(fold.feature_importances).abs()
+        # rankdata gives rank 1 to the smallest value; we want rank 1 for the
+        # largest, so negate importance before ranking.
+        ranks = imp.rank(ascending=False, method="average")
+        fold_ranks.append(ranks)
+
+    # Align all folds to the union of feature names.
+    all_features = sorted(
+        set().union(*[set(r.index) for r in fold_ranks])
+    )
+    aligned = pd.DataFrame(
+        {i: r.reindex(all_features) for i, r in enumerate(fold_ranks)}
+    )
+
+    # Mean pairwise Spearman correlation between consecutive folds.
+    pairwise_corrs: list[float] = []
+    for i in range(len(fold_ranks) - 1):
+        col_a = aligned.iloc[:, i]
+        col_b = aligned.iloc[:, i + 1]
+        mask = col_a.notna() & col_b.notna()
+        if mask.sum() < 2:
+            continue
+        try:
+            rho, _ = spearmanr(col_a[mask], col_b[mask])
+            if not np.isnan(rho):
+                pairwise_corrs.append(float(rho))
+        except Exception:
+            logger.warning(
+                "compute_feature_importance_stability: spearmanr failed for "
+                "fold pair (%d, %d); skipping",
+                i,
+                i + 1,
+                exc_info=True,
+            )
+
+    if not pairwise_corrs:
+        return None
+
+    stability_score = float(np.mean(pairwise_corrs))
+
+    # Per-feature summary statistics.
+    # Re-read raw importances (not ranks) for the mean_importance column.
+    raw_imp = pd.DataFrame(
+        {i: pd.Series(f.feature_importances).abs().reindex(all_features)
+         for i, f in enumerate(folds_with_data)}
+    )
+    per_feature = pd.DataFrame(
+        {
+            "mean_rank": aligned.mean(axis=1),
+            "rank_std": aligned.std(axis=1),
+            "mean_importance": raw_imp.mean(axis=1),
+        },
+        index=all_features,
+    ).sort_values("mean_rank")
+
+    if stability_score >= 0.7:
+        verdict = "STABLE"
+    elif stability_score >= 0.4:
+        verdict = "MARGINAL"
+    else:
+        verdict = "UNSTABLE"
+
+    return FeatureImportanceStability(
+        stability_score=stability_score,
+        n_folds=len(folds_with_data),
+        per_feature=per_feature,
+        verdict=verdict,
+    )

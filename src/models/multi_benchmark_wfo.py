@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import logging
-from typing import Literal
+from typing import Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -198,7 +198,7 @@ def run_ensemble_benchmarks(
                 result = run_wfo(
                     X_aligned,
                     y_aligned,
-                    model_type=mtype,
+                    model_type=cast(Literal["lasso", "ridge", "elasticnet", "bayesian_ridge", "gbt"], mtype),
                     target_horizon_months=target_horizon_months,
                     benchmark=etf,
                     purge_buffer=purge_buffer,
@@ -294,7 +294,7 @@ def get_ensemble_signals(
                     y_full=y_full,
                     X_current=X_current,
                     wfo_result=wfo_result,
-                    model_type=mtype,
+                    model_type=cast(Literal["lasso", "ridge", "elasticnet", "bayesian_ridge", "gbt"], mtype),
                     train_window_months=train_window_months,
                 )
             except Exception as exc:  # noqa: BLE001

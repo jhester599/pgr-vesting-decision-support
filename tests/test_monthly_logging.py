@@ -162,9 +162,12 @@ def test_main_logs_cross_check_fallback_and_completes(
         obs_feature_report=None,
         representative_cpcv=None,
         conformal_coverage_summary=None,
+        importance_stability=None,
+        vif_series=None,
     ) -> None:
         del as_of, ensemble_results, target_horizon_months, cal_result, signals
         del obs_feature_report, representative_cpcv, conformal_coverage_summary
+        del importance_stability, vif_series
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "diagnostic.md").write_text("# Diagnostic Stub\n", encoding="utf-8")
 

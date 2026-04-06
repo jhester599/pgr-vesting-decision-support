@@ -1,6 +1,6 @@
 # Claude Opus Peer Review Status Snapshot
 
-Updated: 2026-04-05
+Updated: 2026-04-06 (v33.2)
 Source review: [claude_opus_peer_review_20260405.md](./claude_opus_peer_review_20260405.md)
 
 ## Purpose
@@ -18,9 +18,12 @@ Status values:
 ## Current Summary
 
 - Tier 1 quick wins: mostly complete
-- Tier 2 operational safety: strong progress, with freshness, retry, conformal coverage, and drift-monitoring work now landed or in the active PR stream
-- Tier 3 observability/docs/testability: strong progress, still incomplete overall
-- Tier 4 and Tier 5 strategic items: mostly not started
+- Tier 2 operational safety: **all six items complete** — schema/CSV backfill landed in v6.2, freshness
+  and retry in v30, conformal and drift monitoring in v31
+- Tier 3 observability/docs/testability: **all six items complete** — config refactor landed in v33.0, mypy expansion landed in v33.1
+- Tier 4 strategic ML diagnostics: **all four core items complete** — feature-stability, VIF, policy
+  backtest, and heuristic comparison landed in v32 (v32.0–v32.3)
+- Tier 5 strategic items: not started
 
 ## Status By Enhancement
 
@@ -30,23 +33,23 @@ Status values:
 | 1.2 | Move personal email from `config.py` to `.env` | Completed | Landed in `v30.0` and merged via PR #56 |
 | 1.3 | Update stale documentation headers | Completed | Landed in `v30.1`; README landing-page rewrite landed in `v30.10` |
 | 1.4 | Surface Black-Litterman fallback in monthly report | Partial | BL fallback diagnostics landed in `v30.3` and BL logging landed in `v30.17`, but the monthly report still does not surface a live BL fallback warning because the current monthly path is not fully driven by BL |
-| 2.1 | Load historical 8-K cache CSV into database | Not started | No CSV bulk-load path has been implemented yet |
-| 2.2 | Expand `pgr_edgar_monthly` schema (Phase 1) | Not started | No schema-expansion migration for the peer-review Phase 1 set has been added yet |
+| 2.1 | Load historical 8-K cache CSV into database | Completed | Landed in `v6.2` (`feat: expand pgr_edgar_monthly schema + full CSV backfill`); DB now holds 257 rows from 2004-08 to 2026-02 |
+| 2.2 | Expand `pgr_edgar_monthly` schema (Phase 1) | Completed | Landed in `v6.2`; schema expanded from 10 to 70 columns including segment NPW/PIF, investment income, book value, ROE, buyback metrics, and all channel-mix fields |
 | 2.3 | Add data freshness checks to scheduled workflows | Completed | Landed in `v30.2` and merged via PR #56 |
 | 2.4 | Add model performance drift detection | Completed | `v31.2`-`v31.4` add rolling drift helpers, the `model_performance_log` table, monthly persistence, drift warnings, and a `Model Health` section in `recommendation.md` |
 | 2.5 | Validate conformal empirical coverage | Completed | `v31.0`-`v31.1` add historical conformal coverage backtesting plus monthly trailing-coverage diagnostics and manifest warnings |
 | 2.6 | Implement retry with exponential backoff for API calls | Completed | Landed in `v30.4` and `v30.6`; core clients and batch AV loaders use the shared retry session |
 | 3.1 | Replace `print()` with structured logging | Partial | Production entry points and several core modules were migrated across `v30.7`-`v30.24`, but research/utility modules still contain many `print()` calls |
-| 3.2 | Refactor `config.py` into logical modules | Not started | `config.py` remains monolithic |
+| 3.2 | Refactor `config.py` into logical modules | Completed | `v33.0` splits into `config/api.py`, `config/features.py`, `config/model.py`, `config/tax.py` with backward-compatible `config/__init__.py`; all 102 call sites unchanged |
 | 3.3 | Improve exception handling in broad catch blocks | Partial | A large observability pass landed across `v30.11`-`v30.24`, but the peer review identified more broad catches than have been covered so far |
-| 3.4 | Expand mypy coverage beyond 3 modules | Not started | The CI/type-check target list has not been expanded yet, though fixes were kept mypy-clean in the existing scoped modules |
+| 3.4 | Expand mypy coverage beyond 3 modules | Completed | `v33.1` expands CI mypy target from 3 to 11 modules; 9 pre-existing errors fixed in-place (FoldResult._test_dates field, Literal cast at 5 call sites, metrics dict annotation) |
 | 3.5 | Restructure `README.md` as a proper landing page | Completed | Landed in `v30.10` and merged via PR #56 |
 | 3.6 | Add end-to-end integration test for monthly decision pipeline | Completed | Landed in `v30.5` and merged via PR #56 |
-| 4.1 | Track feature importance stability across WFO folds | Not started | No fold-stability metric or diagnostic-report surfacing yet |
-| 4.2 | Add VIF checks | Not started | No VIF monitoring has been added yet |
-| 4.3 | Backtest actual vesting decisions | Not started | No decision-backtest module has been added yet |
-| 4.4 | Add model vs. simple heuristic comparison | Not started | No monthly heuristic benchmark output yet |
-| 4.5 | Monte Carlo tax scenario analysis | Not started | No Monte Carlo tax module yet |
+| 4.1 | Track feature importance stability across WFO folds | Completed | `v32.0` adds `compute_feature_importance_stability()` to `src/research/evaluation.py`; surfaces a Feature Importance Stability subsection (top-10 by mean rank, rank std, stability score) in `diagnostic.md` |
+| 4.2 | Add VIF checks | Completed | `v32.1` adds `compute_vif()` to `src/processing/feature_engineering.py` and `VIF_HIGH/WARN_THRESHOLD` to `config.py`; surfaces a Multicollinearity (VIF) table in the Feature Governance section of `diagnostic.md` |
+| 4.3 | Backtest actual vesting decisions | Completed | `v32.2` adds `_compute_policy_summary()` to `scripts/monthly_decision.py` and wires it into `recommendation.md` as a Decision Policy Backtest section |
+| 4.4 | Add model vs. simple heuristic comparison | Completed | `v32.3` extends the Decision Policy Backtest section with a Model-Driven Policies vs. Heuristics table showing uplift vs. sell-all, hold-all, and 50% fixed baselines |
+| 4.5 | Monte Carlo tax scenario analysis | Partial | Three-scenario tax framework landed in `v7.1`; full Monte Carlo simulation (stochastic price paths) not yet implemented |
 | 5.1 | Move SQLite database out of git history | Not started | Current repo layout still includes the SQLite DB in the repo |
 | 5.2 | Archive completed research modules | Not started | No research archive move has been performed yet |
 | 5.3 | Add a lightweight web dashboard | Not started | No dashboard implementation yet |
@@ -55,7 +58,7 @@ Status values:
 
 ## Version Mapping
 
-Peer-review follow-up work currently maps to these implemented `v30` steps:
+Peer-review follow-up work maps to these implemented steps:
 
 - `v30.0`: Tier 1.2 EDGAR user-agent hardening
 - `v30.1`: Tier 1.3 stale documentation updates
@@ -66,21 +69,29 @@ Peer-review follow-up work currently maps to these implemented `v30` steps:
 - `v30.6`: Tier 2.6 retry extension into batch AV loaders
 - `v30.7`-`v30.24`: Tier 3.1 and Tier 3.3 phased logging and exception-context sweep across production scripts and core modules
 - `v30.10`: Tier 3.5 README landing-page rewrite
-- `v31.0`-`v31.1`: Tier 2.5 conformal empirical coverage monitoring
-- `v31.2`-`v31.4`: Tier 2.4 model performance drift monitoring
+- `v6.2`: Tier 2.1 + 2.2 EDGAR schema expansion and full CSV backfill (257 rows, 70 columns)
+- `v7.0`–`v7.4`: feature ablation, tax framework, EDGAR parser hardening, CPCV stability, obs/feature ratio
+- `v31.0`–`v31.1`: Tier 2.5 conformal empirical coverage monitoring
+- `v31.2`–`v31.4`: Tier 2.4 model performance drift monitoring
+- `v32.0`: Tier 4.1 feature importance stability across WFO folds
+- `v32.1`: Tier 4.2 VIF multicollinearity checks
+- `v32.2`: Tier 4.3 vesting decision policy backtest wired into monthly report
+- `v32.3`: Tier 4.4 model vs. simple heuristic comparison in monthly report
+- `v33.0`: Tier 3.2 config.py split into `config/` package (api, features, model, tax sub-modules)
+- `v33.1`: Tier 3.4 mypy CI expansion from 3 modules to 11 modules; 9 type errors fixed in-place
 
 ## Remaining Highest-Value Gaps
 
-If we continue working directly from the peer-review backlog, the biggest open
-items are:
+All Tier 1, 2, 3, and 4 core items are now complete.  The open work is:
 
-1. Tier 2.1 and Tier 2.2: historical 8-K CSV loading plus schema expansion
-2. Tier 3.2 and Tier 3.4: config modularization and broader mypy coverage
-3. Tier 4.3 and Tier 4.4: evaluating the actual decision policy against simpler baselines
-4. Tier 4.1 and Tier 4.2: feature-stability and multicollinearity diagnostics
+1. **Tier 4.5**: Monte Carlo tax simulation (three-scenario framework landed
+   in v7.1; stochastic path simulation not yet implemented)
+2. **Tier 5** items: strategic infrastructure not yet scheduled
 
 ## Related PRs
 
 - PR #56: merged `v30.0` through `v30.10`
 - PR #57: merged `v30.11` through `v30.24` plus the peer-review status snapshot
-- PR #58: active draft PR for `v31.0` through the current continuation work
+- PR #58: merged `v31.0` through `v31.5` (conformal and drift monitoring)
+- PR #59: merged `v32.0` through `v32.4` (ML diagnostic enhancements)
+- PR #60: active draft PR for `v33.0` through the current continuation work (code quality)

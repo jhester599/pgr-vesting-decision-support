@@ -31,8 +31,20 @@ jobs:
       - name: Ruff syntax and fatal-lint pass
         run: ruff check .
 
-      - name: Limited mypy pass on hardened modules
-        run: python -m mypy src/database/migration_runner.py src/ingestion/provider_registry.py src/reporting/run_manifest.py
+      - name: mypy pass on hardened modules (v33.1 expanded to 11 modules)
+        run: >
+          python -m mypy
+          src/database/migration_runner.py
+          src/ingestion/provider_registry.py
+          src/reporting/run_manifest.py
+          src/research/evaluation.py
+          src/processing/feature_engineering.py
+          src/models/drift_monitor.py
+          src/models/conformal.py
+          src/reporting/backtest_report.py
+          src/models/wfo_engine.py
+          config/model.py
+          config/tax.py
 
       - name: Run unit and integration tests
         run: python -m pytest -q

@@ -81,6 +81,7 @@ class FoldResult:
     feature_importances: dict[str, float]
     n_train: int
     n_test: int
+    _test_dates: list[pd.Timestamp] = field(default_factory=list)
 
 
 @dataclass
