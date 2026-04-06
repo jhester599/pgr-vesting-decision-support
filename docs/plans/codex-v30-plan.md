@@ -30,6 +30,7 @@ version tags:
 - `v30.15` - add exception-context logging to fred loader
 - `v30.16` - add logging for silent WFO benchmark/model skips
 - `v30.17` - add exception-context logging to BL fallback paths
+- `v30.18` - log run-manifest git metadata fallback
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -192,3 +193,11 @@ dry-run tests to assert on logged output instead of captured stdout.
 - add module-level logging to `src/portfolio/black_litterman.py`
 - log view-prediction extraction failures while still building remaining views
 - log optimization failures before falling back to equal weights
+
+## v30.18 Scope
+
+`v30.18` closes a small operational blind spot in manifest generation:
+
+- add module-level logging to `src/reporting/run_manifest.py`
+- log git metadata lookup failures before falling back to `"unknown"`
+- add focused tests for the fallback path so the manifest contract stays stable
