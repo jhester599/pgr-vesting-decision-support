@@ -202,3 +202,35 @@ class TestCPCVEdgeCases:
             result = run_cpcv(X, y, model_type="ridge", n_folds=4, n_test_folds=1)
 
         assert result.path_ics == pytest.approx([1.0])
+
+    def test_recombined_path_failure_is_logged_and_returns_empty_paths(self, caplog):
+        X, y = _make_data(n=8)
+
+        class FakeCPCV:
+            def __init__(self, *args, **kwargs):
+                self.n_test_paths = 1
+                self.recombined_paths = [[99]]
+
+            def split(self, X_arr):
+                return [
+                    (np.array([0, 1, 2, 5, 6, 7]), [np.array([3, 4])]),
+                ]
+
+        class FakePipeline:
+            def fit(self, X_train, y_train):
+                return self
+
+            def predict(self, X_test):
+                return np.array([0.1, -0.1], dtype=float)
+
+        with caplog.at_level("ERROR"), patch(
+            "skfolio.model_selection.CombinatorialPurgedCV",
+            FakeCPCV,
+        ), patch(
+            "src.models.wfo_engine.build_ridge_pipeline",
+            return_value=FakePipeline(),
+        ):
+            result = run_cpcv(X, y, model_type="ridge", n_folds=4, n_test_folds=1)
+
+        assert result.path_ics == []
+        assert "Could not recombine CPCV paths" in caplog.text

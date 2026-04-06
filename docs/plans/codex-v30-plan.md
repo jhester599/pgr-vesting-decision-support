@@ -34,6 +34,7 @@ version tags:
 - `v30.19` - add backtest fallback logging
 - `v30.20` - log optional synthetic feature fallback paths
 - `v30.21` - log research evaluation NW fallback
+- `v30.22` - log CPCV recombination fallback
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -228,3 +229,11 @@ dry-run tests to assert on logged output instead of captured stdout.
 - add module-level logging to `src/research/evaluation.py`
 - log Newey-West summary failures before returning `NaN` diagnostics
 - extend the benchmark-suite tests to cover the logged fallback path
+
+## v30.22 Scope
+
+`v30.22` makes one remaining CPCV diagnostic fallback visible:
+
+- add module-level logging to `src/models/wfo_engine.py`
+- log recombined-path failures before returning empty CPCV path diagnostics
+- extend the CPCV tests to cover the logged fallback path
