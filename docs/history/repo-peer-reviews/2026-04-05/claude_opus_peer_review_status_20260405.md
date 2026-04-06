@@ -1,6 +1,6 @@
 # Claude Opus Peer Review Status Snapshot
 
-Updated: 2026-04-06
+Updated: 2026-04-06 (v33.2)
 Source review: [claude_opus_peer_review_20260405.md](./claude_opus_peer_review_20260405.md)
 
 ## Purpose
@@ -20,7 +20,7 @@ Status values:
 - Tier 1 quick wins: mostly complete
 - Tier 2 operational safety: **all six items complete** — schema/CSV backfill landed in v6.2, freshness
   and retry in v30, conformal and drift monitoring in v31
-- Tier 3 observability/docs/testability: strong progress, config refactor and mypy expansion still open
+- Tier 3 observability/docs/testability: **all six items complete** — config refactor landed in v33.0, mypy expansion landed in v33.1
 - Tier 4 strategic ML diagnostics: **all four core items complete** — feature-stability, VIF, policy
   backtest, and heuristic comparison landed in v32 (v32.0–v32.3)
 - Tier 5 strategic items: not started
@@ -40,9 +40,9 @@ Status values:
 | 2.5 | Validate conformal empirical coverage | Completed | `v31.0`-`v31.1` add historical conformal coverage backtesting plus monthly trailing-coverage diagnostics and manifest warnings |
 | 2.6 | Implement retry with exponential backoff for API calls | Completed | Landed in `v30.4` and `v30.6`; core clients and batch AV loaders use the shared retry session |
 | 3.1 | Replace `print()` with structured logging | Partial | Production entry points and several core modules were migrated across `v30.7`-`v30.24`, but research/utility modules still contain many `print()` calls |
-| 3.2 | Refactor `config.py` into logical modules | Not started | `config.py` remains monolithic |
+| 3.2 | Refactor `config.py` into logical modules | Completed | `v33.0` splits into `config/api.py`, `config/features.py`, `config/model.py`, `config/tax.py` with backward-compatible `config/__init__.py`; all 102 call sites unchanged |
 | 3.3 | Improve exception handling in broad catch blocks | Partial | A large observability pass landed across `v30.11`-`v30.24`, but the peer review identified more broad catches than have been covered so far |
-| 3.4 | Expand mypy coverage beyond 3 modules | Not started | The CI/type-check target list has not been expanded yet, though fixes were kept mypy-clean in the existing scoped modules |
+| 3.4 | Expand mypy coverage beyond 3 modules | Completed | `v33.1` expands CI mypy target from 3 to 11 modules; 9 pre-existing errors fixed in-place (FoldResult._test_dates field, Literal cast at 5 call sites, metrics dict annotation) |
 | 3.5 | Restructure `README.md` as a proper landing page | Completed | Landed in `v30.10` and merged via PR #56 |
 | 3.6 | Add end-to-end integration test for monthly decision pipeline | Completed | Landed in `v30.5` and merged via PR #56 |
 | 4.1 | Track feature importance stability across WFO folds | Completed | `v32.0` adds `compute_feature_importance_stability()` to `src/research/evaluation.py`; surfaces a Feature Importance Stability subsection (top-10 by mean rank, rank std, stability score) in `diagnostic.md` |
@@ -77,20 +77,21 @@ Peer-review follow-up work maps to these implemented steps:
 - `v32.1`: Tier 4.2 VIF multicollinearity checks
 - `v32.2`: Tier 4.3 vesting decision policy backtest wired into monthly report
 - `v32.3`: Tier 4.4 model vs. simple heuristic comparison in monthly report
+- `v33.0`: Tier 3.2 config.py split into `config/` package (api, features, model, tax sub-modules)
+- `v33.1`: Tier 3.4 mypy CI expansion from 3 modules to 11 modules; 9 type errors fixed in-place
 
 ## Remaining Highest-Value Gaps
 
-All Tier 1, 2, and 4 core items are now complete.  The open work is:
+All Tier 1, 2, 3, and 4 core items are now complete.  The open work is:
 
-1. **Tier 3.2 and 3.4** (v33 sequence, planned): config modularization into
-   `config/` sub-modules and mypy coverage expansion beyond the current 3 modules
-2. **Tier 4.5**: Monte Carlo tax simulation (three-scenario framework landed
+1. **Tier 4.5**: Monte Carlo tax simulation (three-scenario framework landed
    in v7.1; stochastic path simulation not yet implemented)
-3. **Tier 5** items: strategic infrastructure not yet scheduled
+2. **Tier 5** items: strategic infrastructure not yet scheduled
 
 ## Related PRs
 
 - PR #56: merged `v30.0` through `v30.10`
 - PR #57: merged `v30.11` through `v30.24` plus the peer-review status snapshot
 - PR #58: merged `v31.0` through `v31.5` (conformal and drift monitoring)
-- PR #59: active draft PR for `v32.0` through the current continuation work
+- PR #59: merged `v32.0` through `v32.4` (ML diagnostic enhancements)
+- PR #60: active draft PR for `v33.0` through the current continuation work (code quality)
