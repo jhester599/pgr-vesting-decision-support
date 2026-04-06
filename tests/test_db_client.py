@@ -56,6 +56,7 @@ class TestInitializeSchema:
             "daily_prices", "daily_dividends", "split_history",
             "pgr_fundamentals_quarterly", "pgr_edgar_monthly",
             "monthly_relative_returns", "api_request_log", "ingestion_metadata",
+            "model_performance_log",
         }
         assert expected.issubset(tables)
 
@@ -248,6 +249,68 @@ class TestPGREdgarMonthly:
         df = db_client.get_pgr_edgar_monthly(conn)
         assert len(df) == 1
         assert df["combined_ratio"].iloc[0] == pytest.approx(91.5)
+
+
+# ---------------------------------------------------------------------------
+# Model Performance Log
+# ---------------------------------------------------------------------------
+
+class TestModelPerformanceLog:
+    def test_upsert_and_retrieve(self, conn):
+        records = [
+            {
+                "month_end": "2026-03-31",
+                "aggregate_oos_r2": 0.031,
+                "aggregate_nw_ic": 0.081,
+                "aggregate_hit_rate": 0.57,
+                "ece": 0.041,
+                "ece_ci_lower": 0.020,
+                "ece_ci_upper": 0.073,
+                "conformal_target_coverage": 0.80,
+                "conformal_empirical_coverage": 0.78,
+                "conformal_trailing_empirical_coverage": 0.72,
+                "conformal_trailing_coverage_gap": -0.08,
+            }
+        ]
+
+        n = db_client.upsert_model_performance_log(conn, records)
+
+        assert n == 1
+        df = db_client.get_model_performance_log(conn)
+        assert len(df) == 1
+        assert df["aggregate_nw_ic"].iloc[0] == pytest.approx(0.081)
+        assert df["conformal_trailing_coverage_gap"].iloc[0] == pytest.approx(-0.08)
+
+    def test_duplicate_month_replaces_existing_row(self, conn):
+        db_client.upsert_model_performance_log(
+            conn,
+            [
+                {
+                    "month_end": "2026-03-31",
+                    "aggregate_nw_ic": 0.04,
+                    "aggregate_hit_rate": 0.53,
+                    "ece": 0.06,
+                }
+            ],
+        )
+        db_client.upsert_model_performance_log(
+            conn,
+            [
+                {
+                    "month_end": "2026-03-31",
+                    "aggregate_nw_ic": 0.08,
+                    "aggregate_hit_rate": 0.57,
+                    "ece": 0.04,
+                }
+            ],
+        )
+
+        df = db_client.get_model_performance_log(conn)
+        assert len(df) == 1
+        assert df["aggregate_nw_ic"].iloc[0] == pytest.approx(0.08)
+
+    def test_empty_upsert_returns_zero(self, conn):
+        assert db_client.upsert_model_performance_log(conn, []) == 0
 
 
 # ---------------------------------------------------------------------------

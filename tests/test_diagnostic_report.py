@@ -22,6 +22,7 @@ import pandas as pd
 import pytest
 
 import config
+from src.models.conformal import ConformalCoverageBacktest
 from src.models.wfo_engine import CPCVResult
 
 # ---------------------------------------------------------------------------
@@ -370,3 +371,42 @@ class TestWriteDiagnosticReport:
         ensemble = {"VTI": ens}
         _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
         assert (tmp_path / "diagnostic.md").exists()
+
+    def test_report_includes_trailing_conformal_coverage_summary(self, tmp_path: Path) -> None:
+        ensemble = _make_ensemble_results(n_obs=40)
+        signals = pd.DataFrame(
+            {
+                "ci_lower": [-0.10, -0.07],
+                "ci_upper": [0.03, 0.04],
+                "ci_width": [0.13, 0.11],
+                "ci_empirical_coverage": [0.82, 0.79],
+                "ci_n_calibration": [24, 24],
+                "ci_trailing_empirical_coverage": [0.70, 0.75],
+                "ci_trailing_coverage_gap": [-0.10, -0.05],
+                "ci_trailing_n": [12, 12],
+            },
+            index=pd.Index(["VOO", "VTI"], name="benchmark"),
+        )
+        conformal_summary = ConformalCoverageBacktest(
+            n_evaluated=24,
+            empirical_coverage=0.725,
+            target_coverage=config.CONFORMAL_COVERAGE,
+            coverage_gap=0.725 - config.CONFORMAL_COVERAGE,
+            trailing_n=24,
+            trailing_empirical_coverage=0.725,
+            trailing_coverage_gap=0.725 - config.CONFORMAL_COVERAGE,
+            method=config.CONFORMAL_METHOD,
+        )
+
+        _write_diagnostic_report(
+            tmp_path,
+            date(2026, 3, 26),
+            ensemble,
+            signals=signals,
+            conformal_coverage_summary=conformal_summary,
+        )
+
+        content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
+        assert "Mean trailing 12-point empirical coverage" in content
+        assert "72.5%" in content
+        assert "Trailing 12 Coverage" in content

@@ -18,7 +18,7 @@ Status values:
 ## Current Summary
 
 - Tier 1 quick wins: mostly complete
-- Tier 2 operational safety: partial, with freshness checks and retry logic complete
+- Tier 2 operational safety: strong progress, with freshness, retry, conformal coverage, and drift-monitoring work now landed or in the active PR stream
 - Tier 3 observability/docs/testability: strong progress, still incomplete overall
 - Tier 4 and Tier 5 strategic items: mostly not started
 
@@ -33,8 +33,8 @@ Status values:
 | 2.1 | Load historical 8-K cache CSV into database | Not started | No CSV bulk-load path has been implemented yet |
 | 2.2 | Expand `pgr_edgar_monthly` schema (Phase 1) | Not started | No schema-expansion migration for the peer-review Phase 1 set has been added yet |
 | 2.3 | Add data freshness checks to scheduled workflows | Completed | Landed in `v30.2` and merged via PR #56 |
-| 2.4 | Add model performance drift detection | Not started | No `model_performance_log` table or monthly drift monitor has been added yet |
-| 2.5 | Validate conformal empirical coverage | Not started | No trailing empirical coverage check has been added to monthly diagnostics yet |
+| 2.4 | Add model performance drift detection | Completed | `v31.2`-`v31.4` add rolling drift helpers, the `model_performance_log` table, monthly persistence, drift warnings, and a `Model Health` section in `recommendation.md` |
+| 2.5 | Validate conformal empirical coverage | Completed | `v31.0`-`v31.1` add historical conformal coverage backtesting plus monthly trailing-coverage diagnostics and manifest warnings |
 | 2.6 | Implement retry with exponential backoff for API calls | Completed | Landed in `v30.4` and `v30.6`; core clients and batch AV loaders use the shared retry session |
 | 3.1 | Replace `print()` with structured logging | Partial | Production entry points and several core modules were migrated across `v30.7`-`v30.24`, but research/utility modules still contain many `print()` calls |
 | 3.2 | Refactor `config.py` into logical modules | Not started | `config.py` remains monolithic |
@@ -66,6 +66,8 @@ Peer-review follow-up work currently maps to these implemented `v30` steps:
 - `v30.6`: Tier 2.6 retry extension into batch AV loaders
 - `v30.7`-`v30.24`: Tier 3.1 and Tier 3.3 phased logging and exception-context sweep across production scripts and core modules
 - `v30.10`: Tier 3.5 README landing-page rewrite
+- `v31.0`-`v31.1`: Tier 2.5 conformal empirical coverage monitoring
+- `v31.2`-`v31.4`: Tier 2.4 model performance drift monitoring
 
 ## Remaining Highest-Value Gaps
 
@@ -73,11 +75,12 @@ If we continue working directly from the peer-review backlog, the biggest open
 items are:
 
 1. Tier 2.1 and Tier 2.2: historical 8-K CSV loading plus schema expansion
-2. Tier 2.4 and Tier 2.5: model-health drift monitoring and conformal coverage checks
-3. Tier 3.2 and Tier 3.4: config modularization and broader mypy coverage
-4. Tier 4.3 and Tier 4.4: evaluating the actual decision policy against simpler baselines
+2. Tier 3.2 and Tier 3.4: config modularization and broader mypy coverage
+3. Tier 4.3 and Tier 4.4: evaluating the actual decision policy against simpler baselines
+4. Tier 4.1 and Tier 4.2: feature-stability and multicollinearity diagnostics
 
 ## Related PRs
 
 - PR #56: merged `v30.0` through `v30.10`
-- PR #57: active draft PR for `v30.11` through the current continuation work
+- PR #57: merged `v30.11` through `v30.24` plus the peer-review status snapshot
+- PR #58: active draft PR for `v31.0` through the current continuation work

@@ -70,6 +70,20 @@ class ConformalResult:
     method: str
 
 
+@dataclass(frozen=True)
+class ConformalCoverageBacktest:
+    """Empirical interval coverage measured over historical sequential OOS points."""
+
+    n_evaluated: int
+    empirical_coverage: float
+    target_coverage: float
+    coverage_gap: float
+    trailing_n: int
+    trailing_empirical_coverage: float
+    trailing_coverage_gap: float
+    method: str
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -277,3 +291,83 @@ def conformal_interval_from_ensemble(
         return split_conformal_interval(y_hat_current, residuals, coverage)
     else:
         return aci_adjusted_interval(y_hat_current, residuals, coverage, gamma)
+
+
+def backtest_conformal_coverage(
+    y_hat_oos: np.ndarray,
+    y_true_oos: np.ndarray,
+    coverage: float = 0.80,
+    method: str = "aci",
+    gamma: float = 0.05,
+    trailing_window: int = 12,
+    min_calibration: int | None = None,
+) -> ConformalCoverageBacktest:
+    """
+    Evaluate realized conformal coverage over sequential historical OOS points.
+
+    For each chronological point ``t`` after an initial calibration window, this
+    reuses only prior OOS predictions/residuals to build an interval for
+    ``y_hat_oos[t]`` and checks whether ``y_true_oos[t]`` falls inside it.
+    The resulting coverage series approximates the production question:
+    "Over the most recent 12 OOS points, how often would our stated conformal
+    interval have actually covered the realized return?"
+    """
+    y_hat_arr = np.asarray(y_hat_oos, dtype=float)
+    y_true_arr = np.asarray(y_true_oos, dtype=float)
+
+    if len(y_hat_arr) != len(y_true_arr):
+        raise ValueError(
+            f"y_hat_oos and y_true_oos must have the same length; got "
+            f"{len(y_hat_arr)} and {len(y_true_arr)}."
+        )
+    if method not in ("split", "aci"):
+        raise ValueError(f"method must be 'split' or 'aci'; got '{method}'.")
+    if trailing_window <= 0:
+        raise ValueError("trailing_window must be positive.")
+
+    if min_calibration is None:
+        min_calibration = 4 if method == "aci" else 1
+    if min_calibration <= 0:
+        raise ValueError("min_calibration must be positive.")
+
+    valid = np.isfinite(y_hat_arr) & np.isfinite(y_true_arr)
+    y_hat_valid = y_hat_arr[valid]
+    y_true_valid = y_true_arr[valid]
+
+    covered: list[bool] = []
+    for idx in range(min_calibration, len(y_hat_valid)):
+        interval = conformal_interval_from_ensemble(
+            y_hat_current=float(y_hat_valid[idx]),
+            y_hat_oos=y_hat_valid[:idx],
+            y_true_oos=y_true_valid[:idx],
+            coverage=coverage,
+            method=method,
+            gamma=gamma,
+        )
+        covered.append(interval.lower <= float(y_true_valid[idx]) <= interval.upper)
+
+    if not covered:
+        return ConformalCoverageBacktest(
+            n_evaluated=0,
+            empirical_coverage=float("nan"),
+            target_coverage=coverage,
+            coverage_gap=float("nan"),
+            trailing_n=0,
+            trailing_empirical_coverage=float("nan"),
+            trailing_coverage_gap=float("nan"),
+            method=method,
+        )
+
+    empirical = float(np.mean(covered))
+    trailing_slice = covered[-trailing_window:]
+    trailing_empirical = float(np.mean(trailing_slice))
+    return ConformalCoverageBacktest(
+        n_evaluated=len(covered),
+        empirical_coverage=empirical,
+        target_coverage=coverage,
+        coverage_gap=empirical - coverage,
+        trailing_n=len(trailing_slice),
+        trailing_empirical_coverage=trailing_empirical,
+        trailing_coverage_gap=trailing_empirical - coverage,
+        method=method,
+    )

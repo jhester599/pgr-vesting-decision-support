@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 import config
 from scripts import monthly_decision
+from src.database import db_client
 from src.models.calibration import CalibrationResult
 
 
@@ -37,6 +38,9 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
             "ci_width": [0.13, 0.11],
             "ci_empirical_coverage": [0.82, 0.79],
             "ci_n_calibration": [24, 24],
+            "ci_trailing_empirical_coverage": [0.65, 0.60],
+            "ci_trailing_coverage_gap": [-0.15, -0.20],
+            "ci_trailing_n": [12, 12],
         },
         index=pd.Index(["VOO", "BND"], name="benchmark"),
     )
@@ -128,9 +132,10 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
         signals: pd.DataFrame | None = None,
         obs_feature_report=None,
         representative_cpcv=None,
+        conformal_coverage_summary=None,
     ) -> None:
         del as_of, ensemble_results, target_horizon_months, cal_result, signals
-        del obs_feature_report, representative_cpcv
+        del obs_feature_report, representative_cpcv, conformal_coverage_summary
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "diagnostic.md").write_text("# Diagnostic Stub\n", encoding="utf-8")
 
@@ -152,6 +157,8 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
     assert "PGR Monthly Decision Report" in recommendation_text
     assert "## Data Freshness" in recommendation_text
     assert "## Consensus Signal" in recommendation_text
+    assert "## Model Health" in recommendation_text
+    assert "Rolling 12M IC" in recommendation_text
     assert "UNDERPERFORM" in recommendation_text
 
     signals_df = pd.read_csv(signals_path)
@@ -161,3 +168,14 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest["workflow_name"] == "monthly_decision"
     assert any(output.endswith("recommendation.md") for output in manifest["outputs"])
+    assert any(
+        "Trailing conformal coverage deviates materially from nominal" in warning
+        for warning in manifest["warnings"]
+    )
+
+    conn = db_client.get_connection(str(db_path))
+    perf_log = db_client.get_model_performance_log(conn)
+    conn.close()
+    assert len(perf_log) == 1
+    assert perf_log["aggregate_nw_ic"].iloc[0] == 0.081
+    assert perf_log["conformal_trailing_empirical_coverage"].iloc[0] == 0.625

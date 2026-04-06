@@ -93,7 +93,13 @@ from src.models.calibration import (
     calibrate_prediction,
     fit_calibration_model,
 )
-from src.models.conformal import ConformalResult, conformal_interval_from_ensemble
+from src.models.conformal import (
+    ConformalCoverageBacktest,
+    ConformalResult,
+    backtest_conformal_coverage,
+    conformal_interval_from_ensemble,
+)
+from src.models.drift_monitor import ModelDriftSummary, summarize_latest_model_drift
 from src.models.wfo_engine import CPCVResult, run_cpcv
 from src.reporting.backtest_report import (
     compute_newey_west_ic,
@@ -542,6 +548,9 @@ def _compute_conformal_intervals(
     ci_widths: list[float] = []
     ci_empirical: list[float] = []
     ci_n_cal: list[int] = []
+    ci_trailing_empirical: list[float] = []
+    ci_trailing_gap: list[float] = []
+    ci_trailing_n: list[int] = []
 
     for ticker in signals.index:
         ens_result = ensemble_results.get(str(ticker))
@@ -553,6 +562,9 @@ def _compute_conformal_intervals(
             ci_widths.append(float("nan"))
             ci_empirical.append(float("nan"))
             ci_n_cal.append(0)
+            ci_trailing_empirical.append(float("nan"))
+            ci_trailing_gap.append(float("nan"))
+            ci_trailing_n.append(0)
             continue
 
         y_hat_oos, y_true_oos = _reconstruct_ensemble_oos(ens_result)
@@ -562,6 +574,9 @@ def _compute_conformal_intervals(
             ci_widths.append(float("nan"))
             ci_empirical.append(float("nan"))
             ci_n_cal.append(0)
+            ci_trailing_empirical.append(float("nan"))
+            ci_trailing_gap.append(float("nan"))
+            ci_trailing_n.append(0)
             continue
 
         conf_result = conformal_interval_from_ensemble(
@@ -572,19 +587,118 @@ def _compute_conformal_intervals(
             method=config.CONFORMAL_METHOD,
             gamma=config.CONFORMAL_ACI_GAMMA,
         )
+        coverage_backtest = backtest_conformal_coverage(
+            y_hat_oos=y_hat_oos,
+            y_true_oos=y_true_oos,
+            coverage=config.CONFORMAL_COVERAGE,
+            method=config.CONFORMAL_METHOD,
+            gamma=config.CONFORMAL_ACI_GAMMA,
+            trailing_window=12,
+        )
         ci_lowers.append(conf_result.lower)
         ci_uppers.append(conf_result.upper)
         ci_widths.append(conf_result.width)
         ci_empirical.append(conf_result.empirical_coverage)
         ci_n_cal.append(conf_result.n_calibration)
+        ci_trailing_empirical.append(coverage_backtest.trailing_empirical_coverage)
+        ci_trailing_gap.append(coverage_backtest.trailing_coverage_gap)
+        ci_trailing_n.append(coverage_backtest.trailing_n)
 
     signals["ci_lower"] = ci_lowers
     signals["ci_upper"] = ci_uppers
     signals["ci_width"] = ci_widths
     signals["ci_empirical_coverage"] = ci_empirical
     signals["ci_n_calibration"] = ci_n_cal
+    signals["ci_trailing_empirical_coverage"] = ci_trailing_empirical
+    signals["ci_trailing_coverage_gap"] = ci_trailing_gap
+    signals["ci_trailing_n"] = ci_trailing_n
 
     return signals
+
+
+def _summarize_conformal_coverage(signals: pd.DataFrame | None) -> ConformalCoverageBacktest | None:
+    """Aggregate recent conformal coverage diagnostics across benchmarks."""
+    if (
+        signals is None
+        or signals.empty
+        or "ci_trailing_empirical_coverage" not in signals.columns
+        or "ci_trailing_n" not in signals.columns
+    ):
+        return None
+
+    valid_rows = signals[signals["ci_trailing_n"].fillna(0) > 0].dropna(
+        subset=["ci_trailing_empirical_coverage"]
+    )
+    if valid_rows.empty:
+        return None
+
+    target = config.CONFORMAL_COVERAGE
+    trailing_empirical = float(valid_rows["ci_trailing_empirical_coverage"].mean())
+    trailing_n = int(valid_rows["ci_trailing_n"].sum())
+    return ConformalCoverageBacktest(
+        n_evaluated=trailing_n,
+        empirical_coverage=trailing_empirical,
+        target_coverage=target,
+        coverage_gap=trailing_empirical - target,
+        trailing_n=trailing_n,
+        trailing_empirical_coverage=trailing_empirical,
+        trailing_coverage_gap=trailing_empirical - target,
+        method=config.CONFORMAL_METHOD,
+    )
+
+
+def _record_model_health_snapshot(
+    conn,
+    as_of: date,
+    aggregate_health: dict | None,
+    cal_result: CalibrationResult | None,
+    conformal_coverage_summary: ConformalCoverageBacktest | None,
+) -> ModelDriftSummary | None:
+    """Persist the monthly model-health snapshot and return the latest drift summary."""
+    if aggregate_health is None or cal_result is None:
+        return None
+
+    month_end = (
+        pd.Timestamp(as_of).to_period("M").to_timestamp("M").date().isoformat()
+    )
+    db_client.upsert_model_performance_log(
+        conn,
+        [
+            {
+                "month_end": month_end,
+                "aggregate_oos_r2": float(aggregate_health["oos_r2"]),
+                "aggregate_nw_ic": float(aggregate_health["nw_ic"]),
+                "aggregate_hit_rate": float(aggregate_health["agg_hit"]),
+                "ece": float(cal_result.ece),
+                "ece_ci_lower": float(cal_result.ece_ci_lower),
+                "ece_ci_upper": float(cal_result.ece_ci_upper),
+                "conformal_target_coverage": (
+                    float(conformal_coverage_summary.target_coverage)
+                    if conformal_coverage_summary is not None
+                    else None
+                ),
+                "conformal_empirical_coverage": (
+                    float(conformal_coverage_summary.empirical_coverage)
+                    if conformal_coverage_summary is not None
+                    else None
+                ),
+                "conformal_trailing_empirical_coverage": (
+                    float(conformal_coverage_summary.trailing_empirical_coverage)
+                    if conformal_coverage_summary is not None
+                    else None
+                ),
+                "conformal_trailing_coverage_gap": (
+                    float(conformal_coverage_summary.trailing_coverage_gap)
+                    if conformal_coverage_summary is not None
+                    else None
+                ),
+            }
+        ],
+    )
+    history = db_client.get_model_performance_log(conn)
+    if history.empty:
+        return None
+    return summarize_latest_model_drift(history.reset_index())
 
 
 def _consensus_signal(
@@ -1209,6 +1323,7 @@ def _write_recommendation_md(
     recommendation_layer_label: str | None = None,
     representative_cpcv: CPCVResult | None = None,
     freshness_report: dict[str, object] | None = None,
+    model_drift_summary: ModelDriftSummary | None = None,
 ) -> None:
     """Write the human-readable recommendation report."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1331,6 +1446,27 @@ def _write_recommendation_md(
         lines.append(
             f"| {row['check']} | {row['current']} | {row['threshold']} | **{row['status']}** | {row['meaning']} |"
         )
+
+    if model_drift_summary is not None:
+        drift_status = (
+            f"Warning: rolling IC has been below {config.DIAG_MIN_IC:.2f} for "
+            f"{model_drift_summary.ic_below_threshold_streak} consecutive monthly snapshots."
+            if model_drift_summary.drift_flag
+            else "Stable: no sustained rolling-IC drift alert is active."
+        )
+        lines += [
+            "",
+            "---",
+            "",
+            "## Model Health",
+            "",
+            f"- Latest tracked month: **{model_drift_summary.as_of_month}**",
+            f"- Rolling {model_drift_summary.window_months}M IC: **{model_drift_summary.rolling_ic:.4f}**",
+            f"- Rolling {model_drift_summary.window_months}M Hit Rate: **{model_drift_summary.rolling_hit_rate:.1%}**",
+            f"- Rolling {model_drift_summary.window_months}M ECE: **{model_drift_summary.rolling_ece:.1%}**",
+            f"- IC breach streak: **{model_drift_summary.ic_below_threshold_streak}** month(s)",
+            f"- Status: **{drift_status}**",
+        ]
 
     lines += [
         "",
@@ -1743,6 +1879,7 @@ def _write_diagnostic_report(
     signals: pd.DataFrame | None = None,
     obs_feature_report: dict | None = None,
     representative_cpcv: CPCVResult | None = None,
+    conformal_coverage_summary: ConformalCoverageBacktest | None = None,
 ) -> None:
     """
     Write diagnostic.md alongside recommendation.md.
@@ -1990,8 +2127,24 @@ def _write_diagnostic_report(
                 f"**Mean empirical coverage:** {mean_emp_cov:.1%} "
                 f"(target ≥ {config.CONFORMAL_COVERAGE:.0%}) {cov_flag}  ",
                 "",
-                "| Benchmark | Description | Predicted Return | CI Lower | CI Upper | CI Width | Emp. Coverage | N Cal |",
-                "|-----------|-------------|----------------|----------|----------|----------|---------------|-------|",
+            ]
+            if conformal_coverage_summary is not None:
+                trailing_cov_flag = _flag(
+                    abs(conformal_coverage_summary.trailing_coverage_gap),
+                    good=0.05,
+                    marginal=0.10,
+                    higher_is_better=False,
+                )
+                lines += [
+                    f"**Mean trailing 12-point empirical coverage:** "
+                    f"{conformal_coverage_summary.trailing_empirical_coverage:.1%} "
+                    f"(gap {conformal_coverage_summary.trailing_coverage_gap:+.1%} vs nominal) "
+                    f"{trailing_cov_flag}  ",
+                    "",
+                ]
+            lines += [
+                "| Benchmark | Description | Predicted Return | CI Lower | CI Upper | CI Width | Emp. Coverage | Trailing 12 Coverage | N Cal |",
+                "|-----------|-------------|----------------|----------|----------|----------|---------------|----------------------|-------|",
             ]
             for ticker, row in signals.iterrows():
                 if pd.isna(row.get("ci_lower")):
@@ -2002,10 +2155,16 @@ def _write_diagnostic_report(
                 ci_hi = f"{row['ci_upper']:+.2%}"
                 ci_w = f"{row['ci_width']:.2%}"
                 emp_cov = f"{row['ci_empirical_coverage']:.1%}"
+                trailing_cov = (
+                    f"{row['ci_trailing_empirical_coverage']:.1%}"
+                    if not pd.isna(row.get("ci_trailing_empirical_coverage"))
+                    else "n/a"
+                )
                 n_cal = int(row["ci_n_calibration"])
                 emp_flag = "✅" if row["ci_empirical_coverage"] >= config.CONFORMAL_COVERAGE else "⚠️"
                 lines.append(
-                    f"| {ticker} | {desc} | {pred_str} | {ci_lo} | {ci_hi} | {ci_w} | {emp_cov} {emp_flag} | {n_cal} |"
+                    f"| {ticker} | {desc} | {pred_str} | {ci_lo} | {ci_hi} | {ci_w} | "
+                    f"{emp_cov} {emp_flag} | {trailing_cov} | {n_cal} |"
                 )
         else:
             lines.append("> ⚠️ No benchmarks had sufficient calibration data for conformal intervals.")
@@ -2138,6 +2297,7 @@ def main(
     # Step 2.7: Compute conformal prediction intervals (ACI / split conformal)
     logger.info("Computing conformal prediction intervals...")
     signals = _compute_conformal_intervals(signals, ensemble_results)
+    conformal_coverage_summary = _summarize_conformal_coverage(signals)
     if "ci_lower" in signals.columns and not signals.empty:
         valid_ci = signals[["ci_lower", "ci_upper"]].dropna()
         if not valid_ci.empty:
@@ -2218,6 +2378,13 @@ def main(
             "v13.1 promoted simpler diversification-first recommendation layer + "
             "v22 promoted visible cross-check"
         )
+    model_drift_summary = _record_model_health_snapshot(
+        conn,
+        as_of,
+        aggregate_health,
+        cal_result,
+        conformal_coverage_summary,
+    )
     existing_holdings = _build_existing_holdings_guidance(conn, as_of)
     redeploy_buckets = _build_redeploy_guidance(conn)
     redeploy_portfolio = _build_redeploy_portfolio(
@@ -2266,6 +2433,7 @@ def main(
         recommendation_layer_label=recommendation_layer_label,
         representative_cpcv=diagnostics.get("representative_cpcv"),
         freshness_report=freshness_report,
+        model_drift_summary=model_drift_summary,
     )
     _write_signals_csv(out_dir, signals)
     _append_decision_log(
@@ -2280,6 +2448,7 @@ def main(
         signals=signals,
         obs_feature_report=diagnostics.get("obs_feature_report"),
         representative_cpcv=diagnostics.get("representative_cpcv"),
+        conformal_coverage_summary=conformal_coverage_summary,
     )
 
     # Step 5.1 (P2.7): Calibration reliability diagram
@@ -2303,6 +2472,22 @@ def main(
                 f"Observation-to-feature report is {obs_report.get('verdict')} "
                 f"(ratio={obs_report.get('ratio', float('nan')):.2f})."
             )
+    if (
+        conformal_coverage_summary is not None
+        and not math.isnan(conformal_coverage_summary.trailing_coverage_gap)
+        and abs(conformal_coverage_summary.trailing_coverage_gap) > 0.10
+    ):
+        manifest_warnings.append(
+            "Trailing conformal coverage deviates materially from nominal: "
+            f"{conformal_coverage_summary.trailing_empirical_coverage:.1%} "
+            f"vs {conformal_coverage_summary.target_coverage:.0%}."
+        )
+    if model_drift_summary is not None and model_drift_summary.drift_flag:
+        manifest_warnings.append(
+            "Rolling model IC drift alert active: "
+            f"{model_drift_summary.ic_below_threshold_streak} consecutive monthly "
+            f"snapshots below {config.DIAG_MIN_IC:.2f}."
+        )
     if shadow_summary is not None:
         if shadow_summary.recommendation_mode != live_summary.recommendation_mode:
             manifest_warnings.append(
