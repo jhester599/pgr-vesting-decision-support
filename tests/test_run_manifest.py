@@ -43,7 +43,11 @@ def test_write_run_manifest_writes_json_file(tmp_path: Path) -> None:
 
 
 def test_resolve_git_sha_logs_and_returns_unknown_on_git_failure(caplog) -> None:
-    with caplog.at_level("ERROR"), patch(
+    with caplog.at_level("ERROR"), patch.dict(
+        "os.environ",
+        {},
+        clear=True,
+    ), patch(
         "src.reporting.run_manifest.subprocess.run",
         side_effect=RuntimeError("synthetic git failure"),
     ):
