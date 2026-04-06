@@ -21,8 +21,8 @@ Status values:
 - Tier 2 operational safety: **all six items complete** — schema/CSV backfill landed in v6.2, freshness
   and retry in v30, conformal and drift monitoring in v31
 - Tier 3 observability/docs/testability: strong progress, config refactor and mypy expansion still open
-- Tier 4 strategic ML diagnostics: feature-stability, VIF, policy backtest, and heuristic comparison
-  in the active v32 sequence
+- Tier 4 strategic ML diagnostics: **all four core items complete** — feature-stability, VIF, policy
+  backtest, and heuristic comparison landed in v32 (v32.0–v32.3)
 - Tier 5 strategic items: not started
 
 ## Status By Enhancement
@@ -45,10 +45,10 @@ Status values:
 | 3.4 | Expand mypy coverage beyond 3 modules | Not started | The CI/type-check target list has not been expanded yet, though fixes were kept mypy-clean in the existing scoped modules |
 | 3.5 | Restructure `README.md` as a proper landing page | Completed | Landed in `v30.10` and merged via PR #56 |
 | 3.6 | Add end-to-end integration test for monthly decision pipeline | Completed | Landed in `v30.5` and merged via PR #56 |
-| 4.1 | Track feature importance stability across WFO folds | Partial | `v32.0` adds mean Spearman rank-correlation stability metric and surfaces it in `diagnostic.md` (active v32 branch) |
-| 4.2 | Add VIF checks | Partial | `v32.1` adds VIF computation and feature-level flags in `diagnostic.md` (active v32 branch) |
-| 4.3 | Backtest actual vesting decisions | Partial | `src/backtest/vesting_events.py` and `scripts/policy_evaluation.py` exist as research tools; `v32.2` wires a compact summary into the monthly recommendation report (active v32 branch) |
-| 4.4 | Add model vs. simple heuristic comparison | Partial | `v32.3` extends the policy summary to compare model uplift vs. sell-all, hold-all, and 50 % fixed heuristics in the monthly report (active v32 branch) |
+| 4.1 | Track feature importance stability across WFO folds | Completed | `v32.0` adds `compute_feature_importance_stability()` to `src/research/evaluation.py`; surfaces a Feature Importance Stability subsection (top-10 by mean rank, rank std, stability score) in `diagnostic.md` |
+| 4.2 | Add VIF checks | Completed | `v32.1` adds `compute_vif()` to `src/processing/feature_engineering.py` and `VIF_HIGH/WARN_THRESHOLD` to `config.py`; surfaces a Multicollinearity (VIF) table in the Feature Governance section of `diagnostic.md` |
+| 4.3 | Backtest actual vesting decisions | Completed | `v32.2` adds `_compute_policy_summary()` to `scripts/monthly_decision.py` and wires it into `recommendation.md` as a Decision Policy Backtest section |
+| 4.4 | Add model vs. simple heuristic comparison | Completed | `v32.3` extends the Decision Policy Backtest section with a Model-Driven Policies vs. Heuristics table showing uplift vs. sell-all, hold-all, and 50% fixed baselines |
 | 4.5 | Monte Carlo tax scenario analysis | Partial | Three-scenario tax framework landed in `v7.1`; full Monte Carlo simulation (stochastic price paths) not yet implemented |
 | 5.1 | Move SQLite database out of git history | Not started | Current repo layout still includes the SQLite DB in the repo |
 | 5.2 | Archive completed research modules | Not started | No research archive move has been performed yet |
@@ -80,12 +80,12 @@ Peer-review follow-up work maps to these implemented steps:
 
 ## Remaining Highest-Value Gaps
 
-All Tier 1 and Tier 2 items are now complete.  The open work is:
+All Tier 1, 2, and 4 core items are now complete.  The open work is:
 
-1. **Tier 4.1–4.4** (v32 sequence, active branch): feature-stability, VIF,
-   vesting-policy backtest, and model-vs-heuristic comparison
-2. **Tier 3.2 and 3.4** (v33 sequence, planned): config modularization and
-   broader mypy coverage
+1. **Tier 3.2 and 3.4** (v33 sequence, planned): config modularization into
+   `config/` sub-modules and mypy coverage expansion beyond the current 3 modules
+2. **Tier 4.5**: Monte Carlo tax simulation (three-scenario framework landed
+   in v7.1; stochastic path simulation not yet implemented)
 3. **Tier 5** items: strategic infrastructure not yet scheduled
 
 ## Related PRs
