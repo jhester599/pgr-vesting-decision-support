@@ -70,6 +70,12 @@ from src.research.evaluation import (
     evaluate_baseline_strategy,
     reconstruct_baseline_predictions,
 )
+from src.research.policy_metrics import (
+    FIXED_POLICIES,
+    SIGNAL_POLICIES,
+    PolicySummary,
+    evaluate_policy_series,
+)
 from src.research.v11 import (
     add_destination_roles,
     recommend_redeploy_buckets,
@@ -1311,6 +1317,67 @@ def _build_vest_decision_lines(
 
 
 # ---------------------------------------------------------------------------
+# v32.2 — Vesting decision policy backtest helper (Tier 4.3)
+# ---------------------------------------------------------------------------
+
+def _compute_policy_summary(
+    ensemble_results: dict,
+) -> dict[str, PolicySummary] | None:
+    """Compute OOS decision-policy summaries from the monthly ensemble.
+
+    Aggregates OOS predictions and realized relative returns from the primary
+    elasticnet model across all benchmarks, then evaluates every fixed and
+    signal-driven policy defined in ``src.research.policy_metrics``.
+
+    Returns a dict of ``{policy_name: PolicySummary}`` or ``None`` if fewer
+    than 4 OOS observations are available.
+    """
+    all_dates: list[pd.Timestamp] = []
+    all_y_hat: list[float] = []
+    all_y_true: list[float] = []
+
+    for ens_result in ensemble_results.values():
+        model_result = ens_result.model_results.get(
+            "elasticnet",
+            next(iter(ens_result.model_results.values()), None),
+        )
+        if model_result is None or len(model_result.folds) == 0:
+            continue
+        y_hat = model_result.y_hat_all
+        y_true = model_result.y_true_all
+        dates = model_result.test_dates_all
+        if len(y_true) < 1:
+            continue
+        all_dates.extend(dates.tolist())
+        all_y_hat.extend(y_hat.tolist())
+        all_y_true.extend(y_true.tolist())
+
+    if len(all_y_true) < 4:
+        return None
+
+    idx = pd.DatetimeIndex(all_dates)
+    predicted = pd.Series(all_y_hat, index=idx, name="y_hat")
+    realized = pd.Series(all_y_true, index=idx, name="y_true")
+
+    summaries: dict[str, PolicySummary] = {}
+    for policy in list(FIXED_POLICIES) + list(SIGNAL_POLICIES):
+        try:
+            summaries[policy] = evaluate_policy_series(
+                predicted=predicted,
+                realized_relative_return=realized,
+                policy_name=policy,
+            )
+        except Exception:
+            logger.warning(
+                "_compute_policy_summary: failed to evaluate policy '%s'; skipping",
+                policy,
+                exc_info=True,
+            )
+
+    return summaries if summaries else None
+
+
+# ---------------------------------------------------------------------------
 # Report writers
 # ---------------------------------------------------------------------------
 
@@ -1340,6 +1407,7 @@ def _write_recommendation_md(
     representative_cpcv: CPCVResult | None = None,
     freshness_report: dict[str, object] | None = None,
     model_drift_summary: ModelDriftSummary | None = None,
+    policy_summary: dict[str, PolicySummary] | None = None,
 ) -> None:
     """Write the human-readable recommendation report."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1483,6 +1551,70 @@ def _write_recommendation_md(
             f"- IC breach streak: **{model_drift_summary.ic_below_threshold_streak}** month(s)",
             f"- Status: **{drift_status}**",
         ]
+
+    # v32.2 + v32.3 — Decision Policy Backtest and Heuristic Comparison
+    if policy_summary is not None:
+        signal_policies_present = [p for p in SIGNAL_POLICIES if p in policy_summary]
+        fixed_policies_present = [p for p in FIXED_POLICIES if p in policy_summary]
+        model_policy = policy_summary.get("sign_hold_vs_sell")  # primary signal policy
+
+        _policy_labels: dict[str, str] = {
+            "always_sell_100": "Sell 100% (always)",
+            "always_sell_50": "Sell 50% (always)",
+            "always_hold_100": "Hold 100% (always)",
+            "sign_hold_vs_sell": "Model: sign (hold if pred > 0)",
+            "tiered_25_50_100": "Model: tiered 25/50/100",
+            "neutral_band_2pct": "Model: neutral band ±2%",
+            "neutral_band_3pct": "Model: neutral band ±3%",
+        }
+
+        lines += [
+            "",
+            "---",
+            "",
+            "## Decision Policy Backtest",
+            "",
+            "> OOS performance of each decision policy applied to all historical "
+            "model predictions.  "
+            "\"Mean Return\" is the portfolio-weighted realized relative return per "
+            "vesting event.  \"Cumulative\" is the sum across all events.  "
+            "\"Capture Ratio\" is the fraction of oracle (always hold when positive) "
+            "gains captured.  N = number of OOS events.",
+            "",
+            "### Fixed Heuristic Baselines",
+            "",
+            "| Policy | N | Mean Return | Cumulative | Capture Ratio |",
+            "|--------|---|-------------|------------|---------------|",
+        ]
+        for p in fixed_policies_present:
+            s = policy_summary[p]
+            lines.append(
+                f"| {_policy_labels.get(p, p)} | {s.n_obs} "
+                f"| {s.mean_policy_return:+.2%} "
+                f"| {s.cumulative_policy_return:+.2%} "
+                f"| {s.capture_ratio:.1%} |"
+            )
+
+        lines += [
+            "",
+            "### Model-Driven Policies vs. Heuristics",
+            "",
+            "| Policy | N | Mean Return | Cumul. Return | Uplift vs Sell-All | Uplift vs Hold-All | Uplift vs 50% | Capture |",
+            "|--------|---|-------------|---------------|--------------------|--------------------|---------------|---------|",
+        ]
+        for p in signal_policies_present:
+            s = policy_summary[p]
+            up_sell = f"{s.uplift_vs_sell_all:+.2%}" if not np.isnan(s.uplift_vs_sell_all) else "n/a"
+            up_hold = f"{s.uplift_vs_hold_all:+.2%}" if not np.isnan(s.uplift_vs_hold_all) else "n/a"
+            up_50 = f"{s.uplift_vs_sell_50:+.2%}" if not np.isnan(s.uplift_vs_sell_50) else "n/a"
+            capture = f"{s.capture_ratio:.1%}" if not np.isnan(s.capture_ratio) else "n/a"
+            lines.append(
+                f"| {_policy_labels.get(p, p)} | {s.n_obs} "
+                f"| {s.mean_policy_return:+.2%} "
+                f"| {s.cumulative_policy_return:+.2%} "
+                f"| {up_sell} | {up_hold} | {up_50} | {capture} |"
+            )
+        lines += [""]
 
     lines += [
         "",
@@ -2516,6 +2648,16 @@ def main(
         )
 
     # Step 4: Write outputs
+    # v32.2 + v32.3 — compute policy backtest summary for recommendation.md
+    policy_summary: dict[str, PolicySummary] | None = None
+    try:
+        policy_summary = _compute_policy_summary(ensemble_results)
+    except Exception:
+        logger.warning(
+            "Could not compute policy summary; Decision Policy Backtest section will be omitted",
+            exc_info=True,
+        )
+
     out_dir = _output_dir(as_of)
     _write_recommendation_md(
         out_dir, as_of, run_date, conn, signals,
@@ -2534,6 +2676,7 @@ def main(
         representative_cpcv=diagnostics.get("representative_cpcv"),
         freshness_report=freshness_report,
         model_drift_summary=model_drift_summary,
+        policy_summary=policy_summary,
     )
     _write_signals_csv(out_dir, signals)
     _append_decision_log(
