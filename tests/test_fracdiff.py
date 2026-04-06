@@ -16,6 +16,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
+from unittest.mock import patch
 
 from src.processing.feature_engineering import apply_fracdiff, _fracdiff_weights
 
@@ -133,3 +134,16 @@ class TestApplyFracdiff:
         _, d_star = apply_fracdiff(stationary)
         # White noise is already stationary; min d should be very low
         assert d_star <= 0.30, f"d* = {d_star} too high for stationary series"
+
+    def test_logs_adf_failure_and_continues_grid_search(self, caplog):
+        series = self._make_random_walk(n=60)
+
+        with caplog.at_level("ERROR"), patch(
+            "statsmodels.tsa.stattools.adfuller",
+            side_effect=RuntimeError("synthetic adf failure"),
+        ):
+            _, d_star = apply_fracdiff(series, max_d=0.2)
+
+        assert d_star == pytest.approx(0.2)
+        assert "Could not evaluate ADF stationarity for fracdiff candidate" in caplog.text
+        assert "synthetic adf failure" in caplog.text

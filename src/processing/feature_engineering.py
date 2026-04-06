@@ -1529,13 +1529,23 @@ def _find_min_d(
         # Stationarity check via ADF
         try:
             adf_pval = adfuller(diff_series, autolag="AIC")[1]
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            logger.exception(
+                "Could not evaluate ADF stationarity for fracdiff candidate d=%.3f; skipping candidate. Error=%r",
+                d,
+                exc,
+            )
             continue
 
         # Memory preservation via Pearson correlation
         try:
             corr_val, _ = pearsonr(diff_series, orig_aligned)
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            logger.exception(
+                "Could not evaluate fracdiff correlation for candidate d=%.3f; skipping candidate. Error=%r",
+                d,
+                exc,
+            )
             continue
 
         if adf_pval < adf_alpha and abs(corr_val) >= corr_threshold:

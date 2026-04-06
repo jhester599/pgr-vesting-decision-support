@@ -35,6 +35,7 @@ version tags:
 - `v30.20` - log optional synthetic feature fallback paths
 - `v30.21` - log research evaluation NW fallback
 - `v30.22` - log CPCV recombination fallback
+- `v30.23` - log fracdiff candidate fallback paths
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -237,3 +238,11 @@ dry-run tests to assert on logged output instead of captured stdout.
 - add module-level logging to `src/models/wfo_engine.py`
 - log recombined-path failures before returning empty CPCV path diagnostics
 - extend the CPCV tests to cover the logged fallback path
+
+## v30.23 Scope
+
+`v30.23` makes fracdiff candidate skips observable during research runs:
+
+- log ADF-evaluation failures in `src/processing/feature_engineering.py`
+- log correlation-evaluation failures while preserving the existing continue-on-error grid search
+- extend the fracdiff tests to cover a logged candidate skip
