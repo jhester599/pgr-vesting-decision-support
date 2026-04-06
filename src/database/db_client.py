@@ -891,6 +891,96 @@ def upsert_fred_macro(conn: sqlite3.Connection, records: list[dict[str, Any]]) -
     return len(normalised)
 
 
+def upsert_model_performance_log(
+    conn: sqlite3.Connection,
+    records: list[dict[str, Any]],
+) -> int:
+    """Bulk-insert or replace monthly model-performance monitoring rows."""
+    if not records:
+        return 0
+
+    sql = """
+        INSERT OR REPLACE INTO model_performance_log (
+            month_end,
+            aggregate_oos_r2,
+            aggregate_nw_ic,
+            aggregate_hit_rate,
+            ece,
+            ece_ci_lower,
+            ece_ci_upper,
+            conformal_target_coverage,
+            conformal_empirical_coverage,
+            conformal_trailing_empirical_coverage,
+            conformal_trailing_coverage_gap
+        )
+        VALUES (
+            :month_end,
+            :aggregate_oos_r2,
+            :aggregate_nw_ic,
+            :aggregate_hit_rate,
+            :ece,
+            :ece_ci_lower,
+            :ece_ci_upper,
+            :conformal_target_coverage,
+            :conformal_empirical_coverage,
+            :conformal_trailing_empirical_coverage,
+            :conformal_trailing_coverage_gap
+        )
+    """
+    normalized = [
+        {
+            "month_end": record["month_end"],
+            "aggregate_oos_r2": record.get("aggregate_oos_r2"),
+            "aggregate_nw_ic": record.get("aggregate_nw_ic"),
+            "aggregate_hit_rate": record.get("aggregate_hit_rate"),
+            "ece": record.get("ece"),
+            "ece_ci_lower": record.get("ece_ci_lower"),
+            "ece_ci_upper": record.get("ece_ci_upper"),
+            "conformal_target_coverage": record.get("conformal_target_coverage"),
+            "conformal_empirical_coverage": record.get("conformal_empirical_coverage"),
+            "conformal_trailing_empirical_coverage": record.get(
+                "conformal_trailing_empirical_coverage"
+            ),
+            "conformal_trailing_coverage_gap": record.get(
+                "conformal_trailing_coverage_gap"
+            ),
+        }
+        for record in records
+    ]
+    conn.executemany(sql, normalized)
+    conn.commit()
+    return len(normalized)
+
+
+def get_model_performance_log(conn: sqlite3.Connection) -> pd.DataFrame:
+    """Return monthly model-performance monitoring rows sorted by month."""
+    df = pd.read_sql_query(
+        """
+        SELECT
+            month_end,
+            aggregate_oos_r2,
+            aggregate_nw_ic,
+            aggregate_hit_rate,
+            ece,
+            ece_ci_lower,
+            ece_ci_upper,
+            conformal_target_coverage,
+            conformal_empirical_coverage,
+            conformal_trailing_empirical_coverage,
+            conformal_trailing_coverage_gap,
+            created_at
+        FROM model_performance_log
+        ORDER BY month_end ASC
+        """,
+        conn,
+        parse_dates=["month_end"],
+    )
+    if df.empty:
+        return df
+    df = df.set_index("month_end")
+    return df
+
+
 def get_fred_macro(
     conn: sqlite3.Connection,
     series_ids: list[str] | None = None,
@@ -1045,6 +1135,7 @@ def get_operational_snapshot(conn: sqlite3.Connection) -> dict[str, Any]:
         "pgr_edgar_monthly": "month_end",
         "fred_macro_monthly": "month_end",
         "monthly_relative_returns": "date",
+        "model_performance_log": "month_end",
     }
     for table, date_col in table_specs.items():
         snapshot["row_counts"][table] = get_table_row_count(conn, table)

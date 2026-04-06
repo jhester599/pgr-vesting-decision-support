@@ -16,6 +16,7 @@ diagnostic enhancements.
 - `v31.0` - add historical conformal coverage backtest helper
 - `v31.1` - surface trailing conformal coverage in monthly diagnostics
 - `v31.2` - add rolling drift-monitor helper for monthly model health
+- `v31.3` - add model performance log schema and DB helpers
 
 ## v31.0 Scope
 
@@ -41,3 +42,11 @@ diagnostic enhancements.
 - add a drift-monitor helper for rolling IC, hit-rate, and ECE tracking
 - compute the latest IC-breach streak against `DIAG_MIN_IC`
 - add focused pytest coverage for rolling windows, sorting, validation, and drift-flag behavior
+
+## v31.3 Scope
+
+`v31.3` starts persisting the monthly model-health history needed for Tier 2.4:
+
+- add a `model_performance_log` migration/table for aggregate OOS, calibration, and conformal diagnostics
+- add DB upsert/query helpers for the monthly model-health log
+- include the new table in operational snapshots and schema tests
