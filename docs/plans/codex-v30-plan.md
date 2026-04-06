@@ -33,6 +33,7 @@ version tags:
 - `v30.18` - log run-manifest git metadata fallback
 - `v30.19` - add backtest fallback logging
 - `v30.20` - log optional synthetic feature fallback paths
+- `v30.21` - log research evaluation NW fallback
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -219,3 +220,11 @@ dry-run tests to assert on logged output instead of captured stdout.
 - add fallback logging to the optional synthetic relative-feature blocks in `src/processing/feature_engineering.py`
 - preserve the existing fail-closed behavior when auxiliary benchmark prices are missing or invalid
 - add focused pytest coverage for a logged synthetic-feature failure
+
+## v30.21 Scope
+
+`v30.21` tightens one remaining silent fallback in research evaluation:
+
+- add module-level logging to `src/research/evaluation.py`
+- log Newey-West summary failures before returning `NaN` diagnostics
+- extend the benchmark-suite tests to cover the logged fallback path

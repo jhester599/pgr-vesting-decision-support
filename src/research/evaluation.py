@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from typing import Iterable
 
 import numpy as np
@@ -22,6 +23,8 @@ import config
 from src.models.multi_benchmark_wfo import EnsembleWFOResult
 from src.models.wfo_engine import WFOResult, run_wfo
 from src.reporting.backtest_report import compute_newey_west_ic, compute_oos_r_squared
+
+logger = logging.getLogger(__name__)
 
 
 BASELINE_STRATEGIES: tuple[str, ...] = ("historical_mean", "last_value", "zero")
@@ -160,7 +163,11 @@ def summarize_predictions(
             y_true,
             lags=max(1, target_horizon_months - 1),
         )
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "Could not compute Newey-West IC summary; returning NaN diagnostics. Error=%r",
+            exc,
+        )
         nw_ic, nw_p_value = float("nan"), float("nan")
 
     return PredictionSummary(
