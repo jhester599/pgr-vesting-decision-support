@@ -63,7 +63,12 @@ from src.processing.feature_engineering import (
 )
 from src.processing.multi_total_return import load_relative_return_matrix
 import numpy as np
-from src.research.evaluation import evaluate_baseline_strategy, reconstruct_baseline_predictions
+from src.research.evaluation import (
+    FeatureImportanceStability,
+    compute_feature_importance_stability,
+    evaluate_baseline_strategy,
+    reconstruct_baseline_predictions,
+)
 from src.research.v11 import (
     add_destination_roles,
     recommend_redeploy_buckets,
@@ -100,7 +105,7 @@ from src.models.conformal import (
     conformal_interval_from_ensemble,
 )
 from src.models.drift_monitor import ModelDriftSummary, summarize_latest_model_drift
-from src.models.wfo_engine import CPCVResult, run_cpcv
+from src.models.wfo_engine import CPCVResult, WFOResult, run_cpcv
 from src.reporting.backtest_report import (
     compute_newey_west_ic,
     compute_oos_r_squared,
@@ -1880,6 +1885,7 @@ def _write_diagnostic_report(
     obs_feature_report: dict | None = None,
     representative_cpcv: CPCVResult | None = None,
     conformal_coverage_summary: ConformalCoverageBacktest | None = None,
+    importance_stability: FeatureImportanceStability | None = None,
 ) -> None:
     """
     Write diagnostic.md alongside recommendation.md.
@@ -2040,6 +2046,45 @@ def _write_diagnostic_report(
             "",
             f"> {obs_feature_report['message']}",
             "",
+        ]
+
+        # v32.0 — Feature importance stability subsection
+        if importance_stability is not None:
+            _stab_icon = {
+                "STABLE": "✅",
+                "MARGINAL": "⚠️",
+                "UNSTABLE": "❌",
+            }.get(importance_stability.verdict, "⚠️")
+            obs_feature_lines += [
+                "### Feature Importance Stability",
+                "",
+                "| Metric | Value | Status | Threshold (Good) |",
+                "|--------|-------|--------|-----------------|",
+                f"| Mean consecutive-fold Spearman ρ | "
+                f"{importance_stability.stability_score:.4f} | "
+                f"{_stab_icon} {importance_stability.verdict} | ≥ 0.70 |",
+                f"| Folds included | {importance_stability.n_folds} | — | — |",
+                "",
+                "> Stability score measures mean pairwise Spearman rank-correlation "
+                "between consecutive WFO fold importance rankings. "
+                "A score < 0.40 indicates unstable feature rankings; "
+                "model predictions may be driven by different features each period.",
+                "",
+                "**Top 10 features by mean WFO rank:**",
+                "",
+                "| Rank | Feature | Mean Rank | Rank Std | Mean |Importance| |",
+                "|------|---------|-----------|----------|----------------|",
+            ]
+            top10 = importance_stability.per_feature.head(10)
+            for feat, row in top10.iterrows():
+                obs_feature_lines.append(
+                    f"| {int(row['mean_rank']):.0f} | {feat} | "
+                    f"{row['mean_rank']:.1f} | {row['rank_std']:.1f} | "
+                    f"{row['mean_importance']:.4f} |"
+                )
+            obs_feature_lines += [""]
+
+        obs_feature_lines += [
             "---",
             "",
         ]
@@ -2441,6 +2486,31 @@ def main(
     )
 
     # Step 5: Write diagnostic OOS evaluation report
+    # v32.0 — Compute feature importance stability from the primary model
+    # (elasticnet vs VTI, or first available benchmark/model).
+    importance_stability: FeatureImportanceStability | None = None
+    try:
+        primary_wfo: WFOResult | None = None
+        for _etf in (config.V13_SHADOW_BASELINE_STRATEGY, "VTI"):
+            ens = ensemble_results.get(_etf)
+            if ens is not None:
+                primary_wfo = ens.model_results.get(
+                    "elasticnet",
+                    next(iter(ens.model_results.values()), None),
+                )
+                if primary_wfo is not None:
+                    break
+        if primary_wfo is None and ensemble_results:
+            first_ens = next(iter(ensemble_results.values()))
+            primary_wfo = next(iter(first_ens.model_results.values()), None)
+        if primary_wfo is not None:
+            importance_stability = compute_feature_importance_stability(primary_wfo)
+    except Exception:
+        logger.warning(
+            "Could not compute feature importance stability; skipping section",
+            exc_info=True,
+        )
+
     print("\nWriting diagnostic report...")
     _write_diagnostic_report(
         out_dir, as_of, ensemble_results,
@@ -2449,6 +2519,7 @@ def main(
         obs_feature_report=diagnostics.get("obs_feature_report"),
         representative_cpcv=diagnostics.get("representative_cpcv"),
         conformal_coverage_summary=conformal_coverage_summary,
+        importance_stability=importance_stability,
     )
 
     # Step 5.1 (P2.7): Calibration reliability diagram
