@@ -18,9 +18,11 @@ import numpy as np
 import pytest
 
 from src.models.conformal import (
+    ConformalCoverageBacktest,
     ConformalResult,
     _conformal_quantile_level,
     aci_adjusted_interval,
+    backtest_conformal_coverage,
     conformal_interval_from_ensemble,
     split_conformal_interval,
 )
@@ -70,6 +72,24 @@ class TestConformalResult:
             n_calibration=30, method="aci",
         )
         assert r.method == "aci"
+
+
+class TestConformalCoverageBacktest:
+    def test_fields_stored(self) -> None:
+        result = ConformalCoverageBacktest(
+            n_evaluated=12,
+            empirical_coverage=0.83,
+            target_coverage=0.80,
+            coverage_gap=0.03,
+            trailing_n=12,
+            trailing_empirical_coverage=0.75,
+            trailing_coverage_gap=-0.05,
+            method="aci",
+        )
+        assert result.n_evaluated == 12
+        assert result.empirical_coverage == pytest.approx(0.83)
+        assert result.trailing_empirical_coverage == pytest.approx(0.75)
+        assert result.method == "aci"
 
 
 # ---------------------------------------------------------------------------
@@ -291,6 +311,48 @@ class TestConformalIntervalFromEnsemble:
         y_hat_oos, y_true_oos = self._make_oos_data()
         result = conformal_interval_from_ensemble(0.0, y_hat_oos, y_true_oos)
         assert 0.0 <= result.empirical_coverage <= 1.0
+
+
+class TestBacktestConformalCoverage:
+    def _make_oos_data(
+        self,
+        n: int = 30,
+        seed: int = 21,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        rng = np.random.default_rng(seed)
+        y_hat = rng.normal(0.01, 0.04, size=n)
+        y_true = y_hat + rng.normal(0.0, 0.03, size=n)
+        return y_hat, y_true
+
+    def test_returns_backtest_result(self) -> None:
+        y_hat, y_true = self._make_oos_data()
+        result = backtest_conformal_coverage(y_hat, y_true)
+        assert isinstance(result, ConformalCoverageBacktest)
+
+    def test_reports_trailing_window_metrics(self) -> None:
+        y_hat, y_true = self._make_oos_data(n=24)
+        result = backtest_conformal_coverage(
+            y_hat,
+            y_true,
+            trailing_window=12,
+        )
+        assert result.trailing_n == 12
+        assert 0.0 <= result.trailing_empirical_coverage <= 1.0
+
+    def test_handles_short_series_without_evaluations(self) -> None:
+        y_hat, y_true = self._make_oos_data(n=3)
+        result = backtest_conformal_coverage(y_hat, y_true, method="aci")
+        assert result.n_evaluated == 0
+        assert math.isnan(result.empirical_coverage)
+
+    def test_mismatched_lengths_raise(self) -> None:
+        with pytest.raises(ValueError, match="same length"):
+            backtest_conformal_coverage(np.ones(10), np.ones(9))
+
+    def test_invalid_method_raises(self) -> None:
+        y_hat, y_true = self._make_oos_data()
+        with pytest.raises(ValueError, match="method must be"):
+            backtest_conformal_coverage(y_hat, y_true, method="bootstrap")
 
 
 # ---------------------------------------------------------------------------
