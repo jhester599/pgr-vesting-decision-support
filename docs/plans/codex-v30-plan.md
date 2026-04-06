@@ -32,6 +32,7 @@ version tags:
 - `v30.17` - add exception-context logging to BL fallback paths
 - `v30.18` - log run-manifest git metadata fallback
 - `v30.19` - add backtest fallback logging
+- `v30.20` - log optional synthetic feature fallback paths
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -210,3 +211,11 @@ dry-run tests to assert on logged output instead of captured stdout.
 - add module-level logging to `src/backtest/backtest_engine.py`
 - log live-prediction failures before skipping a backtest cell
 - log proxy-fill estimation failures before defaulting to `0.0`
+
+## v30.20 Scope
+
+`v30.20` carries the same pattern into DB-backed feature construction:
+
+- add fallback logging to the optional synthetic relative-feature blocks in `src/processing/feature_engineering.py`
+- preserve the existing fail-closed behavior when auxiliary benchmark prices are missing or invalid
+- add focused pytest coverage for a logged synthetic-feature failure

@@ -77,11 +77,14 @@ Feature groups:
 import os
 import sqlite3
 import warnings
+import logging
 
 import numpy as np
 import pandas as pd
 
 import config
+
+logger = logging.getLogger(__name__)
 
 
 _PROCESSED_PATH = os.path.join(config.DATA_PROCESSED_DIR, "feature_matrix.parquet")
@@ -1227,8 +1230,11 @@ def build_feature_matrix_from_db(
                 fred_raw = pgr_vs_kie.to_frame()
             else:
                 fred_raw = fred_raw.join(pgr_vs_kie, how="left")
-    except Exception:  # noqa: BLE001
-        pass  # KIE not yet in DB — feature silently absent until data accumulates
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "Could not build synthetic feature pgr_vs_kie_6m; continuing without it. Error=%r",
+            exc,
+        )
 
     # v6.0: pgr_vs_peers_6m — PGR trailing 6M return minus equal-weight composite
     # of the four direct P&C insurance peers (ALL, TRV, CB, HIG).
@@ -1257,8 +1263,11 @@ def build_feature_matrix_from_db(
                 fred_raw = pgr_vs_peers.to_frame()
             else:
                 fred_raw = fred_raw.join(pgr_vs_peers, how="left")
-    except Exception:  # noqa: BLE001
-        pass  # Peer prices not yet in DB — feature silently absent until bootstrapped
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "Could not build synthetic feature pgr_vs_peers_6m; continuing without it. Error=%r",
+            exc,
+        )
 
     # v6.0: pgr_vs_vfh_6m — PGR trailing 6M return minus VFH (Vanguard Financials ETF)
     # 6M return.  VFH is fetched weekly as part of the standard ETF benchmark universe,
@@ -1281,8 +1290,11 @@ def build_feature_matrix_from_db(
                 fred_raw = pgr_vs_vfh.to_frame()
             else:
                 fred_raw = fred_raw.join(pgr_vs_vfh, how="left")
-    except Exception:  # noqa: BLE001
-        pass  # VFH not yet in DB — feature silently absent until data accumulates
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "Could not build synthetic feature pgr_vs_vfh_6m; continuing without it. Error=%r",
+            exc,
+        )
 
     # v18.0: benchmark-side relative features from existing benchmark prices.
     # These are meant to help explain reduced-universe directional bias without
@@ -1334,8 +1346,11 @@ def build_feature_matrix_from_db(
                 fred_raw = synthetic_series.to_frame()
             else:
                 fred_raw = fred_raw.join(synthetic_series, how="left")
-    except Exception:  # noqa: BLE001
-        pass  # benchmark-side relative features are optional and should fail closed
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "Could not build optional benchmark-side relative features; continuing without them. Error=%r",
+            exc,
+        )
 
     fred_macro = fred_raw if not fred_raw.empty else None
 

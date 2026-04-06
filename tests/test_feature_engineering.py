@@ -570,3 +570,37 @@ def test_feature_matrix_pe_ratio_object_becomes_nan() -> None:
     if "pe_ratio" in df.columns:
         assert df["pe_ratio"].dtype == float, "pe_ratio should be float64 after coercion"
         assert df["pe_ratio"].isna().all(), "pe_ratio from None should be all-NaN"
+
+
+def test_build_feature_matrix_from_db_logs_optional_synthetic_feature_failure(
+    monkeypatch, price_history, caplog
+) -> None:
+    from src.database import db_client
+
+    empty_dividends = pd.DataFrame(
+        columns=["amount", "source"],
+        index=pd.DatetimeIndex([], name="ex_date"),
+    )
+    empty_splits = pd.DataFrame(
+        columns=["split_ratio", "numerator", "denominator"],
+        index=pd.DatetimeIndex([], name="split_date"),
+    )
+
+    def fake_get_prices(conn, ticker, *args, **kwargs):
+        if ticker == "KIE":
+            raise RuntimeError("synthetic KIE price failure")
+        return price_history.copy()
+
+    monkeypatch.setattr(db_client, "get_prices", fake_get_prices)
+    monkeypatch.setattr(db_client, "get_dividends", lambda conn, ticker: empty_dividends)
+    monkeypatch.setattr(db_client, "get_splits", lambda conn, ticker: empty_splits)
+    monkeypatch.setattr(db_client, "get_pgr_fundamentals", lambda conn: pd.DataFrame())
+    monkeypatch.setattr(db_client, "get_pgr_edgar_monthly", lambda conn: pd.DataFrame())
+    monkeypatch.setattr(db_client, "get_fred_macro", lambda conn, series: pd.DataFrame())
+
+    with caplog.at_level("ERROR"):
+        df = build_feature_matrix_from_db(conn=None, force_refresh=True)
+
+    assert isinstance(df, pd.DataFrame)
+    assert "Could not build synthetic feature pgr_vs_kie_6m" in caplog.text
+    assert "synthetic KIE price failure" in caplog.text
