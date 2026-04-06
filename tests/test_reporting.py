@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 from datetime import date
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -277,3 +278,30 @@ class TestPlotMultiBenchmarkSignals:
         monkeypatch.setattr(plots_mod, "_PLOTS_DIR", str(tmp_path))
         path = plots_mod.plot_multi_benchmark_signals(pd.DataFrame())
         assert path == ""
+
+
+class TestPlotWfoEquityCurve:
+    def test_logs_fold_date_fallback_and_still_creates_png(self, tmp_path, monkeypatch, caplog):
+        import src.visualization.plots as plots_mod
+
+        monkeypatch.setattr(plots_mod, "_PLOTS_DIR", str(tmp_path))
+
+        fold = SimpleNamespace(
+            fold_idx=0,
+            test_start="not-a-timestamp",
+            y_true=np.array([0.01, -0.02, 0.03]),
+            y_hat=np.array([0.02, -0.01, 0.01]),
+        )
+        wfo_result = SimpleNamespace(
+            folds=[fold],
+            information_coefficient=0.12,
+            hit_rate=0.67,
+            mean_absolute_error=0.04,
+        )
+
+        with caplog.at_level("ERROR"):
+            path = plots_mod.plot_wfo_equity_curve(wfo_result)
+
+        assert path != ""
+        assert os.path.exists(path)
+        assert "Could not build plot dates for fold 0" in caplog.text

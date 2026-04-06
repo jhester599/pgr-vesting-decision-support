@@ -36,6 +36,7 @@ version tags:
 - `v30.21` - log research evaluation NW fallback
 - `v30.22` - log CPCV recombination fallback
 - `v30.23` - log fracdiff candidate fallback paths
+- `v30.24` - log plot date fallback
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -246,3 +247,11 @@ dry-run tests to assert on logged output instead of captured stdout.
 - log ADF-evaluation failures in `src/processing/feature_engineering.py`
 - log correlation-evaluation failures while preserving the existing continue-on-error grid search
 - extend the fracdiff tests to cover a logged candidate skip
+
+## v30.24 Scope
+
+`v30.24` closes one last silent plotting fallback:
+
+- add module-level logging to `src/visualization/plots.py`
+- log fold-date construction failures before falling back to positional plotting
+- extend the reporting tests to cover the logged fallback path
