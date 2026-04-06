@@ -37,6 +37,9 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
             "ci_width": [0.13, 0.11],
             "ci_empirical_coverage": [0.82, 0.79],
             "ci_n_calibration": [24, 24],
+            "ci_trailing_empirical_coverage": [0.65, 0.60],
+            "ci_trailing_coverage_gap": [-0.15, -0.20],
+            "ci_trailing_n": [12, 12],
         },
         index=pd.Index(["VOO", "BND"], name="benchmark"),
     )
@@ -128,9 +131,10 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
         signals: pd.DataFrame | None = None,
         obs_feature_report=None,
         representative_cpcv=None,
+        conformal_coverage_summary=None,
     ) -> None:
         del as_of, ensemble_results, target_horizon_months, cal_result, signals
-        del obs_feature_report, representative_cpcv
+        del obs_feature_report, representative_cpcv, conformal_coverage_summary
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "diagnostic.md").write_text("# Diagnostic Stub\n", encoding="utf-8")
 
@@ -161,3 +165,7 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest["workflow_name"] == "monthly_decision"
     assert any(output.endswith("recommendation.md") for output in manifest["outputs"])
+    assert any(
+        "Trailing conformal coverage deviates materially from nominal" in warning
+        for warning in manifest["warnings"]
+    )
