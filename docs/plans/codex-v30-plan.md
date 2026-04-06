@@ -31,6 +31,7 @@ version tags:
 - `v30.16` - add logging for silent WFO benchmark/model skips
 - `v30.17` - add exception-context logging to BL fallback paths
 - `v30.18` - log run-manifest git metadata fallback
+- `v30.19` - add backtest fallback logging
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -201,3 +202,11 @@ dry-run tests to assert on logged output instead of captured stdout.
 - add module-level logging to `src/reporting/run_manifest.py`
 - log git metadata lookup failures before falling back to `"unknown"`
 - add focused tests for the fallback path so the manifest contract stays stable
+
+## v30.19 Scope
+
+`v30.19` extends the observability pass into historical backtesting:
+
+- add module-level logging to `src/backtest/backtest_engine.py`
+- log live-prediction failures before skipping a backtest cell
+- log proxy-fill estimation failures before defaulting to `0.0`
