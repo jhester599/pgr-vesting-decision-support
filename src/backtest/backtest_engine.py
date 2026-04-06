@@ -26,7 +26,7 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import date
 import logging
-from typing import Literal
+from typing import Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -347,7 +347,7 @@ def run_full_backtest(
     for horizon in config.WFO_TARGET_HORIZONS:
         results = run_historical_backtest(
             conn,
-            model_type=model_type,
+            model_type=cast(Literal["lasso", "ridge", "elasticnet"], model_type),
             target_horizon_months=horizon,
         )
         all_results.extend(results)

@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Literal
+from typing import Literal, cast
 
 import pandas as pd
 
@@ -98,7 +98,7 @@ def enumerate_vesting_events(
             events.append(
                 VestingEvent(
                     event_date=event_date,
-                    rsu_type=rsu_type,
+                    rsu_type=cast(Literal["time", "performance"], rsu_type),
                     horizon_6m_end=_add_months(event_date, 6),
                     horizon_12m_end=_add_months(event_date, 12),
                 )

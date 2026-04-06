@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import logging
-from typing import Iterable
+from typing import Iterable, Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -379,7 +379,10 @@ def evaluate_wfo_model(
     result = run_wfo(
         X,
         y,
-        model_type=model_type,
+        model_type=cast(  # callers validate model_type before calling this helper
+            Literal["lasso", "ridge", "elasticnet", "bayesian_ridge", "gbt"],
+            model_type,
+        ),
         target_horizon_months=target_horizon_months,
         benchmark=benchmark,
         purge_buffer=purge_buffer,
@@ -392,7 +395,7 @@ def evaluate_wfo_model(
         y_true,
         target_horizon_months=target_horizon_months,
     )
-    metrics = {
+    metrics: dict[str, float | int | str] = {
         "n_obs": summary.n_obs,
         "ic": summary.ic,
         "hit_rate": summary.hit_rate,
