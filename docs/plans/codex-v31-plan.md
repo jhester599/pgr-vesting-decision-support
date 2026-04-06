@@ -17,6 +17,7 @@ diagnostic enhancements.
 - `v31.1` - surface trailing conformal coverage in monthly diagnostics
 - `v31.2` - add rolling drift-monitor helper for monthly model health
 - `v31.3` - add model performance log schema and DB helpers
+- `v31.4` - persist monthly model health and surface drift in the report
 
 ## v31.0 Scope
 
@@ -50,3 +51,12 @@ diagnostic enhancements.
 - add a `model_performance_log` migration/table for aggregate OOS, calibration, and conformal diagnostics
 - add DB upsert/query helpers for the monthly model-health log
 - include the new table in operational snapshots and schema tests
+
+## v31.4 Scope
+
+`v31.4` turns the Tier 2.4 scaffolding into a live monthly workflow path:
+
+- persist the current monthly model-health snapshot after each decision run
+- derive the latest rolling drift summary from the DB-backed history
+- surface a `Model Health` section in `recommendation.md`
+- extend the monthly end-to-end test to assert both report rendering and DB persistence

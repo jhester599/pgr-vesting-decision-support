@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 import config
 from scripts import monthly_decision
+from src.database import db_client
 from src.models.calibration import CalibrationResult
 
 
@@ -156,6 +157,8 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
     assert "PGR Monthly Decision Report" in recommendation_text
     assert "## Data Freshness" in recommendation_text
     assert "## Consensus Signal" in recommendation_text
+    assert "## Model Health" in recommendation_text
+    assert "Rolling 12M IC" in recommendation_text
     assert "UNDERPERFORM" in recommendation_text
 
     signals_df = pd.read_csv(signals_path)
@@ -169,3 +172,10 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
         "Trailing conformal coverage deviates materially from nominal" in warning
         for warning in manifest["warnings"]
     )
+
+    conn = db_client.get_connection(str(db_path))
+    perf_log = db_client.get_model_performance_log(conn)
+    conn.close()
+    assert len(perf_log) == 1
+    assert perf_log["aggregate_nw_ic"].iloc[0] == 0.081
+    assert perf_log["conformal_trailing_empirical_coverage"].iloc[0] == 0.625

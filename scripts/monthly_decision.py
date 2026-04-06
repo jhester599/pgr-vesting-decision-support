@@ -99,6 +99,7 @@ from src.models.conformal import (
     backtest_conformal_coverage,
     conformal_interval_from_ensemble,
 )
+from src.models.drift_monitor import ModelDriftSummary, summarize_latest_model_drift
 from src.models.wfo_engine import CPCVResult, run_cpcv
 from src.reporting.backtest_report import (
     compute_newey_west_ic,
@@ -644,6 +645,60 @@ def _summarize_conformal_coverage(signals: pd.DataFrame | None) -> ConformalCove
         trailing_coverage_gap=trailing_empirical - target,
         method=config.CONFORMAL_METHOD,
     )
+
+
+def _record_model_health_snapshot(
+    conn,
+    as_of: date,
+    aggregate_health: dict | None,
+    cal_result: CalibrationResult | None,
+    conformal_coverage_summary: ConformalCoverageBacktest | None,
+) -> ModelDriftSummary | None:
+    """Persist the monthly model-health snapshot and return the latest drift summary."""
+    if aggregate_health is None or cal_result is None:
+        return None
+
+    month_end = (
+        pd.Timestamp(as_of).to_period("M").to_timestamp("M").date().isoformat()
+    )
+    db_client.upsert_model_performance_log(
+        conn,
+        [
+            {
+                "month_end": month_end,
+                "aggregate_oos_r2": float(aggregate_health["oos_r2"]),
+                "aggregate_nw_ic": float(aggregate_health["nw_ic"]),
+                "aggregate_hit_rate": float(aggregate_health["agg_hit"]),
+                "ece": float(cal_result.ece),
+                "ece_ci_lower": float(cal_result.ece_ci_lower),
+                "ece_ci_upper": float(cal_result.ece_ci_upper),
+                "conformal_target_coverage": (
+                    float(conformal_coverage_summary.target_coverage)
+                    if conformal_coverage_summary is not None
+                    else None
+                ),
+                "conformal_empirical_coverage": (
+                    float(conformal_coverage_summary.empirical_coverage)
+                    if conformal_coverage_summary is not None
+                    else None
+                ),
+                "conformal_trailing_empirical_coverage": (
+                    float(conformal_coverage_summary.trailing_empirical_coverage)
+                    if conformal_coverage_summary is not None
+                    else None
+                ),
+                "conformal_trailing_coverage_gap": (
+                    float(conformal_coverage_summary.trailing_coverage_gap)
+                    if conformal_coverage_summary is not None
+                    else None
+                ),
+            }
+        ],
+    )
+    history = db_client.get_model_performance_log(conn)
+    if history.empty:
+        return None
+    return summarize_latest_model_drift(history.reset_index())
 
 
 def _consensus_signal(
@@ -1268,6 +1323,7 @@ def _write_recommendation_md(
     recommendation_layer_label: str | None = None,
     representative_cpcv: CPCVResult | None = None,
     freshness_report: dict[str, object] | None = None,
+    model_drift_summary: ModelDriftSummary | None = None,
 ) -> None:
     """Write the human-readable recommendation report."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1390,6 +1446,27 @@ def _write_recommendation_md(
         lines.append(
             f"| {row['check']} | {row['current']} | {row['threshold']} | **{row['status']}** | {row['meaning']} |"
         )
+
+    if model_drift_summary is not None:
+        drift_status = (
+            f"Warning: rolling IC has been below {config.DIAG_MIN_IC:.2f} for "
+            f"{model_drift_summary.ic_below_threshold_streak} consecutive monthly snapshots."
+            if model_drift_summary.drift_flag
+            else "Stable: no sustained rolling-IC drift alert is active."
+        )
+        lines += [
+            "",
+            "---",
+            "",
+            "## Model Health",
+            "",
+            f"- Latest tracked month: **{model_drift_summary.as_of_month}**",
+            f"- Rolling {model_drift_summary.window_months}M IC: **{model_drift_summary.rolling_ic:.4f}**",
+            f"- Rolling {model_drift_summary.window_months}M Hit Rate: **{model_drift_summary.rolling_hit_rate:.1%}**",
+            f"- Rolling {model_drift_summary.window_months}M ECE: **{model_drift_summary.rolling_ece:.1%}**",
+            f"- IC breach streak: **{model_drift_summary.ic_below_threshold_streak}** month(s)",
+            f"- Status: **{drift_status}**",
+        ]
 
     lines += [
         "",
@@ -2301,6 +2378,13 @@ def main(
             "v13.1 promoted simpler diversification-first recommendation layer + "
             "v22 promoted visible cross-check"
         )
+    model_drift_summary = _record_model_health_snapshot(
+        conn,
+        as_of,
+        aggregate_health,
+        cal_result,
+        conformal_coverage_summary,
+    )
     existing_holdings = _build_existing_holdings_guidance(conn, as_of)
     redeploy_buckets = _build_redeploy_guidance(conn)
     redeploy_portfolio = _build_redeploy_portfolio(
@@ -2349,6 +2433,7 @@ def main(
         recommendation_layer_label=recommendation_layer_label,
         representative_cpcv=diagnostics.get("representative_cpcv"),
         freshness_report=freshness_report,
+        model_drift_summary=model_drift_summary,
     )
     _write_signals_csv(out_dir, signals)
     _append_decision_log(
@@ -2396,6 +2481,12 @@ def main(
             "Trailing conformal coverage deviates materially from nominal: "
             f"{conformal_coverage_summary.trailing_empirical_coverage:.1%} "
             f"vs {conformal_coverage_summary.target_coverage:.0%}."
+        )
+    if model_drift_summary is not None and model_drift_summary.drift_flag:
+        manifest_warnings.append(
+            "Rolling model IC drift alert active: "
+            f"{model_drift_summary.ic_below_threshold_streak} consecutive monthly "
+            f"snapshots below {config.DIAG_MIN_IC:.2f}."
         )
     if shadow_summary is not None:
         if shadow_summary.recommendation_mode != live_summary.recommendation_mode:
