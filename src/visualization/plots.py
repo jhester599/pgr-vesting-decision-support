@@ -18,6 +18,7 @@ v2 outputs (backtest & multi-benchmark):
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import TYPE_CHECKING
 
@@ -31,6 +32,8 @@ import pandas as pd
 if TYPE_CHECKING:
     from src.models.wfo_engine import WFOResult
     from src.portfolio.drift_analyzer import PortfolioState
+
+logger = logging.getLogger(__name__)
 
 _PLOTS_DIR = "plots"
 
@@ -60,7 +63,12 @@ def plot_wfo_equity_curve(wfo_result: "WFOResult") -> str:
             fold_dates = pd.date_range(
                 start=fold.test_start, periods=n, freq="MS"
             )
-        except Exception:
+        except Exception as exc:
+            logger.exception(
+                "Could not build plot dates for fold %s; using positional fallback. Error=%r",
+                fold.fold_idx,
+                exc,
+            )
             fold_dates = range(len(dates), len(dates) + n)
         dates.extend(fold_dates)
         y_true_all.extend(fold.y_true.tolist())

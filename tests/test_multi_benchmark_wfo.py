@@ -12,13 +12,18 @@ Verifies that run_all_benchmarks() and get_current_signals() correctly:
 import numpy as np
 import pandas as pd
 import pytest
+from unittest.mock import patch
 
 import config
 from src.models.multi_benchmark_wfo import (
+    EnsembleWFOResult,
     get_confidence_tier,
+    get_ensemble_signals,
     get_current_signals,
     run_all_benchmarks,
+    run_ensemble_benchmarks,
 )
+from src.models.wfo_engine import WFOResult
 
 
 # ---------------------------------------------------------------------------
@@ -337,3 +342,70 @@ class TestNeutralWhenIcBelowThreshold:
             assert row["signal"] == _SIGNAL_NEUTRAL, (
                 f"{etf}: expected NEUTRAL (IC below threshold) but got '{row['signal']}'"
             )
+
+
+class TestLoggingFallbacks:
+    def test_run_ensemble_benchmarks_logs_failed_model_and_continues(
+        self, synthetic_feature_matrix, small_relative_return_matrix, caplog
+    ):
+        X, _ = synthetic_feature_matrix
+        real_run_wfo = __import__(
+            "src.models.multi_benchmark_wfo",
+            fromlist=["run_wfo"],
+        ).run_wfo
+
+        def fake_run_wfo(*args, **kwargs):
+            if kwargs["benchmark"] == "ETF_A" and kwargs["model_type"] == config.ENSEMBLE_MODELS[0]:
+                raise RuntimeError("synthetic ensemble failure")
+            return real_run_wfo(*args, **kwargs)
+
+        with caplog.at_level("WARNING"), patch(
+            "src.models.multi_benchmark_wfo.run_wfo",
+            side_effect=fake_run_wfo,
+        ):
+            result = run_ensemble_benchmarks(
+                X,
+                small_relative_return_matrix,
+                target_horizon_months=6,
+            )
+
+        assert "ETF_A" in result
+        assert config.ENSEMBLE_MODELS[0] not in result["ETF_A"].model_results
+        assert "Skipping ensemble model" in caplog.text
+        assert "synthetic ensemble failure" in caplog.text
+
+    def test_get_current_signals_logs_prediction_failure_and_skips(
+        self, synthetic_feature_matrix, small_relative_return_matrix, caplog
+    ):
+        X, _ = synthetic_feature_matrix
+        run_res = run_all_benchmarks(
+            X,
+            small_relative_return_matrix,
+            model_type="lasso",
+            target_horizon_months=6,
+        )
+        failing_etf = next(iter(run_res))
+        original_predict_current = __import__(
+            "src.models.multi_benchmark_wfo",
+            fromlist=["predict_current"],
+        ).predict_current
+
+        def fake_predict_current(*args, **kwargs):
+            if kwargs["wfo_result"].benchmark == failing_etf:
+                raise RuntimeError("synthetic live prediction failure")
+            return original_predict_current(*args, **kwargs)
+
+        with caplog.at_level("ERROR"), patch(
+            "src.models.multi_benchmark_wfo.predict_current",
+            side_effect=fake_predict_current,
+        ):
+            signals = get_current_signals(
+                X_full=X,
+                relative_return_matrix=small_relative_return_matrix,
+                wfo_results=run_res,
+                X_current=X.iloc[[-1]],
+            )
+
+        assert failing_etf not in signals.index
+        assert "Failed to generate live signal" in caplog.text
+        assert "synthetic live prediction failure" in caplog.text

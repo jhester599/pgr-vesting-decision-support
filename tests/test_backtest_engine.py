@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import sqlite3
 from datetime import date, timedelta
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
@@ -31,6 +32,7 @@ from src.backtest.backtest_engine import (
     _signal_from_prediction,
     _realized_direction,
     _sell_pct_from_signal,
+    run_historical_backtest,
 )
 
 
@@ -273,3 +275,114 @@ class TestBacktestEventResultLogic:
             proxy_fill_fraction=0.15,
         )
         assert 0.0 <= r.proxy_fill_fraction <= 1.0
+
+
+class TestBacktestLoggingFallbacks:
+    @staticmethod
+    def _make_feature_df() -> pd.DataFrame:
+        idx = pd.bdate_range("2014-01-31", periods=140, freq="BME")
+        return pd.DataFrame(
+            {
+                "feature_a": np.linspace(0.0, 1.0, len(idx)),
+                "target_6m_return": np.linspace(0.0, 0.1, len(idx)),
+            },
+            index=idx,
+        )
+
+    @staticmethod
+    def _make_event() -> VestingEvent:
+        return VestingEvent(
+            event_date=date(2024, 1, 31),
+            rsu_type="time",
+            horizon_6m_end=date(2024, 7, 31),
+            horizon_12m_end=date(2025, 1, 31),
+        )
+
+    def test_logs_prediction_failure_and_skips_result(self, caplog):
+        feature_df = self._make_feature_df()
+        embargo_cutoff = pd.Timestamp("2023-07-31")
+        aligned_index = feature_df.index[feature_df.index <= embargo_cutoff]
+        X_aligned = feature_df.loc[aligned_index, ["feature_a"]]
+        y_aligned = pd.Series(
+            np.linspace(-0.02, 0.03, len(aligned_index)),
+            index=aligned_index,
+            name="VTI_6m",
+        )
+        rel_series = y_aligned.copy()
+
+        with caplog.at_level("ERROR"), patch(
+            "src.backtest.backtest_engine.build_feature_matrix_from_db",
+            return_value=feature_df,
+        ), patch(
+            "src.backtest.backtest_engine.load_relative_return_matrix",
+            return_value=rel_series,
+        ), patch(
+            "src.backtest.backtest_engine.get_X_y_relative",
+            return_value=(X_aligned, y_aligned),
+        ), patch(
+            "src.backtest.backtest_engine.run_wfo",
+            return_value=SimpleNamespace(),
+        ), patch(
+            "src.backtest.backtest_engine.predict_current",
+            side_effect=RuntimeError("synthetic backtest prediction failure"),
+        ), patch(
+            "src.backtest.backtest_engine.config.ETF_BENCHMARK_UNIVERSE",
+            ["VTI"],
+        ):
+            results = run_historical_backtest(
+                sqlite3.connect(":memory:"),
+                events_override=[self._make_event()],
+            )
+
+        assert results == []
+        assert "Skipping backtest prediction for benchmark VTI" in caplog.text
+        assert "synthetic backtest prediction failure" in caplog.text
+
+    def test_logs_proxy_fill_failure_and_defaults_to_zero(self, caplog):
+        feature_df = self._make_feature_df()
+        embargo_cutoff = pd.Timestamp("2023-07-31")
+        aligned_index = feature_df.index[feature_df.index <= embargo_cutoff]
+        X_aligned = feature_df.loc[aligned_index, ["feature_a"]]
+        y_aligned = pd.Series(
+            np.linspace(-0.02, 0.03, len(aligned_index)),
+            index=aligned_index,
+            name="VTI_6m",
+        )
+        train_rel = y_aligned.copy()
+        realized_rel = pd.Series([0.04], index=pd.DatetimeIndex(["2024-01-31"]), name="VTI_6m")
+
+        with caplog.at_level("ERROR"), patch(
+            "src.backtest.backtest_engine.build_feature_matrix_from_db",
+            return_value=feature_df,
+        ), patch(
+            "src.backtest.backtest_engine.load_relative_return_matrix",
+            side_effect=[train_rel, realized_rel],
+        ), patch(
+            "src.backtest.backtest_engine.get_X_y_relative",
+            return_value=(X_aligned, y_aligned),
+        ), patch(
+            "src.backtest.backtest_engine.run_wfo",
+            return_value=SimpleNamespace(),
+        ), patch(
+            "src.backtest.backtest_engine.predict_current",
+            return_value={
+                "predicted_return": 0.05,
+                "ic": 0.10,
+                "hit_rate": 0.60,
+            },
+        ), patch(
+            "src.backtest.backtest_engine._compute_proxy_fill_fraction",
+            side_effect=RuntimeError("synthetic proxy-fill failure"),
+        ), patch(
+            "src.backtest.backtest_engine.config.ETF_BENCHMARK_UNIVERSE",
+            ["VTI"],
+        ):
+            results = run_historical_backtest(
+                sqlite3.connect(":memory:"),
+                events_override=[self._make_event()],
+            )
+
+        assert len(results) == 1
+        assert results[0].proxy_fill_fraction == 0.0
+        assert "Could not compute proxy fill fraction for benchmark VTI" in caplog.text
+        assert "synthetic proxy-fill failure" in caplog.text

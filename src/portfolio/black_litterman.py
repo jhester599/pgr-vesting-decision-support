@@ -29,6 +29,7 @@ CPCV/WFO inputs:
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 
 import numpy as np
 import pandas as pd
@@ -36,6 +37,8 @@ from sklearn.covariance import LedoitWolf
 
 import config
 from src.models.multi_benchmark_wfo import EnsembleWFOResult
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -195,8 +198,12 @@ def build_bl_weights(
             for res in sig.model_results.values():
                 try:
                     all_preds.extend(res.y_hat_all.tolist())
-                except Exception:  # noqa: BLE001
-                    pass
+                except Exception as exc:  # noqa: BLE001
+                    logger.exception(
+                        "Could not extract BL view predictions for ticker %s. Error=%r",
+                        ticker,
+                        exc,
+                    )
             if all_preds:
                 view_return = float(np.mean(all_preds))
         view_tickers.append(ticker)
@@ -252,7 +259,11 @@ def build_bl_weights(
             n_view_tickers=len(view_tickers),
         )
 
-    except Exception:  # noqa: BLE001 — fall back to equal weight
+    except Exception as exc:  # noqa: BLE001 — fall back to equal weight
+        logger.exception(
+            "Black-Litterman optimization failed; falling back to equal weights. Error=%r",
+            exc,
+        )
         return _finish(
             {t: 1.0 / len(active_tickers) for t in active_tickers},
             fallback_used=True,

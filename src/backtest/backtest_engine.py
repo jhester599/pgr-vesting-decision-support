@@ -25,6 +25,7 @@ from __future__ import annotations
 import sqlite3
 from dataclasses import dataclass
 from datetime import date
+import logging
 from typing import Literal
 
 import numpy as np
@@ -43,6 +44,8 @@ from src.processing.feature_engineering import (
     get_X_y_relative,
 )
 from src.processing.multi_total_return import load_relative_return_matrix
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -207,7 +210,13 @@ def run_historical_backtest(
                     wfo_result=wfo_result,
                     model_type=model_type,
                 )
-            except Exception:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001
+                logger.exception(
+                    "Skipping backtest prediction for benchmark %s on event %s due to live prediction failure. Error=%r",
+                    etf,
+                    event.event_date.isoformat(),
+                    exc,
+                )
                 continue
 
             predicted = pred["predicted_return"]
@@ -236,7 +245,13 @@ def run_historical_backtest(
                 proxy_frac = _compute_proxy_fill_fraction(
                     conn, etf, X_aligned.index
                 )
-            except Exception:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001
+                logger.exception(
+                    "Could not compute proxy fill fraction for benchmark %s on event %s; defaulting to 0.0. Error=%r",
+                    etf,
+                    event.event_date.isoformat(),
+                    exc,
+                )
                 proxy_frac = 0.0
 
             signal = _signal_from_prediction(predicted)

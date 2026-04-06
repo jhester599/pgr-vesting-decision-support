@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import subprocess
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 def resolve_git_sha(cwd: str | None = None) -> str:
@@ -34,7 +37,11 @@ def resolve_git_sha(cwd: str | None = None) -> str:
         if status.stdout.strip():
             return f"{head_sha}-dirty"
         return head_sha
-    except Exception:
+    except Exception as exc:
+        logger.exception(
+            "Could not resolve git SHA for run manifest; using 'unknown'. Error=%r",
+            exc,
+        )
         return "unknown"
 
 

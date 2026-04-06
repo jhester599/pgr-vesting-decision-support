@@ -23,6 +23,7 @@ Computational note:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import logging
 from typing import Literal
 
 import numpy as np
@@ -31,6 +32,8 @@ from scipy.stats import norm as _norm
 
 from src.models.wfo_engine import WFOResult, run_wfo, predict_current
 from src.processing.feature_engineering import get_X_y_relative
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -201,7 +204,13 @@ def run_ensemble_benchmarks(
                     purge_buffer=purge_buffer,
                 )
                 per_model[mtype] = result
-            except (ValueError, RuntimeError):
+            except (ValueError, RuntimeError) as exc:
+                logger.warning(
+                    "Skipping ensemble model %s for benchmark %s due to WFO failure. Error=%r",
+                    mtype,
+                    etf,
+                    exc,
+                )
                 continue
 
         if not per_model:
@@ -288,7 +297,13 @@ def get_ensemble_signals(
                     model_type=mtype,
                     train_window_months=train_window_months,
                 )
-            except Exception:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001
+                logger.exception(
+                    "Failed to generate ensemble prediction for benchmark %s model %s. Error=%r",
+                    etf,
+                    mtype,
+                    exc,
+                )
                 continue
 
             point = pred["predicted_return"]
@@ -466,7 +481,12 @@ def get_current_signals(
                 model_type=model_type,
                 train_window_months=train_window_months,
             )
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            logger.exception(
+                "Failed to generate live signal for benchmark %s. Error=%r",
+                etf,
+                exc,
+            )
             continue
 
         predicted = pred["predicted_return"]

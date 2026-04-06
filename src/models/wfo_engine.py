@@ -38,6 +38,7 @@ TimeSeriesSplit as mandated by CLAUDE.md.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import logging
 from typing import Literal
 import warnings
 
@@ -58,6 +59,8 @@ from src.models.regularized_models import (
     get_feature_importances,
 )
 from src.processing.feature_engineering import get_model_feature_columns
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -663,7 +666,11 @@ def run_cpcv(
                         path_y_hat_vals.extend(y_hat_vals[valid].tolist())
                 if len(path_y_true) >= 2:
                     path_ics.append(_safe_spearman_ic(path_y_true, path_y_hat_vals))
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            logger.exception(
+                "Could not recombine CPCV paths; returning empty path diagnostics. Error=%r",
+                exc,
+            )
             path_ics = []
 
     mean_ic = float(np.nanmean(path_ics)) if path_ics else float("nan")

@@ -54,18 +54,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config
 from src.database import db_client
+from src.logging_config import configure_logging
 
 
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-
-logging.basicConfig(
-    format="%(asctime)s  %(levelname)-8s  %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    level=logging.INFO,
-    stream=sys.stdout,
-)
 log = logging.getLogger(__name__)
 
 
@@ -78,11 +69,6 @@ PGR_CIK_NUMERIC: int = 80661          # numeric CIK for archive URLs
 
 SUBMISSIONS_BASE_URL: str = "https://data.sec.gov/submissions"
 EDGAR_ARCHIVES_URL: str = "https://www.sec.gov/Archives/edgar/data/80661"
-
-_EDGAR_HEADERS: dict[str, str] = {
-    "User-Agent": "Jeff Hester jeffrey.r.hester@gmail.com",
-    "Accept-Encoding": "gzip, deflate",
-}
 
 # PGR's monthly 8-K supplement HTML format is reliably parseable from ~2010
 # onward.  Set this as the hard earliest boundary for backfills.
@@ -101,7 +87,11 @@ def _get(url: str, retries: int = 3) -> requests.Response:
     last_exc: Exception | None = None
     for attempt in range(retries):
         try:
-            resp = requests.get(url, headers=_EDGAR_HEADERS, timeout=30)
+            resp = requests.get(
+                url,
+                headers=config.build_edgar_headers(),
+                timeout=30,
+            )
             resp.raise_for_status()
             time.sleep(_SEC_SLEEP_SECONDS)
             return resp
@@ -1377,8 +1367,11 @@ def fetch_and_upsert(
 
         except Exception as exc:
             parse_errors += 1
-            log.warning(
-                "SKIP %s (filed %s): %s", accession, filing_date, exc
+            log.exception(
+                "SKIP %s (filed %s) due to parse failure. Error=%r",
+                accession,
+                filing_date,
+                exc,
             )
             continue
 
@@ -1737,6 +1730,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    configure_logging()
     args = _parse_args()
     conn = db_client.get_connection(config.DB_PATH)
     db_client.initialize_schema(conn)

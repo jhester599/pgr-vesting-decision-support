@@ -23,6 +23,20 @@ version tags:
 - `v30.8` - add operational logging to monthly decision fallbacks
 - `v30.9` - migrate peer fetch entrypoint to structured logging
 - `v30.10` - rewrite README as a landing page
+- `v30.11` - align script-level EDGAR fetcher logging and headers
+- `v30.12` - add logging fallbacks to initial fetch
+- `v30.13` - add logging fallbacks to bootstrap
+- `v30.14` - add logging fallback to v1 migration script
+- `v30.15` - add exception-context logging to fred loader
+- `v30.16` - add logging for silent WFO benchmark/model skips
+- `v30.17` - add exception-context logging to BL fallback paths
+- `v30.18` - log run-manifest git metadata fallback
+- `v30.19` - add backtest fallback logging
+- `v30.20` - log optional synthetic feature fallback paths
+- `v30.21` - log research evaluation NW fallback
+- `v30.22` - log CPCV recombination fallback
+- `v30.23` - log fracdiff candidate fallback paths
+- `v30.24` - log plot date fallback
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -129,3 +143,115 @@ dry-run tests to assert on logged output instead of captured stdout.
 - link out to `docs/architecture.md`, `docs/operations-runbook.md`,
   `docs/changelog.md`, and `ROADMAP.md`
 - keep detailed version history in dedicated docs instead of the repo root
+
+## v30.11 Scope
+
+`v30.11` finishes a small production-script consistency pass:
+
+- route `scripts/edgar_8k_fetcher.py` through the shared logging setup
+- reuse the central env-backed EDGAR header builder for script-side HTTP calls
+- add focused tests around the script-level `_get()` helper
+
+## v30.12 Scope
+
+`v30.12` hardens the one-time bootstrap script's fallback paths:
+
+- migrate `scripts/initial_fetch.py` to the shared logging scaffold
+- preserve exception context for FRED and loader-level broad catches
+- add focused tests for those fallback logs
+
+## v30.13 Scope
+
+`v30.13` continues the Tier 3.3 fallback sweep in `scripts/bootstrap.py`:
+
+- migrate bootstrap orchestration output to the shared logging scaffold
+- preserve exception context when the delegated monthly decision run fails
+- add focused tests for the bootstrap fallback path
+
+## v30.14 Scope
+
+`v30.14` keeps the fallback sweep moving in the one-time migration helper:
+
+- migrate `scripts/migrate_v1_to_v2.py` to the shared logging scaffold
+- preserve exception context when the legacy EDGAR loader import/run fails
+- add focused tests for that migration fallback
+
+## v30.15 Scope
+
+`v30.15` extends the same fallback traceability into core ingestion:
+
+- add module-level logging to `src/ingestion/fred_loader.py`
+- preserve exception context when one FRED series fails during a multi-series fetch
+- add focused tests that the failed series is logged and the remaining series still load
+
+## v30.16 Scope
+
+`v30.16` makes silent benchmark/model failures visible in the core WFO runner:
+
+- add module-level logging to `src/models/multi_benchmark_wfo.py`
+- log skipped ensemble members when one model fails for a benchmark
+- log live prediction failures while preserving the existing continue-on-error behavior
+
+## v30.17 Scope
+
+`v30.17` extends the same observability into the BL allocator:
+
+- add module-level logging to `src/portfolio/black_litterman.py`
+- log view-prediction extraction failures while still building remaining views
+- log optimization failures before falling back to equal weights
+
+## v30.18 Scope
+
+`v30.18` closes a small operational blind spot in manifest generation:
+
+- add module-level logging to `src/reporting/run_manifest.py`
+- log git metadata lookup failures before falling back to `"unknown"`
+- add focused tests for the fallback path so the manifest contract stays stable
+
+## v30.19 Scope
+
+`v30.19` extends the observability pass into historical backtesting:
+
+- add module-level logging to `src/backtest/backtest_engine.py`
+- log live-prediction failures before skipping a backtest cell
+- log proxy-fill estimation failures before defaulting to `0.0`
+
+## v30.20 Scope
+
+`v30.20` carries the same pattern into DB-backed feature construction:
+
+- add fallback logging to the optional synthetic relative-feature blocks in `src/processing/feature_engineering.py`
+- preserve the existing fail-closed behavior when auxiliary benchmark prices are missing or invalid
+- add focused pytest coverage for a logged synthetic-feature failure
+
+## v30.21 Scope
+
+`v30.21` tightens one remaining silent fallback in research evaluation:
+
+- add module-level logging to `src/research/evaluation.py`
+- log Newey-West summary failures before returning `NaN` diagnostics
+- extend the benchmark-suite tests to cover the logged fallback path
+
+## v30.22 Scope
+
+`v30.22` makes one remaining CPCV diagnostic fallback visible:
+
+- add module-level logging to `src/models/wfo_engine.py`
+- log recombined-path failures before returning empty CPCV path diagnostics
+- extend the CPCV tests to cover the logged fallback path
+
+## v30.23 Scope
+
+`v30.23` makes fracdiff candidate skips observable during research runs:
+
+- log ADF-evaluation failures in `src/processing/feature_engineering.py`
+- log correlation-evaluation failures while preserving the existing continue-on-error grid search
+- extend the fracdiff tests to cover a logged candidate skip
+
+## v30.24 Scope
+
+`v30.24` closes one last silent plotting fallback:
+
+- add module-level logging to `src/visualization/plots.py`
+- log fold-date construction failures before falling back to positional plotting
+- extend the reporting tests to cover the logged fallback path

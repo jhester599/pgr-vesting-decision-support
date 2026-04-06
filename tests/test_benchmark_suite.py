@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -32,6 +33,23 @@ def test_summarize_predictions_returns_metrics():
     assert summary.n_obs == 10
     assert isinstance(summary.hit_rate, float)
     assert isinstance(summary.oos_r2, float)
+
+
+def test_summarize_predictions_logs_newey_west_failure(caplog):
+    idx = pd.date_range("2020-01-31", periods=10, freq="ME")
+    y_hat = pd.Series(np.linspace(-0.02, 0.03, 10), index=idx)
+    y_true = pd.Series(np.linspace(-0.01, 0.04, 10), index=idx)
+
+    with caplog.at_level("ERROR"), patch(
+        "src.research.evaluation.compute_newey_west_ic",
+        side_effect=RuntimeError("synthetic NW failure"),
+    ):
+        summary = summarize_predictions(y_hat, y_true, target_horizon_months=6)
+
+    assert math.isnan(summary.nw_ic)
+    assert math.isnan(summary.nw_p_value)
+    assert "Could not compute Newey-West IC summary" in caplog.text
+    assert "synthetic NW failure" in caplog.text
 
 
 def test_evaluate_baseline_strategy_returns_expected_keys():

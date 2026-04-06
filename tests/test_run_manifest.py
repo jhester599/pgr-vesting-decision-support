@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
 from src.reporting.run_manifest import build_run_manifest, write_run_manifest
+from src.reporting.run_manifest import resolve_git_sha
 
 
 def test_build_run_manifest_includes_expected_fields() -> None:
@@ -38,3 +40,19 @@ def test_write_run_manifest_writes_json_file(tmp_path: Path) -> None:
 
     assert path.name == "run_manifest.json"
     assert written["workflow_name"] == "monthly_decision"
+
+
+def test_resolve_git_sha_logs_and_returns_unknown_on_git_failure(caplog) -> None:
+    with caplog.at_level("ERROR"), patch.dict(
+        "os.environ",
+        {},
+        clear=True,
+    ), patch(
+        "src.reporting.run_manifest.subprocess.run",
+        side_effect=RuntimeError("synthetic git failure"),
+    ):
+        sha = resolve_git_sha()
+
+    assert sha == "unknown"
+    assert "Could not resolve git SHA for run manifest" in caplog.text
+    assert "synthetic git failure" in caplog.text
