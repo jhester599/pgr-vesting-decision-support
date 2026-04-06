@@ -28,6 +28,7 @@ version tags:
 - `v30.13` - add logging fallbacks to bootstrap
 - `v30.14` - add logging fallback to v1 migration script
 - `v30.15` - add exception-context logging to fred loader
+- `v30.16` - add logging for silent WFO benchmark/model skips
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -174,3 +175,11 @@ dry-run tests to assert on logged output instead of captured stdout.
 - add module-level logging to `src/ingestion/fred_loader.py`
 - preserve exception context when one FRED series fails during a multi-series fetch
 - add focused tests that the failed series is logged and the remaining series still load
+
+## v30.16 Scope
+
+`v30.16` makes silent benchmark/model failures visible in the core WFO runner:
+
+- add module-level logging to `src/models/multi_benchmark_wfo.py`
+- log skipped ensemble members when one model fails for a benchmark
+- log live prediction failures while preserving the existing continue-on-error behavior
