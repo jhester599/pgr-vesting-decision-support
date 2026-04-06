@@ -41,6 +41,7 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from typing import Any
 
@@ -50,6 +51,9 @@ import requests
 import config
 from src.database.db_client import upsert_fred_macro
 from src.ingestion.http_utils import build_retry_session
+
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -161,7 +165,11 @@ def fetch_all_fred_macro(
         try:
             df = fetch_fred_series(sid, observation_start=observation_start)
         except Exception as exc:  # noqa: BLE001 — log and continue
-            print(f"  [fred_loader] WARNING: failed to fetch {sid}: {exc}")
+            logger.exception(
+                "Failed to fetch FRED series %s; continuing with remaining series. Error=%r",
+                sid,
+                exc,
+            )
             continue
 
         if df.empty:

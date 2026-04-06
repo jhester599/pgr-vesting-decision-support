@@ -27,6 +27,7 @@ version tags:
 - `v30.12` - add logging fallbacks to initial fetch
 - `v30.13` - add logging fallbacks to bootstrap
 - `v30.14` - add logging fallback to v1 migration script
+- `v30.15` - add exception-context logging to fred loader
 
 This keeps the work aligned with the existing closeout cadence while avoiding a
 single oversized `v30` batch.
@@ -165,3 +166,11 @@ dry-run tests to assert on logged output instead of captured stdout.
 - migrate `scripts/migrate_v1_to_v2.py` to the shared logging scaffold
 - preserve exception context when the legacy EDGAR loader import/run fails
 - add focused tests for that migration fallback
+
+## v30.15 Scope
+
+`v30.15` extends the same fallback traceability into core ingestion:
+
+- add module-level logging to `src/ingestion/fred_loader.py`
+- preserve exception context when one FRED series fails during a multi-series fetch
+- add focused tests that the failed series is logged and the remaining series still load
