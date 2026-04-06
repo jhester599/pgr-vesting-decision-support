@@ -18,6 +18,7 @@ diagnostic enhancements.
 - `v31.2` - add rolling drift-monitor helper for monthly model health
 - `v31.3` - add model performance log schema and DB helpers
 - `v31.4` - persist monthly model health and surface drift in the report
+- `v31.5` - refresh peer-review status against landed `v31` work
 
 ## v31.0 Scope
 
@@ -60,3 +61,11 @@ diagnostic enhancements.
 - derive the latest rolling drift summary from the DB-backed history
 - surface a `Model Health` section in `recommendation.md`
 - extend the monthly end-to-end test to assert both report rendering and DB persistence
+
+## v31.5 Scope
+
+`v31.5` keeps the planning layer accurate after the new monitoring work:
+
+- update the 2026-04-05 peer-review status snapshot to mark Tier 2.4 and Tier 2.5 progress accurately
+- map the completed `v31` steps back to the peer-review enhancement list
+- refresh the “highest-value remaining gaps” section based on the newly landed monitoring work
