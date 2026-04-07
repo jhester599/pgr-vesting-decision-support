@@ -30,7 +30,7 @@ Status values:
 - Tier 4.5 Monte Carlo tax simulation: **complete** — `v35.0` adds GBM simulation + MC distribution surfaced in monthly report
 - Tier 5.4 automated retrain trigger: **complete** — `v35.1` adds drift-based workflow dispatch, cooldown guard, audit log
 - Tier 5.2 research module promotion: **complete** — `v35.2` moves 9 modules out of `src/research/` into production; `monthly_decision.py` no longer imports from `src/research/`
-- Tier 5 strategic items: **5.2 + 5.4 + 5.5 complete**; 5.1 deferred; 5.3 not started
+- Tier 5 strategic items: **5.2 + 5.3 + 5.4 + 5.5 complete**; 5.1 deferred
 
 ## Status By Enhancement
 
@@ -59,7 +59,7 @@ Status values:
 | 4.5 | Monte Carlo tax scenario analysis | Completed | `v35.0` adds `src/tax/monte_carlo.py` with GBM simulation (`simulate_gbm_terminal_prices`), historical vol estimator (`estimate_annual_vol`), and `run_monte_carlo_tax_analysis()`; 1 000-path simulation wired into `_build_provisional_vest_scenario` and rendered as a "Monte Carlo Tax Sensitivity" section in `recommendation.md`; 29 new tests (1 351 total, all passing) |
 | 5.1 | Move SQLite database out of git history | Deferred | The DB is deliberately force-tracked (`!data/pgr_financials.db` in .gitignore) so GitHub Actions workflows can persist historical data between runs.  Proper resolution requires an alternative persistence strategy (GitHub Releases artifacts or S3-compatible storage) and is deferred to a dedicated infrastructure PR |
 | 5.2 | Archive completed research modules | Completed | `v34.2` archives 14 study scripts to `archive/scripts/`.  `v35.2` promotes 9 `src/research/` modules to production homes (`src/models/evaluation.py`, `src/models/policy_metrics.py`, `src/portfolio/benchmark_sets.py`, `src/portfolio/diversification.py`, `src/portfolio/redeploy_buckets.py`, `src/portfolio/redeploy_portfolio.py`, `src/reporting/snapshot_summary.py`, `src/reporting/cross_check.py`, `src/reporting/confidence.py`); backward-compat shims left in `src/research/`; `monthly_decision.py` no longer imports from `src/research/` |
-| 5.3 | Add a lightweight web dashboard | Not started | No dashboard implementation yet |
+| 5.3 | Add a lightweight web dashboard | Completed | `v35.3` adds `dashboard/app.py` — a single-page Streamlit app with four tabs: Current Decision (per-benchmark signal table + PGR price chart + model warnings), History (decision_log table + predicted-return bar chart), Model Health (OOS R², IC, hit rate vs. thresholds; confidence-tier distribution; CPCV/ECE gates), Data Freshness (latest_dates from manifest + live SQLite row counts); `requirements-dashboard.txt` adds `streamlit>=1.35.0` as an opt-in UI dependency; run with `streamlit run dashboard/app.py` |
 | 5.4 | Automated model retraining trigger | Completed | `v35.1` adds `src/models/retrain_trigger.py` (`evaluate_retrain_trigger`, cooldown guard, full audit trail); `model_retrain_log` table + migration 003; `RETRAIN_TRIGGER_BREACH_STREAK`/`RETRAIN_COOLDOWN_DAYS` in `config/model.py`; trigger evaluation wired into `monthly_decision.py` (logs + DB persist); `.github/workflows/drift_retrain_trigger.yml` fires after each weekly fetch and dispatches `monthly_decision` via `workflow_dispatch` if drift fires; 25 new tests (1 376 total, all passing) |
 | 5.5 | Property-based testing for numerical edge cases | Completed | `v36.0` adds `hypothesis==6.135.7` to dev deps and four property-test modules (28 tests): `test_property_return_calculations.py`, `test_property_tax_boundaries.py`, `test_property_feature_engineering.py`, `test_property_wfo_temporal.py`; all 1320 tests pass |
 
@@ -98,11 +98,10 @@ Peer-review follow-up work maps to these implemented steps:
 
 ## Remaining Highest-Value Gaps
 
-All Tier 1, 2, 3, 4, 5.2, 5.4, and 5.5 items are now complete.  The open work is:
+All Tier 1, 2, 3, 4, 5.2, 5.3, 5.4, and 5.5 items are now complete.  The only open work is:
 
 1. **Tier 5.1**: Move SQLite DB out of git history (deferred — force-tracked
    for CI data persistence; needs alternative storage strategy first)
-2. **Tier 5.3**: Lightweight web dashboard (not started)
 
 ## Related PRs
 
