@@ -27,11 +27,12 @@ def test_initialize_schema_applies_migration_on_fresh_db(tmp_path: Path) -> None
     migration_rows = conn.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0]
     conn.close()
 
-    assert version == "002_model_performance_log"
+    assert version == "003_model_retrain_log"
     assert "pgr_edgar_monthly" in tables
     assert "model_performance_log" in tables
+    assert "model_retrain_log" in tables
     assert "schema_migrations" in tables
-    assert migration_rows == 2
+    assert migration_rows == 3
 
 
 def test_initialize_schema_reconciles_legacy_db_shape(tmp_path: Path) -> None:
@@ -57,7 +58,7 @@ def test_initialize_schema_reconciles_legacy_db_shape(tmp_path: Path) -> None:
 
     assert "book_value_per_share" in cols
     assert "buyback_yield" in cols
-    assert version == "002_model_performance_log"
+    assert version == "003_model_retrain_log"
 
 
 def test_initialize_schema_is_idempotent(tmp_path: Path) -> None:
@@ -70,4 +71,4 @@ def test_initialize_schema_is_idempotent(tmp_path: Path) -> None:
     rows = [str(row[0]) for row in conn.execute("SELECT migration_id FROM schema_migrations").fetchall()]
     conn.close()
 
-    assert rows == ["001_initial", "002_model_performance_log"]
+    assert rows == ["001_initial", "002_model_performance_log", "003_model_retrain_log"]

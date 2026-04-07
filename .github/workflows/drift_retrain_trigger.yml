@@ -1,0 +1,137 @@
+name: Drift-Based Retrain Trigger
+
+# Fires automatically after each Weekly Data Accumulation run completes
+# so that fresh price and macro data are available before the check.
+# Can also be triggered manually for testing.
+#
+# Logic (mirrors src/models/retrain_trigger.py):
+#   1. Queries model_performance_log for rolling IC drift history.
+#   2. If rolling-IC breach streak >= RETRAIN_TRIGGER_BREACH_STREAK AND
+#      the cooldown has elapsed, dispatches Monthly Decision Report via
+#      workflow_dispatch so the models are re-fitted with the latest data.
+#   3. Every evaluation is recorded in model_retrain_log for governance.
+#
+# The monthly_decision workflow is idempotent — if a report for the
+# current month already exists the dispatch is a no-op.
+
+on:
+  workflow_run:
+    workflows: ["Weekly Data Accumulation"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Evaluate trigger but do NOT dispatch monthly_decision'
+        type: boolean
+        default: false
+
+concurrency:
+  group: drift-retrain-trigger
+  cancel-in-progress: false
+
+jobs:
+  evaluate-and-dispatch:
+    name: Evaluate drift trigger and dispatch retrain if warranted
+    runs-on: ubuntu-latest
+    # Only run when the triggering workflow succeeded (skip on failure/cancel)
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    permissions:
+      contents: read
+      actions: write    # required to dispatch workflow_dispatch events
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Evaluate drift trigger
+        id: drift_check
+        env:
+          RETRAIN_TRIGGER_BREACH_STREAK: ${{ vars.RETRAIN_TRIGGER_BREACH_STREAK || '3' }}
+          RETRAIN_COOLDOWN_DAYS: ${{ vars.RETRAIN_COOLDOWN_DAYS || '30' }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          import config
+          from src.database import db_client
+          from src.models.drift_monitor import summarize_latest_model_drift
+          from src.models.retrain_trigger import evaluate_retrain_trigger
+
+          conn = db_client.get_connection(config.DB_PATH)
+
+          # Load drift history
+          history = db_client.get_model_performance_log(conn)
+          drift_summary = None
+          if not history.empty:
+              drift_summary = summarize_latest_model_drift(history.reset_index())
+
+          # Evaluate trigger (read-only — recording happens in monthly_decision.py)
+          last_date = db_client.get_last_retrain_trigger_date(conn)
+          result = evaluate_retrain_trigger(
+              drift_summary=drift_summary,
+              last_trigger_date=last_date,
+          )
+          conn.close()
+
+          print(f"[drift-check] triggered={result.triggered}")
+          print(f"[drift-check] cooldown_active={result.cooldown_active}")
+          print(f"[drift-check] breach_streak={result.breach_streak}")
+          print(f"[drift-check] notes={result.notes}")
+
+          # Export to GITHUB_OUTPUT for subsequent steps
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write(f"triggered={'true' if result.triggered else 'false'}\n")
+              fh.write(f"breach_streak={result.breach_streak}\n")
+              fh.write(f"notes={result.notes}\n")
+
+          # Write workflow summary
+          summary_lines = [
+              "## Drift Retrain Trigger",
+              "",
+              f"| Field | Value |",
+              f"|-------|-------|",
+              f"| Triggered | {'✅ Yes' if result.triggered else '⬛ No'} |",
+              f"| Cooldown active | {'⚠️ Yes' if result.cooldown_active else 'No'} |",
+              f"| Breach streak | {result.breach_streak} month(s) |",
+              f"| Threshold | {config.RETRAIN_TRIGGER_BREACH_STREAK} month(s) |",
+              f"| Last trigger date | {result.last_trigger_date or 'Never'} |",
+              f"| Notes | {result.notes} |",
+          ]
+          with open("drift_summary.md", "w") as fh:
+              fh.write("\n".join(summary_lines) + "\n")
+          PY
+          cat drift_summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dispatch Monthly Decision Report (out-of-cycle retrain)
+        if: >
+          steps.drift_check.outputs.triggered == 'true' &&
+          github.event.inputs.dry_run != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "[retrain] Drift trigger fired (streak=${{ steps.drift_check.outputs.breach_streak }}). Dispatching monthly_decision workflow."
+          gh workflow run monthly_decision.yml \
+            --repo "${{ github.repository }}" \
+            --field dry_run=false \
+            --field skip_fred=false
+          echo "[retrain] Dispatch submitted."
+
+      - name: Log dry-run suppression
+        if: >
+          steps.drift_check.outputs.triggered == 'true' &&
+          github.event.inputs.dry_run == 'true'
+        run: |
+          echo "[retrain] Dry-run mode: trigger would have fired (streak=${{ steps.drift_check.outputs.breach_streak }}) but dispatch was suppressed."

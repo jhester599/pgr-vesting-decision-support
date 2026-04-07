@@ -176,3 +176,14 @@ BLP_N_PARAMS: int = 5            # 2 Beta shape + 3 independent weights
 BLP_BETA_A_INIT: float = 1.0     # Initial Beta(a) shape (a=b=1 → uniform)
 BLP_BETA_B_INIT: float = 1.0     # Initial Beta(b) shape
 BLP_WEIGHT_INIT: float = 0.25    # Initial equal weight per model (4 models)
+
+# ---------------------------------------------------------------------------
+# v35.1 — Automated model retraining trigger (Tier 5.4)
+# Governs when drift detection escalates to an out-of-cycle retrain dispatch.
+# ---------------------------------------------------------------------------
+# Minimum consecutive months of rolling-IC below DIAG_MIN_IC before the
+# trigger fires.  Mirrors the drift_flag threshold in drift_monitor.py.
+RETRAIN_TRIGGER_BREACH_STREAK: int = int(os.getenv("RETRAIN_TRIGGER_BREACH_STREAK", "3"))
+# Minimum calendar days between consecutive retrain dispatches.
+# Prevents the trigger from re-firing on the very next weekly fetch.
+RETRAIN_COOLDOWN_DAYS: int = int(os.getenv("RETRAIN_COOLDOWN_DAYS", "30"))

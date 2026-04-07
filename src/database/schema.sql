@@ -274,3 +274,20 @@ CREATE TABLE IF NOT EXISTS model_performance_log (
     conformal_trailing_coverage_gap       REAL,
     created_at                            TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+
+-- ---------------------------------------------------------------------------
+-- v35.1 Automated retrain trigger audit log
+-- Records each time the drift-based retrain trigger fires (or is suppressed
+-- by the cooldown guard), providing a complete audit trail for governance.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS model_retrain_log (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    triggered_at   TEXT NOT NULL,          -- ISO 8601 datetime of evaluation
+    breach_streak  INTEGER NOT NULL,       -- consecutive IC-breach months at trigger
+    triggered      INTEGER NOT NULL,       -- 1 = retrain dispatched, 0 = suppressed
+    cooldown_active INTEGER NOT NULL,      -- 1 = suppressed by cooldown
+    last_trigger_date TEXT,                -- ISO date of most-recent prior trigger (or NULL)
+    notes          TEXT,                   -- human-readable reason string
+    created_at     TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

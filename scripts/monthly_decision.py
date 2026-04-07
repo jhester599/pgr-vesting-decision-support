@@ -112,6 +112,7 @@ from src.models.conformal import (
     conformal_interval_from_ensemble,
 )
 from src.models.drift_monitor import ModelDriftSummary, summarize_latest_model_drift
+from src.models.retrain_trigger import RetainTriggerResult, evaluate_retrain_trigger
 from src.portfolio.black_litterman import BLDiagnostics, build_bl_weights
 from src.models.wfo_engine import CPCVResult, WFOResult, run_cpcv
 from src.reporting.backtest_report import (
@@ -727,6 +728,46 @@ def _record_model_health_snapshot(
     if history.empty:
         return None
     return summarize_latest_model_drift(history.reset_index())
+
+
+def _evaluate_and_record_retrain_trigger(
+    conn,
+    drift_summary: ModelDriftSummary | None,
+) -> RetainTriggerResult | None:
+    """
+    Evaluate the retrain trigger against the current drift state and persist
+    the result to model_retrain_log for governance/audit.
+
+    Returns the RetainTriggerResult, or None if the DB table is unavailable.
+    """
+    try:
+        last_date = db_client.get_last_retrain_trigger_date(conn)
+        result = evaluate_retrain_trigger(
+            drift_summary=drift_summary,
+            last_trigger_date=last_date,
+        )
+        db_client.record_retrain_event(
+            conn,
+            triggered_at=result.evaluated_at,
+            breach_streak=result.breach_streak,
+            triggered=result.triggered,
+            cooldown_active=result.cooldown_active,
+            last_trigger_date=result.last_trigger_date,
+            notes=result.notes,
+        )
+        if result.triggered:
+            logger.warning(
+                "Retrain trigger fired: %s (streak=%d, last=%s)",
+                result.notes,
+                result.breach_streak,
+                result.last_trigger_date or "never",
+            )
+        else:
+            logger.info("Retrain trigger evaluated: %s", result.notes)
+        return result
+    except Exception:
+        logger.debug("Retrain trigger evaluation skipped", exc_info=True)
+        return None
 
 
 def _consensus_signal(
@@ -2873,6 +2914,10 @@ def main(
             f"{model_drift_summary.ic_below_threshold_streak} consecutive monthly "
             f"snapshots below {config.DIAG_MIN_IC:.2f}."
         )
+
+    # v35.1: evaluate retrain trigger and record to audit log
+    _evaluate_and_record_retrain_trigger(conn, model_drift_summary)
+
     if shadow_summary is not None:
         if shadow_summary.recommendation_mode != live_summary.recommendation_mode:
             manifest_warnings.append(
