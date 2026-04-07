@@ -1,5 +1,6 @@
 # Claude Opus Peer Review Status Snapshot
 
+Updated: 2026-04-06 (v36.1)
 Updated: 2026-04-06 (v34.3)
 Source review: [claude_opus_peer_review_20260405.md](./claude_opus_peer_review_20260405.md)
 
@@ -23,6 +24,7 @@ Status values:
 - Tier 3 observability/docs/testability: **all six items complete** — exception logging sweep completed in v34.1; config refactor in v33.0; mypy expansion in v33.1
 - Tier 4 strategic ML diagnostics: **all four core items complete** — feature-stability, VIF, policy
   backtest, and heuristic comparison landed in v32 (v32.0–v32.3)
+- Tier 5 strategic items: **5.5 complete** (property-based testing, v36); 5.1, 5.3, 5.4 not started; 5.2 partial
 - Tier 5 strategic items: study scripts archived in v34.2; SQLite deferred; dashboard, retraining, property tests not yet started
 
 ## Status By Enhancement
@@ -54,7 +56,7 @@ Status values:
 | 5.2 | Archive completed research modules | Partial | `v34.2` moves 14 completed study scripts (scripts/v11–v24) to `archive/scripts/` with README and also archives their companion test (tests/test_v11_research.py → archive/tests/).  The `src/research/v11–v24.py` utility modules remain in place because they are imported by `scripts/monthly_decision.py`; a future refactor will promote those utility functions into proper production modules |
 | 5.3 | Add a lightweight web dashboard | Not started | No dashboard implementation yet |
 | 5.4 | Automated model retraining trigger | Not started | No retraining trigger workflow yet |
-| 5.5 | Property-based testing for numerical edge cases | Not started | `hypothesis`-style property tests have not been introduced yet |
+| 5.5 | Property-based testing for numerical edge cases | Completed | `v36.0` adds `hypothesis==6.135.7` to dev deps and four property-test modules (28 tests): `test_property_return_calculations.py`, `test_property_tax_boundaries.py`, `test_property_feature_engineering.py`, `test_property_wfo_temporal.py`; all 1320 tests pass |
 
 ## Version Mapping
 
@@ -79,15 +81,26 @@ Peer-review follow-up work maps to these implemented steps:
 - `v32.3`: Tier 4.4 model vs. simple heuristic comparison in monthly report
 - `v33.0`: Tier 3.2 config.py split into `config/` package (api, features, model, tax sub-modules)
 - `v33.1`: Tier 3.4 mypy CI expansion from 3 modules to 11 modules; 9 type errors fixed in-place
+- `v34.0`: Tier 1.4 BL fallback surfaced in monthly report via diagnostic shadow call + Portfolio Optimizer Status section
+- `v34.1`: Tier 3.3 exception sweep — exc_info=True on broad catches in edgar_8k_fetcher paths
+- `v34.2`: Tier 5.2 standalone study scripts archived to archive/scripts/; companion test archived to archive/tests/
+- `v36.0`: Tier 5.5 property-based tests — hypothesis added to dev deps; 4 test modules (28 tests) covering return invariants, tax boundaries, feature engineering bounds, WFO temporal integrity
 - `v34.0`: Tier 1.4 BL diagnostic shadow call; Portfolio Optimizer Status section in recommendation.md
 - `v34.1`: Tier 3.3 exception logging sweep; 4 remaining broad catch blocks instrumented with exc_info=True
 - `v34.2`: Tier 5.2 archive 14 completed study scripts (v11–v24) to archive/scripts/
 
 ## Remaining Highest-Value Gaps
 
-All Tier 1, 2, 3, and 4 core items are now complete.  The open work is:
+All Tier 1, 2, 3, 4 core items and Tier 5.5 are now complete.  The open work is:
 
 1. **Tier 4.5**: Monte Carlo tax simulation (three-scenario framework landed
+   in v7.1; stochastic path simulation not yet implemented)
+2. **Tier 5.1**: Move SQLite DB out of git history (deferred — force-tracked
+   for CI data persistence; needs alternative storage strategy first)
+3. **Tier 5.2**: Archive research modules (partial — standalone scripts archived
+   in v34.2; src/research modules blocked by monthly_decision.py imports)
+4. **Tier 5.3**: Lightweight web dashboard (not started)
+5. **Tier 5.4**: Automated model retraining trigger (not started)
    in v7.1; stochastic path simulation not yet implemented) — planned for v35
 2. **Tier 5.1**: SQLite database out of git (deferred pending data persistence refactor)
 3. **Tier 5.2**: src/research/v11–v24 module refactor (study scripts archived; utility function promotion deferred)
@@ -101,5 +114,9 @@ All Tier 1, 2, 3, and 4 core items are now complete.  The open work is:
 - PR #57: merged `v30.11` through `v30.24` plus the peer-review status snapshot
 - PR #58: merged `v31.0` through `v31.5` (conformal and drift monitoring)
 - PR #59: merged `v32.0` through `v32.4` (ML diagnostic enhancements)
+- PR #60: merged `v33.0`–`v33.2` (config refactor, mypy expansion, status snapshot)
+- PR #61: merged `v33` code quality continuation
+- PR #62: merged `v34.0`–`v34.3` (BL fallback surface, exception sweep, script archival)
+- PR #63: active — `v36.0`–`v36.1` (hypothesis property-based testing, Tier 5.5)
 - PR #60: merged `v33.0` through `v33.2` (code quality: config split + mypy expansion)
 - PR #62: active draft PR for `v34.0` through current work (BL fallback, exception sweep, archival)
