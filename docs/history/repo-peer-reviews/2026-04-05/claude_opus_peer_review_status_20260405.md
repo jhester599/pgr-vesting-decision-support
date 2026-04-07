@@ -1,5 +1,6 @@
 # Claude Opus Peer Review Status Snapshot
 
+Updated: 2026-04-07 (v35.0)
 Updated: 2026-04-06 (v36.1)
 Updated: 2026-04-06 (v34.3)
 Source review: [claude_opus_peer_review_20260405.md](./claude_opus_peer_review_20260405.md)
@@ -24,6 +25,7 @@ Status values:
 - Tier 3 observability/docs/testability: **all six items complete** — exception logging sweep completed in v34.1; config refactor in v33.0; mypy expansion in v33.1
 - Tier 4 strategic ML diagnostics: **all four core items complete** — feature-stability, VIF, policy
   backtest, and heuristic comparison landed in v32 (v32.0–v32.3)
+- Tier 4.5 Monte Carlo tax simulation: **complete** — `v35.0` adds GBM simulation + MC distribution surfaced in monthly report
 - Tier 5 strategic items: **5.5 complete** (property-based testing, v36); 5.1, 5.3, 5.4 not started; 5.2 partial
 - Tier 5 strategic items: study scripts archived in v34.2; SQLite deferred; dashboard, retraining, property tests not yet started
 
@@ -51,7 +53,7 @@ Status values:
 | 4.2 | Add VIF checks | Completed | `v32.1` adds `compute_vif()` to `src/processing/feature_engineering.py` and `VIF_HIGH/WARN_THRESHOLD` to `config.py`; surfaces a Multicollinearity (VIF) table in the Feature Governance section of `diagnostic.md` |
 | 4.3 | Backtest actual vesting decisions | Completed | `v32.2` adds `_compute_policy_summary()` to `scripts/monthly_decision.py` and wires it into `recommendation.md` as a Decision Policy Backtest section |
 | 4.4 | Add model vs. simple heuristic comparison | Completed | `v32.3` extends the Decision Policy Backtest section with a Model-Driven Policies vs. Heuristics table showing uplift vs. sell-all, hold-all, and 50% fixed baselines |
-| 4.5 | Monte Carlo tax scenario analysis | Partial | Three-scenario tax framework landed in `v7.1`; full Monte Carlo simulation (stochastic price paths) not yet implemented |
+| 4.5 | Monte Carlo tax scenario analysis | Completed | `v35.0` adds `src/tax/monte_carlo.py` with GBM simulation (`simulate_gbm_terminal_prices`), historical vol estimator (`estimate_annual_vol`), and `run_monte_carlo_tax_analysis()`; 1 000-path simulation wired into `_build_provisional_vest_scenario` and rendered as a "Monte Carlo Tax Sensitivity" section in `recommendation.md`; 29 new tests (1 351 total, all passing) |
 | 5.1 | Move SQLite database out of git history | Deferred | The DB is deliberately force-tracked (`!data/pgr_financials.db` in .gitignore) so GitHub Actions workflows can persist historical data between runs.  Proper resolution requires an alternative persistence strategy (GitHub Releases artifacts or S3-compatible storage) and is deferred to a dedicated infrastructure PR |
 | 5.2 | Archive completed research modules | Partial | `v34.2` moves 14 completed study scripts (scripts/v11–v24) to `archive/scripts/` with README and also archives their companion test (tests/test_v11_research.py → archive/tests/).  The `src/research/v11–v24.py` utility modules remain in place because they are imported by `scripts/monthly_decision.py`; a future refactor will promote those utility functions into proper production modules |
 | 5.3 | Add a lightweight web dashboard | Not started | No dashboard implementation yet |
@@ -84,6 +86,7 @@ Peer-review follow-up work maps to these implemented steps:
 - `v34.0`: Tier 1.4 BL fallback surfaced in monthly report via diagnostic shadow call + Portfolio Optimizer Status section
 - `v34.1`: Tier 3.3 exception sweep — exc_info=True on broad catches in edgar_8k_fetcher paths
 - `v34.2`: Tier 5.2 standalone study scripts archived to archive/scripts/; companion test archived to archive/tests/
+- `v35.0`: Tier 4.5 Monte Carlo tax simulation — `src/tax/monte_carlo.py` with GBM simulator, vol estimator, and `run_monte_carlo_tax_analysis()`; wired into `_build_provisional_vest_scenario`; "Monte Carlo Tax Sensitivity" section in `recommendation.md`; 29 new tests (1 351 total)
 - `v36.0`: Tier 5.5 property-based tests — hypothesis added to dev deps; 4 test modules (28 tests) covering return invariants, tax boundaries, feature engineering bounds, WFO temporal integrity
 - `v34.0`: Tier 1.4 BL diagnostic shadow call; Portfolio Optimizer Status section in recommendation.md
 - `v34.1`: Tier 3.3 exception logging sweep; 4 remaining broad catch blocks instrumented with exc_info=True
@@ -91,22 +94,14 @@ Peer-review follow-up work maps to these implemented steps:
 
 ## Remaining Highest-Value Gaps
 
-All Tier 1, 2, 3, 4 core items and Tier 5.5 are now complete.  The open work is:
+All Tier 1, 2, 3, 4 items (including 4.5) and Tier 5.5 are now complete.  The open work is:
 
-1. **Tier 4.5**: Monte Carlo tax simulation (three-scenario framework landed
-   in v7.1; stochastic path simulation not yet implemented)
-2. **Tier 5.1**: Move SQLite DB out of git history (deferred — force-tracked
+1. **Tier 5.1**: Move SQLite DB out of git history (deferred — force-tracked
    for CI data persistence; needs alternative storage strategy first)
-3. **Tier 5.2**: Archive research modules (partial — standalone scripts archived
+2. **Tier 5.2**: Archive research modules (partial — standalone scripts archived
    in v34.2; src/research modules blocked by monthly_decision.py imports)
-4. **Tier 5.3**: Lightweight web dashboard (not started)
-5. **Tier 5.4**: Automated model retraining trigger (not started)
-   in v7.1; stochastic path simulation not yet implemented) — planned for v35
-2. **Tier 5.1**: SQLite database out of git (deferred pending data persistence refactor)
-3. **Tier 5.2**: src/research/v11–v24 module refactor (study scripts archived; utility function promotion deferred)
-4. **Tier 5.3**: Lightweight web dashboard (not started)
-5. **Tier 5.4**: Automated model retraining trigger (not started)
-6. **Tier 5.5**: Property-based testing with hypothesis (not started) — planned for v36
+3. **Tier 5.3**: Lightweight web dashboard (not started)
+4. **Tier 5.4**: Automated model retraining trigger (not started)
 
 ## Related PRs
 

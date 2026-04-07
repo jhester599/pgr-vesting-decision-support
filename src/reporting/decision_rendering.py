@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import config
+
+if TYPE_CHECKING:
+    from src.tax.monte_carlo import MonteCarloTaxAnalysis
 
 
 def sell_pct_from_consensus(
@@ -227,10 +230,48 @@ def build_vest_decision_lines(
         f"> {scenario_note}",
         f"> STCG/LTCG breakeven from the tax engine: {scenario_result.stcg_ltcg_breakeven:.2%}.",
         "",
-        "---",
+    ]
+
+    mc_analysis = next_vest_summary.get("mc_analysis")
+    lines += _build_mc_sensitivity_lines(mc_analysis)
+
+    lines += ["---", ""]
+    return lines
+
+
+def _build_mc_sensitivity_lines(mc_analysis: "MonteCarloTaxAnalysis | None") -> list[str]:
+    """Render the Monte Carlo tax-sensitivity section (v35, Tier 4.5)."""
+    if mc_analysis is None:
+        return []
+
+    mc = mc_analysis.hold_ltcg
+    sell_now = mc_analysis.sell_now_net
+    beat_pct = mc.prob_beats_sell_now * 100.0
+    gain_pct = mc.prob_positive_gain * 100.0
+
+    return [
+        "### Monte Carlo Tax Sensitivity (HOLD_TO_LTCG vs. Sell Now)",
+        "",
+        f"> **{mc.n_paths:,} GBM paths** | drift {mc.annual_drift:+.1%}/yr | vol {mc.annual_vol:.1%}/yr | "
+        f"horizon {mc_analysis.horizon_days} days",
+        "",
+        "| Metric | Value |",
+        "|--------|-------|",
+        f"| Sell-now reference (STCG net) | ${sell_now:,.0f} |",
+        f"| HOLD_TO_LTCG — P10 net | ${mc.net_proceeds_p10:,.0f} |",
+        f"| HOLD_TO_LTCG — median net | ${mc.net_proceeds_p50:,.0f} |",
+        f"| HOLD_TO_LTCG — mean net | ${mc.net_proceeds_mean:,.0f} |",
+        f"| HOLD_TO_LTCG — P90 net | ${mc.net_proceeds_p90:,.0f} |",
+        f"| P(HOLD_TO_LTCG beats Sell Now) | {beat_pct:.1f}% |",
+        f"| P(terminal price > cost basis) | {gain_pct:.1f}% |",
+        "",
+        (
+            f"> At {mc.annual_vol:.1%} annualised volatility and a {mc.annual_drift:+.1%}/yr drift, "
+            f"{beat_pct:.1f}% of simulated paths produce higher after-tax net proceeds from holding "
+            f"to LTCG eligibility than from selling immediately at STCG rates."
+        ),
         "",
     ]
-    return lines
 
 
 def build_data_freshness_lines(freshness_report: dict[str, Any] | None) -> list[str]:

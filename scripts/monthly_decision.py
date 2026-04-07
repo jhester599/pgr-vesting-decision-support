@@ -129,6 +129,11 @@ from src.reporting.decision_rendering import (
 from src.logging_config import configure_logging
 from src.reporting.run_manifest import build_run_manifest, write_run_manifest
 from src.tax.capital_gains import compute_three_scenarios, load_position_lots
+from src.tax.monte_carlo import (
+    MonteCarloTaxAnalysis,
+    estimate_annual_vol,
+    run_monte_carlo_tax_analysis,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -1075,6 +1080,24 @@ def _build_provisional_vest_scenario(
         prob_outperform_6m=prob_outperform,
         prob_outperform_12m=prob_outperform,
     )
+
+    # v35: Monte Carlo tax-sensitivity analysis
+    mc_analysis: MonteCarloTaxAnalysis | None = None
+    try:
+        close_prices = prices["close"].dropna().values
+        if len(close_prices) >= 30:
+            annual_vol = estimate_annual_vol(close_prices)
+            annual_drift = mean_predicted * 2.0  # annualise 6M forecast
+            mc_analysis = run_monte_carlo_tax_analysis(
+                current_price=current_price,
+                cost_basis_per_share=avg_basis,
+                shares=total_shares,
+                annual_vol=annual_vol,
+                annual_drift=annual_drift,
+            )
+    except Exception:
+        logger.debug("Monte Carlo tax analysis skipped", exc_info=True)
+
     return {
         "vest_date": vest_date,
         "rsu_type": rsu_type,
@@ -1082,6 +1105,7 @@ def _build_provisional_vest_scenario(
         "avg_basis": avg_basis,
         "shares": total_shares,
         "scenario": scenario,
+        "mc_analysis": mc_analysis,
     }
 
 
