@@ -50,7 +50,7 @@ def test_run_regime_slice_backtest_writes_outputs(tmp_path):
         patch("scripts.regime_slice_backtest.build_feature_matrix_from_db", return_value=fake_df),
         patch("scripts.regime_slice_backtest.load_relative_return_matrix", return_value=fake_series),
         patch("scripts.regime_slice_backtest.get_X_y_relative", return_value=(fake_df[["mom_3m"]], fake_series)),
-        patch("src.research.evaluation.run_wfo", return_value=fake_result),
+        patch("src.models.evaluation.run_wfo", return_value=fake_result),
         patch("scripts.regime_slice_backtest.run_ensemble_benchmarks", return_value={"VTI": fake_ensemble}),
     ):
         detail_df, summary_df = run_regime_slice_backtest(

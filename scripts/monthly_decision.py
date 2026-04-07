@@ -64,24 +64,24 @@ from src.processing.feature_engineering import (
 )
 from src.processing.multi_total_return import load_relative_return_matrix
 import numpy as np
-from src.research.evaluation import (
+from src.models.evaluation import (
     FeatureImportanceStability,
     compute_feature_importance_stability,
     evaluate_baseline_strategy,
     reconstruct_baseline_predictions,
 )
-from src.research.policy_metrics import (
+from src.models.policy_metrics import (
     FIXED_POLICIES,
     SIGNAL_POLICIES,
     PolicySummary,
     evaluate_policy_series,
 )
-from src.research.v11 import (
+from src.portfolio.redeploy_buckets import (
     add_destination_roles,
     recommend_redeploy_buckets,
     summarize_existing_holdings_actions,
 )
-from src.research.v12 import (
+from src.reporting.snapshot_summary import (
     SnapshotSummary,
     aggregate_health_from_prediction_frames,
     build_existing_holdings_markdown_lines,
@@ -91,14 +91,14 @@ from src.research.v12 import (
     sell_pct_from_policy,
     signal_from_prediction,
 )
-from src.research.diversification import score_benchmarks_against_pgr
-from src.research.v22 import build_promoted_cross_check_summary
-from src.research.v27 import (
+from src.portfolio.diversification import score_benchmarks_against_pgr
+from src.reporting.cross_check import build_promoted_cross_check_summary
+from src.portfolio.redeploy_portfolio import (
     recommend_redeploy_portfolio,
     render_redeploy_portfolio_markdown_lines,
     v27_investable_redeploy_universe,
 )
-from src.research.v29 import benchmark_role_for_ticker, build_confidence_snapshot
+from src.reporting.confidence import benchmark_role_for_ticker, build_confidence_snapshot
 
 from src.models.calibration import (
     CalibrationResult,
