@@ -49,6 +49,9 @@ build/
 .coverage
 htmlcov/
 
+# Hypothesis test database (local cache, not committed)
+.hypothesis/
+
 # Claude Code local config
 .claude/
 
