@@ -10,6 +10,11 @@ from src.research.v12 import SnapshotSummary
 
 
 def test_recommendation_report_includes_v13_sections(monkeypatch, tmp_path: Path) -> None:
+    # Force live_with_shadow mode so the Simple-Baseline Cross-Check section renders.
+    # The default is now "live_only" (v11.0 promotion); this test validates that the
+    # shadow rendering path still works when the mode is explicitly enabled.
+    import config as _cfg
+    monkeypatch.setattr(_cfg, "RECOMMENDATION_LAYER_MODE", "live_with_shadow")
     monkeypatch.setattr(monthly_decision, "_load_previous_decision_summary", lambda as_of: None)
     monkeypatch.setattr(
         monthly_decision,

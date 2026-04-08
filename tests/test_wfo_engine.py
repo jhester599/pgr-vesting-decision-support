@@ -359,18 +359,21 @@ class TestFeatureImportances:
         assert actual_cols == expected_cols
 
     def test_gbt_uses_model_specific_feature_subset(self, synthetic_dataset):
+        # v11.0 GBT uses v18 lean feature set (13 features).
         X, y = synthetic_dataset
         X = X.assign(
             mom_12m=X["mom_6m"] * 0.5,
             vol_63d=X["vol_21d"] * 0.8,
             yield_slope=np.linspace(-1.0, 1.0, len(X)),
             yield_curvature=np.linspace(1.0, -1.0, len(X)),
-            real_rate_10y=np.linspace(0.1, 0.3, len(X)),
             credit_spread_hy=np.linspace(0.2, 0.6, len(X)),
             nfci=np.linspace(-0.5, 0.5, len(X)),
             vix=np.linspace(15.0, 25.0, len(X)),
-            vmt_yoy=np.linspace(-0.02, 0.03, len(X)),
-            investment_income_growth_yoy=np.linspace(-0.1, 0.1, len(X)),
+            # v18 replacements / additions
+            vwo_vxus_spread_6m=np.linspace(-0.05, 0.05, len(X)),
+            rate_adequacy_gap_yoy=np.linspace(-0.02, 0.02, len(X)),
+            pif_growth_yoy=np.linspace(0.0, 0.10, len(X)),
+            investment_book_yield=np.linspace(0.02, 0.04, len(X)),
         )
 
         result = run_wfo(X, y, model_type="gbt")
@@ -379,21 +382,22 @@ class TestFeatureImportances:
         assert actual_cols == expected_cols
 
     def test_ridge_uses_model_specific_feature_subset(self, synthetic_dataset):
+        # v11.0 Ridge uses v18 lean feature set (12 features).
         X, y = synthetic_dataset
         X = X.assign(
             mom_12m=X["mom_6m"] * 0.5,
             vol_63d=X["vol_21d"] * 0.8,
             yield_slope=np.linspace(-1.0, 1.0, len(X)),
-            yield_curvature=np.linspace(1.0, -1.0, len(X)),
             real_rate_10y=np.linspace(0.1, 0.3, len(X)),
             credit_spread_hy=np.linspace(0.2, 0.6, len(X)),
             nfci=np.linspace(-0.5, 0.5, len(X)),
             vix=np.linspace(15.0, 25.0, len(X)),
-            vmt_yoy=np.linspace(-0.02, 0.03, len(X)),
             combined_ratio_ttm=np.linspace(88.0, 96.0, len(X)),
             investment_income_growth_yoy=np.linspace(-0.1, 0.1, len(X)),
-            roe_net_income_ttm=np.linspace(0.08, 0.14, len(X)),
-            underwriting_income=np.linspace(100.0, 200.0, len(X)),
+            # v18 additions
+            real_yield_change_6m=np.linspace(-0.01, 0.01, len(X)),
+            book_value_per_share_growth_yoy=np.linspace(0.0, 0.15, len(X)),
+            npw_growth_yoy=np.linspace(-0.05, 0.10, len(X)),
         )
 
         result = run_wfo(X, y, model_type="ridge")

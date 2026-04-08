@@ -153,15 +153,15 @@ def run_ensemble_benchmarks(
     relative_return_matrix: pd.DataFrame,
     target_horizon_months: int = 6,
     purge_buffer: int | None = None,
+    model_feature_overrides: dict[str, list[str]] | None = None,
 ) -> dict[str, EnsembleWFOResult]:
     """
-    Train a 4-model ensemble (ElasticNet + Ridge + BayesianRidge + GBT) per
-    ETF benchmark (v5.0; previously 3 models).
+    Train the production ensemble (ENSEMBLE_MODELS) per ETF benchmark.
 
-    For each ETF column in ``relative_return_matrix``, four independent WFO
-    models are trained.  Out-of-sample IC, hit rate, and MAE are averaged
-    (equal weight) across models.  Live ensemble predictions use inverse-
-    variance weighting (1/MAE²) — see ``get_ensemble_signals()``.
+    For each ETF column in ``relative_return_matrix``, one independent WFO
+    model per model type is trained.  Out-of-sample IC, hit rate, and MAE are
+    averaged (equal weight) across models.  Live ensemble predictions use
+    inverse-variance weighting (1/MAE²) — see ``get_ensemble_signals()``.
 
     Args:
         X:                      Feature DataFrame (monthly DatetimeIndex).
@@ -169,6 +169,11 @@ def run_ensemble_benchmarks(
         target_horizon_months:  Forward return horizon in months (6 or 12).
         purge_buffer:           Extra months of purge buffer beyond horizon.
                                 None uses config defaults.
+        model_feature_overrides: Optional dict mapping model type → list of
+                                feature column names.  When provided, each
+                                model is trained only on its specified features
+                                (columns not present in X are silently dropped).
+                                None uses all columns of X for every model.
 
     Returns:
         Dict mapping ETF ticker → EnsembleWFOResult.
@@ -194,9 +199,15 @@ def run_ensemble_benchmarks(
 
         per_model: dict[str, WFOResult] = {}
         for mtype in model_types:
+            # Apply model-specific feature selection when overrides are provided.
+            if model_feature_overrides and mtype in model_feature_overrides:
+                selected = [c for c in model_feature_overrides[mtype] if c in X_aligned.columns]
+                X_for_wfo = X_aligned[selected] if selected else X_aligned
+            else:
+                X_for_wfo = X_aligned
             try:
                 result = run_wfo(
-                    X_aligned,
+                    X_for_wfo,
                     y_aligned,
                     model_type=cast(Literal["lasso", "ridge", "elasticnet", "bayesian_ridge", "gbt"], mtype),
                     target_horizon_months=target_horizon_months,

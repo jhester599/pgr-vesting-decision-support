@@ -171,11 +171,10 @@ _ETF_DESCRIPTIONS: dict[str, str] = {
 }
 
 _MODEL_VERSION_LABEL = (
-    "v13.1 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, "
-    "inverse-variance weighting, C(8,2)=28 CPCV paths, "
-    "post-v9 baseline reconciliation, migrations, CI/workflow hardening, "
-    "run-manifest support, a promoted v13.1 recommendation layer, and a "
-    "v22-promoted visible cross-check)"
+    "v11.0 (lean 2-model ensemble: Ridge + GBT, v18 feature sets, "
+    "8-benchmark PRIMARY_FORECAST_UNIVERSE, inverse-variance weighting, "
+    "C(8,2)=28 CPCV paths; ElasticNet+BayesianRidge retired after v18/v20 "
+    "research showed Ridge+GBT outperforms on IC, hit rate, and obs/feature ratio)"
 )
 
 
@@ -257,9 +256,9 @@ def _generate_signals(
     """
     Build feature matrix (sliced to as_of), train ensemble WFO models, return signals.
 
-    Uses the production 4-model ensemble per benchmark.
-    BayesianRidge posterior variance drives the ``confidence_tier`` and
-    ``prob_outperform`` columns in the output.
+    Uses the production Ridge+GBT ensemble (v11.0) on the PRIMARY_FORECAST_UNIVERSE
+    with v18 lean feature sets.  Inverse-variance weighting across models drives
+    the ``confidence_tier`` and ``prob_outperform`` columns in the output.
 
     Returns:
         (signals, ensemble_results, diagnostics) where signals is a DataFrame indexed by benchmark
@@ -288,15 +287,22 @@ def _generate_signals(
         logger.warning("VIF computation failed; skipping multicollinearity diagnostics", exc_info=True)
         vif_series = pd.Series(dtype=float)
 
+    # v11.0: compute obs/feature ratio against the primary (ridge) feature set
+    # so the diagnostic reflects the model actually being run, not the full matrix.
+    primary_ridge_cols = [c for c in config.MODEL_FEATURE_OVERRIDES.get("ridge", []) if c in X_event.columns]
+    X_primary_for_ratio = X_event[primary_ridge_cols] if primary_ridge_cols else X_event
+
     diagnostics: dict[str, object] = {
-        "obs_feature_report": compute_obs_feature_ratio(X_event, warn=False),
+        "obs_feature_report": compute_obs_feature_ratio(X_primary_for_ratio, warn=False),
         "representative_cpcv": None,
         "vif_series": vif_series,
     }
 
-    # Load relative return matrix for all benchmarks
+    # Load relative return matrix for the primary forecast universe only.
+    # ETF_BENCHMARK_UNIVERSE still governs data ingestion; PRIMARY_FORECAST_UNIVERSE
+    # governs which benchmarks the production ensemble trains on.
     rel_matrix_cols = {}
-    for etf in config.ETF_BENCHMARK_UNIVERSE:
+    for etf in config.PRIMARY_FORECAST_UNIVERSE:
         rel_series = load_relative_return_matrix(conn, etf, target_horizon_months)
         if not rel_series.empty:
             rel_matrix_cols[etf] = rel_series
@@ -305,19 +311,20 @@ def _generate_signals(
 
     rel_matrix = pd.DataFrame(rel_matrix_cols)
 
-    # v7.4: run one representative CPCV diagnostic inside the monthly workflow.
-    # VTI + elasticnet gives a stable broad-market reference without multiplying
-    # runtime by the full 4-model × 20-benchmark grid.
-    if "VTI" in rel_matrix.columns:
+    # v11.0: representative CPCV uses VOO + ridge (core benchmark of the primary
+    # universe; matches the promoted model type replacing the former VTI+elasticnet).
+    if "VOO" in rel_matrix.columns:
         try:
-            rel_series_vti = rel_matrix["VTI"].rename(f"VTI_{target_horizon_months}m")
-            X_vti, y_vti = get_X_y_relative(X_event, rel_series_vti, drop_na_target=True)
+            rel_series_voo = rel_matrix["VOO"].rename(f"VOO_{target_horizon_months}m")
+            X_voo_all, y_voo = get_X_y_relative(X_event, rel_series_voo, drop_na_target=True)
+            ridge_cols = [c for c in config.MODEL_FEATURE_OVERRIDES.get("ridge", []) if c in X_voo_all.columns]
+            X_voo = X_voo_all[ridge_cols] if ridge_cols else X_voo_all
             diagnostics["representative_cpcv"] = run_cpcv(
-                X_vti,
-                y_vti,
-                model_type="elasticnet",
+                X_voo,
+                y_voo,
+                model_type="ridge",
                 target_horizon_months=target_horizon_months,
-                benchmark="VTI",
+                benchmark="VOO",
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception(
@@ -325,11 +332,12 @@ def _generate_signals(
                 exc,
             )
 
-    # Train 4-model ensemble per benchmark (ElasticNet + Ridge + BayesianRidge + GBT)
+    # Train lean Ridge+GBT ensemble per primary benchmark with v18 feature sets.
     ensemble_results = run_ensemble_benchmarks(
         X_event,
         rel_matrix,
         target_horizon_months=target_horizon_months,
+        model_feature_overrides=config.MODEL_FEATURE_OVERRIDES,
     )
 
     # Generate ensemble signals (includes prob_outperform and confidence_tier)

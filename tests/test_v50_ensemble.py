@@ -127,11 +127,15 @@ class TestConfigV50:
     def test_gbt_in_ensemble_models(self) -> None:
         assert "gbt" in config.ENSEMBLE_MODELS
 
-    def test_ensemble_has_four_models(self) -> None:
-        assert len(config.ENSEMBLE_MODELS) == 4
+    def test_ridge_in_ensemble_models(self) -> None:
+        assert "ridge" in config.ENSEMBLE_MODELS
 
-    def test_all_original_models_present(self) -> None:
-        for m in ["elasticnet", "ridge", "bayesian_ridge"]:
+    def test_ensemble_has_two_models(self) -> None:
+        # v11.0: ElasticNet+BayesianRidge retired; lean Ridge+GBT promoted
+        assert len(config.ENSEMBLE_MODELS) == 2
+
+    def test_primary_models_present(self) -> None:
+        for m in ["ridge", "gbt"]:
             assert m in config.ENSEMBLE_MODELS, f"{m} missing from ENSEMBLE_MODELS"
 
 
@@ -397,7 +401,7 @@ class TestFourModelEnsemble:
         model_keys = set(results["VTI"].model_results.keys())
         assert "gbt" in model_keys, f"'gbt' missing from model_results: {model_keys}"
 
-    def test_all_four_model_types_present(self) -> None:
+    def test_all_model_types_present(self) -> None:
         X, y = _make_Xy(n=150)
         rel_matrix = pd.DataFrame({"VTI": y})
         results = run_ensemble_benchmarks(X, rel_matrix, target_horizon_months=6)

@@ -246,10 +246,31 @@ EDGAR_FILING_LAG_MONTHS: int = 2
 #                     signal plus the distress premium; IG is redundant)
 FEATURES_TO_DROP: list[str] = ["vol_21d", "credit_spread_ig"]
 
-# v8.6: model-specific production feature sets from the completed v7/v8
-# ablation program.  GBT performs best with the lean Group B macro regime set.
-# ElasticNet performs best with Group B plus a narrow investment/ROE/
-# underwriting extension, avoiding the full Group E stack's low obs/feature ratio.
+# ---------------------------------------------------------------------------
+# v11.0 Primary forecast universe — the 8 benchmarks selected in the v20/v21
+# research cycle.  Provides better diversification coverage without the noise
+# from 21-benchmark over-fitting.  ETF_BENCHMARK_UNIVERSE (above) still governs
+# data ingestion; PRIMARY_FORECAST_UNIVERSE governs which benchmarks are used
+# by the production WFO ensemble.
+# ---------------------------------------------------------------------------
+PRIMARY_FORECAST_UNIVERSE: list[str] = [
+    "VOO",   # S&P 500 (core US equity)
+    "VXUS",  # Total International
+    "VWO",   # Emerging Markets
+    "VMBS",  # Mortgage-Backed Securities
+    "BND",   # Total Bond Market
+    "GLD",   # Gold
+    "DBC",   # Commodities
+    "VDE",   # Energy
+]
+
+# v11.0 promoted model-specific feature sets (established in v18/v20 research).
+# Ridge v18: swaps yield_curvature for real_yield_change_6m, adds BVPS growth
+#   and NPW growth to strengthen insurance-fundamental signal.
+# GBT v18:   swaps vmt_yoy for vwo_vxus_spread_6m (EM/DM spread), adds
+#   rate_adequacy_gap_yoy, pif_growth_yoy, investment_book_yield.
+# The previous v8.6 overrides (elasticnet / bayesian_ridge) are retained for
+# backward-compat but are no longer used by the primary production ensemble.
 MODEL_FEATURE_BASE_GROUP_B: list[str] = [
     "mom_3m",
     "mom_6m",
@@ -264,16 +285,41 @@ MODEL_FEATURE_BASE_GROUP_B: list[str] = [
     "vmt_yoy",
 ]
 MODEL_FEATURE_OVERRIDES: dict[str, list[str]] = {
-    "gbt": MODEL_FEATURE_BASE_GROUP_B,
+    # v11.0 primary models (ridge_lean_v1__v18, gbt_lean_plus_two__v18)
+    "ridge": [
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+    ],
+    "gbt": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "rate_adequacy_gap_yoy",
+        "pif_growth_yoy",
+        "investment_book_yield",
+    ],
+    # v8.6 overrides — retained for reference / research re-runs
     "elasticnet": MODEL_FEATURE_BASE_GROUP_B + [
         "investment_income_growth_yoy",
         "roe_net_income_ttm",
         "underwriting_income",
-    ],
-    "ridge": MODEL_FEATURE_BASE_GROUP_B + [
-        "combined_ratio_ttm",
-        "investment_income_growth_yoy",
-        "roe_net_income_ttm",
     ],
     "bayesian_ridge": MODEL_FEATURE_BASE_GROUP_B + [
         "combined_ratio_ttm",

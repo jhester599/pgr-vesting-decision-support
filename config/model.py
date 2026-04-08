@@ -35,8 +35,11 @@ WFO_PURGE_BUFFER_12M: int = 3
 # ---------------------------------------------------------------------------
 KELLY_FRACTION: float = 0.25          # quarter-Kelly to control risk
 KELLY_MAX_POSITION: float = 0.20      # v4.1: reduced from 0.30 (Meulbroek 2005: 25% employer stock = 42% CE loss)
-# v5.0: added shallow GBT as 4th ensemble member (max_depth=2, n_estimators=50)
-ENSEMBLE_MODELS: list[str] = ["elasticnet", "ridge", "bayesian_ridge", "gbt"]
+# v11.0: promoted to lean 2-model Ridge+GBT ensemble on 8-benchmark universe.
+# (v5.0 had added GBT as 4th member; ElasticNet+BayesianRidge retired in v11.0
+# after v18/v20 research showed Ridge+GBT with lean feature sets outperforms
+# the 4-model stack on IC, hit rate, and obs/feature ratio.)
+ENSEMBLE_MODELS: list[str] = ["ridge", "gbt"]
 
 # ---------------------------------------------------------------------------
 # v4.0 CPCV parameters — v5.0: upgraded from C(6,2)=15 paths to C(8,2)=28 paths
@@ -118,7 +121,10 @@ CONFORMAL_ACI_GAMMA: float = 0.05
 # Keep the live model stack unchanged, but allow the monthly report/email layer
 # to include or eventually promote the simpler diversification-first baseline
 # that performed best in the v11/v12 recommendation studies.
-RECOMMENDATION_LAYER_MODE: str = os.getenv("RECOMMENDATION_LAYER_MODE", "shadow_promoted")
+# v11.0: shadow_promoted mode retired — the lean Ridge+GBT stack is now the
+# live production recommendation layer.  Set to "live_with_shadow" to re-enable
+# the v13 historical-mean cross-check for diagnostic comparison.
+RECOMMENDATION_LAYER_MODE: str = os.getenv("RECOMMENDATION_LAYER_MODE", "live_only")
 RECOMMENDATION_LAYER_VALID_MODES: tuple[str, ...] = (
     "live_only",
     "live_with_shadow",
