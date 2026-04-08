@@ -1183,3 +1183,53 @@ def get_ingestion_metadata(
         (ticker, data_type),
     ).fetchone()
     return dict(row) if row else None
+
+
+# ---------------------------------------------------------------------------
+# v35.1 — model_retrain_log helpers
+# ---------------------------------------------------------------------------
+
+def record_retrain_event(
+    conn: sqlite3.Connection,
+    triggered_at: str,
+    breach_streak: int,
+    triggered: bool,
+    cooldown_active: bool,
+    last_trigger_date: str | None,
+    notes: str,
+) -> None:
+    """Insert one row into model_retrain_log for audit trail."""
+    conn.execute(
+        """
+        INSERT INTO model_retrain_log
+            (triggered_at, breach_streak, triggered, cooldown_active,
+             last_trigger_date, notes)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            triggered_at,
+            breach_streak,
+            int(triggered),
+            int(cooldown_active),
+            last_trigger_date,
+            notes,
+        ),
+    )
+    conn.commit()
+
+
+def get_last_retrain_trigger_date(conn: sqlite3.Connection) -> str | None:
+    """Return the ISO date of the most-recent triggered (not suppressed) retrain, or None."""
+    row = conn.execute(
+        """
+        SELECT triggered_at
+        FROM model_retrain_log
+        WHERE triggered = 1
+        ORDER BY triggered_at DESC
+        LIMIT 1
+        """
+    ).fetchone()
+    if row is None:
+        return None
+    # triggered_at is a full ISO 8601 datetime; return just the date portion
+    return str(row["triggered_at"])[:10]

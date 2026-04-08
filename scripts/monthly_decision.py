@@ -64,24 +64,24 @@ from src.processing.feature_engineering import (
 )
 from src.processing.multi_total_return import load_relative_return_matrix
 import numpy as np
-from src.research.evaluation import (
+from src.models.evaluation import (
     FeatureImportanceStability,
     compute_feature_importance_stability,
     evaluate_baseline_strategy,
     reconstruct_baseline_predictions,
 )
-from src.research.policy_metrics import (
+from src.models.policy_metrics import (
     FIXED_POLICIES,
     SIGNAL_POLICIES,
     PolicySummary,
     evaluate_policy_series,
 )
-from src.research.v11 import (
+from src.portfolio.redeploy_buckets import (
     add_destination_roles,
     recommend_redeploy_buckets,
     summarize_existing_holdings_actions,
 )
-from src.research.v12 import (
+from src.reporting.snapshot_summary import (
     SnapshotSummary,
     aggregate_health_from_prediction_frames,
     build_existing_holdings_markdown_lines,
@@ -91,14 +91,14 @@ from src.research.v12 import (
     sell_pct_from_policy,
     signal_from_prediction,
 )
-from src.research.diversification import score_benchmarks_against_pgr
-from src.research.v22 import build_promoted_cross_check_summary
-from src.research.v27 import (
+from src.portfolio.diversification import score_benchmarks_against_pgr
+from src.reporting.cross_check import build_promoted_cross_check_summary
+from src.portfolio.redeploy_portfolio import (
     recommend_redeploy_portfolio,
     render_redeploy_portfolio_markdown_lines,
     v27_investable_redeploy_universe,
 )
-from src.research.v29 import benchmark_role_for_ticker, build_confidence_snapshot
+from src.reporting.confidence import benchmark_role_for_ticker, build_confidence_snapshot
 
 from src.models.calibration import (
     CalibrationResult,
@@ -112,6 +112,7 @@ from src.models.conformal import (
     conformal_interval_from_ensemble,
 )
 from src.models.drift_monitor import ModelDriftSummary, summarize_latest_model_drift
+from src.models.retrain_trigger import RetainTriggerResult, evaluate_retrain_trigger
 from src.portfolio.black_litterman import BLDiagnostics, build_bl_weights
 from src.models.wfo_engine import CPCVResult, WFOResult, run_cpcv
 from src.reporting.backtest_report import (
@@ -129,6 +130,11 @@ from src.reporting.decision_rendering import (
 from src.logging_config import configure_logging
 from src.reporting.run_manifest import build_run_manifest, write_run_manifest
 from src.tax.capital_gains import compute_three_scenarios, load_position_lots
+from src.tax.monte_carlo import (
+    MonteCarloTaxAnalysis,
+    estimate_annual_vol,
+    run_monte_carlo_tax_analysis,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -165,11 +171,10 @@ _ETF_DESCRIPTIONS: dict[str, str] = {
 }
 
 _MODEL_VERSION_LABEL = (
-    "v13.1 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, "
-    "inverse-variance weighting, C(8,2)=28 CPCV paths, "
-    "post-v9 baseline reconciliation, migrations, CI/workflow hardening, "
-    "run-manifest support, a promoted v13.1 recommendation layer, and a "
-    "v22-promoted visible cross-check)"
+    "v11.0 (lean 2-model ensemble: Ridge + GBT, v18 feature sets, "
+    "8-benchmark PRIMARY_FORECAST_UNIVERSE, inverse-variance weighting, "
+    "C(8,2)=28 CPCV paths; ElasticNet+BayesianRidge retired after v18/v20 "
+    "research showed Ridge+GBT outperforms on IC, hit rate, and obs/feature ratio)"
 )
 
 
@@ -251,9 +256,9 @@ def _generate_signals(
     """
     Build feature matrix (sliced to as_of), train ensemble WFO models, return signals.
 
-    Uses the production 4-model ensemble per benchmark.
-    BayesianRidge posterior variance drives the ``confidence_tier`` and
-    ``prob_outperform`` columns in the output.
+    Uses the production Ridge+GBT ensemble (v11.0) on the PRIMARY_FORECAST_UNIVERSE
+    with v18 lean feature sets.  Inverse-variance weighting across models drives
+    the ``confidence_tier`` and ``prob_outperform`` columns in the output.
 
     Returns:
         (signals, ensemble_results, diagnostics) where signals is a DataFrame indexed by benchmark
@@ -282,15 +287,22 @@ def _generate_signals(
         logger.warning("VIF computation failed; skipping multicollinearity diagnostics", exc_info=True)
         vif_series = pd.Series(dtype=float)
 
+    # v11.0: compute obs/feature ratio against the primary (ridge) feature set
+    # so the diagnostic reflects the model actually being run, not the full matrix.
+    primary_ridge_cols = [c for c in config.MODEL_FEATURE_OVERRIDES.get("ridge", []) if c in X_event.columns]
+    X_primary_for_ratio = X_event[primary_ridge_cols] if primary_ridge_cols else X_event
+
     diagnostics: dict[str, object] = {
-        "obs_feature_report": compute_obs_feature_ratio(X_event, warn=False),
+        "obs_feature_report": compute_obs_feature_ratio(X_primary_for_ratio, warn=False),
         "representative_cpcv": None,
         "vif_series": vif_series,
     }
 
-    # Load relative return matrix for all benchmarks
+    # Load relative return matrix for the primary forecast universe only.
+    # ETF_BENCHMARK_UNIVERSE still governs data ingestion; PRIMARY_FORECAST_UNIVERSE
+    # governs which benchmarks the production ensemble trains on.
     rel_matrix_cols = {}
-    for etf in config.ETF_BENCHMARK_UNIVERSE:
+    for etf in config.PRIMARY_FORECAST_UNIVERSE:
         rel_series = load_relative_return_matrix(conn, etf, target_horizon_months)
         if not rel_series.empty:
             rel_matrix_cols[etf] = rel_series
@@ -299,19 +311,20 @@ def _generate_signals(
 
     rel_matrix = pd.DataFrame(rel_matrix_cols)
 
-    # v7.4: run one representative CPCV diagnostic inside the monthly workflow.
-    # VTI + elasticnet gives a stable broad-market reference without multiplying
-    # runtime by the full 4-model × 20-benchmark grid.
-    if "VTI" in rel_matrix.columns:
+    # v11.0: representative CPCV uses VOO + ridge (core benchmark of the primary
+    # universe; matches the promoted model type replacing the former VTI+elasticnet).
+    if "VOO" in rel_matrix.columns:
         try:
-            rel_series_vti = rel_matrix["VTI"].rename(f"VTI_{target_horizon_months}m")
-            X_vti, y_vti = get_X_y_relative(X_event, rel_series_vti, drop_na_target=True)
+            rel_series_voo = rel_matrix["VOO"].rename(f"VOO_{target_horizon_months}m")
+            X_voo_all, y_voo = get_X_y_relative(X_event, rel_series_voo, drop_na_target=True)
+            ridge_cols = [c for c in config.MODEL_FEATURE_OVERRIDES.get("ridge", []) if c in X_voo_all.columns]
+            X_voo = X_voo_all[ridge_cols] if ridge_cols else X_voo_all
             diagnostics["representative_cpcv"] = run_cpcv(
-                X_vti,
-                y_vti,
-                model_type="elasticnet",
+                X_voo,
+                y_voo,
+                model_type="ridge",
                 target_horizon_months=target_horizon_months,
-                benchmark="VTI",
+                benchmark="VOO",
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception(
@@ -319,11 +332,12 @@ def _generate_signals(
                 exc,
             )
 
-    # Train 4-model ensemble per benchmark (ElasticNet + Ridge + BayesianRidge + GBT)
+    # Train lean Ridge+GBT ensemble per primary benchmark with v18 feature sets.
     ensemble_results = run_ensemble_benchmarks(
         X_event,
         rel_matrix,
         target_horizon_months=target_horizon_months,
+        model_feature_overrides=config.MODEL_FEATURE_OVERRIDES,
     )
 
     # Generate ensemble signals (includes prob_outperform and confidence_tier)
@@ -724,6 +738,46 @@ def _record_model_health_snapshot(
     return summarize_latest_model_drift(history.reset_index())
 
 
+def _evaluate_and_record_retrain_trigger(
+    conn,
+    drift_summary: ModelDriftSummary | None,
+) -> RetainTriggerResult | None:
+    """
+    Evaluate the retrain trigger against the current drift state and persist
+    the result to model_retrain_log for governance/audit.
+
+    Returns the RetainTriggerResult, or None if the DB table is unavailable.
+    """
+    try:
+        last_date = db_client.get_last_retrain_trigger_date(conn)
+        result = evaluate_retrain_trigger(
+            drift_summary=drift_summary,
+            last_trigger_date=last_date,
+        )
+        db_client.record_retrain_event(
+            conn,
+            triggered_at=result.evaluated_at,
+            breach_streak=result.breach_streak,
+            triggered=result.triggered,
+            cooldown_active=result.cooldown_active,
+            last_trigger_date=result.last_trigger_date,
+            notes=result.notes,
+        )
+        if result.triggered:
+            logger.warning(
+                "Retrain trigger fired: %s (streak=%d, last=%s)",
+                result.notes,
+                result.breach_streak,
+                result.last_trigger_date or "never",
+            )
+        else:
+            logger.info("Retrain trigger evaluated: %s", result.notes)
+        return result
+    except Exception:
+        logger.debug("Retrain trigger evaluation skipped", exc_info=True)
+        return None
+
+
 def _consensus_signal(
     signals: pd.DataFrame,
 ) -> tuple[str, float, float, float, float, str]:
@@ -1075,6 +1129,24 @@ def _build_provisional_vest_scenario(
         prob_outperform_6m=prob_outperform,
         prob_outperform_12m=prob_outperform,
     )
+
+    # v35: Monte Carlo tax-sensitivity analysis
+    mc_analysis: MonteCarloTaxAnalysis | None = None
+    try:
+        close_prices = prices["close"].dropna().values
+        if len(close_prices) >= 30:
+            annual_vol = estimate_annual_vol(close_prices)
+            annual_drift = mean_predicted * 2.0  # annualise 6M forecast
+            mc_analysis = run_monte_carlo_tax_analysis(
+                current_price=current_price,
+                cost_basis_per_share=avg_basis,
+                shares=total_shares,
+                annual_vol=annual_vol,
+                annual_drift=annual_drift,
+            )
+    except Exception:
+        logger.debug("Monte Carlo tax analysis skipped", exc_info=True)
+
     return {
         "vest_date": vest_date,
         "rsu_type": rsu_type,
@@ -1082,6 +1154,7 @@ def _build_provisional_vest_scenario(
         "avg_basis": avg_basis,
         "shares": total_shares,
         "scenario": scenario,
+        "mc_analysis": mc_analysis,
     }
 
 
@@ -2849,6 +2922,10 @@ def main(
             f"{model_drift_summary.ic_below_threshold_streak} consecutive monthly "
             f"snapshots below {config.DIAG_MIN_IC:.2f}."
         )
+
+    # v35.1: evaluate retrain trigger and record to audit log
+    _evaluate_and_record_retrain_trigger(conn, model_drift_summary)
+
     if shadow_summary is not None:
         if shadow_summary.recommendation_mode != live_summary.recommendation_mode:
             manifest_warnings.append(

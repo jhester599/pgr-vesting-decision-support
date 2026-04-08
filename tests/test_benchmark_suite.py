@@ -41,7 +41,7 @@ def test_summarize_predictions_logs_newey_west_failure(caplog):
     y_true = pd.Series(np.linspace(-0.01, 0.04, 10), index=idx)
 
     with caplog.at_level("ERROR"), patch(
-        "src.research.evaluation.compute_newey_west_ic",
+        "src.models.evaluation.compute_newey_west_ic",
         side_effect=RuntimeError("synthetic NW failure"),
     ):
         summary = summarize_predictions(y_hat, y_true, target_horizon_months=6)
@@ -101,7 +101,7 @@ def test_run_benchmark_suite_produces_detail_and_summary(tmp_path):
         patch("scripts.benchmark_suite.build_feature_matrix_from_db", return_value=fake_df),
         patch("scripts.benchmark_suite.load_relative_return_matrix", return_value=fake_series),
         patch("scripts.benchmark_suite.get_X_y_relative", return_value=(fake_df, fake_series)),
-        patch("src.research.evaluation.run_wfo", return_value=fake_wfo),
+        patch("src.models.evaluation.run_wfo", return_value=fake_wfo),
         patch("scripts.benchmark_suite.run_ensemble_benchmarks", return_value={"VTI": fake_ensemble}),
     ):
         detail_df, summary_df = run_benchmark_suite(

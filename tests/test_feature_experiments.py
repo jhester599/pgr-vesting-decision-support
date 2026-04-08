@@ -69,7 +69,7 @@ def test_run_feature_experiments_produces_rows(tmp_path):
         patch("scripts.feature_experiments.build_feature_matrix_from_db", return_value=fake_df),
         patch("scripts.feature_experiments.load_relative_return_matrix", return_value=fake_series),
         patch("scripts.feature_experiments.get_X_y_relative", return_value=(fake_df.drop(columns=["target_6m_return"]), fake_series)),
-        patch("src.research.evaluation.run_wfo", return_value=fake_wfo),
+        patch("src.models.evaluation.run_wfo", return_value=fake_wfo),
     ):
         detail_df, summary_df = run_feature_experiments(
             conn=MagicMock(),
