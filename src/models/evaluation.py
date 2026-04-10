@@ -485,7 +485,10 @@ def reconstruct_ensemble_oos_predictions(
             fold_y_hat = fold_y_hat + weight * fold.y_hat  # type: ignore[operator]
 
         if fold_y_true is not None and fold_y_hat is not None:
-            fold_y_hat = apply_prediction_shrinkage(fold_y_hat)
+            fold_y_hat = np.asarray(
+                apply_prediction_shrinkage(fold_y_hat),
+                dtype=float,
+            )
             predictions.extend(fold_y_hat.tolist())
             realized.extend(fold_y_true.tolist())
             dates.extend(fold_dates)
