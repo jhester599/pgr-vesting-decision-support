@@ -70,24 +70,21 @@ Operational runbook: [docs/operations-runbook.md](docs/operations-runbook.md)
 
 ## Version History
 
-The repository's detailed version history is intentionally kept out of the
-landing page.
+Full version history: [CHANGELOG.md](CHANGELOG.md)
 
-- High-level completed changes: [docs/changelog.md](docs/changelog.md)
-- Broader roadmap and historical version notes: [ROADMAP.md](ROADMAP.md)
-- Peer reviews and session history: `docs/history/`
+Active development direction: [ROADMAP.md](ROADMAP.md)
 
 ## Current Baseline
 
-The repo currently reflects a mature post-`v29` baseline with an active `v30`
-enhancement sequence focused on operational hardening, observability, and docs
-cleanup. Recent work has added:
+The repo reflects a mature post-`v33` baseline. Recent work has added:
 
-- env-backed EDGAR identity configuration
-- monthly data-freshness warnings
-- shared HTTP retry/backoff helpers
-- lightweight monthly pipeline integration coverage
-- structured logging for the main production entry points
+- config package modularization (`config/` replaces monolithic `config.py`)
+- expanded mypy CI coverage to 11 modules
+- walk-forward diagnostic tooling (VIF checks, feature importance stability)
+- conformal prediction coverage monitoring and rolling drift detection
+- EDGAR data expansion: segment-level NPW/PIF, valuation features, channel-mix signals
+- vesting policy backtest and heuristic comparison in monthly reports
+- structured Hypothesis property-based tests (v36, active branch)
 
 ## Project Principles
 
