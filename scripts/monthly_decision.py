@@ -213,8 +213,23 @@ def _output_dir(as_of: date) -> Path:
 
 
 def _already_ran(as_of: date) -> bool:
-    """Return True if a recommendation.md already exists for this month."""
-    return (_output_dir(as_of) / "recommendation.md").exists()
+    """Return True if a report already exists for this exact as-of date.
+
+    Checks the run_manifest.json as_of_date field so that re-running with a
+    different date in the same month (e.g. after a code update) overwrites the
+    stale report rather than skipping.
+    """
+    out_dir = _output_dir(as_of)
+    manifest_path = out_dir / "run_manifest.json"
+    if not manifest_path.exists():
+        return False
+    try:
+        import json as _json
+        manifest = _json.loads(manifest_path.read_text(encoding="utf-8"))
+        return manifest.get("as_of_date") == as_of.isoformat()
+    except Exception:
+        # Unreadable manifest — fall back to presence check
+        return (out_dir / "recommendation.md").exists()
 
 
 # ---------------------------------------------------------------------------
