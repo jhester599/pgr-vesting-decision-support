@@ -34,6 +34,7 @@ from src.models.regularized_models import (
     build_ridge_pipeline,
     get_feature_importances,
 )
+from src.models.evaluation import reconstruct_ensemble_oos_predictions
 from src.models.wfo_engine import WFOResult, FoldResult, run_wfo
 from src.models.multi_benchmark_wfo import (
     EnsembleWFOResult,
@@ -344,12 +345,16 @@ class TestInverseVarianceWeighting:
         return signals
 
     def test_equal_mae_produces_equal_weight_mean(self) -> None:
-        """When all MAEs are equal, weighted avg = simple mean."""
+        """When all MAEs are equal, the weighted mean is shrink-adjusted."""
         X, y = _make_Xy(n=120)
         maes = {"elasticnet": 0.05, "ridge": 0.05, "bayesian_ridge": 0.05}
         preds = {"elasticnet": 0.10, "ridge": 0.20, "bayesian_ridge": 0.30}
         signals = self._build_signals(maes, preds, X, y)
-        expected = (0.10 + 0.20 + 0.30) / 3
+        expected = (
+            config.ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA
+            * (0.10 + 0.20 + 0.30)
+            / 3
+        )
         assert signals.loc["VTI", "point_prediction"] == pytest.approx(expected, rel=1e-6)
 
     def test_lower_mae_gets_higher_weight(self) -> None:
@@ -365,7 +370,9 @@ class TestInverseVarianceWeighting:
         result = signals.loc["VTI", "point_prediction"]
         # Weight_A = 1/0.0001 = 10000, Weight_B = 1/0.01 = 100
         # expected ≈ (1.0 * 10000 + (-1.0) * 100) / 10100 ≈ 0.9802
-        expected = (1.0 * 10000 + (-1.0) * 100) / (10000 + 100)
+        expected = config.ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA * (
+            (1.0 * 10000 + (-1.0) * 100) / (10000 + 100)
+        )
         assert result == pytest.approx(expected, rel=1e-4)
 
     def test_single_model_returns_that_prediction(self) -> None:
@@ -373,7 +380,8 @@ class TestInverseVarianceWeighting:
         maes = {"elasticnet": 0.05}
         preds = {"elasticnet": 0.123}
         signals = self._build_signals(maes, preds, X, y)
-        assert signals.loc["VTI", "point_prediction"] == pytest.approx(0.123, rel=1e-6)
+        expected = config.ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA * 0.123
+        assert signals.loc["VTI", "point_prediction"] == pytest.approx(expected, rel=1e-6)
 
     def test_zero_mae_fallback_weight_one(self) -> None:
         """
@@ -384,16 +392,61 @@ class TestInverseVarianceWeighting:
         maes = {"elasticnet": 0.0, "ridge": 0.0}
         preds = {"elasticnet": 0.10, "ridge": 0.20}
         signals = self._build_signals(maes, preds, X, y)
-        assert signals.loc["VTI", "point_prediction"] == pytest.approx(0.15, rel=1e-6)
+        expected = config.ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA * 0.15
+        assert signals.loc["VTI", "point_prediction"] == pytest.approx(expected, rel=1e-6)
 
 
 # ===========================================================================
-# Full 4-model ensemble integration (run_ensemble_benchmarks)
+# OOS reconstruction consistency
 # ===========================================================================
 
-class TestFourModelEnsemble:
-    def test_four_models_in_result(self) -> None:
-        """run_ensemble_benchmarks returns a result with all 4 model types."""
+class TestEnsembleOosReconstruction:
+    def test_reconstruction_applies_promoted_shrinkage(self) -> None:
+        ridge_result = _make_wfo_result(mae=0.05, model_type="ridge", n_obs=3)
+        gbt_result = _make_wfo_result(mae=0.10, model_type="gbt", n_obs=3)
+
+        ridge_result.folds[0].y_hat = np.array([0.30, 0.10, -0.20], dtype=float)
+        ridge_result.folds[0].y_true = np.array([0.05, 0.05, 0.05], dtype=float)
+        ridge_result.folds[0]._test_dates = list(
+            pd.date_range("2020-01-31", periods=3, freq="ME")
+        )
+
+        gbt_result.folds[0].y_hat = np.array([0.00, 0.20, -0.10], dtype=float)
+        gbt_result.folds[0].y_true = np.array([0.05, 0.05, 0.05], dtype=float)
+        gbt_result.folds[0]._test_dates = list(
+            pd.date_range("2020-01-31", periods=3, freq="ME")
+        )
+
+        ens = EnsembleWFOResult(
+            benchmark="VTI",
+            target_horizon=6,
+            mean_ic=0.10,
+            mean_hit_rate=0.55,
+            mean_mae=0.075,
+            model_results={"ridge": ridge_result, "gbt": gbt_result},
+        )
+
+        y_hat, y_true = reconstruct_ensemble_oos_predictions(ens)
+
+        ridge_weight = 1.0 / (ridge_result.mean_absolute_error ** 2)
+        gbt_weight = 1.0 / (gbt_result.mean_absolute_error ** 2)
+        raw_expected = (
+            ridge_result.folds[0].y_hat * ridge_weight
+            + gbt_result.folds[0].y_hat * gbt_weight
+        ) / (ridge_weight + gbt_weight)
+        expected = config.ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA * raw_expected
+
+        np.testing.assert_allclose(y_hat.to_numpy(dtype=float), expected)
+        np.testing.assert_allclose(y_true.to_numpy(dtype=float), np.full(3, 0.05))
+
+
+# ===========================================================================
+# Production ensemble integration (run_ensemble_benchmarks)
+# ===========================================================================
+
+class TestProductionEnsemble:
+    def test_configured_models_in_result(self) -> None:
+        """run_ensemble_benchmarks returns the configured production members."""
         X, y = _make_Xy(n=150)
         rel_matrix = pd.DataFrame({"VTI": y})
         results = run_ensemble_benchmarks(X, rel_matrix, target_horizon_months=6)

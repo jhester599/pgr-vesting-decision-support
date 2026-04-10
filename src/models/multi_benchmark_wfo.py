@@ -29,11 +29,24 @@ from typing import Literal, cast
 import numpy as np
 import pandas as pd
 from scipy.stats import norm as _norm
+import config
 
 from src.models.wfo_engine import WFOResult, run_wfo, predict_current
 from src.processing.feature_engineering import get_X_y_relative
 
 logger = logging.getLogger(__name__)
+
+
+def apply_prediction_shrinkage(
+    prediction: float | np.ndarray,
+    alpha: float | None = None,
+) -> float | np.ndarray:
+    """Apply the promoted v38 calibration shrinkage to ensemble predictions."""
+    if alpha is None:
+        alpha = config.ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA
+    if isinstance(prediction, np.ndarray):
+        return alpha * prediction
+    return float(alpha * prediction)
 
 
 # ---------------------------------------------------------------------------
@@ -178,13 +191,11 @@ def run_ensemble_benchmarks(
     Returns:
         Dict mapping ETF ticker → EnsembleWFOResult.
     """
-    import config as _cfg
-
     if relative_return_matrix.empty:
         raise ValueError("relative_return_matrix is empty.")
 
     ensemble_results: dict[str, EnsembleWFOResult] = {}
-    model_types: list[str] = list(_cfg.ENSEMBLE_MODELS)
+    model_types: list[str] = list(config.ENSEMBLE_MODELS)
 
     for etf in relative_return_matrix.columns:
         rel_series = relative_return_matrix[etf].rename(f"{etf}_{target_horizon_months}m")
@@ -334,7 +345,8 @@ def get_ensemble_signals(
 
         # Normalised weighted average
         total_weight = sum(w for _, w in weighted_preds)
-        point_prediction = sum(p * w for p, w in weighted_preds) / total_weight
+        raw_point_prediction = sum(p * w for p, w in weighted_preds) / total_weight
+        point_prediction = float(apply_prediction_shrinkage(raw_point_prediction))
         signal_to_noise = (
             abs(point_prediction) / prediction_std
             if prediction_std > 0

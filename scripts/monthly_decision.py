@@ -68,6 +68,7 @@ from src.models.evaluation import (
     FeatureImportanceStability,
     compute_feature_importance_stability,
     evaluate_baseline_strategy,
+    reconstruct_ensemble_oos_predictions,
     reconstruct_baseline_predictions,
 )
 from src.models.policy_metrics import (
@@ -171,8 +172,9 @@ _ETF_DESCRIPTIONS: dict[str, str] = {
 }
 
 _MODEL_VERSION_LABEL = (
-    "v11.0 (lean 2-model ensemble: Ridge + GBT, v18 feature sets, "
+    "v11.1 (lean 2-model ensemble: Ridge + GBT, v18 feature sets, "
     "8-benchmark PRIMARY_FORECAST_UNIVERSE, inverse-variance weighting, "
+    "v38 post-ensemble shrinkage alpha=0.50, "
     "C(8,2)=28 CPCV paths; ElasticNet+BayesianRidge retired after v18/v20 "
     "research showed Ridge+GBT outperforms on IC, hit rate, and obs/feature ratio)"
 )
@@ -394,41 +396,8 @@ def _reconstruct_ensemble_oos(
     Returns:
         ``(y_hat_ensemble, y_true)`` — aligned arrays across all folds.
     """
-    model_results = ens_result.model_results
-    if not model_results:
-        return np.array([], dtype=float), np.array([], dtype=float)
-
-    weights: dict[str, float] = {}
-    for mtype, result in model_results.items():
-        mae = result.mean_absolute_error
-        weights[mtype] = 1.0 / (mae ** 2) if mae > 1e-9 else 1.0
-    total_w = sum(weights.values())
-
-    ref_result = next(iter(model_results.values()))
-    n_folds = len(ref_result.folds)
-
-    all_y_hat: list[float] = []
-    all_y_true: list[float] = []
-
-    for fold_idx in range(n_folds):
-        fold_y_true: np.ndarray | None = None
-        weighted_y_hat: np.ndarray | None = None
-
-        for mtype, result in model_results.items():
-            if fold_idx >= len(result.folds):
-                continue
-            fold = result.folds[fold_idx]
-            w = weights[mtype] / total_w
-            if fold_y_true is None:
-                fold_y_true = fold.y_true
-                weighted_y_hat = np.zeros(len(fold.y_true), dtype=float)
-            weighted_y_hat = weighted_y_hat + w * fold.y_hat  # type: ignore[operator]
-
-        if fold_y_true is not None and weighted_y_hat is not None:
-            all_y_hat.extend(weighted_y_hat.tolist())
-            all_y_true.extend(fold_y_true.tolist())
-
-    return np.array(all_y_hat, dtype=float), np.array(all_y_true, dtype=float)
+    y_hat, y_true = reconstruct_ensemble_oos_predictions(ens_result)
+    return y_hat.to_numpy(dtype=float), y_true.to_numpy(dtype=float)
 
 
 def _calibrate_signals(
