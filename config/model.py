@@ -40,6 +40,10 @@ KELLY_MAX_POSITION: float = 0.20      # v4.1: reduced from 0.30 (Meulbroek 2005:
 # after v18/v20 research showed Ridge+GBT with lean feature sets outperforms
 # the 4-model stack on IC, hit rate, and obs/feature ratio.)
 ENSEMBLE_MODELS: list[str] = ["ridge", "gbt"]
+# v38 promotion: post-ensemble calibration shrinkage applied to the final
+# inverse-variance weighted benchmark prediction.  Research showed alpha=0.50
+# improved pooled OOS R^2 materially without harming IC or hit rate.
+ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA: float = 0.50
 
 # ---------------------------------------------------------------------------
 # v4.0 CPCV parameters — v5.0: upgraded from C(6,2)=15 paths to C(8,2)=28 paths

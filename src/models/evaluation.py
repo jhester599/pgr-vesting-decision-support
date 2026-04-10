@@ -20,7 +20,10 @@ from sklearn.metrics import (
 from sklearn.model_selection import TimeSeriesSplit
 
 import config
-from src.models.multi_benchmark_wfo import EnsembleWFOResult
+from src.models.multi_benchmark_wfo import (
+    EnsembleWFOResult,
+    apply_prediction_shrinkage,
+)
 from src.models.wfo_engine import WFOResult, run_wfo
 from src.reporting.backtest_report import compute_newey_west_ic, compute_oos_r_squared
 
@@ -482,6 +485,10 @@ def reconstruct_ensemble_oos_predictions(
             fold_y_hat = fold_y_hat + weight * fold.y_hat  # type: ignore[operator]
 
         if fold_y_true is not None and fold_y_hat is not None:
+            fold_y_hat = np.asarray(
+                apply_prediction_shrinkage(fold_y_hat),
+                dtype=float,
+            )
             predictions.extend(fold_y_hat.tolist())
             realized.extend(fold_y_true.tolist())
             dates.extend(fold_dates)

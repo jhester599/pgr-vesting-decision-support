@@ -2,9 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Improve aggregate OOS R² from −13.26% toward ≥ +2% by fixing prediction calibration — the model already has real signal (IC=0.19, hit rate=69%) but overconfident prediction magnitudes.
+**Goal:** Improve aggregate OOS R² from the historical baseline toward ≥ +2% by fixing prediction calibration and architecture. As of the completed Phase 1 run, `v37` is the archived historical baseline measurement and `v38` shrinkage is the active research baseline for all later comparisons.
 
 **Architecture:** 24 standalone research scripts in `results/research/`, one per version (v37–v60). Each script imports from the existing codebase read-only, writes a CSV to `results/research/`, and prints a standard results table. No production code is modified. A shared utility module `src/research/v37_utils.py` provides common helpers.
+
+**Execution update (2026-04-10):** Phases 1-5 are now complete through `v60`. The ranked summary still leaves `v38_shrinkage_best_results.csv` as the top regression result, so no later-phase model has earned promotion over the low-complexity shrinkage control. The most useful late-phase output was diagnostic rather than architectural: `v60` found pooled Clark-West significance (`p = 0.0004`) and positive CE gain (`+0.0330`), which supports the view that the baseline ensemble contains signal but remains mostly constrained by variance/calibration rather than mean-direction failure.
 
 **Tech Stack:** Python 3.10+, scikit-learn, numpy, pandas, statsmodels, SQLite (`data/pgr_financials.db`), existing `src/` modules.
 
@@ -77,16 +79,18 @@ Week 6:  v56 → v57 → v58 → v59 → v60  (lower priority)
 
 **Gate:** After each phase, evaluate results. If Phase 1 alone achieves OOS R² ≥ +2%, skip later phases and proceed directly to holdout evaluation per production promotion rules.
 
+**Baseline convention going forward:** Use `results/research/v38_shrinkage_best_results.csv` as the reference baseline for Phase 2+ delta reporting. Keep `results/research/v37_baseline_results.csv` as the historical measurement of the unmodified production ensemble.
+
 ---
 
 ## Success Criteria
 
-| Metric | Baseline (v37) | Minimum Pass | Target |
+| Metric | Active Research Baseline | Minimum Pass | Target |
 |--------|---------------|--------------|--------|
-| Aggregate OOS R² | ~−13% (TBD) | ≥ 0% | ≥ +2% |
-| Mean IC | TBD | No degradation > 0.02 | Improvement |
-| Mean Hit Rate | TBD | No degradation > 2 pp | Improvement |
-| Mean MAE | TBD | No increase > 10% | Decrease |
+| Aggregate OOS R² | v38 = -13.10% | ≥ 0% | ≥ +2% |
+| Mean IC | v38 = 0.1579 | No degradation > 0.02 | Improvement |
+| Mean Hit Rate | v38 = 70.02% | No degradation > 2 pp | Improvement |
+| Mean MAE | v38 = 0.1423 | No increase > 10% | Decrease |
 | Clark-West p-value | TBD | < 0.05 | < 0.01 |
 
 ---

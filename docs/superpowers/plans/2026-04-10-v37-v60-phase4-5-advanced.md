@@ -6,6 +6,8 @@
 
 **Files to create:** `results/research/v50_pred_winsorize.py` through `results/research/v60_diagnostics.py`
 
+**Execution update (2026-04-10):** Phase 4-5 has now been executed. None of `v50`-`v59` beat the active `v38` shrinkage research baseline (`pooled OOS R² = -0.1310`). The closest later variants were `v50` clip+shrink (`-0.2300`), `v57` rank-normalized GBT (`-0.2440`), and `v54` GPR-RBF (`-0.2828`), so `v38` remains the forward research control. `v60` diagnostics were constructive even without a stronger replacement: pooled Clark-West `t = 3.357`, `p = 0.0004`, CE gain `+0.0330`, and MSE decomposition showed variance share (`38.4%`) far above bias share (`1.4%`).
+
 ---
 
 ### Task 15: v50 — Prediction Winsorization
