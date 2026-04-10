@@ -8,6 +8,9 @@ __pycache__/
 *.pyd
 .Python
 
+# Hypothesis property-based test cache
+.hypothesis/
+
 # Data cache (regenerated from API; never commit raw API responses)
 data/raw/
 data/processed/
