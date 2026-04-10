@@ -4,6 +4,10 @@
 
 **Goal:** Medium-complexity interventions targeting feature construction (blockwise PCA), model type (BayesianRidge, classification), and prediction target/structure (composite benchmark, panel pooling, regime features).
 
+**Baseline for this phase:** Compare all `v44+` experiments against `v38` shrinkage, not the raw `v37` ensemble. `v37` is retained only as the historical production-baseline measurement.
+
+**Future-work note from the completed Phase 2 run:** `v46` binary classification did not improve regression OOS R² by design, but it produced the most promising decision-aligned metrics in this phase (pooled accuracy `0.6533`, balanced accuracy `0.5292`, Brier `0.2502`). Keep the classification branch on the roadmap for later recommendation-layer work even if the main regression baseline remains `v38`.
+
 **Files to create:** `results/research/v44_pca.py` through `results/research/v49_regime_features.py`
 
 **Shared dependency:** `src/research/v37_utils.py`

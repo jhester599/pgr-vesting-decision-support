@@ -6,6 +6,8 @@
 
 **Expected aggregate R² impact:** +10 to +20 pp over baseline (may alone reach the +2% target).
 
+**Phase 1 outcome note (2026-04-10 execution):** `v38` shrinkage outperformed the original `v37` ensemble and is the active research baseline for all later phases. `v37` remains the archived measurement of the unmodified production ensemble.
+
 **Files to create:** `results/research/v37_baseline.py` through `results/research/v43_features.py`
 
 **Shared dependency:** `src/research/v37_utils.py` (already exists — do not modify).
@@ -1140,4 +1142,4 @@ for f in sorted(csvs):
 "
 ```
 
-**Decision:** If best Phase 1 R² ≥ +2%, proceed to holdout evaluation. Otherwise continue to Phase 2–3.
+**Decision:** If best Phase 1 R² ≥ +2%, proceed to holdout evaluation. Otherwise continue to Phase 2–3 using `v38_shrinkage_best_results.csv` as the comparison baseline.

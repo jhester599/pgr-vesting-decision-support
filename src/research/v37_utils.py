@@ -233,6 +233,19 @@ def load_baseline_results() -> pd.DataFrame | None:
     return None
 
 
+def load_research_baseline_results() -> pd.DataFrame | None:
+    """Load the active research baseline CSV for phase-2+ delta reporting.
+
+    v37 remains the historical production-baseline measurement.  Once v38 is
+    available, it becomes the forward research baseline because later phases
+    should be compared against the best low-complexity calibration result.
+    """
+    preferred = RESULTS_DIR / "v38_shrinkage_best_results.csv"
+    if preferred.exists():
+        return pd.read_csv(preferred)
+    return load_baseline_results()
+
+
 def save_results(df: pd.DataFrame, filename: str) -> Path:
     """Save results DataFrame to results/research/ and return the path."""
     out = RESULTS_DIR / filename
@@ -279,11 +292,16 @@ def print_delta(pooled: dict[str, float], baseline_df: pd.DataFrame | None) -> N
     if base.empty:
         return
     b = base.iloc[0]
+    baseline_label = "v37"
+    if "version" in baseline_df.columns:
+        version_values = baseline_df["version"].dropna().astype(str).unique().tolist()
+        if version_values:
+            baseline_label = version_values[0]
     dr2 = pooled["r2"] - b["r2"]
     dic = pooled["ic"] - b["ic"]
     dhr = pooled["hit_rate"] - b["hit_rate"]
     print(
-        f"\nvs. Baseline (v37):\n"
+        f"\nvs. Baseline ({baseline_label}):\n"
         f"  OOS_R2 delta:    {dr2:+.4f}  ({dr2*100:+.2f} pp)\n"
         f"  IC delta:        {dic:+.4f}\n"
         f"  Hit rate delta:  {dhr:+.4f}  ({dhr*100:+.2f} pp)"
