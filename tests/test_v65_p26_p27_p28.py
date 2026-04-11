@@ -502,7 +502,7 @@ class TestBuildEmailMessage:
         assert "What's changed:" in body
         assert "Existing shares already held:" in body
         assert "Confidence checks:" in body
-        assert "Simple-baseline cross-check:" in body
+        assert "Consensus cross-check:" in body
         assert "Active layer: v13.1 promoted simpler diversification-first recommendation layer + live-stack cross-check" in body
         assert "If redeploying sold exposure:" in body
         assert "Suggested redeploy portfolio:" in body
@@ -523,7 +523,7 @@ class TestBuildEmailMessage:
         assert "New vested shares" in html_body
         assert "Existing shares already held" in html_body
         assert "Confidence snapshot" in html_body
-        assert "Recommendation-layer cross-check" in html_body
+        assert "Consensus cross-check" in html_body
         assert "Active layer:" in html_body
         assert "If redeploying sold exposure" in html_body
         assert "Suggested redeploy portfolio" in html_body

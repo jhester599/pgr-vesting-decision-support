@@ -14,12 +14,25 @@ them.
 These are committed because the operating model relies on them as durable state
 and human-readable history.
 
+Current monthly production artifacts include:
+
+- `recommendation.md`
+- `diagnostic.md`
+- `signals.csv`
+- `benchmark_quality.csv`
+- `consensus_shadow.csv`
+- `dashboard.html`
+- `monthly_summary.json`
+- `run_manifest.json`
+- `decision_log.md`
+
 ## Research Artifacts
 
-- `results/v9/`
+- `results/research/`
 
-These are committed as reproducible evidence from the v9 research program. They
-are not consumed by production workflows.
+These are committed as reproducible evidence from versioned research and
+promotion studies. They are not consumed directly by production workflows
+unless a later promotion explicitly wires them in.
 
 ## Provenance Rule
 
@@ -30,18 +43,17 @@ Major generated artifacts should be traceable to:
 - schema version
 - workflow or script name
 
-v10.1 adds run manifests to strengthen this provenance for production monthly
-artifacts.
+Run manifests strengthen this provenance for production monthly artifacts.
 
-## Source of Truth
+## Source Of Truth
 
 - Production source of truth for runtime behavior:
   - current code
   - production workflows
   - current docs
 - Research source of truth for promotion evidence:
-  - `results/v9/`
-  - v9 summary documents
+  - `results/research/`
+  - current plan and summary documents under `docs/superpowers/plans/`
 
 ## What Should Not Be Committed
 
@@ -49,4 +61,5 @@ Do not commit ad hoc local-only helpers or previews such as:
 
 - temporary PR body files
 - local email previews
-- smoke-run scratch output not intended as permanent evidence
+- one-off local dashboard scratch output
+- smoke-run scratch files not intended as permanent evidence

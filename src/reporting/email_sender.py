@@ -12,6 +12,7 @@ per-benchmark detail sections lower in the email.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import smtplib
@@ -122,11 +123,45 @@ def _extract_next_vest_data(body: str) -> dict[str, str]:
     return {}
 
 
-def _extract_shadow_check(body: str) -> list[dict[str, str]]:
+def _extract_consensus_cross_check(body: str) -> list[dict[str, str]]:
+    """Extract the live-vs-cross-check comparison from old or new report layouts."""
+    section = _extract_section(body, "Consensus Shadow Evaluation")
+    for table_lines in _extract_markdown_tables(section):
+        if table_lines and table_lines[0].strip().startswith("| Variant |"):
+            rows = _parse_markdown_table(table_lines)
+            return [
+                {
+                    "Label": row.get("Variant", ""),
+                    "Mode": row.get("Mode", ""),
+                    "Sell %": row.get("Sell %", ""),
+                    "Predicted": row.get("Mean Pred. Return", ""),
+                    "Details": (
+                        f"{row.get('Consensus', '')}; "
+                        f"IC {row.get('Mean IC', '')}; "
+                        f"Hit {row.get('Mean Hit Rate', '')}; "
+                        f"Top {row.get('Top Weight', '')}"
+                    ).strip("; "),
+                }
+                for row in rows
+            ]
+
     section = _extract_section(body, "Simple-Baseline Cross-Check")
     for table_lines in _extract_markdown_tables(section):
         if table_lines and table_lines[0].strip().startswith("| Path |"):
-            return _parse_markdown_table(table_lines)
+            rows = _parse_markdown_table(table_lines)
+            return [
+                {
+                    "Label": row.get("Path", ""),
+                    "Mode": row.get("Recommendation Mode", ""),
+                    "Sell %": row.get("Sell %", ""),
+                    "Predicted": row.get("Predicted 6M Return", ""),
+                    "Details": (
+                        f"{row.get('Signal', '')}; "
+                        f"OOS R^2 {row.get('Aggregate OOS R^2', '')}"
+                    ).strip("; "),
+                }
+                for row in rows
+            ]
     return []
 
 
@@ -198,8 +233,8 @@ def _build_existing_shares_guidance(
     stcg_gain_lots = []
     for lot in lots:
         gain = current_price - lot.cost_basis_per_share
-        item = {
-            "shares": lot.shares_remaining or lot.shares,
+        item: dict[str, str | float] = {
+            "shares": float(lot.shares_remaining or lot.shares),
             "label": _format_lot_label(lot.vest_date, lot.cost_basis_per_share),
             "tax_status": "LTCG" if lot.is_ltcg_eligible(as_of) else "STCG",
         }
@@ -286,15 +321,61 @@ def _recommendation_headline(body: str) -> str:
     return f"Next vest action: sell {sell_pct}."
 
 
-def build_email_summary(body: str, lots_csv_path: str | Path | None = None) -> str:
+def _infer_dashboard_snapshot_url(dashboard_path: Path) -> str | None:
+    """Infer a GitHub URL for a committed dashboard snapshot when possible."""
+    repo = os.environ.get("GITHUB_REPOSITORY", "").strip()
+    ref_name = os.environ.get("GITHUB_REF_NAME", "").strip() or "master"
+    if not repo:
+        return None
+    relative_path = dashboard_path.as_posix()
+    return f"https://github.com/{repo}/blob/{ref_name}/{relative_path}"
+
+
+def _summary_lookup(
+    summary_payload: dict[str, object] | None,
+    *keys: str,
+) -> str | None:
+    current: object | None = summary_payload
+    for key in keys:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    if current is None:
+        return None
+    return str(current)
+
+
+def build_email_summary(
+    body: str,
+    lots_csv_path: str | Path | None = None,
+    dashboard_snapshot_label: str | None = None,
+    dashboard_snapshot_url: str | None = None,
+    summary_payload: dict[str, object] | None = None,
+) -> str:
     """Build a concise plaintext decision memo from recommendation.md."""
-    signal = _extract_report_value(body, "Signal") or "UNKNOWN"
-    mode = _extract_report_value(body, "Recommendation Mode") or "MONITORING-ONLY"
-    predicted = _extract_report_value(body, "Predicted 6M Relative Return") or "n/a"
+    signal = (
+        _summary_lookup(summary_payload, "recommendation", "signal_label")
+        or _extract_report_value(body, "Signal")
+        or "UNKNOWN"
+    )
+    mode = (
+        _summary_lookup(summary_payload, "recommendation", "recommendation_mode")
+        or _extract_report_value(body, "Recommendation Mode")
+        or "MONITORING-ONLY"
+    )
+    predicted = (
+        _summary_lookup(summary_payload, "recommendation", "predicted_6m_relative_return_label")
+        or _extract_report_value(body, "Predicted 6M Relative Return")
+        or "n/a"
+    )
     exec_lines = _extract_executive_summary(body)
     existing_guidance = _build_existing_shares_guidance(body, lots_csv_path)
-    shadow_rows = _extract_shadow_check(body)
-    recommendation_layer = _extract_recommendation_layer(body) or ""
+    cross_check_rows = _extract_consensus_cross_check(body)
+    recommendation_layer = (
+        _summary_lookup(summary_payload, "recommendation_layer", "label")
+        or _extract_recommendation_layer(body)
+        or ""
+    )
     redeploy_lines = _extract_section_bullets(body, "Redeploy Guidance")
     redeploy_portfolio_rows = _extract_redeploy_portfolio_rows(body)
     confidence_rows = _extract_confidence_snapshot_rows(body)
@@ -318,15 +399,18 @@ def build_email_summary(body: str, lots_csv_path: str | Path | None = None) -> s
         lines += ["", "Confidence checks:"]
         for row in confidence_rows:
             lines.append(f"- {row.get('Check', '')}: {row.get('Current', '')} / {row.get('Status', '')}")
-    if shadow_rows:
-        lines += ["", "Simple-baseline cross-check:"]
+    if cross_check_rows:
+        lines += ["", "Consensus cross-check:"]
         if recommendation_layer:
             lines.append(f"- Active layer: {recommendation_layer}")
-        for row in shadow_rows:
+        for row in cross_check_rows:
             lines.append(
-                f"- {row.get('Path', 'Path')}: {row.get('Recommendation Mode', 'n/a')}, "
-                f"sell {row.get('Sell %', 'n/a')}, predicted {row.get('Predicted 6M Return', 'n/a')}"
+                f"- {row.get('Label', 'Path')}: {row.get('Mode', 'n/a')}, "
+                f"sell {row.get('Sell %', 'n/a')}, predicted {row.get('Predicted', 'n/a')}"
             )
+            details = row.get("Details", "")
+            if details:
+                lines.append(f"  {details}")
     if redeploy_lines:
         lines += ["", "If redeploying sold exposure:"]
         lines.extend(f"- {line}" for line in redeploy_lines)
@@ -343,6 +427,10 @@ def build_email_summary(body: str, lots_csv_path: str | Path | None = None) -> s
         "Full report:",
         body,
     ]
+    if dashboard_snapshot_label:
+        lines += ["", f"Dashboard snapshot: {dashboard_snapshot_label}"]
+        if dashboard_snapshot_url:
+            lines.append(f"Dashboard link: {dashboard_snapshot_url}")
     return "\n".join(lines)
 
 
@@ -465,22 +553,60 @@ def _build_redeploy_portfolio_html_table(body: str) -> str:
     )
 
 
-def build_email_html(body: str, lots_csv_path: str | Path | None = None) -> str:
+def build_email_html(
+    body: str,
+    lots_csv_path: str | Path | None = None,
+    dashboard_snapshot_label: str | None = None,
+    dashboard_snapshot_url: str | None = None,
+    summary_payload: dict[str, object] | None = None,
+) -> str:
     """Build the HTML decision memo."""
-    signal = _extract_report_value(body, "Signal") or "UNKNOWN"
-    mode = _extract_report_value(body, "Recommendation Mode") or "MONITORING-ONLY"
-    predicted = _extract_report_value(body, "Predicted 6M Relative Return") or "n/a"
-    mean_ic = _extract_report_value(body, "Mean IC (across benchmarks)") or "n/a"
-    mean_hr = _extract_report_value(body, "Mean Hit Rate") or "n/a"
-    mean_cal = _extract_report_value(body, "P(Outperform, calibrated)") or "n/a"
-    oos_r2 = _extract_report_value(body, "Aggregate OOS R^2") or "n/a"
+    signal = (
+        _summary_lookup(summary_payload, "recommendation", "signal_label")
+        or _extract_report_value(body, "Signal")
+        or "UNKNOWN"
+    )
+    mode = (
+        _summary_lookup(summary_payload, "recommendation", "recommendation_mode")
+        or _extract_report_value(body, "Recommendation Mode")
+        or "MONITORING-ONLY"
+    )
+    predicted = (
+        _summary_lookup(summary_payload, "recommendation", "predicted_6m_relative_return_label")
+        or _extract_report_value(body, "Predicted 6M Relative Return")
+        or "n/a"
+    )
+    mean_ic = (
+        _summary_lookup(summary_payload, "recommendation", "mean_ic_label")
+        or _extract_report_value(body, "Mean IC (across benchmarks)")
+        or "n/a"
+    )
+    mean_hr = (
+        _summary_lookup(summary_payload, "recommendation", "mean_hit_rate_label")
+        or _extract_report_value(body, "Mean Hit Rate")
+        or "n/a"
+    )
+    mean_cal = (
+        _summary_lookup(summary_payload, "recommendation", "prob_outperform_calibrated_label")
+        or _extract_report_value(body, "P(Outperform, calibrated)")
+        or "n/a"
+    )
+    oos_r2 = (
+        _summary_lookup(summary_payload, "recommendation", "aggregate_oos_r2_label")
+        or _extract_report_value(body, "Aggregate OOS R^2")
+        or "n/a"
+    )
     executive_summary = _extract_executive_summary(body)
     next_vest_data = _extract_next_vest_data(body)
     existing_guidance = _build_existing_shares_guidance(body, lots_csv_path)
     benchmark_table = _build_benchmark_html_table(body)
     scenario_table = _build_scenario_html_table(body)
-    shadow_rows = _extract_shadow_check(body)
-    recommendation_layer = _extract_recommendation_layer(body) or ""
+    cross_check_rows = _extract_consensus_cross_check(body)
+    recommendation_layer = (
+        _summary_lookup(summary_payload, "recommendation_layer", "label")
+        or _extract_recommendation_layer(body)
+        or ""
+    )
     redeploy_lines = _extract_section_bullets(body, "Redeploy Guidance")
     redeploy_portfolio_table = _build_redeploy_portfolio_html_table(body)
     confidence_rows = _extract_confidence_snapshot_rows(body)
@@ -555,31 +681,31 @@ def build_email_html(body: str, lots_csv_path: str | Path | None = None) -> str:
     )
 
     shadow_section = ""
-    if shadow_rows:
+    if cross_check_rows:
         shadow_html = "".join(
             "<tr>"
-            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700;'>{escape(row.get('Path', ''))}</td>"
-            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;'>{escape(row.get('Recommendation Mode', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700;'>{escape(row.get('Label', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;'>{escape(row.get('Mode', ''))}</td>"
             f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;'>{escape(row.get('Sell %', ''))}</td>"
-            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;'>{escape(row.get('Predicted 6M Return', ''))}</td>"
-            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;'>{escape(row.get('Aggregate OOS R^2', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;'>{escape(row.get('Predicted', ''))}</td>"
+            f"<td style='padding:8px;border-bottom:1px solid #e5e7eb;'>{escape(row.get('Details', ''))}</td>"
             "</tr>"
-            for row in shadow_rows
+            for row in cross_check_rows
         )
         shadow_section = (
             "<div style='margin-top:20px;padding:20px;border:1px solid #dbeafe;border-radius:16px;background:#f8fbff;'>"
-            "<h2 style='margin:0 0 12px 0;font-size:20px;color:#0f172a;'>Recommendation-layer cross-check</h2>"
+            "<h2 style='margin:0 0 12px 0;font-size:20px;color:#0f172a;'>Consensus cross-check</h2>"
             f"<p style='margin:0 0 12px 0;color:#334155;line-height:1.5;'><strong>Active layer:</strong> {escape(recommendation_layer or 'n/a')}</p>"
             "<p style='margin:0 0 12px 0;color:#334155;line-height:1.5;'>"
-            "This compares the active recommendation layer to the alternate path so the monthly memo stays honest about whether the simpler baseline and live stack agree."
+            "This compares the live consensus path to the visible cross-check so the monthly memo stays honest about whether the current recommendation would change under the alternate weighting path."
             "</p>"
             "<table style='width:100%;border-collapse:collapse;font-size:13px;'>"
             "<thead><tr>"
-            "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Path</th>"
+            "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Variant</th>"
             "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Mode</th>"
             "<th style='text-align:right;padding:8px;border-bottom:2px solid #cbd5e1;'>Sell %</th>"
             "<th style='text-align:right;padding:8px;border-bottom:2px solid #cbd5e1;'>Predicted</th>"
-            "<th style='text-align:right;padding:8px;border-bottom:2px solid #cbd5e1;'>OOS R²</th>"
+            "<th style='text-align:left;padding:8px;border-bottom:2px solid #cbd5e1;'>Details</th>"
             "</tr></thead><tbody>"
             f"{shadow_html}"
             "</tbody></table>"
@@ -675,6 +801,19 @@ def build_email_html(body: str, lots_csv_path: str | Path | None = None) -> str:
         redeploy_section +
         redeploy_portfolio_section +
         shadow_section +
+        (
+            "<div style='margin-top:20px;padding:20px;border:1px solid #dbeafe;border-radius:16px;background:#f8fbff;'>"
+            "<h2 style='margin:0 0 12px 0;font-size:20px;color:#0f172a;'>Dashboard snapshot</h2>"
+            f"<p style='margin:0 0 12px 0;color:#334155;line-height:1.5;'>A static monthly dashboard snapshot is available for lightweight review: <strong>{escape(dashboard_snapshot_label or '-')}</strong>.</p>"
+            + (
+                f"<p style='margin:0;color:#334155;line-height:1.5;'><a href='{escape(dashboard_snapshot_url)}'>Open dashboard snapshot</a></p>"
+                if dashboard_snapshot_url
+                else ""
+            )
+            + "</div>"
+            if dashboard_snapshot_label
+            else ""
+        ) +
         "<div style='margin-top:20px;padding:20px;border:1px solid #e2e8f0;border-radius:16px;background:#ffffff;'>"
         "<h2 style='margin:0 0 12px 0;font-size:20px;color:#0f172a;'>Tax timing scenarios for the next tranche</h2>"
         "<p style='margin:0 0 12px 0;color:#475569;line-height:1.5;'>These scenarios are informational unless the recommendation mode is ACTIONABLE. They help explain timing tradeoffs; they do not override the main vest instruction by themselves.</p>"
@@ -695,23 +834,54 @@ def build_email_message(
     to_addr: str,
     month_label: str | None = None,
     lots_csv_path: str | Path | None = None,
+    dashboard_snapshot_label: str | None = None,
+    dashboard_snapshot_url: str | None = None,
+    summary_payload: dict[str, object] | None = None,
 ) -> MIMEMultipart:
     """Construct a multipart monthly decision email."""
     if month_label is None:
         month_label = datetime.now(timezone.utc).strftime("%B %Y")
 
-    signal = "UNKNOWN"
-    match = re.search(r"\| Signal \| \*\*(.+?)\*\* \|", body)
-    if match:
-        signal = match.group(1)
+    signal = (
+        _summary_lookup(summary_payload, "recommendation", "signal_label")
+        or "UNKNOWN"
+    )
+    if signal == "UNKNOWN":
+        match = re.search(r"\| Signal \| \*\*(.+?)\*\* \|", body)
+        if match:
+            signal = match.group(1)
 
     subject = f"PGR Monthly Decision \u2014 {month_label}: {signal}"
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = from_addr
     msg["To"] = to_addr
-    msg.attach(MIMEText(build_email_summary(body, lots_csv_path=lots_csv_path), "plain", "utf-8"))
-    msg.attach(MIMEText(build_email_html(body, lots_csv_path=lots_csv_path), "html", "utf-8"))
+    msg.attach(
+        MIMEText(
+            build_email_summary(
+                body,
+                lots_csv_path=lots_csv_path,
+                dashboard_snapshot_label=dashboard_snapshot_label,
+                dashboard_snapshot_url=dashboard_snapshot_url,
+                summary_payload=summary_payload,
+            ),
+            "plain",
+            "utf-8",
+        )
+    )
+    msg.attach(
+        MIMEText(
+            build_email_html(
+                body,
+                lots_csv_path=lots_csv_path,
+                dashboard_snapshot_label=dashboard_snapshot_label,
+                dashboard_snapshot_url=dashboard_snapshot_url,
+                summary_payload=summary_payload,
+            ),
+            "html",
+            "utf-8",
+        )
+    )
     return msg
 
 
@@ -760,6 +930,21 @@ def send_monthly_email(
     if not report_path.exists():
         raise FileNotFoundError(f"Monthly report not found: {report_path}")
 
+    summary_payload: dict[str, object] | None = None
+    summary_path = report_path.with_name("monthly_summary.json")
+    if summary_path.exists():
+        summary_payload = json.loads(summary_path.read_text(encoding="utf-8"))
+
+    dashboard_snapshot_path = report_path.with_name("dashboard.html")
+    dashboard_snapshot_label = str(dashboard_snapshot_path)
+    dashboard_snapshot_url = (
+        _infer_dashboard_snapshot_url(dashboard_snapshot_path)
+        if dashboard_snapshot_path.exists()
+        else None
+    )
+    if not dashboard_snapshot_path.exists():
+        dashboard_snapshot_label = None
+
     body = report_path.read_text(encoding="utf-8")
     msg = build_email_message(
         body,
@@ -767,6 +952,9 @@ def send_monthly_email(
         to_addr or "",
         month_label,
         lots_csv_path=lots_csv_path,
+        dashboard_snapshot_label=dashboard_snapshot_label,
+        dashboard_snapshot_url=dashboard_snapshot_url,
+        summary_payload=summary_payload,
     )
     subject: str = msg["Subject"]
 

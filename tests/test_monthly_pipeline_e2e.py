@@ -174,6 +174,8 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
     diagnostic_path = out_dir / "diagnostic.md"
     benchmark_quality_path = out_dir / "benchmark_quality.csv"
     consensus_shadow_path = out_dir / "consensus_shadow.csv"
+    dashboard_path = out_dir / "dashboard.html"
+    monthly_summary_path = out_dir / "monthly_summary.json"
     manifest_path = out_dir / "run_manifest.json"
 
     assert recommendation_path.exists()
@@ -181,13 +183,14 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
     assert diagnostic_path.exists()
     assert benchmark_quality_path.exists()
     assert consensus_shadow_path.exists()
+    assert dashboard_path.exists()
+    assert monthly_summary_path.exists()
     assert manifest_path.exists()
 
     recommendation_text = recommendation_path.read_text(encoding="utf-8")
     assert "PGR Monthly Decision Report" in recommendation_text
     assert "## Data Freshness" in recommendation_text
     assert "## Consensus Signal" in recommendation_text
-    assert "## Consensus Shadow Evaluation" in recommendation_text
     assert "## Model Health" in recommendation_text
     assert "Rolling 12M IC" in recommendation_text
     assert "UNDERPERFORM" in recommendation_text
@@ -203,12 +206,17 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
         consensus_shadow_df.columns
     )
     assert len(consensus_shadow_df) == 2
+    monthly_summary = json.loads(monthly_summary_path.read_text(encoding="utf-8"))
+    assert monthly_summary["recommendation"]["signal_label"] == "UNDERPERFORM (LOW CONFIDENCE)"
+    assert monthly_summary["cross_check"]["visible_in_primary_surfaces"] is False
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest["workflow_name"] == "monthly_decision"
     assert any(output.endswith("recommendation.md") for output in manifest["outputs"])
     assert any(output.endswith("benchmark_quality.csv") for output in manifest["outputs"])
     assert any(output.endswith("consensus_shadow.csv") for output in manifest["outputs"])
+    assert any(output.endswith("dashboard.html") for output in manifest["outputs"])
+    assert any(output.endswith("monthly_summary.json") for output in manifest["outputs"])
     assert any(
         "Trailing conformal coverage deviates materially from nominal" in warning
         for warning in manifest["warnings"]
