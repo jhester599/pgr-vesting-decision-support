@@ -203,3 +203,5 @@ def test_main_logs_cross_check_fallback_and_completes(
     assert "RuntimeError: cross-check boom" in caplog.text
     assert (out_dir / "recommendation.md").exists()
     assert (out_dir / "consensus_shadow.csv").exists()
+    assert (out_dir / "dashboard.html").exists()
+    assert (out_dir / "monthly_summary.json").exists()

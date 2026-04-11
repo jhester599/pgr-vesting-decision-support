@@ -93,6 +93,10 @@ jobs:
               latest_dir / "recommendation.md",
               latest_dir / "diagnostic.md",
               latest_dir / "signals.csv",
+              latest_dir / "benchmark_quality.csv",
+              latest_dir / "consensus_shadow.csv",
+              latest_dir / "dashboard.html",
+              latest_dir / "monthly_summary.json",
               latest_dir / "run_manifest.json",
           ]
           missing = [str(path) for path in expected if not path.exists()]

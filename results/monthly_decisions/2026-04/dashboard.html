@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PGR Monthly Dashboard - 2026-04-11</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(180deg, #f4f7fb 0%, #eef3f8 100%);
+      color: #122033;
+      margin: 0;
+      padding: 24px;
+    }
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+    .hero {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(18, 32, 51, 0.08);
+      margin-bottom: 20px;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .card {
+      background: #f7fafc;
+      border: 1px solid #d8e3ef;
+      border-radius: 16px;
+      padding: 14px 16px;
+    }
+    .label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #4f6780;
+      margin-bottom: 8px;
+    }
+    .value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    section {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 22px 24px;
+      box-shadow: 0 10px 30px rgba(18, 32, 51, 0.06);
+      margin-bottom: 20px;
+    }
+    h1, h2 {
+      margin-top: 0;
+    }
+    .muted {
+      color: #596f86;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .data-table th,
+    .data-table td {
+      border-bottom: 1px solid #e2e8f0;
+      padding: 10px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .data-table th {
+      background: #f7fafc;
+    }
+    code {
+      background: #eef3f8;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="hero">
+      <p class="label">Monthly Decision Dashboard</p>
+      <h1>PGR Monthly Snapshot</h1>
+      <p class="muted">
+        Static monthly dashboard generated from the committed artifact bundle.
+        This snapshot is intended for email linking and lightweight review
+        without a live Streamlit process.
+      </p>
+      <p><strong>As-of Date:</strong> 2026-04-11<br>
+      <strong>Recommendation Layer:</strong> Live production recommendation layer (quality-weighted consensus)<br>
+      <strong>Recommendation Mode:</strong> DEFER-TO-TAX-DEFAULT</p>
+      <div class="cards">
+        <div class="card"><div class="label">Consensus</div><div class="value">NEUTRAL</div></div>
+        <div class="card"><div class="label">Sell %</div><div class="value">+50%</div></div>
+        <div class="card"><div class="label">Predicted 6M Return</div><div class="value">-2.34%</div></div>
+        <div class="card"><div class="label">Mean IC</div><div class="value">0.1744</div></div>
+        <div class="card"><div class="label">Mean Hit Rate</div><div class="value">+66.8%</div></div>
+        <div class="card"><div class="label">Aggregate OOS R^2</div><div class="value">-2.75%</div></div>
+      </div>
+    </div>
+
+    <section>
+      <h2>Workflow Warnings</h2>
+      <ul><li>PGR monthly EDGAR is stale: latest 2026-02-28 (42 days old, limit 35).</li><li>Aggregate OOS R^2 below threshold: -2.75% &lt; 2.00%.</li><li>Representative CPCV verdict is FAIL.</li><li>Trailing conformal coverage deviates materially from nominal: 57.3% vs 80%.</li></ul>
+    </section>
+
+    <section><h2>Benchmark Quality</h2><table class="dataframe data-table">
+  <thead>
+    <tr style="text-align: left;">
+      <th>Benchmark</th>
+      <th>OOS R^2</th>
+      <th>NW IC</th>
+      <th>Hit Rate</th>
+      <th>CW t-stat</th>
+      <th>CW p-value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>DBC</td>
+      <td>-0.67%</td>
+      <td>0.1836</td>
+      <td>+72.0%</td>
+      <td>2.1149</td>
+      <td>0.0180</td>
+    </tr>
+    <tr>
+      <td>VOO</td>
+      <td>-6.58%</td>
+      <td>0.0764</td>
+      <td>+56.5%</td>
+      <td>2.0095</td>
+      <td>0.0235</td>
+    </tr>
+    <tr>
+      <td>VDE</td>
+      <td>-0.78%</td>
+      <td>0.1434</td>
+      <td>+62.2%</td>
+      <td>1.7917</td>
+      <td>0.0374</td>
+    </tr>
+    <tr>
+      <td>VXUS</td>
+      <td>-1.06%</td>
+      <td>0.2323</td>
+      <td>+75.9%</td>
+      <td>1.7378</td>
+      <td>0.0426</td>
+    </tr>
+    <tr>
+      <td>VWO</td>
+      <td>-3.97%</td>
+      <td>0.2454</td>
+      <td>+67.8%</td>
+      <td>1.2809</td>
+      <td>0.1010</td>
+    </tr>
+    <tr>
+      <td>VMBS</td>
+      <td>-15.08%</td>
+      <td>0.2396</td>
+      <td>+80.0%</td>
+      <td>1.2216</td>
+      <td>0.1121</td>
+    </tr>
+    <tr>
+      <td>BND</td>
+      <td>-14.59%</td>
+      <td>0.2479</td>
+      <td>+74.7%</td>
+      <td>0.8106</td>
+      <td>0.2095</td>
+    </tr>
+    <tr>
+      <td>GLD</td>
+      <td>-11.84%</td>
+      <td>0.1602</td>
+      <td>+59.4%</td>
+      <td>0.7638</td>
+      <td>0.2230</td>
+    </tr>
+  </tbody>
+</table></section>
+    <section><h2>Per-Benchmark Signals</h2><table class="dataframe data-table">
+  <thead>
+    <tr style="text-align: left;">
+      <th>Benchmark</th>
+      <th>Signal</th>
+      <th>Predicted Return</th>
+      <th>IC</th>
+      <th>Hit Rate</th>
+      <th>Confidence</th>
+      <th>P(Outperform)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>VOO</td>
+      <td>NEUTRAL</td>
+      <td>+0.54%</td>
+      <td>0.0714</td>
+      <td>+51.4%</td>
+      <td>LOW</td>
+      <td>+67.4%</td>
+    </tr>
+    <tr>
+      <td>VXUS</td>
+      <td>OUTPERFORM</td>
+      <td>+3.63%</td>
+      <td>0.1889</td>
+      <td>+69.9%</td>
+      <td>LOW</td>
+      <td>+70.0%</td>
+    </tr>
+    <tr>
+      <td>VWO</td>
+      <td>UNDERPERFORM</td>
+      <td>-2.37%</td>
+      <td>0.2111</td>
+      <td>+62.9%</td>
+      <td>LOW</td>
+      <td>+69.8%</td>
+    </tr>
+    <tr>
+      <td>VMBS</td>
+      <td>NEUTRAL</td>
+      <td>+0.33%</td>
+      <td>0.2286</td>
+      <td>+78.8%</td>
+      <td>LOW</td>
+      <td>+64.5%</td>
+    </tr>
+    <tr>
+      <td>BND</td>
+      <td>NEUTRAL</td>
+      <td>+0.54%</td>
+      <td>0.2472</td>
+      <td>+71.0%</td>
+      <td>LOW</td>
+      <td>+69.4%</td>
+    </tr>
+    <tr>
+      <td>GLD</td>
+      <td>NEUTRAL</td>
+      <td>-0.02%</td>
+      <td>0.1474</td>
+      <td>+60.0%</td>
+      <td>LOW</td>
+      <td>+66.3%</td>
+    </tr>
+    <tr>
+      <td>DBC</td>
+      <td>UNDERPERFORM</td>
+      <td>-9.53%</td>
+      <td>0.1448</td>
+      <td>+73.8%</td>
+      <td>LOW</td>
+      <td>+46.8%</td>
+    </tr>
+    <tr>
+      <td>VDE</td>
+      <td>UNDERPERFORM</td>
+      <td>-12.72%</td>
+      <td>0.1232</td>
+      <td>+62.8%</td>
+      <td>LOW</td>
+      <td>+41.2%</td>
+    </tr>
+  </tbody>
+</table></section>
+
+    <section>
+      <h2>Artifact Notes</h2>
+      <p class="muted">
+        Source files for this snapshot live alongside this HTML file in the same
+        monthly folder:
+        <code>recommendation.md</code>,
+        <code>diagnostic.md</code>,
+        <code>signals.csv</code>,
+        <code>benchmark_quality.csv</code>,
+        <code>consensus_shadow.csv</code>, and
+        <code>monthly_summary.json</code>, and
+        <code>run_manifest.json</code>.
+      </p>
+      <p class="muted">
+        The equal-weight comparison remains available in
+        <code>consensus_shadow.csv</code> for diagnostics, but it is no longer
+        promoted as a primary decision surface in the monthly snapshot.
+      </p>
+    </section>
+  </div>
+</body>
+</html>

@@ -33,4 +33,8 @@ def test_ci_workflow_runs_lint_tests_and_smokes() -> None:
 def test_monthly_decision_workflow_verifies_manifest() -> None:
     text = _read(".github/workflows/monthly_decision.yml")
     assert "run_manifest.json" in text
+    assert "benchmark_quality.csv" in text
+    assert "consensus_shadow.csv" in text
+    assert "dashboard.html" in text
+    assert "monthly_summary.json" in text
     assert "$GITHUB_STEP_SUMMARY" in text

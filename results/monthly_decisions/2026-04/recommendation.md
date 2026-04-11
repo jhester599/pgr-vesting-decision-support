@@ -54,18 +54,6 @@ Warnings:
 
 ---
 
-## Consensus Shadow Evaluation
-
-> The live path now uses the quality-weighted cross-benchmark consensus.
-> The equal-weight consensus is retained here as a production cross-check.
-
-| Variant | Consensus | Mean Pred. Return | Mean IC | Mean Hit Rate | P(Outperform) | Mode | Sell % | Top Weight |
-|---------|-----------|-------------------|---------|---------------|---------------|------|--------|------------|
-| Shadow equal-weight | NEUTRAL (LOW) | -2.45% | 0.1703 | 66.3% | 50.0% | DEFER-TO-TAX-DEFAULT | 50% | VOO (12.5%) |
-| Live quality-weighted | NEUTRAL (LOW) | -2.34% | 0.1744 | 66.8% | 50.0% | DEFER-TO-TAX-DEFAULT | 50% | BND (13.4%) |
-
----
-
 ## Confidence Snapshot
 
 - 2/4 core gates pass. The signal may still be directionally interesting, but the quality gate remains too weak for a prediction-led vest action.
@@ -195,19 +183,19 @@ Recommended action at next vesting event: **DEFAULT 50% SALE** for diversificati
 
 ## Suggested Redeploy Portfolio
 
-- Default posture: `94%` equities / `6%` bonds across the curated investable universe.
+- Default posture: `95%` equities / `5%` bonds across the curated investable universe.
 - Monthly tilts use a `25%` signal overlay around the base weights, so the recommendation can adapt without becoming a full tactical allocation model.
 - Investable universe used in the monthly workflow: `VOO, VGT, SCHD, VXUS, VWO, BND`.
 - Constraint note: The current project universe does not yet include a dedicated small-cap ETF, so the value sleeve uses SCHD and the broad-market sleeve stays in VOO.
 
 | Fund | Allocation | Sleeve | Why it is included | PGR Correlation | Relative Signal | P(Benchmark Beats PGR) |
 |------|------------|--------|--------------------|-----------------|-----------------|------------------------|
-| VOO | 28% | Broad US equity core | Core US beta sleeve that keeps the portfolio equity-heavy without recreating single-stock PGR risk. | 0.14 | Keep near base (+0.5%) | 32.6% |
-| VGT | 22% | Technology tilt | Growth engine and explicit tech tilt when the relative signal supports owning more innovation exposure than a pure core index. | 0.36 | Base-weight only (n/a) | n/a |
-| SCHD | 17% | Value / dividend tilt | Closest current project proxy for a value sleeve; adds a cheaper, income-oriented counterweight to the tech allocation. | 0.29 | Base-weight only (n/a) | n/a |
+| VOO | 37% | Broad US equity core | Core US beta sleeve that keeps the portfolio equity-heavy without recreating single-stock PGR risk. | 0.14 | Keep near base (+0.5%) | 32.6% |
+| VGT | 19% | Technology tilt | Growth engine and explicit tech tilt when the relative signal supports owning more innovation exposure than a pure core index. | 0.36 | Base-weight only (n/a) | n/a |
 | VWO | 16% | Emerging-markets satellite | Higher-growth international sleeve kept modest because it is more volatile than the core international allocation. | 0.30 | Supportive (-2.4%) | n/a |
-| VXUS | 11% | International core | Primary geographic diversifier away from a US employer-stock concentration. | 0.28 | Only keep at floor weight (+3.6%) | 30.0% |
-| BND | 6% | Bond ballast | Small stabilizer sleeve kept intentionally light so the redeploy portfolio stays above 90% equities in normal months. | 0.04 | Keep near base (+0.5%) | 30.6% |
+| SCHD | 14% | Value / dividend tilt | Closest current project proxy for a value sleeve; adds a cheaper, income-oriented counterweight to the tech allocation. | 0.29 | Base-weight only (n/a) | n/a |
+| VXUS | 9% | International core | Primary geographic diversifier away from a US employer-stock concentration. | 0.28 | Only keep at floor weight (+3.6%) | 30.0% |
+| BND | 5% | Bond ballast | Small stabilizer sleeve kept intentionally light so the redeploy portfolio stays above 90% equities in normal months. | 0.04 | Keep near base (+0.5%) | 30.6% |
 
 ## Per-Benchmark Signals
 

@@ -10,17 +10,19 @@ High-level flow:
 1. Ingestion workflows update the committed SQLite database.
 2. Processing code builds monthly features and benchmark-relative targets.
 3. Modeling code runs walk-forward training and produces per-benchmark signals.
-4. Portfolio and tax logic translate those signals into vest guidance.
-5. Reporting code writes monthly artifacts and sends the decision email.
-6. Research code evaluates alternative model/feature/benchmark designs without
-   changing production behavior.
+4. Consensus, policy, tax, and portfolio logic translate those signals into
+   vest guidance.
+5. Reporting code writes monthly artifacts, sends the decision email, and feeds
+   the local dashboard surface.
+6. Research code evaluates alternative calibration, consensus, and
+   decision-layer designs without changing production behavior automatically.
 
 ## Core Directories
 
 - `src/database/`
   - schema initialization
   - migrations
-  - DB health and metadata helpers
+  - DB metadata helpers
 - `src/ingestion/`
   - provider clients
   - fetch scheduling
@@ -30,20 +32,22 @@ High-level flow:
   - relative-return target construction
 - `src/models/`
   - walk-forward optimization
-  - CPCV
   - calibration
   - conformal intervals
+  - forecast diagnostics
+  - consensus helpers
 - `src/portfolio/`
   - recommendation construction
   - tax-lot-aware portfolio logic
+  - redeploy portfolio helpers
 - `src/reporting/`
   - markdown report generation
   - email rendering
   - run manifest support
 - `src/research/`
-  - v9 evaluation harnesses
-  - policy scoring
-  - benchmark-set helpers
+  - research helper modules and promotion-gate tooling
+- `dashboard/`
+  - local Streamlit dashboard for viewing current outputs
 
 ## Production Entry Points
 
@@ -55,13 +59,36 @@ High-level flow:
 These should remain thin orchestration entrypoints. Reusable business logic
 belongs in `src/`.
 
+## Current Production Output Surface
+
+Each monthly run writes a folder under `results/monthly_decisions/<YYYY-MM>/`
+containing:
+
+- `recommendation.md`
+- `diagnostic.md`
+- `signals.csv`
+- `benchmark_quality.csv`
+- `consensus_shadow.csv`
+- `dashboard.html`
+- `monthly_summary.json`
+- `run_manifest.json`
+
+The workflow also updates:
+
+- `results/monthly_decisions/decision_log.md`
+
+The same monthly output set feeds:
+
+- the email renderer in `src/reporting/email_sender.py`
+- the local dashboard in `dashboard/app.py`
+
 ## Data Stores
 
 - SQLite database: `data/pgr_financials.db`
 - Cached raw provider payloads: `data/raw/`
 - Processed local inputs: `data/processed/`
 - Production artifacts: `results/monthly_decisions/`
-- Versioned research artifacts: `results/v9/` through `results/v29/`
+- Versioned research artifacts: `results/research/`
 
 ## Research vs. Production Boundary
 
@@ -73,8 +100,8 @@ Production code:
 
 Research code:
 
-- explores alternative benchmarks, targets, policies, and model subsets
-- writes versioned outputs under `results/v9/` through `results/v29/`
+- explores calibration, weighting, benchmark, and decision-layer alternatives
+- writes versioned outputs under `results/research/`
 - should not silently modify production recommendations
 
 See [model-governance.md](model-governance.md) and

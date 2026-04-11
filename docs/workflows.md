@@ -53,8 +53,18 @@ Outputs:
 - `results/monthly_decisions/<YYYY-MM>/recommendation.md`
 - `results/monthly_decisions/<YYYY-MM>/diagnostic.md`
 - `results/monthly_decisions/<YYYY-MM>/signals.csv`
+- `results/monthly_decisions/<YYYY-MM>/benchmark_quality.csv`
+- `results/monthly_decisions/<YYYY-MM>/consensus_shadow.csv`
+- `results/monthly_decisions/<YYYY-MM>/dashboard.html`
+- `results/monthly_decisions/<YYYY-MM>/monthly_summary.json`
 - `results/monthly_decisions/<YYYY-MM>/run_manifest.json`
 - `results/monthly_decisions/decision_log.md`
+
+Notes:
+
+- the dashboard is now represented both as a committed static monthly snapshot
+  and as a richer local Streamlit viewer over the same artifacts
+- the email step is non-fatal by design and should not block report generation
 
 ## Historical / Manual Workflows
 
@@ -73,9 +83,9 @@ they are not part of the normal steady-state operating loop.
 `ci.yml` runs:
 
 - lint checks
-- unit/integration test suite
+- unit and integration tests
 - smoke runs for major production entrypoints
-- migration/fresh-temp-DB checks
+- migration and fresh-temp-DB checks
 
 ## Concurrency Policy
 

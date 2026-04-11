@@ -102,6 +102,11 @@ from src.portfolio.redeploy_portfolio import (
     v27_investable_redeploy_universe,
 )
 from src.reporting.confidence import benchmark_role_for_ticker, build_confidence_snapshot
+from src.reporting.dashboard_snapshot import write_dashboard_snapshot
+from src.reporting.monthly_summary import (
+    build_monthly_summary_payload,
+    write_monthly_summary,
+)
 
 from src.models.calibration import (
     CalibrationResult,
@@ -1589,6 +1594,7 @@ def _write_recommendation_md(
     model_drift_summary: ModelDriftSummary | None = None,
     policy_summary: dict[str, PolicySummary] | None = None,
     bl_diagnostics: BLDiagnostics | None = None,
+    visible_cross_check: bool = False,
 ) -> None:
     """Write the human-readable recommendation report."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1696,7 +1702,11 @@ def _write_recommendation_md(
             f"[95% CI: {cal_result.ece_ci_lower:.1%}–{cal_result.ece_ci_upper:.1%}].",
         ]
 
-    if consensus_shadow_df is not None and not consensus_shadow_df.empty:
+    if (
+        visible_cross_check
+        and consensus_shadow_df is not None
+        and not consensus_shadow_df.empty
+    ):
         lines += [
             "",
             "---",
@@ -2909,17 +2919,19 @@ def main(
             target_horizon_months=6,
         )
     active_recommendation_mode = recommendation_mode
+    visible_cross_check = False
     recommendation_layer_label = "Live production recommendation layer (quality-weighted consensus)"
     if layer_mode == "live_with_shadow":
         recommendation_layer_label = (
-            "Live production recommendation layer + v22 visible cross-check + v13 simpler-baseline cross-check"
+            "Live production recommendation layer (quality-weighted consensus); "
+            "equal-weight comparison retained in diagnostic artifacts"
         )
     elif layer_mode == "shadow_promoted" and shadow_summary is not None:
         active_recommendation_mode = _mode_payload_from_summary(shadow_summary)
         sell_pct = float(active_recommendation_mode["sell_pct"])
         recommendation_layer_label = (
-            "v13.1 promoted simpler diversification-first recommendation layer + "
-            "v22 promoted visible cross-check"
+            "v13.1 promoted simpler diversification-first recommendation layer; "
+            "quality-weighted comparison retained in diagnostic artifacts"
         )
     model_drift_summary = _record_model_health_snapshot(
         conn,
@@ -3020,6 +3032,7 @@ def main(
         model_drift_summary=model_drift_summary,
         policy_summary=policy_summary,
         bl_diagnostics=bl_diagnostics,
+        visible_cross_check=visible_cross_check,
     )
     _write_signals_csv(out_dir, signals)
     _append_decision_log(
@@ -3073,7 +3086,6 @@ def main(
         aggregate_health.get("benchmark_quality_df") if aggregate_health is not None else None,
     )
     _write_consensus_shadow_csv(out_dir, consensus_shadow_df)
-
     # Step 5.1 (P2.7): Calibration reliability diagram
     _plot_calibration_curve(out_dir, cal_probs, cal_outcomes, cal_result)
 
@@ -3137,6 +3149,56 @@ def main(
                     "The consensus cross-check suggests a different sell percentage."
                 )
 
+    write_dashboard_snapshot(
+        out_dir,
+        as_of_date=as_of.isoformat(),
+        recommendation_mode=str(active_recommendation_mode["label"]),
+        consensus=consensus,
+        sell_pct=float(sell_pct),
+        mean_predicted=float(mean_pred),
+        mean_ic=float(mean_ic),
+        mean_hit_rate=float(mean_hr),
+        aggregate_oos_r2=(
+            float(aggregate_health["oos_r2"]) if aggregate_health is not None else None
+        ),
+        recommendation_layer_label=recommendation_layer_label,
+        warnings=list(manifest_warnings),
+        signals=signals.reset_index(),
+        benchmark_quality_df=(
+            aggregate_health.get("benchmark_quality_df") if aggregate_health is not None else None
+        ),
+        consensus_shadow_df=consensus_shadow_df,
+    )
+    monthly_summary = build_monthly_summary_payload(
+        as_of_date=as_of.isoformat(),
+        run_date=run_date.isoformat(),
+        recommendation_layer_label=recommendation_layer_label,
+        consensus=consensus,
+        confidence_tier=confidence_tier,
+        recommendation_mode=str(active_recommendation_mode["label"]),
+        sell_pct=float(sell_pct),
+        mean_predicted=float(mean_pred),
+        mean_ic=float(mean_ic),
+        mean_hit_rate=float(mean_hr),
+        mean_prob_outperform=float(mean_prob),
+        calibrated_prob_outperform=mean_cal,
+        aggregate_oos_r2=(
+            float(aggregate_health["oos_r2"]) if aggregate_health is not None else None
+        ),
+        aggregate_nw_ic=(
+            float(aggregate_health["nw_ic"]) if aggregate_health is not None else None
+        ),
+        warnings=list(manifest_warnings),
+        signals=signals.reset_index(),
+        benchmark_quality_df=(
+            aggregate_health.get("benchmark_quality_df") if aggregate_health is not None else None
+        ),
+        consensus_shadow_df=consensus_shadow_df,
+        visible_cross_check=visible_cross_check,
+    )
+    monthly_summary_path = write_monthly_summary(out_dir, monthly_summary)
+    print(f"  Wrote {monthly_summary_path}")
+
     manifest = build_run_manifest(
         workflow_name="monthly_decision",
         script_name="scripts/monthly_decision.py",
@@ -3151,6 +3213,8 @@ def main(
             str(out_dir / "signals.csv"),
             str(out_dir / "benchmark_quality.csv"),
             str(out_dir / "consensus_shadow.csv"),
+            str(out_dir / "dashboard.html"),
+            str(out_dir / "monthly_summary.json"),
         ],
         artifact_classification="production",
         cwd=str(Path(__file__).parent.parent),

@@ -1,0 +1,65 @@
+{
+  "artifacts": {
+    "benchmark_quality_csv": "benchmark_quality.csv",
+    "consensus_shadow_csv": "consensus_shadow.csv",
+    "dashboard_html": "dashboard.html",
+    "diagnostic_md": "diagnostic.md",
+    "monthly_summary_json": "monthly_summary.json",
+    "recommendation_md": "recommendation.md",
+    "run_manifest_json": "run_manifest.json",
+    "signals_csv": "signals.csv"
+  },
+  "as_of_date": "2026-04-11",
+  "coverage": {
+    "benchmark_count": 8,
+    "benchmark_quality_count": 8
+  },
+  "cross_check": {
+    "artifact_retained": true,
+    "consensus_agreement": true,
+    "live_recommendation_mode": "DEFER-TO-TAX-DEFAULT",
+    "live_sell_pct": 0.5,
+    "live_variant": "quality_weighted",
+    "mode_agreement": true,
+    "retired_reason": "Equal-weight consensus remained stable during the post-promotion stabilization window, so the comparison now stays diagnostic-only.",
+    "sell_pct_agreement": true,
+    "shadow_recommendation_mode": "DEFER-TO-TAX-DEFAULT",
+    "shadow_sell_pct": 0.5,
+    "shadow_variant": "equal_weight",
+    "visible_in_primary_surfaces": false
+  },
+  "recommendation": {
+    "aggregate_nw_ic": 0.20057585812473178,
+    "aggregate_nw_ic_label": "0.2006",
+    "aggregate_oos_r2": -0.027507655926500396,
+    "aggregate_oos_r2_label": "-2.75%",
+    "confidence_tier": "LOW",
+    "mean_hit_rate": 0.667871335059325,
+    "mean_hit_rate_label": "66.8%",
+    "mean_ic": 0.1743561229518615,
+    "mean_ic_label": "0.1744",
+    "predicted_6m_relative_return": -0.02339600648229198,
+    "predicted_6m_relative_return_label": "-2.34%",
+    "prob_outperform_calibrated": 0.6192241053144107,
+    "prob_outperform_calibrated_label": "61.9%",
+    "prob_outperform_raw": 0.5,
+    "prob_outperform_raw_label": "50.0%",
+    "recommendation_mode": "DEFER-TO-TAX-DEFAULT",
+    "recommended_sell_pct": 0.5,
+    "recommended_sell_pct_label": "50%",
+    "signal": "NEUTRAL",
+    "signal_label": "NEUTRAL (LOW CONFIDENCE)"
+  },
+  "recommendation_layer": {
+    "label": "Live production recommendation layer (quality-weighted consensus)",
+    "visible_cross_check": false
+  },
+  "run_date": "2026-04-11",
+  "schema_version": 1,
+  "warnings": [
+    "PGR monthly EDGAR is stale: latest 2026-02-28 (42 days old, limit 35).",
+    "Aggregate OOS R^2 below threshold: -2.75% < 2.00%.",
+    "Representative CPCV verdict is FAIL.",
+    "Trailing conformal coverage deviates materially from nominal: 57.3% vs 80%."
+  ]
+}
