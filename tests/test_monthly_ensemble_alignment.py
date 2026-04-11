@@ -79,3 +79,35 @@ def test_diagnostic_report_mentions_clark_west(tmp_path) -> None:
     md._write_diagnostic_report(tmp_path, pd.Timestamp("2026-04-10").date(), {"VTI": ensemble})
     text = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
     assert "Clark-West" in text
+
+
+def test_resolve_live_consensus_promotes_quality_weighted_path() -> None:
+    signals = pd.DataFrame(
+        {
+            "predicted_relative_return": [0.06, -0.02, 0.01],
+            "ic": [0.12, 0.02, 0.08],
+            "hit_rate": [0.61, 0.52, 0.57],
+            "signal": ["OUTPERFORM", "NEUTRAL", "NEUTRAL"],
+            "prob_outperform": [0.72, 0.48, 0.58],
+        },
+        index=pd.Index(["VOO", "BND", "GLD"], name="benchmark"),
+    )
+    aggregate_health = {
+        "oos_r2": 0.03,
+        "nw_ic": 0.08,
+        "agg_hit": 0.57,
+        "benchmark_quality_df": pd.DataFrame(
+            {
+                "benchmark": ["VOO", "BND", "GLD"],
+                "nw_ic": [0.30, 0.01, 0.12],
+            }
+        )
+    }
+
+    live_tuple, comparison_df = md._resolve_live_consensus(signals, aggregate_health)
+
+    assert comparison_df is not None
+    live_row = comparison_df[comparison_df["is_live_path"]].iloc[0]
+    assert live_row["variant"] == "quality_weighted"
+    assert live_tuple[0] == live_row["consensus"]
+    assert live_tuple[1] == live_row["mean_predicted_return"]

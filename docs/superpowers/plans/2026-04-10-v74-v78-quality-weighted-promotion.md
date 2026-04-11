@@ -54,7 +54,7 @@ recommendation layer prematurely.
 ## Execution Snapshot
 
 - `v74` completed: monthly runs now export `consensus_shadow.csv` and render a
-  shadow comparison section in `recommendation.md`
+  live-vs-cross-check consensus section in `recommendation.md`
 - `v75` completed: holdout-era replay run over the monthly review window from
   `2024-04-30` through `2026-03-31`
 - replay outcome:
@@ -66,11 +66,14 @@ recommendation layer prematurely.
   - sell agreement with live: `100%`
   - max top-benchmark weight: `18.36%`
 - current gate result: `advance_to_promotion_check`
+- `v76` completed on this branch: the quality-weighted consensus is now the
+  live monthly recommendation path, with equal-weight retained as the visible
+  production cross-check
 
 ## Implication
 
-- the quality-weighted path now has enough evidence to move beyond shadow-only
-  monitoring and into a final promotion check
-- the next decision should be whether to promote the quality-weighted consensus
-  directly, or require one more explicit production-safe release branch with the
-  switch isolated and reversible
+- the quality-weighted path has now cleared the promotion gate and been wired
+  into production on this branch
+- the next remaining decision is whether to leave the equal-weight cross-check
+  visible for one release cycle or retire it after the first clean post-merge
+  monthly run
