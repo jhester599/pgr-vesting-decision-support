@@ -8,7 +8,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from scipy import stats
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 if hasattr(sys.stdout, "reconfigure"):
@@ -17,6 +16,7 @@ warnings.filterwarnings("ignore", message="All-NaN slice encountered", category=
 
 from config.features import MODEL_FEATURE_OVERRIDES
 from src.models.evaluation import reconstruct_ensemble_oos_predictions
+from src.models.forecast_diagnostics import compute_clark_west_result
 from src.models.multi_benchmark_wfo import run_ensemble_benchmarks
 from src.research.v37_utils import (
     BENCHMARKS,
@@ -28,38 +28,6 @@ from src.research.v37_utils import (
     print_header,
     save_results,
 )
-
-
-def newey_west_se(x: np.ndarray, lags: int = 5) -> float:
-    """Compute the HAC standard error of the sample mean."""
-    n = len(x)
-    centered = x - x.mean()
-    variance = float(np.dot(centered, centered) / n)
-    for lag in range(1, lags + 1):
-        weight = 1.0 - lag / (lags + 1)
-        covariance = float(np.dot(centered[lag:], centered[:-lag]) / n)
-        variance += 2.0 * weight * covariance
-    return float(np.sqrt(max(variance, 0.0) / n))
-
-
-def clark_west_test(
-    y_true: np.ndarray,
-    y_hat_model: np.ndarray,
-) -> tuple[float, float, float]:
-    """Run a one-sided Clark-West MSFE-adjusted test vs historical mean."""
-    hist_mean = np.cumsum(y_true) / np.arange(1, len(y_true) + 1)
-    hist_mean_prev = np.concatenate([[0.0], hist_mean[:-1]])
-    error_benchmark = y_true - hist_mean_prev
-    error_model = y_true - y_hat_model
-    cw_series = error_benchmark**2 - (
-        error_model**2 - (y_hat_model - hist_mean_prev) ** 2
-    )
-
-    mean_cw = float(cw_series.mean())
-    se_cw = newey_west_se(cw_series)
-    t_stat = mean_cw / se_cw if se_cw > 0 else 0.0
-    p_value = float(stats.t.sf(t_stat, df=len(cw_series) - 1))
-    return float(t_stat), p_value, mean_cw
 
 
 def mse_decompose(y_true: np.ndarray, y_hat: np.ndarray) -> dict[str, float]:
@@ -132,21 +100,28 @@ def main() -> None:
             pooled_y_true.extend(y_true.tolist())
             pooled_y_hat.extend(y_hat.tolist())
 
-            cw_stat, p_value, mean_cw = clark_west_test(y_true, y_hat)
+            cw_summary = compute_clark_west_result(
+                pd.Series(y_hat),
+                pd.Series(y_true),
+                lags=5,
+            )
             mse_parts = mse_decompose(y_true, y_hat)
             ce_gain = certainty_equivalent_gain(y_true, y_hat)
-            sig = "***" if p_value < 0.01 else ("**" if p_value < 0.05 else ("*" if p_value < 0.10 else ""))
+            sig = (
+                "***" if cw_summary.p_value < 0.01 else
+                ("**" if cw_summary.p_value < 0.05 else ("*" if cw_summary.p_value < 0.10 else ""))
+            )
 
             print(
-                f"  {benchmark:<10}  {cw_stat:>8.3f}  {p_value:>8.4f}  {sig:>5}  "
+                f"  {benchmark:<10}  {cw_summary.t_stat:>8.3f}  {cw_summary.p_value:>8.4f}  {sig:>5}  "
                 f"{mse_parts['bias_pct']:>6.1%}  {mse_parts['var_pct']:>6.1%}  {ce_gain:>9.4f}"
             )
             rows.append(
                 {
                     "benchmark": benchmark,
-                    "cw_stat": cw_stat,
-                    "cw_p_value": p_value,
-                    "mean_cw": mean_cw,
+                    "cw_stat": cw_summary.t_stat,
+                    "cw_p_value": cw_summary.p_value,
+                    "mean_cw": cw_summary.mean_adjusted_differential,
                     "ce_gain": ce_gain,
                     **{f"mse_{key}": value for key, value in mse_parts.items()},
                     "version": "v60",
@@ -155,13 +130,20 @@ def main() -> None:
 
         pooled_true = np.asarray(pooled_y_true)
         pooled_hat = np.asarray(pooled_y_hat)
-        cw_stat, p_value, mean_cw = clark_west_test(pooled_true, pooled_hat)
+        cw_summary = compute_clark_west_result(
+            pd.Series(pooled_hat),
+            pd.Series(pooled_true),
+            lags=5,
+        )
         pooled_mse = mse_decompose(pooled_true, pooled_hat)
         pooled_ce = certainty_equivalent_gain(pooled_true, pooled_hat)
-        sig = "***" if p_value < 0.01 else ("**" if p_value < 0.05 else ("*" if p_value < 0.10 else "no"))
+        sig = (
+            "***" if cw_summary.p_value < 0.01 else
+            ("**" if cw_summary.p_value < 0.05 else ("*" if cw_summary.p_value < 0.10 else "no"))
+        )
 
         print(
-            f"\n  {'POOLED':<10}  {cw_stat:>8.3f}  {p_value:>8.4f}  {sig:>5}  "
+            f"\n  {'POOLED':<10}  {cw_summary.t_stat:>8.3f}  {cw_summary.p_value:>8.4f}  {sig:>5}  "
             f"{pooled_mse['bias_pct']:>6.1%}  {pooled_mse['var_pct']:>6.1%}  {pooled_ce:>9.4f}"
         )
         print("\n  Interpretation:")
@@ -173,9 +155,9 @@ def main() -> None:
         rows.append(
             {
                 "benchmark": "POOLED",
-                "cw_stat": cw_stat,
-                "cw_p_value": p_value,
-                "mean_cw": mean_cw,
+                "cw_stat": cw_summary.t_stat,
+                "cw_p_value": cw_summary.p_value,
+                "mean_cw": cw_summary.mean_adjusted_differential,
                 "ce_gain": pooled_ce,
                 **{f"mse_{key}": value for key, value in pooled_mse.items()},
                 "version": "v60",
