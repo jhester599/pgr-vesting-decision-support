@@ -1,18 +1,34 @@
 # PGR Monthly Decision Report — April 2026
 
-**As-of Date:** 2026-04-02  
-**Run Date:** 2026-04-03  
-**Model Version:** v10.1 (4-model ensemble: ElasticNet + Ridge + BayesianRidge + GBT, inverse-variance weighting, C(8,2)=28 CPCV paths, post-v9 baseline reconciliation, migrations, CI/workflow hardening, and run-manifest support)  
+**As-of Date:** 2026-04-11  
+**Run Date:** 2026-04-11  
+**Model Version:** v11.1 (lean 2-model ensemble: Ridge + GBT, v18 feature sets, 8-benchmark PRIMARY_FORECAST_UNIVERSE, inverse-variance weighting, v38 post-ensemble shrinkage alpha=0.50, C(8,2)=28 CPCV paths; ElasticNet+BayesianRidge retired after v18/v20 research showed Ridge+GBT outperforms on IC, hit rate, and obs/feature ratio)  
+**Recommendation Layer:** Live production recommendation layer (quality-weighted consensus)  
 
 ---
 
 ## Executive Summary
 
-- What changed since last month: Previous logged month (2026-03-27) was NEUTRAL at +1.75% with mean IC 0.0421.
-- Current model view: OUTPERFORM with low confidence and a 6M relative-return estimate of +2.41%.
-- How trustworthy it is: Model quality is too weak to justify a prediction-led vesting action. Aggregate health: OOS R^2 -118.70%, IC 0.1348, hit rate 56.6%.
+- What changed since last month: Previous logged month (2026-04-02) was OUTPERFORM at +2.41% with mean IC 0.1197.
+- Current model view: Consensus signal is NEUTRAL, but the average relative-return forecast is -2.34% across benchmarks over the next 6 months. Recommendation mode remains DEFER-TO-TAX-DEFAULT.
+- How trustworthy it is: Model quality is too weak to justify a prediction-led vesting action. Aggregate health: OOS R^2 -2.75%, IC 0.2006, hit rate 68.1%.
 - What to do at the next vest: Next vest is 2026-07-17 (performance). Default action today: sell 50% at vest unless model quality improves.
 - What would change the recommendation: A more aggressive recommendation would require aggregate OOS R^2 >= 2%, mean IC >= 0.07, hit rate >= 55%, and a non-failing representative CPCV check.
+
+---
+
+## Data Freshness
+
+> Some upstream data is stale or missing. Treat this run with extra caution until the feeds refresh.
+
+| Feed | Latest Date | Age | Limit | Status |
+|------|-------------|-----|-------|--------|
+| Daily prices | 2026-04-02 | 9 days | 10 days | **OK** |
+| FRED macro | 2026-04-30 | 0 days | 45 days | **OK** |
+| PGR monthly EDGAR | 2026-02-28 | 42 days | 35 days | **STALE** |
+
+Warnings:
+- PGR monthly EDGAR is stale: latest 2026-02-28 (42 days old, limit 35).
 
 ---
 
@@ -20,32 +36,105 @@
 
 | Field | Value |
 |-------|-------|
-| Signal | **OUTPERFORM (LOW CONFIDENCE)** |
+| Signal | **NEUTRAL (LOW CONFIDENCE)** |
 | Recommendation Mode | **DEFER-TO-TAX-DEFAULT** |
 | Recommended Sell % | **50%** |
-| Predicted 6M Relative Return | +2.41% |
-| P(Outperform, raw) | 59.6% |
-| P(Outperform, calibrated) | 66.4% |
-| 80% Prediction Interval (median) | -30.07% to +37.66% |
-| Mean IC (across benchmarks) | 0.1197 |
-| Mean Hit Rate | 56.3% |
+| Predicted 6M Relative Return | -2.34% |
+| P(Outperform, raw) | 50.0% |
+| P(Outperform, calibrated) | 61.9% |
+| 80% Prediction Interval (median) | -28.67% to +23.78% |
+| Mean IC (across benchmarks) | 0.1744 |
+| Mean Hit Rate | 66.8% |
+| Aggregate OOS R^2 | -2.75% |
 
 > **Note:** The sell % recommendation is used only at actual vesting events
 > (January and July).  Monthly reports are monitoring tools, not trade signals.
 >
-> **Calibration:** Phase 2 — Platt scaling active (n=3,312 OOS obs).  ECE = 1.8% [95% CI: 1.0%–4.5%].
+> **Calibration:** Phase 2 — Platt scaling active (n=1,188 OOS obs).  ECE = 1.1% [95% CI: 1.4%–6.0%].
+
+---
+
+## Consensus Shadow Evaluation
+
+> The live path now uses the quality-weighted cross-benchmark consensus.
+> The equal-weight consensus is retained here as a production cross-check.
+
+| Variant | Consensus | Mean Pred. Return | Mean IC | Mean Hit Rate | P(Outperform) | Mode | Sell % | Top Weight |
+|---------|-----------|-------------------|---------|---------------|---------------|------|--------|------------|
+| Shadow equal-weight | NEUTRAL (LOW) | -2.45% | 0.1703 | 66.3% | 50.0% | DEFER-TO-TAX-DEFAULT | 50% | VOO (12.5%) |
+| Live quality-weighted | NEUTRAL (LOW) | -2.34% | 0.1744 | 66.8% | 50.0% | DEFER-TO-TAX-DEFAULT | 50% | BND (13.4%) |
+
+---
+
+## Confidence Snapshot
+
+- 2/4 core gates pass. The signal may still be directionally interesting, but the quality gate remains too weak for a prediction-led vest action.
+
+| Check | Current | Threshold | Status | Meaning |
+|-------|---------|-----------|--------|---------|
+| Mean IC | 0.1744 | >= 0.0700 | **PASS** | Cross-benchmark ranking signal. |
+| Mean hit rate | 66.8% | >= 55.0% | **PASS** | Directional accuracy versus zero. |
+| Aggregate OOS R^2 | -2.75% | >= 2.00% | **FAIL** | Calibration / fit versus a naive benchmark. |
+| Representative CPCV | FAIL | not FAIL | **FAIL** | Stability across purged cross-validation paths. |
+
+---
+
+## Model Health
+
+- Latest tracked month: **2026-04-30**
+- Rolling 12M IC: **0.2006**
+- Rolling 12M Hit Rate: **68.1%**
+- Rolling 12M ECE: **1.1%**
+- IC breach streak: **0** month(s)
+- Status: **Stable: no sustained rolling-IC drift alert is active.**
+
+---
+
+## Decision Policy Backtest
+
+> OOS performance of each decision policy applied to all historical model predictions.  "Mean Return" is the portfolio-weighted realized relative return per vesting event.  "Cumulative" is the sum across all events.  "Capture Ratio" is the fraction of oracle (always hold when positive) gains captured.  N = number of OOS events.
+
+### Fixed Heuristic Baselines
+
+| Policy | N | Mean Return | Cumulative | Capture Ratio |
+|--------|---|-------------|------------|---------------|
+| Sell 100% (always) | 1188 | +0.00% | +0.00% | 0.0% |
+| Sell 50% (always) | 1188 | +4.03% | +4792.31% | 33.4% |
+| Hold 100% (always) | 1188 | +8.07% | +9584.62% | 66.8% |
+
+### Model-Driven Policies vs. Heuristics
+
+| Policy | N | Mean Return | Cumul. Return | Uplift vs Sell-All | Uplift vs Hold-All | Uplift vs 50% | Capture |
+|--------|---|-------------|---------------|--------------------|--------------------|---------------|---------|
+| Model: sign (hold if pred > 0) | 1188 | +7.88% | +9365.04% | +7.88% | -0.18% | +3.85% | 65.3% |
+| Model: tiered 25/50/100 | 1188 | +2.25% | +2676.50% | +2.25% | -5.81% | -1.78% | 18.7% |
+| Model: neutral band ±2% | 1188 | +7.55% | +8972.58% | +7.55% | -0.52% | +3.52% | 62.5% |
+| Model: neutral band ±3% | 1188 | +7.12% | +8457.78% | +7.12% | -0.95% | +3.09% | 59.0% |
+
+
+---
+
+## Portfolio Optimizer Status
+
+> ⚠️ **Optimizer fallback active** — Black-Litterman optimization could not converge (`optimization_failure`).  Portfolio weights fall back to equal-weight allocation.  This does not affect the primary recommendation; it is a diagnostic indicator.
+
+| Parameter | Value |
+|-----------|-------|
+| Optimizer | Black-Litterman (PyPortfolioOpt / Ledoit-Wolf) |
+| Status | ⚠️ Fallback — optimization_failure |
+| Active benchmarks | 8 |
+| View tickers incorporated | 8 |
+
 
 ---
 
 ## Interpretation
 
-The point forecast leans outperform, and 14/21 (67%) benchmarks favour outperformance, but the broader quality gate is failing.
+The point forecast leans neutral, and 1/8 (12%) benchmarks favour outperformance, but the broader quality gate is failing.
 
 Recommended action at next vesting event: **DEFAULT 50% SALE** for diversification and tax discipline, not because the prediction is high-confidence.
 
 ---
-
-## Per-Benchmark Signals
 
 ## Next Vest Decision
 
@@ -55,48 +144,86 @@ Recommended action at next vesting event: **DEFAULT 50% SALE** for diversificati
 | Next vest date | 2026-07-17 |
 | RSU type | performance |
 | Current PGR price | $195.25 |
-| Current in-scope shares | 8.00 |
-| Average cost basis used | $133.38 |
+| Current in-scope shares | 1000.00 |
+| Average cost basis used | $124.86 |
 | Suggested default vest action | Sell 50% of the vesting tranche |
 
 > Use the default diversification and tax-discipline rule rather than the point forecast.
 > The scenario table below is provisional and uses the current lot file as a proxy for the next vesting decision.
 
-| Scenario | Sell Date | Tax Rate | Predicted Return | Net Proceeds | Probability |
-|----------|-----------|----------|------------------|--------------|-------------|
-| SELL_NOW_STCG | 2026-07-17 | 37% | +0.00% | $1,378.85 | 100.0% |
-| HOLD_TO_LTCG | 2027-07-18 | 20% | +4.83% | $1,523.30 | 66.4% |
-| HOLD_FOR_LOSS | 2027-01-13 | 37% | +2.41% | $1,562.00 | 0.0% |
+### Tax timing scenarios (informational)
+
+| Scenario | Timing | Tax Rate | Predicted Return | Probability | Use when |
+|----------|--------|----------|------------------|-------------|----------|
+| Sell at vest (STCG) | 2026-07-17 | 37% | +0.00% | 100.0% | Use the default diversification / tax-discipline rule or when the model edge is weak. |
+| Hold to LTCG date | 2027-07-18 | 20% | -4.68% | 61.9% | Use only when the edge is strong enough to justify waiting for lower long-term tax treatment. |
+| Hold for downside / loss case | 2027-01-13 | 37% | -2.34% | 38.1% | Use only when you are intentionally waiting for a downside or tax-loss outcome. |
 
 > Tax-engine scenario ranking (informational only): **SELL_NOW_STCG**.
 > Because recommendation mode is not ACTIONABLE, do not treat the tax-engine ranking below as a standalone trading instruction.
 > STCG/LTCG breakeven from the tax engine: 21.25%.
 
+### Monte Carlo Tax Sensitivity (HOLD_TO_LTCG vs. Sell Now)
+
+> **1,000 GBM paths** | drift -4.7%/yr | vol 95.3%/yr | horizon 366 days
+
+| Metric | Value |
+|--------|-------|
+| Sell-now reference (STCG net) | $169,208 |
+| HOLD_TO_LTCG — P10 net | $52,735 |
+| HOLD_TO_LTCG — median net | $120,029 |
+| HOLD_TO_LTCG — mean net | $167,924 |
+| HOLD_TO_LTCG — P90 net | $337,809 |
+| P(HOLD_TO_LTCG beats Sell Now) | 30.2% |
+| P(terminal price > cost basis) | 47.7% |
+
+> At 95.3% annualised volatility and a -4.7%/yr drift, 30.2% of simulated paths produce higher after-tax net proceeds from holding to LTCG eligibility than from selling immediately at STCG rates.
+
 ---
 
-| Benchmark | Description | Predicted Return | CI Lower | CI Upper | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |
-|-----------|-------------|----------------|----------|----------|----|----------|--------|--------|------------|--------|
-| VTI | Total Stock Market | +4.61% | -25.39% | +34.61% | 0.0353 | 49.9% | 64.5% | 59.5% | MODERATE | NEUTRAL |
-| VOO | S&P 500 | +1.85% | -30.07% | +33.78% | 0.0850 | 44.2% | 55.9% | 67.1% | LOW | OUTPERFORM |
-| VGT | Information Technology | -0.56% | -37.36% | +36.23% | 0.1341 | 53.6% | 48.7% | 55.6% | LOW | NEUTRAL |
-| VHT | Health Care | +3.50% | -31.18% | +38.17% | 0.1327 | 56.4% | 61.2% | 63.9% | MODERATE | OUTPERFORM |
-| VFH | Financials | +6.36% | -20.38% | +33.11% | 0.1995 | 56.1% | 73.4% | 62.3% | HIGH | OUTPERFORM |
-| VIS | Industrials | +3.97% | -40.66% | +48.60% | 0.1080 | 51.5% | 62.7% | 63.7% | MODERATE | OUTPERFORM |
-| VDE | Energy | -10.61% | -58.87% | +37.66% | -0.0246 | 54.4% | 26.7% | 65.8% | HIGH | NEUTRAL |
-| VPU | Utilities | -0.37% | -28.08% | +27.35% | 0.2346 | 56.1% | 48.8% | 64.6% | LOW | NEUTRAL |
-| KIE | S&P Insurance | +6.62% | -17.29% | +30.52% | 0.1605 | 57.7% | 77.1% | 61.8% | HIGH | OUTPERFORM |
-| VXUS | Total International Stock | +4.13% | -39.83% | +48.10% | 0.0738 | 61.6% | 64.5% | 70.1% | MODERATE | OUTPERFORM |
-| VEA | Developed Markets ex-US | +2.50% | -41.89% | +46.89% | 0.1067 | 59.7% | 59.0% | 65.2% | LOW | OUTPERFORM |
-| VWO | Emerging Markets | +6.22% | -32.81% | +45.26% | 0.0927 | 56.0% | 69.8% | 69.5% | MODERATE | OUTPERFORM |
-| VIG | Dividend Appreciation | +2.99% | -24.31% | +30.30% | 0.1008 | 50.6% | 60.3% | 64.9% | MODERATE | OUTPERFORM |
-| SCHD | US Dividend Equity | +0.12% | -60.16% | +60.40% | -0.0734 | 51.8% | 50.2% | 71.6% | LOW | NEUTRAL |
-| BND | Total Bond Market | +7.11% | -23.72% | +37.93% | 0.1666 | 61.7% | 74.3% | 75.3% | HIGH | OUTPERFORM |
-| BNDX | Total International Bond | +9.00% | -21.39% | +39.38% | 0.2340 | 59.6% | 79.6% | 71.9% | HIGH | OUTPERFORM |
-| VCIT | Intermediate-Term Corporate Bond | +9.22% | -22.69% | +41.13% | 0.1238 | 59.6% | 80.3% | 75.2% | HIGH | OUTPERFORM |
-| VMBS | Mortgage-Backed Securities | +8.27% | -21.84% | +38.37% | 0.1686 | 65.4% | 77.8% | 75.5% | HIGH | OUTPERFORM |
-| VNQ | Real Estate | +5.47% | -24.33% | +35.26% | 0.2295 | 57.2% | 67.7% | 62.5% | MODERATE | OUTPERFORM |
-| GLD | Gold Shares | -15.08% | -65.89% | +35.73% | 0.1799 | 58.9% | 10.8% | 56.4% | HIGH | UNDERPERFORM |
-| DBC | DB Commodity Index | -4.65% | -39.64% | +30.33% | 0.0450 | 61.0% | 37.8% | 72.2% | MODERATE | NEUTRAL |
+## Existing Holdings Guidance
+
+- STCG: 2027-01-19 @ $133.65 (500.00 share(s)). Avoid STCG gain lots unless the signal is unusually strong or concentration risk is urgent.
+- STCG: 2026-07-17 @ $116.08 (500.00 share(s)). Avoid STCG gain lots unless the signal is unusually strong or concentration risk is urgent.
+
+## Redeploy Guidance
+
+- Broad US Equity: VOO. Broad US equity diversifies away from single-stock risk without concentrating further in insurance.
+- International Equity: VXUS, VWO. International equity lowers home-market and insurance concentration.
+- Fixed Income: BND. Fixed income is the cleanest concentration-reduction bucket when model confidence is weak.
+- Sector Context: SCHD, VGT. Sector funds are context-only unless no stronger diversifying destination is available.
+
+## Suggested Redeploy Portfolio
+
+- Default posture: `94%` equities / `6%` bonds across the curated investable universe.
+- Monthly tilts use a `25%` signal overlay around the base weights, so the recommendation can adapt without becoming a full tactical allocation model.
+- Investable universe used in the monthly workflow: `VOO, VGT, SCHD, VXUS, VWO, BND`.
+- Constraint note: The current project universe does not yet include a dedicated small-cap ETF, so the value sleeve uses SCHD and the broad-market sleeve stays in VOO.
+
+| Fund | Allocation | Sleeve | Why it is included | PGR Correlation | Relative Signal | P(Benchmark Beats PGR) |
+|------|------------|--------|--------------------|-----------------|-----------------|------------------------|
+| VOO | 28% | Broad US equity core | Core US beta sleeve that keeps the portfolio equity-heavy without recreating single-stock PGR risk. | 0.14 | Keep near base (+0.5%) | 32.6% |
+| VGT | 22% | Technology tilt | Growth engine and explicit tech tilt when the relative signal supports owning more innovation exposure than a pure core index. | 0.36 | Base-weight only (n/a) | n/a |
+| SCHD | 17% | Value / dividend tilt | Closest current project proxy for a value sleeve; adds a cheaper, income-oriented counterweight to the tech allocation. | 0.29 | Base-weight only (n/a) | n/a |
+| VWO | 16% | Emerging-markets satellite | Higher-growth international sleeve kept modest because it is more volatile than the core international allocation. | 0.30 | Supportive (-2.4%) | n/a |
+| VXUS | 11% | International core | Primary geographic diversifier away from a US employer-stock concentration. | 0.28 | Only keep at floor weight (+3.6%) | 30.0% |
+| BND | 6% | Bond ballast | Small stabilizer sleeve kept intentionally light so the redeploy portfolio stays above 90% equities in normal months. | 0.04 | Keep near base (+0.5%) | 30.6% |
+
+## Per-Benchmark Signals
+
+- Predicted Return is from the perspective of PGR versus each fund. Positive means PGR is expected to outperform that fund; negative means the fund is expected to outperform PGR.
+- Benchmark Role distinguishes realistic buy candidates from contextual or forecast-only comparison funds.
+
+| Benchmark | Benchmark Role | Description | Predicted Return | CI Lower | CI Upper | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |
+|-----------|----------------|-------------|----------------|----------|----------|----|----------|--------|--------|------------|--------|
+| VOO | Buy candidate | S&P 500 | +0.54% | -26.57% | +27.65% | 0.0714 | 51.4% | 50.0% | 67.4% | LOW | NEUTRAL |
+| VXUS | Buy candidate | Total International Stock | +3.63% | -32.70% | +39.95% | 0.1889 | 69.9% | 50.0% | 70.0% | LOW | OUTPERFORM |
+| VWO | Buy candidate | Emerging Markets | -2.37% | -30.76% | +26.02% | 0.2111 | 62.9% | 50.0% | 69.8% | LOW | UNDERPERFORM |
+| VMBS | Forecast only | Mortgage-Backed Securities | +0.33% | -20.20% | +20.86% | 0.2286 | 78.8% | 50.0% | 64.5% | LOW | NEUTRAL |
+| BND | Buy candidate | Total Bond Market | +0.54% | -20.48% | +21.55% | 0.2472 | 71.0% | 50.0% | 69.4% | LOW | NEUTRAL |
+| GLD | Forecast only | Gold Shares | -0.02% | -26.45% | +26.42% | 0.1474 | 60.0% | 50.0% | 66.3% | LOW | NEUTRAL |
+| DBC | Forecast only | DB Commodity Index | -9.53% | -36.29% | +17.24% | 0.1448 | 73.8% | 50.0% | 46.8% | LOW | UNDERPERFORM |
+| VDE | Forecast only | Energy | -12.72% | -43.24% | +17.79% | 0.1232 | 62.8% | 50.0% | 41.2% | LOW | UNDERPERFORM |
 
 ---
 
@@ -108,12 +235,12 @@ Recommended action at next vesting event: **DEFAULT 50% SALE** for diversificati
 | LTCG Rate (federal) | 20% |
 | Tax-rate differential | 17% |
 | **LTCG breakeven return** | **21.25%** |
-| Current model prediction (6M) | +2.41% |
-| P(outperform) | 66.4% |
+| Current model prediction (6M) | -2.34% |
+| P(outperform) | 61.9% |
 | Next time-based vest | 2027-01-19 |
 | Next performance vest | 2026-07-17 |
 
-✓ **Model prediction (+2.4%) is below the LTCG breakeven (21.2%) by 18.8%.**  Holding RSUs for 366 days post-vest to qualify for LTCG treatment is likely the higher after-tax outcome.
+⚠️ **Model predicts negative return (-2.3%).**  Consider capital-loss harvesting scenario — a tax loss at 37% STCG rate can offset other gains.  See three-scenario analysis at vesting.
 
 > **Breakeven formula:** `(STCG − LTCG) / (1 − LTCG)` — the minimum
 > return needed on RSUs held to LTCG eligibility (366 days post-vest) to
