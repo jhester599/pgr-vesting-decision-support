@@ -35,6 +35,25 @@ dashboard, email, and docs.
 - decide whether additional automation or notification surfaces should read the
   summary payload directly
 
+### Classification-Led Decision Research
+
+- deepen the `v46` classification branch rather than treating it as a single
+  promising result
+- compare per-benchmark classifiers, pooled panel classifiers, and hybrid
+  classifier + regression policies
+- use [2026-04-11-v87-v96-classification-hybrid-research.md](docs/superpowers/plans/2026-04-11-v87-v96-classification-hybrid-research.md)
+  as the active planning reference for this work
+- that plan now explicitly incorporates archived peer-review guidance on:
+  - composite / basket targets
+  - pooled vs separate benchmark structures
+  - lean feature-set discipline
+  - calibration-first decision gating
+- current outcome from the completed `v87-v96` cycle:
+  - no production promotion
+  - most promising follow-on is a classifier-only benchmark-panel shadow path
+    using the `actionable_sell_3pct` target and prequentially calibrated
+    probabilities
+
 ## Strategic Backlog
 
 | Item | Description |

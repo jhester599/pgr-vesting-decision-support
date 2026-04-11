@@ -132,6 +132,18 @@ def test_main_logs_cross_check_fallback_and_completes(
     monkeypatch.setattr(monthly_decision, "_build_redeploy_portfolio", lambda *args, **kwargs: None)
     monkeypatch.setattr(
         monthly_decision,
+        "build_classification_shadow_summary",
+        lambda *args, **kwargs: (
+            type(
+                "ShadowSummaryStub",
+                (),
+                {"to_payload": lambda self: {"enabled": False}},
+            )(),
+            pd.DataFrame(),
+        ),
+    )
+    monkeypatch.setattr(
+        monthly_decision,
         "_build_shadow_baseline_summary",
         lambda *args, **kwargs: (
             SnapshotSummary(

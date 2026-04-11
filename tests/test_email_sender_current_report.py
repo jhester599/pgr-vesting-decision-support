@@ -117,3 +117,34 @@ def test_structured_summary_payload_can_drive_email_top_level_fields() -> None:
     assert "Recommendation mode: DEFER-TO-TAX-DEFAULT" in plain_body
     assert "Predicted 6M relative return: -2.34%" in plain_body
     assert "Aggregate OOS R^2" in html_body
+
+
+def test_structured_summary_payload_renders_classification_shadow_section() -> None:
+    msg = build_email_message(
+        "# Minimal body",
+        "from@example.com",
+        "to@example.com",
+        "April 2026",
+        summary_payload={
+            "recommendation": {
+                "signal_label": "NEUTRAL (LOW CONFIDENCE)",
+                "recommendation_mode": "DEFER-TO-TAX-DEFAULT",
+                "predicted_6m_relative_return_label": "-2.34%",
+            },
+            "classification_shadow": {
+                "enabled": True,
+                "probability_actionable_sell_label": "28.4%",
+                "confidence_tier": "HIGH",
+                "stance": "NON-ACTIONABLE",
+                "agreement_label": "Aligned",
+                "interpretation": "Supports a hold/defer interpretation.",
+            },
+        },
+    )
+    plain_body = msg.get_payload()[0].get_payload(decode=True).decode()
+    html_body = msg.get_payload()[1].get_payload(decode=True).decode()
+    assert "Classification confidence check:" in plain_body
+    assert "P(actionable sell): 28.4%" in plain_body
+    assert "Classifier stance: NON-ACTIONABLE" in plain_body
+    assert "Classification confidence check" in html_body
+    assert "28.4%" in html_body

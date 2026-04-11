@@ -122,6 +122,36 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
     monkeypatch.setattr(monthly_decision, "_build_redeploy_guidance", lambda *args, **kwargs: [])
     monkeypatch.setattr(monthly_decision, "_build_redeploy_portfolio", lambda *args, **kwargs: None)
     monkeypatch.setattr(
+        monthly_decision,
+        "build_classification_shadow_summary",
+        lambda *args, **kwargs: (
+            type(
+                "ShadowSummaryStub",
+                (),
+                {
+                    "to_payload": lambda self: {
+                        "enabled": True,
+                        "target_label": "actionable_sell_3pct",
+                        "probability_actionable_sell_label": "28.4%",
+                        "confidence_tier": "HIGH",
+                        "stance": "NON-ACTIONABLE",
+                        "agreement_label": "Aligned",
+                        "interpretation": "Supports a hold/defer interpretation.",
+                    }
+                },
+            )(),
+            pd.DataFrame(
+                {
+                    "benchmark": ["VOO", "BND"],
+                    "classifier_prob_actionable_sell": [0.31, 0.26],
+                    "classifier_shadow_tier": ["HIGH", "HIGH"],
+                    "classifier_weight": [0.5, 0.5],
+                    "classifier_weighted_contribution": [0.155, 0.130],
+                }
+            ),
+        ),
+    )
+    monkeypatch.setattr(
         monthly_decision.db_client,
         "warn_if_db_behind",
         lambda *args, **kwargs: [],
@@ -191,12 +221,17 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
     assert "PGR Monthly Decision Report" in recommendation_text
     assert "## Data Freshness" in recommendation_text
     assert "## Consensus Signal" in recommendation_text
+    assert "## Classification Confidence Check" in recommendation_text
     assert "## Model Health" in recommendation_text
     assert "Rolling 12M IC" in recommendation_text
     assert "UNDERPERFORM" in recommendation_text
+    assert "28.4%" in recommendation_text
 
     signals_df = pd.read_csv(signals_path)
     assert {"benchmark", "predicted_relative_return", "signal"}.issubset(signals_df.columns)
+    assert {"classifier_prob_actionable_sell", "classifier_shadow_tier"}.issubset(
+        signals_df.columns
+    )
     assert len(signals_df) == 2
     quality_df = pd.read_csv(benchmark_quality_path)
     assert {"benchmark", "cw_t_stat", "cw_p_value"}.issubset(quality_df.columns)
@@ -209,6 +244,10 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
     monthly_summary = json.loads(monthly_summary_path.read_text(encoding="utf-8"))
     assert monthly_summary["recommendation"]["signal_label"] == "UNDERPERFORM (LOW CONFIDENCE)"
     assert monthly_summary["cross_check"]["visible_in_primary_surfaces"] is False
+    assert monthly_summary["classification_shadow"]["probability_actionable_sell_label"] == "28.4%"
+
+    dashboard_html = dashboard_path.read_text(encoding="utf-8")
+    assert "Classification Confidence Check" in dashboard_html
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest["workflow_name"] == "monthly_decision"
