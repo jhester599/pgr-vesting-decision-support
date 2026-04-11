@@ -72,6 +72,7 @@ from src.models.evaluation import (
     reconstruct_baseline_predictions,
 )
 from src.models.forecast_diagnostics import summarize_prediction_diagnostics
+from src.models.classification_shadow import build_classification_shadow_summary
 from src.models.consensus_shadow import build_shadow_consensus_table
 from src.models.policy_metrics import (
     FIXED_POLICIES,
@@ -1595,6 +1596,7 @@ def _write_recommendation_md(
     policy_summary: dict[str, PolicySummary] | None = None,
     bl_diagnostics: BLDiagnostics | None = None,
     visible_cross_check: bool = False,
+    classification_shadow_summary: dict[str, object] | None = None,
 ) -> None:
     """Write the human-readable recommendation report."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1744,6 +1746,30 @@ def _write_recommendation_md(
                 f"{row['recommendation_mode']} | {float(row['recommended_sell_pct']):.0%} | "
                 f"{top_weight} |"
             )
+
+    if (
+        isinstance(classification_shadow_summary, dict)
+        and classification_shadow_summary.get("enabled")
+    ):
+        lines += [
+            "",
+            "---",
+            "",
+            "## Classification Confidence Check",
+            "",
+            "> Shadow-only interpretation layer from the v87-v96 classifier research.",
+            "> It does not change the live recommendation or sell percentage.",
+            "",
+            "| Field | Value |",
+            "|-------|-------|",
+            f"| Target | {classification_shadow_summary.get('target_label', 'n/a')} |",
+            "| Construction | Separate benchmark logistic + quality-weighted aggregate |",
+            f"| P(Actionable Sell) | {classification_shadow_summary.get('probability_actionable_sell_label', 'n/a')} |",
+            f"| Confidence Tier | {classification_shadow_summary.get('confidence_tier', 'n/a')} |",
+            f"| Classifier Stance | {classification_shadow_summary.get('stance', 'n/a')} |",
+            f"| Agreement with Live Recommendation | {classification_shadow_summary.get('agreement_label', 'n/a')} |",
+            f"| Interpretation | {classification_shadow_summary.get('interpretation', 'n/a')} |",
+        ]
 
     lines += [
         "",
@@ -2947,6 +2973,38 @@ def main(
         signals,
         active_recommendation_mode,
     )
+    classification_shadow_summary = None
+    classification_shadow_df = pd.DataFrame()
+    try:
+        shadow_summary_obj, classification_shadow_df = build_classification_shadow_summary(
+            conn,
+            as_of,
+            live_recommendation_mode=str(active_recommendation_mode["label"]),
+            benchmark_quality_df=(
+                aggregate_health.get("benchmark_quality_df")
+                if aggregate_health is not None
+                else None
+            ),
+        )
+        classification_shadow_summary = shadow_summary_obj.to_payload()
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "[Classifier shadow] Could not build monthly shadow classifier summary. Error=%r",
+            exc,
+        )
+        classification_shadow_summary = None
+        classification_shadow_df = pd.DataFrame()
+
+    if not classification_shadow_df.empty:
+        detail_index = classification_shadow_df.set_index("benchmark")
+        for column in [
+            "classifier_prob_actionable_sell",
+            "classifier_shadow_tier",
+            "classifier_weight",
+            "classifier_weighted_contribution",
+        ]:
+            if column in detail_index.columns:
+                signals[column] = detail_index[column]
 
     print(f"\n  Consensus signal: {consensus} ({confidence_tier} CONFIDENCE)")
     print(f"  Predicted 6M relative return: {mean_pred:+.2%}")
@@ -2977,6 +3035,13 @@ def main(
             "  Simpler baseline: "
             f"{shadow_summary.recommendation_mode} / sell {shadow_summary.sell_pct:.0%} / "
             f"{shadow_summary.mean_predicted:+.2%}"
+        )
+    if isinstance(classification_shadow_summary, dict) and classification_shadow_summary.get("enabled"):
+        print(
+            "  Classification shadow: "
+            f"P(actionable sell) {classification_shadow_summary.get('probability_actionable_sell_label', 'n/a')} / "
+            f"{classification_shadow_summary.get('confidence_tier', 'n/a')} / "
+            f"{classification_shadow_summary.get('agreement_label', 'n/a')}"
         )
 
     # Step 4: Write outputs
@@ -3033,6 +3098,7 @@ def main(
         policy_summary=policy_summary,
         bl_diagnostics=bl_diagnostics,
         visible_cross_check=visible_cross_check,
+        classification_shadow_summary=classification_shadow_summary,
     )
     _write_signals_csv(out_dir, signals)
     _append_decision_log(
@@ -3168,6 +3234,7 @@ def main(
             aggregate_health.get("benchmark_quality_df") if aggregate_health is not None else None
         ),
         consensus_shadow_df=consensus_shadow_df,
+        classification_shadow_summary=classification_shadow_summary,
     )
     monthly_summary = build_monthly_summary_payload(
         as_of_date=as_of.isoformat(),
@@ -3195,6 +3262,7 @@ def main(
         ),
         consensus_shadow_df=consensus_shadow_df,
         visible_cross_check=visible_cross_check,
+        classification_shadow_summary=classification_shadow_summary,
     )
     monthly_summary_path = write_monthly_summary(out_dir, monthly_summary)
     print(f"  Wrote {monthly_summary_path}")

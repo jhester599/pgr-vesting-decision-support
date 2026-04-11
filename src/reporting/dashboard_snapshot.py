@@ -47,6 +47,8 @@ def _prepare_signal_table(signals: pd.DataFrame) -> pd.DataFrame:
         "hit_rate",
         "confidence_tier",
         "calibrated_prob_outperform",
+        "classifier_prob_actionable_sell",
+        "classifier_shadow_tier",
     ]
     df = df[[column for column in keep if column in df.columns]]
     rename_map = {
@@ -57,6 +59,8 @@ def _prepare_signal_table(signals: pd.DataFrame) -> pd.DataFrame:
         "hit_rate": "Hit Rate",
         "confidence_tier": "Confidence",
         "calibrated_prob_outperform": "P(Outperform)",
+        "classifier_prob_actionable_sell": "P(Actionable Sell)",
+        "classifier_shadow_tier": "Cls Tier",
     }
     df = df.rename(columns=rename_map)
     if "Predicted Return" in df.columns:
@@ -67,6 +71,10 @@ def _prepare_signal_table(signals: pd.DataFrame) -> pd.DataFrame:
         df["Hit Rate"] = df["Hit Rate"].apply(lambda value: _format_pct(value, decimals=1))
     if "P(Outperform)" in df.columns:
         df["P(Outperform)"] = df["P(Outperform)"].apply(lambda value: _format_pct(value, decimals=1))
+    if "P(Actionable Sell)" in df.columns:
+        df["P(Actionable Sell)"] = df["P(Actionable Sell)"].apply(
+            lambda value: _format_pct(value, decimals=1)
+        )
     return df
 
 
@@ -114,6 +122,7 @@ def write_dashboard_snapshot(
     signals: pd.DataFrame,
     benchmark_quality_df: pd.DataFrame | None,
     consensus_shadow_df: pd.DataFrame | None,
+    classification_shadow_summary: dict[str, object] | None = None,
 ) -> Path:
     """Write a static HTML snapshot summarizing the latest monthly decision."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -122,6 +131,39 @@ def write_dashboard_snapshot(
     signal_table = _prepare_signal_table(signals)
     benchmark_quality_table = _prepare_benchmark_quality_table(benchmark_quality_df)
     del consensus_shadow_df
+
+    classification_section = ""
+    if isinstance(classification_shadow_summary, dict) and classification_shadow_summary.get("enabled"):
+        probability = escape(
+            str(
+                classification_shadow_summary.get(
+                    "probability_actionable_sell_label",
+                    "-",
+                )
+            )
+        )
+        tier = escape(str(classification_shadow_summary.get("confidence_tier", "-")))
+        stance = escape(str(classification_shadow_summary.get("stance", "-")))
+        agreement = escape(str(classification_shadow_summary.get("agreement_label", "-")))
+        interpretation = escape(
+            str(classification_shadow_summary.get("interpretation", "-"))
+        )
+        classification_section = (
+            "<section>"
+            "<h2>Classification Confidence Check</h2>"
+            "<p class='muted'>"
+            "Shadow-only interpretation layer from the v87-v96 classifier research. "
+            "It does not change the live recommendation or sell percentage."
+            "</p>"
+            "<div class='cards'>"
+            f"<div class='card'><div class='label'>P(Actionable Sell)</div><div class='value'>{probability}</div></div>"
+            f"<div class='card'><div class='label'>Confidence Tier</div><div class='value'>{tier}</div></div>"
+            f"<div class='card'><div class='label'>Classifier Stance</div><div class='value'>{stance}</div></div>"
+            f"<div class='card'><div class='label'>Agreement</div><div class='value'>{agreement}</div></div>"
+            "</div>"
+            f"<p class='muted' style='margin-top:14px;'>{interpretation}</p>"
+            "</section>"
+        )
 
     warnings_html = (
         "<ul>" + "".join(f"<li>{escape(warning)}</li>" for warning in warnings) + "</ul>"
@@ -241,6 +283,7 @@ def write_dashboard_snapshot(
     </section>
 
     {_render_table("Benchmark Quality", benchmark_quality_table)}
+    {classification_section}
     {_render_table("Per-Benchmark Signals", signal_table)}
 
     <section>

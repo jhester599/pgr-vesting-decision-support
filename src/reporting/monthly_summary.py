@@ -108,6 +108,7 @@ def build_monthly_summary_payload(
     benchmark_quality_df: pd.DataFrame | None,
     consensus_shadow_df: pd.DataFrame | None,
     visible_cross_check: bool,
+    classification_shadow_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the machine-readable monthly summary payload."""
     benchmark_count = int(len(signals)) if not signals.empty else 0
@@ -117,7 +118,7 @@ def build_monthly_summary_payload(
         visible_in_primary_surfaces=visible_cross_check,
     )
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "as_of_date": as_of_date,
         "run_date": run_date,
         "artifacts": {
@@ -165,6 +166,7 @@ def build_monthly_summary_payload(
         },
         "warnings": warnings,
         "cross_check": cross_check,
+        "classification_shadow": classification_shadow_summary,
     }
 
 

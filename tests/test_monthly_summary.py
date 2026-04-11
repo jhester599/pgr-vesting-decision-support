@@ -40,12 +40,21 @@ def test_monthly_summary_payload_and_writer(tmp_path: Path) -> None:
             }
         ),
         visible_cross_check=False,
+        classification_shadow_summary={
+            "enabled": True,
+            "probability_actionable_sell_label": "28.4%",
+            "confidence_tier": "HIGH",
+            "stance": "NON-ACTIONABLE",
+            "agreement_label": "Aligned",
+        },
     )
 
     path = write_monthly_summary(tmp_path, payload)
 
     assert path.exists()
     written = json.loads(path.read_text(encoding="utf-8"))
+    assert written["schema_version"] == 2
     assert written["recommendation"]["signal_label"] == "NEUTRAL (LOW CONFIDENCE)"
     assert written["cross_check"]["visible_in_primary_surfaces"] is False
     assert written["cross_check"]["mode_agreement"] is True
+    assert written["classification_shadow"]["probability_actionable_sell_label"] == "28.4%"

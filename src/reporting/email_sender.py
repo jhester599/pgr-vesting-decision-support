@@ -379,6 +379,11 @@ def build_email_summary(
     redeploy_lines = _extract_section_bullets(body, "Redeploy Guidance")
     redeploy_portfolio_rows = _extract_redeploy_portfolio_rows(body)
     confidence_rows = _extract_confidence_snapshot_rows(body)
+    classification_shadow = None
+    if isinstance(summary_payload, dict):
+        raw_classification_shadow = summary_payload.get("classification_shadow")
+        if isinstance(raw_classification_shadow, dict):
+            classification_shadow = raw_classification_shadow
 
     lines = [
         "PGR Monthly Decision Summary",
@@ -399,6 +404,26 @@ def build_email_summary(
         lines += ["", "Confidence checks:"]
         for row in confidence_rows:
             lines.append(f"- {row.get('Check', '')}: {row.get('Current', '')} / {row.get('Status', '')}")
+    if isinstance(classification_shadow, dict) and classification_shadow.get("enabled"):
+        lines += ["", "Classification confidence check:"]
+        lines.append(
+            "- Shadow-only interpretation layer; it does not override the live recommendation."
+        )
+        lines.append(
+            "- P(actionable sell): "
+            f"{classification_shadow.get('probability_actionable_sell_label', 'n/a')}"
+        )
+        lines.append(
+            f"- Confidence tier: {classification_shadow.get('confidence_tier', 'n/a')}"
+        )
+        lines.append(f"- Classifier stance: {classification_shadow.get('stance', 'n/a')}")
+        lines.append(
+            "- Agreement with live recommendation: "
+            f"{classification_shadow.get('agreement_label', 'n/a')}"
+        )
+        interpretation = classification_shadow.get("interpretation")
+        if interpretation:
+            lines.append(f"- Interpretation: {interpretation}")
     if cross_check_rows:
         lines += ["", "Consensus cross-check:"]
         if recommendation_layer:
@@ -610,6 +635,11 @@ def build_email_html(
     redeploy_lines = _extract_section_bullets(body, "Redeploy Guidance")
     redeploy_portfolio_table = _build_redeploy_portfolio_html_table(body)
     confidence_rows = _extract_confidence_snapshot_rows(body)
+    classification_shadow = None
+    if isinstance(summary_payload, dict):
+        raw_classification_shadow = summary_payload.get("classification_shadow")
+        if isinstance(raw_classification_shadow, dict):
+            classification_shadow = raw_classification_shadow
     mode_badge = {
         "ACTIONABLE": _html_badge("ACTIONABLE", "#0f766e"),
         "MONITORING-ONLY": _html_badge("MONITORING ONLY", "#a16207"),
@@ -762,6 +792,25 @@ def build_email_html(
             + "</tbody></table></div>"
         )
 
+    classification_section = ""
+    if isinstance(classification_shadow, dict) and classification_shadow.get("enabled"):
+        classification_section = (
+            "<div style='margin-top:20px;padding:20px;border:1px solid #dbeafe;border-radius:16px;background:#f8fbff;'>"
+            "<h2 style='margin:0 0 10px 0;font-size:20px;color:#0f172a;'>Classification confidence check</h2>"
+            "<p style='margin:0 0 12px 0;color:#334155;line-height:1.5;'>"
+            "Shadow-only interpretation layer from the v87-v96 classifier research. "
+            "It does not change the live recommendation or sell percentage."
+            "</p>"
+            "<table style='width:100%;border-collapse:collapse;font-size:13px;'><tbody>"
+            f"<tr><td style='padding:8px 0;color:#475569;width:220px;'>P(actionable sell)</td><td style='padding:8px 0;'><strong>{escape(str(classification_shadow.get('probability_actionable_sell_label', 'n/a')))}</strong></td></tr>"
+            f"<tr><td style='padding:8px 0;color:#475569;'>Confidence tier</td><td style='padding:8px 0;'>{escape(str(classification_shadow.get('confidence_tier', 'n/a')))}</td></tr>"
+            f"<tr><td style='padding:8px 0;color:#475569;'>Classifier stance</td><td style='padding:8px 0;'>{escape(str(classification_shadow.get('stance', 'n/a')))}</td></tr>"
+            f"<tr><td style='padding:8px 0;color:#475569;'>Agreement</td><td style='padding:8px 0;'>{escape(str(classification_shadow.get('agreement_label', 'n/a')))}</td></tr>"
+            "</tbody></table>"
+            f"<p style='margin:12px 0 0 0;color:#334155;line-height:1.5;'>{escape(str(classification_shadow.get('interpretation', '')))}</p>"
+            "</div>"
+        )
+
     return (
         "<html><body style='margin:0;padding:0;background:#f3f6fb;font-family:Segoe UI,Arial,sans-serif;color:#0f172a;'>"
         "<div style='max-width:960px;margin:0 auto;padding:24px 14px;'>"
@@ -780,6 +829,7 @@ def build_email_html(
         f"<td style='width:20%;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:16px;vertical-align:top;'><div style='font-size:12px;color:#475569;font-weight:700;text-transform:uppercase;'>Aggregate OOS R^2</div><div style='font-size:24px;font-weight:800;color:#0f172a;margin-top:6px;'>{escape(oos_r2)}</div><div style='margin-top:8px;'>{confidence_badges.get('Aggregate OOS R^2', '')}</div></td>"
         "</tr></table>"
         f"{confidence_section}"
+        f"{classification_section}"
         "<div style='margin-top:20px;padding:20px;border:1px solid #dbeafe;border-radius:16px;background:#f8fbff;'>"
         "<h2 style='margin:0 0 10px 0;font-size:20px;color:#0f172a;'>What's changed</h2>"
         f"<ul style='margin:0 0 0 20px;padding:0;color:#334155;line-height:1.5;'>{executive_html}</ul>"
@@ -936,7 +986,7 @@ def send_monthly_email(
         summary_payload = json.loads(summary_path.read_text(encoding="utf-8"))
 
     dashboard_snapshot_path = report_path.with_name("dashboard.html")
-    dashboard_snapshot_label = str(dashboard_snapshot_path)
+    dashboard_snapshot_label: str | None = str(dashboard_snapshot_path)
     dashboard_snapshot_url = (
         _infer_dashboard_snapshot_url(dashboard_snapshot_path)
         if dashboard_snapshot_path.exists()

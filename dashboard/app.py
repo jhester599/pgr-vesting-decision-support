@@ -94,6 +94,8 @@ def _format_signal_table(signals: pd.DataFrame) -> pd.DataFrame:
         "hit_rate",
         "confidence_tier",
         "calibrated_prob_outperform",
+        "classifier_prob_actionable_sell",
+        "classifier_shadow_tier",
     ]
     available = [column for column in display_cols if column in signals.columns]
     df_display = signals[available].copy()
@@ -101,7 +103,11 @@ def _format_signal_table(signals: pd.DataFrame) -> pd.DataFrame:
     for column in ["predicted_relative_return", "ic"]:
         if column in df_display.columns:
             df_display[column] = df_display[column].apply(lambda value: f"{value * 100:+.2f}%")
-    for column in ["hit_rate", "calibrated_prob_outperform"]:
+    for column in [
+        "hit_rate",
+        "calibrated_prob_outperform",
+        "classifier_prob_actionable_sell",
+    ]:
         if column in df_display.columns:
             df_display[column] = df_display[column].apply(lambda value: f"{value * 100:.1f}%")
 
@@ -114,6 +120,8 @@ def _format_signal_table(signals: pd.DataFrame) -> pd.DataFrame:
             "hit_rate": "Hit Rate",
             "confidence_tier": "Confidence",
             "calibrated_prob_outperform": "P(Outperform)",
+            "classifier_prob_actionable_sell": "P(Actionable Sell)",
+            "classifier_shadow_tier": "Cls Tier",
         }
     )
 
@@ -238,6 +246,34 @@ with tab_current:
                 "Consensus cross-check retired from the main dashboard surface. "
                 f"{cross_check_note}"
             )
+
+        classification_shadow = _summary_lookup(summary_payload, "classification_shadow")
+        if isinstance(classification_shadow, dict) and classification_shadow.get("enabled"):
+            st.subheader("Classification Confidence Check")
+            st.caption(
+                "Shadow-only interpretation layer from the v87-v96 classifier research. "
+                "It does not change the live recommendation."
+            )
+            cls_cols = st.columns(4)
+            cls_cols[0].metric(
+                "P(Actionable Sell)",
+                str(classification_shadow.get("probability_actionable_sell_label", "-")),
+            )
+            cls_cols[1].metric(
+                "Confidence Tier",
+                str(classification_shadow.get("confidence_tier", "-")),
+            )
+            cls_cols[2].metric(
+                "Classifier Stance",
+                str(classification_shadow.get("stance", "-")),
+            )
+            cls_cols[3].metric(
+                "Agreement",
+                str(classification_shadow.get("agreement_label", "-")),
+            )
+            interpretation = classification_shadow.get("interpretation")
+            if interpretation:
+                st.info(str(interpretation))
 
     with col_right:
         st.subheader("PGR Price (1 Year)")

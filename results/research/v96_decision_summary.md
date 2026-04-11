@@ -1,0 +1,16 @@
+# v96 Classification Program Decision Summary
+
+Recommendation status: `continue_research_no_promotion`.
+The best classification-led path did not clear a conservative promotion gate versus the regression baseline.
+
+| stage   | selection                                                   | notes                                     |
+|:--------|:------------------------------------------------------------|:------------------------------------------|
+| v87     | actionable_sell_3pct                                        | forward binary target                     |
+| v88     | lean_baseline                                               | forward feature set                       |
+| v89     | logistic_balanced                                           | best separate linear model                |
+| v90     | pooled_shared_logistic_balanced                             | best pooled / panel linear model          |
+| v91     | logistic_fixed_effects_balanced                             | best nonlinear family result              |
+| v92     | separate_logistic_balanced__prequential_logistic__0.30_0.70 | best calibration + abstention path        |
+| v93     | benchmark_panel_primary                                     | best target formulation                   |
+| v94     | classifier_only_benchmark_panel                             | best classifier / hybrid policy candidate |
+| v95     | classifier_only_benchmark_panel                             | best replay candidate                     |

@@ -155,6 +155,11 @@ The repo will benefit more from a short adoption-and-contract cycle that:
   production surface is stable
 - judge these by policy and recommendation usefulness first, not by forecast
   metrics alone
+- detailed follow-on plan:
+  - `docs/superpowers/plans/2026-04-11-v87-v96-classification-hybrid-research.md`
+- the `v87-v96` follow-on now also incorporates the archived deep-review
+  guidance on feature families, pooled-vs-separate model structure, composite
+  targets, and calibration-first gating
 
 ---
 

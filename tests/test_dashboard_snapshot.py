@@ -55,11 +55,21 @@ def test_write_dashboard_snapshot_creates_static_html(tmp_path: Path) -> None:
                 "is_live_path": [True],
             }
         ),
+        classification_shadow_summary={
+            "enabled": True,
+            "probability_actionable_sell_label": "28.4%",
+            "confidence_tier": "HIGH",
+            "stance": "NON-ACTIONABLE",
+            "agreement_label": "Aligned",
+            "interpretation": "Supports a hold/defer interpretation.",
+        },
     )
 
     assert path.exists()
     html = path.read_text(encoding="utf-8")
     assert "PGR Monthly Snapshot" in html
     assert "Benchmark Quality" in html
+    assert "Classification Confidence Check" in html
+    assert "28.4%" in html
     assert "Per-Benchmark Signals" in html
     assert "monthly_summary.json" in html
