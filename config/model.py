@@ -44,6 +44,14 @@ ENSEMBLE_MODELS: list[str] = ["ridge", "gbt"]
 # inverse-variance weighted benchmark prediction.  Research showed alpha=0.50
 # improved pooled OOS R^2 materially without harming IC or hit rate.
 ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA: float = 0.50
+# v74 shadow promotion study: keep live consensus unchanged, but monitor a
+# quality-weighted cross-benchmark consensus built from the new v69 diagnostics.
+V74_SHADOW_CONSENSUS_SCORE_COL: str = "nw_ic"
+V74_SHADOW_CONSENSUS_LAMBDA_MIX: float = 0.25
+# v76 promotion: use the quality-weighted cross-benchmark consensus as the
+# live recommendation path, while retaining the equal-weight consensus as a
+# production-visible cross-check.
+CONSENSUS_WEIGHTING_MODE: str = "quality_weighted"
 
 # ---------------------------------------------------------------------------
 # v4.0 CPCV parameters — v5.0: upgraded from C(6,2)=15 paths to C(8,2)=28 paths
