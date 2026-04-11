@@ -318,8 +318,27 @@ def build_results_df(
     extra_cols: dict[str, Any] | None = None,
 ) -> pd.DataFrame:
     """Build a results DataFrame including a POOLED summary row."""
-    keep = ["benchmark", "n", "r2", "ic", "ic_p", "hit_rate", "mae",
-            "std_yhat", "std_ytrue", "sigma_ratio"]
+    keep = [
+        "benchmark",
+        "n",
+        "r2",
+        "ic",
+        "ic_p",
+        "hit_rate",
+        "mae",
+        "std_yhat",
+        "std_ytrue",
+        "sigma_ratio",
+    ]
+    extra_row_cols = sorted(
+        {
+            key
+            for row in rows
+            for key in row.keys()
+            if key not in keep and not key.startswith("_")
+        }
+    )
+    keep = keep + extra_row_cols
     per_bench = [{k: v for k, v in r.items() if k in keep} for r in rows]
     pooled_row = {"benchmark": "POOLED", **{k: pooled[k] for k in keep if k in pooled and k != "benchmark"}}
     if extra_cols:

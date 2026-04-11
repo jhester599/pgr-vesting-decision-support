@@ -99,7 +99,29 @@ def test_main_logs_cross_check_fallback_and_completes(
     monkeypatch.setattr(
         monthly_decision,
         "_compute_aggregate_health",
-        lambda *args, **kwargs: {"oos_r2": 0.031, "nw_ic": 0.081, "agg_hit": 0.57},
+        lambda *args, **kwargs: {
+            "oos_r2": 0.031,
+            "nw_ic": 0.081,
+            "agg_hit": 0.57,
+            "cw_t_stat": 2.10,
+            "cw_p_value": 0.04,
+            "benchmark_quality_df": pd.DataFrame(
+                {
+                    "benchmark": ["VOO", "BND"],
+                    "n_obs": [24, 24],
+                    "oos_r2": [0.04, 0.02],
+                    "nw_ic": [0.08, 0.07],
+                    "nw_p_value": [0.03, 0.04],
+                    "hit_rate": [0.58, 0.56],
+                    "cw_t_stat": [2.20, 2.05],
+                    "cw_p_value": [0.03, 0.04],
+                    "cw_mean_adjusted_differential": [0.01, 0.01],
+                    "r2_flag": ["✅", "✅"],
+                    "ic_flag": ["✅", "✅"],
+                    "hr_flag": ["✅", "✅"],
+                }
+            ),
+        },
     )
     monkeypatch.setattr(monthly_decision, "_build_provisional_vest_scenario", lambda *args, **kwargs: None)
     monkeypatch.setattr(monthly_decision, "_load_previous_decision_summary", lambda *args, **kwargs: None)
@@ -164,10 +186,11 @@ def test_main_logs_cross_check_fallback_and_completes(
         conformal_coverage_summary=None,
         importance_stability=None,
         vif_series=None,
+        benchmark_quality_df=None,
     ) -> None:
         del as_of, ensemble_results, target_horizon_months, cal_result, signals
         del obs_feature_report, representative_cpcv, conformal_coverage_summary
-        del importance_stability, vif_series
+        del importance_stability, vif_series, benchmark_quality_df
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "diagnostic.md").write_text("# Diagnostic Stub\n", encoding="utf-8")
 
