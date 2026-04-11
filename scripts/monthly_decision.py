@@ -71,6 +71,8 @@ from src.models.evaluation import (
     reconstruct_ensemble_oos_predictions,
     reconstruct_baseline_predictions,
 )
+from src.models.forecast_diagnostics import summarize_prediction_diagnostics
+from src.models.consensus_shadow import build_shadow_consensus_table
 from src.models.policy_metrics import (
     FIXED_POLICIES,
     SIGNAL_POLICIES,
@@ -807,72 +809,183 @@ def _consensus_signal(
     return consensus, mean_pred, mean_ic, mean_hr, mean_prob, confidence_tier
 
 
+def _build_v74_shadow_consensus(
+    signals: pd.DataFrame,
+    aggregate_health: dict | None,
+    representative_cpcv: CPCVResult | None = None,
+) -> pd.DataFrame | None:
+    """Build the live-vs-shadow consensus comparison table."""
+    if signals.empty or aggregate_health is None:
+        return None
+
+    benchmark_quality_df = aggregate_health.get("benchmark_quality_df")
+    if benchmark_quality_df is None:
+        return None
+
+    shadow_df = build_shadow_consensus_table(
+        signals=signals,
+        benchmark_quality_df=benchmark_quality_df,
+        score_col=config.V74_SHADOW_CONSENSUS_SCORE_COL,
+        lambda_mix=config.V74_SHADOW_CONSENSUS_LAMBDA_MIX,
+    )
+    if shadow_df.empty:
+        return None
+
+    enriched_rows: list[dict[str, object]] = []
+    live_variant = (
+        "quality_weighted"
+        if config.CONSENSUS_WEIGHTING_MODE == "quality_weighted"
+        else "equal_weight"
+    )
+    for row in shadow_df.to_dict("records"):
+        recommendation_mode = _determine_recommendation_mode(
+            str(row["consensus"]),
+            float(row["mean_predicted_return"]),
+            float(row["mean_ic"]),
+            float(row["mean_hit_rate"]),
+            aggregate_health,
+            representative_cpcv,
+        )
+        enriched = dict(row)
+        enriched["recommendation_mode"] = str(recommendation_mode["label"])
+        enriched["recommended_sell_pct"] = float(recommendation_mode["sell_pct"])
+        enriched["is_live_path"] = bool(row["variant"] == live_variant)
+        enriched_rows.append(enriched)
+
+    return pd.DataFrame(enriched_rows)
+
+
+def _resolve_live_consensus(
+    signals: pd.DataFrame,
+    aggregate_health: dict | None,
+    representative_cpcv: CPCVResult | None = None,
+) -> tuple[tuple[str, float, float, float, float, str], pd.DataFrame | None]:
+    """Resolve the promoted live consensus tuple and the comparison table."""
+    default = _consensus_signal(signals)
+    consensus_shadow_df = _build_v74_shadow_consensus(
+        signals,
+        aggregate_health,
+        representative_cpcv,
+    )
+    if consensus_shadow_df is None or consensus_shadow_df.empty:
+        return default, None
+
+    live_row = consensus_shadow_df[consensus_shadow_df["is_live_path"]]
+    if live_row.empty:
+        return default, consensus_shadow_df
+
+    row = live_row.iloc[0]
+    return (
+        (
+            str(row["consensus"]),
+            float(row["mean_predicted_return"]),
+            float(row["mean_ic"]),
+            float(row["mean_hit_rate"]),
+            float(row["mean_prob_outperform"]),
+            str(row["confidence_tier"]),
+        ),
+        consensus_shadow_df,
+    )
+
+
+def _build_benchmark_quality_frame(
+    ensemble_results: dict,
+    target_horizon_months: int = 6,
+) -> tuple[pd.Series, pd.Series, pd.DataFrame]:
+    """Build ensemble-level pooled and per-benchmark OOS diagnostics."""
+    predicted_parts: list[pd.Series] = []
+    realized_parts: list[pd.Series] = []
+    rows: list[dict[str, float | int | str]] = []
+
+    for benchmark, ens_result in ensemble_results.items():
+        y_hat, y_true = reconstruct_ensemble_oos_predictions(ens_result)
+        if len(y_true) < 2:
+            continue
+
+        y_hat = y_hat.sort_index()
+        y_true = y_true.sort_index()
+        summary = summarize_prediction_diagnostics(
+            y_hat,
+            y_true,
+            target_horizon_months=target_horizon_months,
+        )
+        predicted_parts.append(y_hat)
+        realized_parts.append(y_true)
+        rows.append(
+            {
+                "benchmark": benchmark,
+                "n_obs": int(summary["n_obs"]),
+                "oos_r2": float(summary["oos_r2"]),
+                "nw_ic": float(summary["nw_ic"]),
+                "nw_p_value": float(summary["nw_p_value"]),
+                "hit_rate": float(summary["hit_rate"]),
+                "cw_t_stat": float(summary["cw_t_stat"]),
+                "cw_p_value": float(summary["cw_p_value"]),
+                "cw_mean_adjusted_differential": float(
+                    summary["cw_mean_adjusted_differential"]
+                ),
+                "r2_flag": _flag(float(summary["oos_r2"]), config.DIAG_MIN_OOS_R2, 0.005),
+                "ic_flag": _flag(float(summary["nw_ic"]), config.DIAG_MIN_IC, 0.03),
+                "hr_flag": _flag(float(summary["hit_rate"]), config.DIAG_MIN_HIT_RATE, 0.52),
+            }
+        )
+
+    if predicted_parts:
+        agg_predicted = pd.concat(predicted_parts).sort_index()
+        agg_realized = pd.concat(realized_parts).sort_index()
+        agg_predicted, agg_realized = agg_predicted.align(agg_realized, join="inner")
+    else:
+        agg_predicted = pd.Series(dtype=float, name="y_hat")
+        agg_realized = pd.Series(dtype=float, name="y_true")
+
+    benchmark_quality_df = pd.DataFrame(rows)
+    if not benchmark_quality_df.empty:
+        benchmark_quality_df = benchmark_quality_df.sort_values(
+            by=["cw_t_stat", "nw_ic", "oos_r2"],
+            ascending=False,
+        ).reset_index(drop=True)
+
+    return agg_predicted, agg_realized, benchmark_quality_df
+
+
 def _compute_aggregate_health(
     ensemble_results: dict,
     target_horizon_months: int = 6,
 ) -> dict | None:
     """Compute the aggregate health metrics shared by recommendation and diagnostics."""
-    nw_lags = target_horizon_months - 1
-    all_dates: list[pd.Timestamp] = []
-    all_y_true: list[float] = []
-    all_y_hat: list[float] = []
-    per_benchmark_rows: list[dict] = []
-
-    for etf, ens_result in ensemble_results.items():
-        model_result = ens_result.model_results.get(
-            "elasticnet",
-            next(iter(ens_result.model_results.values()), None),
-        )
-        if model_result is None or len(model_result.folds) == 0:
-            continue
-
-        y_true = model_result.y_true_all
-        y_hat = model_result.y_hat_all
-        dates = model_result.test_dates_all
-        if len(y_true) < 2:
-            continue
-
-        all_dates.extend(dates.tolist())
-        all_y_true.extend(y_true.tolist())
-        all_y_hat.extend(y_hat.tolist())
-
-        from scipy.stats import spearmanr as _spearmanr
-
-        ic_val, _ = _spearmanr(y_true, y_hat)
-        hit = float(np.mean(np.sign(y_true) == np.sign(y_hat)))
-        per_benchmark_rows.append(
-            {
-                "benchmark": etf,
-                "n_obs": len(y_true),
-                "ic": ic_val,
-                "hit_rate": hit,
-                "ic_flag": _flag(ic_val, config.DIAG_MIN_IC, 0.03),
-                "hr_flag": _flag(hit, config.DIAG_MIN_HIT_RATE, 0.52),
-            }
-        )
-
-    if len(all_y_true) < 4:
+    agg_predicted, agg_realized, benchmark_quality_df = _build_benchmark_quality_frame(
+        ensemble_results=ensemble_results,
+        target_horizon_months=target_horizon_months,
+    )
+    if len(agg_realized) < 4:
         return None
 
-    agg_predicted = pd.Series(all_y_hat, index=pd.DatetimeIndex(all_dates))
-    agg_realized = pd.Series(all_y_true, index=pd.DatetimeIndex(all_dates))
-    agg_predicted, agg_realized = agg_predicted.align(agg_realized, join="inner")
-
-    oos_r2 = compute_oos_r_squared(agg_predicted, agg_realized)
-    nw_ic, nw_pval = compute_newey_west_ic(agg_predicted, agg_realized, lags=nw_lags)
-    agg_hit = float(np.mean(np.sign(agg_realized.values) == np.sign(agg_predicted.values)))
+    summary = summarize_prediction_diagnostics(
+        agg_predicted,
+        agg_realized,
+        target_horizon_months=target_horizon_months,
+    )
+    nw_lags = target_horizon_months - 1
+    oos_r2 = float(summary["oos_r2"])
+    nw_ic = float(summary["nw_ic"])
+    nw_pval = float(summary["nw_p_value"])
+    agg_hit = float(summary["hit_rate"])
 
     return {
-        "n_agg": len(agg_realized),
+        "n_agg": int(summary["n_obs"]),
         "nw_lags": nw_lags,
         "oos_r2": oos_r2,
         "nw_ic": nw_ic,
         "nw_pval": nw_pval,
         "agg_hit": agg_hit,
+        "cw_t_stat": float(summary["cw_t_stat"]),
+        "cw_p_value": float(summary["cw_p_value"]),
+        "cw_mean_adjusted_differential": float(summary["cw_mean_adjusted_differential"]),
         "r2_flag": _flag(oos_r2, config.DIAG_MIN_OOS_R2, 0.005),
         "ic_flag": _flag(nw_ic, config.DIAG_MIN_IC, 0.03),
         "hr_flag": _flag(agg_hit, config.DIAG_MIN_HIT_RATE, 0.52),
-        "per_benchmark_rows": per_benchmark_rows,
+        "per_benchmark_rows": benchmark_quality_df.to_dict("records"),
+        "benchmark_quality_df": benchmark_quality_df,
         "agg_predicted": agg_predicted,
         "agg_realized": agg_realized,
     }
@@ -1414,39 +1527,16 @@ def _compute_policy_summary(
 ) -> dict[str, PolicySummary] | None:
     """Compute OOS decision-policy summaries from the monthly ensemble.
 
-    Aggregates OOS predictions and realized relative returns from the primary
-    elasticnet model across all benchmarks, then evaluates every fixed and
-    signal-driven policy defined in ``src.research.policy_metrics``.
+    Aggregates OOS predictions and realized relative returns from the deployed
+    inverse-variance ensemble across all benchmarks, then evaluates every fixed
+    and signal-driven policy defined in ``src.research.policy_metrics``.
 
     Returns a dict of ``{policy_name: PolicySummary}`` or ``None`` if fewer
     than 4 OOS observations are available.
     """
-    all_dates: list[pd.Timestamp] = []
-    all_y_hat: list[float] = []
-    all_y_true: list[float] = []
-
-    for ens_result in ensemble_results.values():
-        model_result = ens_result.model_results.get(
-            "elasticnet",
-            next(iter(ens_result.model_results.values()), None),
-        )
-        if model_result is None or len(model_result.folds) == 0:
-            continue
-        y_hat = model_result.y_hat_all
-        y_true = model_result.y_true_all
-        dates = model_result.test_dates_all
-        if len(y_true) < 1:
-            continue
-        all_dates.extend(dates.tolist())
-        all_y_hat.extend(y_hat.tolist())
-        all_y_true.extend(y_true.tolist())
-
-    if len(all_y_true) < 4:
+    predicted, realized, _ = _build_benchmark_quality_frame(ensemble_results)
+    if len(realized) < 4:
         return None
-
-    idx = pd.DatetimeIndex(all_dates)
-    predicted = pd.Series(all_y_hat, index=idx, name="y_hat")
-    realized = pd.Series(all_y_true, index=idx, name="y_true")
 
     summaries: dict[str, PolicySummary] = {}
     for policy in list(FIXED_POLICIES) + list(SIGNAL_POLICIES):
@@ -1489,6 +1579,7 @@ def _write_recommendation_md(
     recommendation_mode: dict[str, str | float] | None = None,
     live_summary: SnapshotSummary | None = None,
     shadow_summary: SnapshotSummary | None = None,
+    consensus_shadow_df: pd.DataFrame | None = None,
     existing_holdings: list[dict[str, object]] | None = None,
     redeploy_buckets: list[dict[str, object]] | None = None,
     redeploy_portfolio: dict[str, object] | None = None,
@@ -1604,6 +1695,45 @@ def _write_recommendation_md(
             f"ECE = {cal_result.ece:.1%} "
             f"[95% CI: {cal_result.ece_ci_lower:.1%}–{cal_result.ece_ci_upper:.1%}].",
         ]
+
+    if consensus_shadow_df is not None and not consensus_shadow_df.empty:
+        lines += [
+            "",
+            "---",
+            "",
+            "## Consensus Shadow Evaluation",
+            "",
+            "> The live path now uses the quality-weighted cross-benchmark consensus.",
+            "> The equal-weight consensus is retained here as a production cross-check.",
+            "",
+            "| Variant | Consensus | Mean Pred. Return | Mean IC | Mean Hit Rate | P(Outperform) | Mode | Sell % | Top Weight |",
+            "|---------|-----------|-------------------|---------|---------------|---------------|------|--------|------------|",
+        ]
+        for row in consensus_shadow_df.to_dict("records"):
+            if bool(row.get("is_live_path")):
+                variant_label = (
+                    "Live quality-weighted"
+                    if str(row.get("variant")) == "quality_weighted"
+                    else "Live equal-weight"
+                )
+            else:
+                variant_label = (
+                    "Shadow equal-weight"
+                    if str(row.get("variant")) == "equal_weight"
+                    else "Shadow quality-weighted"
+                )
+            top_weight = (
+                f"{row.get('top_benchmark', 'n/a')} ({float(row.get('top_benchmark_weight', 0.0)):.1%})"
+                if row.get("top_benchmark")
+                else "n/a"
+            )
+            lines.append(
+                f"| {variant_label} | {row['consensus']} ({row['confidence_tier']}) | "
+                f"{float(row['mean_predicted_return']):+.2%} | {float(row['mean_ic']):.4f} | "
+                f"{float(row['mean_hit_rate']):.1%} | {float(row['mean_prob_outperform']):.1%} | "
+                f"{row['recommendation_mode']} | {float(row['recommended_sell_pct']):.0%} | "
+                f"{top_weight} |"
+            )
 
     lines += [
         "",
@@ -1918,6 +2048,66 @@ def _write_signals_csv(out_dir: Path, signals: pd.DataFrame) -> None:
     print(f"  Wrote {path}")
 
 
+def _write_benchmark_quality_csv(
+    out_dir: Path,
+    benchmark_quality_df: pd.DataFrame | None,
+) -> None:
+    """Write ensemble OOS benchmark-quality diagnostics to CSV."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / "benchmark_quality.csv"
+    columns = [
+        "benchmark",
+        "n_obs",
+        "oos_r2",
+        "nw_ic",
+        "nw_p_value",
+        "hit_rate",
+        "cw_t_stat",
+        "cw_p_value",
+        "cw_mean_adjusted_differential",
+        "r2_flag",
+        "ic_flag",
+        "hr_flag",
+    ]
+    if benchmark_quality_df is None or benchmark_quality_df.empty:
+        pd.DataFrame(columns=columns).to_csv(path, index=False)
+    else:
+        benchmark_quality_df.loc[:, columns].to_csv(path, index=False)
+    print(f"  Wrote {path}")
+
+
+def _write_consensus_shadow_csv(
+    out_dir: Path,
+    consensus_shadow_df: pd.DataFrame | None,
+) -> None:
+    """Write the v74 shadow consensus comparison table to CSV."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / "consensus_shadow.csv"
+    columns = [
+        "variant",
+        "n_benchmarks",
+        "consensus",
+        "mean_predicted_return",
+        "mean_ic",
+        "mean_hit_rate",
+        "mean_prob_outperform",
+        "confidence_tier",
+        "weight_mode",
+        "score_col",
+        "lambda_mix",
+        "top_benchmark",
+        "top_benchmark_weight",
+        "recommendation_mode",
+        "recommended_sell_pct",
+        "is_live_path",
+    ]
+    if consensus_shadow_df is None or consensus_shadow_df.empty:
+        pd.DataFrame(columns=columns).to_csv(path, index=False)
+    else:
+        consensus_shadow_df.loc[:, columns].to_csv(path, index=False)
+    print(f"  Wrote {path}")
+
+
 def _append_decision_log(
     as_of: date,
     run_date: date,
@@ -2156,16 +2346,18 @@ def _write_diagnostic_report(
     conformal_coverage_summary: ConformalCoverageBacktest | None = None,
     importance_stability: FeatureImportanceStability | None = None,
     vif_series: pd.Series | None = None,
+    benchmark_quality_df: pd.DataFrame | None = None,
 ) -> None:
     """
     Write diagnostic.md alongside recommendation.md.
 
     Aggregates OOS predictions and realized returns across all benchmarks from
-    the elasticnet WFO model (primary signal source), then computes:
+    the deployed inverse-variance ensemble, then computes:
 
     - Campbell-Thompson OOS R² (model vs. naive historical mean)
     - Newey-West HAC-adjusted Spearman IC (accounts for overlapping return windows)
-    - Per-benchmark health table (IC, hit rate, n_obs, status flag)
+    - Clark-West adjusted predictive-value diagnostics
+    - Per-benchmark health table from ensemble OOS predictions
 
     Args:
         out_dir:                Output directory (YYYY-MM folder).
@@ -2182,63 +2374,23 @@ def _write_diagnostic_report(
     path = out_dir / "diagnostic.md"
 
     nw_lags = target_horizon_months - 1  # Newey-West overlap lags (5 for 6M)
-
-    # ------------------------------------------------------------------
-    # Aggregate y_true / y_hat across benchmarks (elasticnet is primary)
-    # ------------------------------------------------------------------
-    all_dates: list[pd.Timestamp] = []
-    all_y_true: list[float] = []
-    all_y_hat: list[float] = []
-
-    per_benchmark_rows: list[dict] = []
-
-    for etf, ens_result in ensemble_results.items():
-        # Prefer elasticnet; fall back to first available model
-        model_result = ens_result.model_results.get(
-            "elasticnet",
-            next(iter(ens_result.model_results.values()), None),
-        )
-        if model_result is None or len(model_result.folds) == 0:
-            continue
-
-        y_true = model_result.y_true_all
-        y_hat = model_result.y_hat_all
-        dates = model_result.test_dates_all
-
-        if len(y_true) < 2:
-            continue
-
-        all_dates.extend(dates.tolist())
-        all_y_true.extend(y_true.tolist())
-        all_y_hat.extend(y_hat.tolist())
-
-        # Per-benchmark IC and hit rate
-        from scipy.stats import spearmanr as _spearmanr
-        ic_val, _ = _spearmanr(y_true, y_hat)
-        hit = float(np.mean(np.sign(y_true) == np.sign(y_hat)))
-        n_obs = len(y_true)
-
-        ic_flag = _flag(ic_val, config.DIAG_MIN_IC, 0.03)
-        hr_flag = _flag(hit, config.DIAG_MIN_HIT_RATE, 0.52)
-        per_benchmark_rows.append({
-            "benchmark": etf,
-            "n_obs": n_obs,
-            "ic": ic_val,
-            "hit_rate": hit,
-            "ic_flag": ic_flag,
-            "hr_flag": hr_flag,
-        })
+    agg_predicted, agg_realized, computed_quality_df = _build_benchmark_quality_frame(
+        ensemble_results=ensemble_results,
+        target_horizon_months=target_horizon_months,
+    )
+    if benchmark_quality_df is None:
+        benchmark_quality_df = computed_quality_df
 
     # ------------------------------------------------------------------
     # Aggregate metrics
     # ------------------------------------------------------------------
-    if len(all_y_true) < 4:
+    if len(agg_realized) < 4:
         # Not enough data — write a minimal report
         lines = [
             f"# PGR Diagnostic Report — {as_of.strftime('%B %Y')}",
             "",
             "> ⚠️ Insufficient OOS observations for aggregate diagnostics "
-            "(need ≥ 4, got {len(all_y_true)}).",
+            f"(need ≥ 4, got {len(agg_realized)}).",
             "",
             "*Generated by `scripts/monthly_decision.py`*",
         ]
@@ -2246,22 +2398,34 @@ def _write_diagnostic_report(
         print(f"  Wrote {path} (insufficient data)")
         return
 
-    agg_predicted = pd.Series(all_y_hat, index=pd.DatetimeIndex(all_dates))
-    agg_realized = pd.Series(all_y_true, index=pd.DatetimeIndex(all_dates))
-    agg_predicted, agg_realized = agg_predicted.align(agg_realized, join="inner")
-
-    oos_r2 = compute_oos_r_squared(agg_predicted, agg_realized)
-    nw_ic, nw_pval = compute_newey_west_ic(agg_predicted, agg_realized, lags=nw_lags)
-    agg_hit = float(np.mean(
-        np.sign(agg_realized.values) == np.sign(agg_predicted.values)
-    ))
-    n_agg = len(agg_realized)
+    aggregate_summary = summarize_prediction_diagnostics(
+        agg_predicted,
+        agg_realized,
+        target_horizon_months=target_horizon_months,
+    )
+    oos_r2 = float(aggregate_summary["oos_r2"])
+    nw_ic = float(aggregate_summary["nw_ic"])
+    nw_pval = float(aggregate_summary["nw_p_value"])
+    agg_hit = float(aggregate_summary["hit_rate"])
+    cw_t_stat = float(aggregate_summary["cw_t_stat"])
+    cw_p_value = float(aggregate_summary["cw_p_value"])
+    n_agg = int(aggregate_summary["n_obs"])
 
     r2_flag = _flag(oos_r2, config.DIAG_MIN_OOS_R2, 0.005)
     ic_flag_agg = _flag(nw_ic, config.DIAG_MIN_IC, 0.03)
     hr_flag_agg = _flag(agg_hit, config.DIAG_MIN_HIT_RATE, 0.52)
     sig_marker = "✅ p < 0.05" if (not np.isnan(nw_pval) and nw_pval < 0.05) else (
         "⚠️ p < 0.10" if (not np.isnan(nw_pval) and nw_pval < 0.10) else "❌ not sig."
+    )
+    cw_marker = "? p < 0.05" if (not np.isnan(cw_p_value) and cw_p_value < 0.05) else (
+        "?? p < 0.10" if (not np.isnan(cw_p_value) and cw_p_value < 0.10) else "? not sig."
+    )
+
+    sig_marker = "\u2705 p < 0.05" if (not np.isnan(nw_pval) and nw_pval < 0.05) else (
+        "\u26a0\ufe0f p < 0.10" if (not np.isnan(nw_pval) and nw_pval < 0.10) else "\u274c not sig."
+    )
+    cw_marker = "\u2705 p < 0.05" if (not np.isnan(cw_p_value) and cw_p_value < 0.05) else (
+        "\u26a0\ufe0f p < 0.10" if (not np.isnan(cw_p_value) and cw_p_value < 0.10) else "\u274c not sig."
     )
 
     # ------------------------------------------------------------------
@@ -2420,6 +2584,8 @@ def _write_diagnostic_report(
         f"| OOS R² (Campbell-Thompson) | {oos_r2:.4f} ({oos_r2:.2%}) | {r2_flag} | ≥ 2.00% |",
         f"| IC (Newey-West HAC) | {nw_ic:.4f} | {ic_flag_agg} | ≥ 0.07 |",
         f"| IC significance | {nw_pval:.4f} | {sig_marker} | p < 0.05 |",
+        f"| Clark-West t-stat | {cw_t_stat:.4f} | {cw_marker} | p < 0.05 |",
+        f"| Clark-West p-value | {cw_p_value:.4f} | {cw_marker} | p < 0.05 |",
         f"| Hit Rate | {agg_hit:.1%} | {hr_flag_agg} | ≥ 55.0% |",
         f"| CPCV Positive Paths | {cpcv_value} | {cpcv_status} | {cpcv_threshold} |",
         "",
@@ -2539,29 +2705,36 @@ def _write_diagnostic_report(
         "",
         "## Per-Benchmark Health",
         "",
-        "| Benchmark | Description | N OOS | IC | IC | Hit Rate | HR |",
-        "|-----------|-------------|-------|----|----|-----------|----|",
+        "| Benchmark | Description | N OOS | OOS R² | NW IC | Hit Rate | CW t | CW p |",
+        "|-----------|-------------|-------|--------|-------|----------|------|------|",
     ]
 
-    for row in sorted(per_benchmark_rows, key=lambda r: r["benchmark"]):
-        desc = _ETF_DESCRIPTIONS.get(row["benchmark"], row["benchmark"])
+    benchmark_rows = (
+        benchmark_quality_df.to_dict("records")
+        if benchmark_quality_df is not None and not benchmark_quality_df.empty
+        else []
+    )
+    for row in benchmark_rows:
+        desc = _ETF_DESCRIPTIONS.get(str(row["benchmark"]), str(row["benchmark"]))
         lines.append(
             f"| {row['benchmark']} | {desc} | {row['n_obs']} "
-            f"| {row['ic']:.4f} | {row['ic_flag']} "
-            f"| {row['hit_rate']:.1%} | {row['hr_flag']} |"
+            f"| {row['oos_r2']:.2%} | {row['nw_ic']:.4f} "
+            f"| {row['hit_rate']:.1%} | {row['cw_t_stat']:.4f} | {row['cw_p_value']:.4f} |"
         )
 
     # Summary counts
-    n_ok_ic = sum(1 for r in per_benchmark_rows if r["ic_flag"] == "✅")
-    n_warn_ic = sum(1 for r in per_benchmark_rows if r["ic_flag"] == "⚠️")
-    n_fail_ic = sum(1 for r in per_benchmark_rows if r["ic_flag"] == "❌")
-    n_ok_hr = sum(1 for r in per_benchmark_rows if r["hr_flag"] == "✅")
+    n_ok_ic = sum(1 for r in benchmark_rows if r["ic_flag"] == "✅")
+    n_warn_ic = sum(1 for r in benchmark_rows if r["ic_flag"] == "⚠️")
+    n_fail_ic = sum(1 for r in benchmark_rows if r["ic_flag"] == "❌")
+    n_ok_hr = sum(1 for r in benchmark_rows if r["hr_flag"] == "✅")
+    n_ok_cw = sum(1 for r in benchmark_rows if float(r["cw_p_value"]) < 0.05)
 
     lines += [
         "",
         f"**IC summary:** {n_ok_ic} ✅  {n_warn_ic} ⚠️  {n_fail_ic} ❌  "
-        f"(of {len(per_benchmark_rows)} benchmarks)  ",
-        f"**Hit rate ✅:** {n_ok_hr}/{len(per_benchmark_rows)} benchmarks above 55% threshold  ",
+        f"(of {len(benchmark_rows)} benchmarks)  ",
+        f"**Hit rate ✅:** {n_ok_hr}/{len(benchmark_rows)} benchmarks above 55% threshold  ",
+        f"**Clark-West ✅:** {n_ok_cw}/{len(benchmark_rows)} benchmarks with p < 0.05  ",
         "",
         "---",
         "",
@@ -2571,6 +2744,7 @@ def _write_diagnostic_report(
         "|--------|------|----------|---------|--------|",
         "| OOS R² | > 2% | 0.5–2% | < 0% | Campbell & Thompson (2008) |",
         "| Mean IC | > 0.07 | 0.03–0.07 | < 0.03 | Harvey et al. (2016) |",
+        "| Clark-West | p < 0.05 | p < 0.10 | ≥ 0.10 | Clark & West (2007) |",
         "| Hit Rate | > 55% | 52–55% | < 52% | Industry consensus |",
         "| CPCV +paths | ≥ 19/28 | 14–18/28 | < 14/28 | López de Prado (2018) |",
         "| PBO | < 15% | 15–40% | > 40% | Bailey et al. (2014) |",
@@ -2668,9 +2842,20 @@ def main(
                 f"{ci_hi_med:+.2%}",
             )
 
-    # Step 3: Compute consensus
-    consensus, mean_pred, mean_ic, mean_hr, mean_prob, confidence_tier = _consensus_signal(signals)
     aggregate_health = _compute_aggregate_health(ensemble_results, target_horizon_months=6)
+    # Step 3: Compute consensus
+    (
+        consensus,
+        mean_pred,
+        mean_ic,
+        mean_hr,
+        mean_prob,
+        confidence_tier,
+    ), consensus_shadow_df = _resolve_live_consensus(
+        signals,
+        aggregate_health,
+        diagnostics.get("representative_cpcv"),
+    )
     recommendation_mode = _determine_recommendation_mode(
         consensus,
         mean_pred,
@@ -2688,8 +2873,8 @@ def main(
     fallback_live_summary = SnapshotSummary(
         label="live",
         as_of=as_of,
-        candidate_name="production_4_model_ensemble",
-        policy_name="current_production_mapping",
+        candidate_name="production_quality_weighted_consensus",
+        policy_name="quality_weighted_consensus_v74",
         consensus=consensus,
         confidence_tier=confidence_tier,
         recommendation_mode=str(recommendation_mode["label"]),
@@ -2724,7 +2909,7 @@ def main(
             target_horizon_months=6,
         )
     active_recommendation_mode = recommendation_mode
-    recommendation_layer_label = "Live production recommendation layer"
+    recommendation_layer_label = "Live production recommendation layer (quality-weighted consensus)"
     if layer_mode == "live_with_shadow":
         recommendation_layer_label = (
             "Live production recommendation layer + v22 visible cross-check + v13 simpler-baseline cross-check"
@@ -2761,6 +2946,15 @@ def main(
         print(f"  Aggregate OOS R^2: {aggregate_health['oos_r2']:.2%}")
     print(f"  Recommendation mode: {active_recommendation_mode['label']}")
     print(f"  Sell %: {sell_pct:.0%}")
+    if consensus_shadow_df is not None and not consensus_shadow_df.empty:
+        shadow_row = consensus_shadow_df[~consensus_shadow_df["is_live_path"]]
+        if not shadow_row.empty:
+            row = shadow_row.iloc[0]
+            print(
+                "  Shadow cross-check: "
+                f"{row['recommendation_mode']} / sell {float(row['recommended_sell_pct']):.0%} / "
+                f"{float(row['mean_predicted_return']):+.2%}"
+            )
     if shadow_summary is not None:
         print(
             "  Visible cross-check: "
@@ -2816,6 +3010,7 @@ def main(
         recommendation_mode=active_recommendation_mode,
         live_summary=live_summary,
         shadow_summary=shadow_summary,
+        consensus_shadow_df=consensus_shadow_df,
         existing_holdings=existing_holdings,
         redeploy_buckets=redeploy_buckets,
         redeploy_portfolio=redeploy_portfolio,
@@ -2867,7 +3062,17 @@ def main(
         conformal_coverage_summary=conformal_coverage_summary,
         importance_stability=importance_stability,
         vif_series=diagnostics.get("vif_series"),
+        benchmark_quality_df=(
+            aggregate_health.get("benchmark_quality_df")
+            if aggregate_health is not None
+            else None
+        ),
     )
+    _write_benchmark_quality_csv(
+        out_dir,
+        aggregate_health.get("benchmark_quality_df") if aggregate_health is not None else None,
+    )
+    _write_consensus_shadow_csv(out_dir, consensus_shadow_df)
 
     # Step 5.1 (P2.7): Calibration reliability diagram
     _plot_calibration_curve(out_dir, cal_probs, cal_outcomes, cal_result)
@@ -2919,6 +3124,18 @@ def main(
             manifest_warnings.append(
                 "The v13 simpler-baseline cross-check suggests a different sell percentage."
             )
+    if consensus_shadow_df is not None and not consensus_shadow_df.empty:
+        shadow_rows = consensus_shadow_df[~consensus_shadow_df["is_live_path"]]
+        if not shadow_rows.empty:
+            shadow_row = shadow_rows.iloc[0]
+            if str(shadow_row["recommendation_mode"]) != str(recommendation_mode["label"]):
+                manifest_warnings.append(
+                    "The consensus cross-check disagrees with the live recommendation mode."
+                )
+            elif abs(float(shadow_row["recommended_sell_pct"]) - float(recommendation_mode["sell_pct"])) > 1e-9:
+                manifest_warnings.append(
+                    "The consensus cross-check suggests a different sell percentage."
+                )
 
     manifest = build_run_manifest(
         workflow_name="monthly_decision",
@@ -2932,6 +3149,8 @@ def main(
             str(out_dir / "recommendation.md"),
             str(out_dir / "diagnostic.md"),
             str(out_dir / "signals.csv"),
+            str(out_dir / "benchmark_quality.csv"),
+            str(out_dir / "consensus_shadow.csv"),
         ],
         artifact_classification="production",
         cwd=str(Path(__file__).parent.parent),
@@ -2967,3 +3186,5 @@ if __name__ == "__main__":
         dry_run=args.dry_run,
         skip_fred=args.skip_fred,
     )
+
+

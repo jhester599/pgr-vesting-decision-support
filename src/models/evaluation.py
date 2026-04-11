@@ -450,6 +450,7 @@ def evaluate_binary_wfo_model(
 
 def reconstruct_ensemble_oos_predictions(
     ens_result: EnsembleWFOResult,
+    shrinkage_alpha: float | None = None,
 ) -> tuple[pd.Series, pd.Series]:
     """Rebuild inverse-variance ensemble OOS predictions from component folds."""
     model_results = ens_result.model_results
@@ -486,7 +487,7 @@ def reconstruct_ensemble_oos_predictions(
 
         if fold_y_true is not None and fold_y_hat is not None:
             fold_y_hat = np.asarray(
-                apply_prediction_shrinkage(fold_y_hat),
+                apply_prediction_shrinkage(fold_y_hat, alpha=shrinkage_alpha),
                 dtype=float,
             )
             predictions.extend(fold_y_hat.tolist())

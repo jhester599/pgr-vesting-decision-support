@@ -90,7 +90,29 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
     monkeypatch.setattr(
         monthly_decision,
         "_compute_aggregate_health",
-        lambda *args, **kwargs: {"oos_r2": 0.031, "nw_ic": 0.081, "agg_hit": 0.57},
+        lambda *args, **kwargs: {
+            "oos_r2": 0.031,
+            "nw_ic": 0.081,
+            "agg_hit": 0.57,
+            "cw_t_stat": 2.15,
+            "cw_p_value": 0.04,
+            "benchmark_quality_df": pd.DataFrame(
+                {
+                    "benchmark": ["VOO", "BND"],
+                    "n_obs": [24, 24],
+                    "oos_r2": [0.04, 0.02],
+                    "nw_ic": [0.08, 0.07],
+                    "nw_p_value": [0.03, 0.04],
+                    "hit_rate": [0.58, 0.56],
+                    "cw_t_stat": [2.20, 2.05],
+                    "cw_p_value": [0.03, 0.04],
+                    "cw_mean_adjusted_differential": [0.01, 0.01],
+                    "r2_flag": ["✅", "✅"],
+                    "ic_flag": ["✅", "✅"],
+                    "hr_flag": ["✅", "✅"],
+                }
+            ),
+        },
     )
     monkeypatch.setattr(monthly_decision, "_build_provisional_vest_scenario", lambda *args, **kwargs: None)
     monkeypatch.setattr(monthly_decision, "_load_previous_decision_summary", lambda *args, **kwargs: None)
@@ -135,10 +157,11 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
         conformal_coverage_summary=None,
         importance_stability=None,
         vif_series=None,
+        benchmark_quality_df=None,
     ) -> None:
         del as_of, ensemble_results, target_horizon_months, cal_result, signals
         del obs_feature_report, representative_cpcv, conformal_coverage_summary
-        del importance_stability, vif_series
+        del importance_stability, vif_series, benchmark_quality_df
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "diagnostic.md").write_text("# Diagnostic Stub\n", encoding="utf-8")
 
@@ -149,17 +172,22 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
     recommendation_path = out_dir / "recommendation.md"
     signals_path = out_dir / "signals.csv"
     diagnostic_path = out_dir / "diagnostic.md"
+    benchmark_quality_path = out_dir / "benchmark_quality.csv"
+    consensus_shadow_path = out_dir / "consensus_shadow.csv"
     manifest_path = out_dir / "run_manifest.json"
 
     assert recommendation_path.exists()
     assert signals_path.exists()
     assert diagnostic_path.exists()
+    assert benchmark_quality_path.exists()
+    assert consensus_shadow_path.exists()
     assert manifest_path.exists()
 
     recommendation_text = recommendation_path.read_text(encoding="utf-8")
     assert "PGR Monthly Decision Report" in recommendation_text
     assert "## Data Freshness" in recommendation_text
     assert "## Consensus Signal" in recommendation_text
+    assert "## Consensus Shadow Evaluation" in recommendation_text
     assert "## Model Health" in recommendation_text
     assert "Rolling 12M IC" in recommendation_text
     assert "UNDERPERFORM" in recommendation_text
@@ -167,10 +195,20 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
     signals_df = pd.read_csv(signals_path)
     assert {"benchmark", "predicted_relative_return", "signal"}.issubset(signals_df.columns)
     assert len(signals_df) == 2
+    quality_df = pd.read_csv(benchmark_quality_path)
+    assert {"benchmark", "cw_t_stat", "cw_p_value"}.issubset(quality_df.columns)
+    assert len(quality_df) == 2
+    consensus_shadow_df = pd.read_csv(consensus_shadow_path)
+    assert {"variant", "recommendation_mode", "recommended_sell_pct"}.issubset(
+        consensus_shadow_df.columns
+    )
+    assert len(consensus_shadow_df) == 2
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest["workflow_name"] == "monthly_decision"
     assert any(output.endswith("recommendation.md") for output in manifest["outputs"])
+    assert any(output.endswith("benchmark_quality.csv") for output in manifest["outputs"])
+    assert any(output.endswith("consensus_shadow.csv") for output in manifest["outputs"])
     assert any(
         "Trailing conformal coverage deviates materially from nominal" in warning
         for warning in manifest["warnings"]

@@ -70,6 +70,12 @@ class _WFOResultStub:
             all_dates.extend(fold._test_dates)
         return pd.DatetimeIndex(all_dates)
 
+    @property
+    def mean_absolute_error(self) -> float:
+        if not self.folds:
+            return float("nan")
+        return float(np.mean(np.abs(self.y_true_all - self.y_hat_all)))
+
 
 @dataclass
 class _EnsembleWFOResultStub:
@@ -223,6 +229,12 @@ class TestWriteDiagnosticReport:
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
         assert "Newey-West" in content
 
+    def test_report_contains_clark_west(self, tmp_path: Path) -> None:
+        ensemble = _make_ensemble_results(n_obs=40)
+        _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
+        content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
+        assert "Clark-West" in content
+
     def test_report_contains_per_benchmark_table(self, tmp_path: Path) -> None:
         ensemble = _make_ensemble_results(n_obs=40, benchmarks=["VOO", "VTI", "VGT"])
         _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
@@ -341,12 +353,11 @@ class TestWriteDiagnosticReport:
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
         assert "11" in content  # 12 - 1 = 11 lags
 
-    def test_elasticnet_preferred_over_ridge(self, tmp_path: Path) -> None:
-        """When both elasticnet and ridge results exist, elasticnet is used."""
+    def test_multiple_models_use_ensemble_reconstruction(self, tmp_path: Path) -> None:
+        """When multiple models exist, the report uses the ensemble OOS path."""
         rng = np.random.default_rng(7)
         dates = pd.date_range("2020-01-31", periods=30, freq="ME")
         y_true = rng.normal(0, 0.1, 30)
-        # elasticnet: high IC;  ridge: near-zero IC
         fold_en = _FoldStub(y_true=y_true, y_hat=0.8 * y_true, _test_dates=list(dates))
         fold_ri = _FoldStub(y_true=y_true, y_hat=rng.normal(0, 0.1, 30), _test_dates=list(dates))
         ens = _EnsembleWFOResultStub(model_results={
@@ -356,21 +367,7 @@ class TestWriteDiagnosticReport:
         ensemble = {"VOO": ens}
         _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
-        # High-IC elasticnet path should produce a ✅ flag
-        assert "✅" in content
-
-    def test_fallback_to_first_model_when_no_elasticnet(self, tmp_path: Path) -> None:
-        """Falls back to first model result when elasticnet key is absent."""
-        rng = np.random.default_rng(9)
-        dates = pd.date_range("2020-01-31", periods=30, freq="ME")
-        y_true = rng.normal(0, 0.1, 30)
-        fold = _FoldStub(y_true=y_true, y_hat=0.7 * y_true, _test_dates=list(dates))
-        ens = _EnsembleWFOResultStub(model_results={
-            "lasso": _WFOResultStub(folds=[fold], benchmark="VTI"),
-        })
-        ensemble = {"VTI": ens}
-        _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
-        assert (tmp_path / "diagnostic.md").exists()
+        assert "VOO" in content
 
     def test_report_includes_trailing_conformal_coverage_summary(self, tmp_path: Path) -> None:
         ensemble = _make_ensemble_results(n_obs=40)
