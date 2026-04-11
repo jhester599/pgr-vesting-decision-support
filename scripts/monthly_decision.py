@@ -72,6 +72,7 @@ from src.models.evaluation import (
     reconstruct_baseline_predictions,
 )
 from src.models.forecast_diagnostics import summarize_prediction_diagnostics
+from src.models.consensus_shadow import build_shadow_consensus_table
 from src.models.policy_metrics import (
     FIXED_POLICIES,
     SIGNAL_POLICIES,
@@ -808,6 +809,47 @@ def _consensus_signal(
     return consensus, mean_pred, mean_ic, mean_hr, mean_prob, confidence_tier
 
 
+def _build_v74_shadow_consensus(
+    signals: pd.DataFrame,
+    aggregate_health: dict | None,
+    representative_cpcv: CPCVResult | None = None,
+) -> pd.DataFrame | None:
+    """Build the v74 quality-weighted shadow consensus comparison table."""
+    if signals.empty or aggregate_health is None:
+        return None
+
+    benchmark_quality_df = aggregate_health.get("benchmark_quality_df")
+    if benchmark_quality_df is None:
+        return None
+
+    shadow_df = build_shadow_consensus_table(
+        signals=signals,
+        benchmark_quality_df=benchmark_quality_df,
+        score_col=config.V74_SHADOW_CONSENSUS_SCORE_COL,
+        lambda_mix=config.V74_SHADOW_CONSENSUS_LAMBDA_MIX,
+    )
+    if shadow_df.empty:
+        return None
+
+    enriched_rows: list[dict[str, object]] = []
+    for row in shadow_df.to_dict("records"):
+        recommendation_mode = _determine_recommendation_mode(
+            str(row["consensus"]),
+            float(row["mean_predicted_return"]),
+            float(row["mean_ic"]),
+            float(row["mean_hit_rate"]),
+            aggregate_health,
+            representative_cpcv,
+        )
+        enriched = dict(row)
+        enriched["recommendation_mode"] = str(recommendation_mode["label"])
+        enriched["recommended_sell_pct"] = float(recommendation_mode["sell_pct"])
+        enriched["is_live_path"] = bool(row["variant"] == "equal_weight")
+        enriched_rows.append(enriched)
+
+    return pd.DataFrame(enriched_rows)
+
+
 def _build_benchmark_quality_frame(
     ensemble_results: dict,
     target_horizon_months: int = 6,
@@ -1499,6 +1541,7 @@ def _write_recommendation_md(
     recommendation_mode: dict[str, str | float] | None = None,
     live_summary: SnapshotSummary | None = None,
     shadow_summary: SnapshotSummary | None = None,
+    consensus_shadow_df: pd.DataFrame | None = None,
     existing_holdings: list[dict[str, object]] | None = None,
     redeploy_buckets: list[dict[str, object]] | None = None,
     redeploy_portfolio: dict[str, object] | None = None,
@@ -1614,6 +1657,38 @@ def _write_recommendation_md(
             f"ECE = {cal_result.ece:.1%} "
             f"[95% CI: {cal_result.ece_ci_lower:.1%}–{cal_result.ece_ci_upper:.1%}].",
         ]
+
+    if consensus_shadow_df is not None and not consensus_shadow_df.empty:
+        lines += [
+            "",
+            "---",
+            "",
+            "## Consensus Shadow Evaluation",
+            "",
+            "> v74 monitors a quality-weighted cross-benchmark consensus in shadow mode.",
+            "> It is reported for promotion evaluation only and does not change the live recommendation above.",
+            "",
+            "| Variant | Consensus | Mean Pred. Return | Mean IC | Mean Hit Rate | P(Outperform) | Mode | Sell % | Top Weight |",
+            "|---------|-----------|-------------------|---------|---------------|---------------|------|--------|------------|",
+        ]
+        for row in consensus_shadow_df.to_dict("records"):
+            variant_label = (
+                "Live equal-weight"
+                if bool(row.get("is_live_path"))
+                else "v74 quality-weighted"
+            )
+            top_weight = (
+                f"{row.get('top_benchmark', 'n/a')} ({float(row.get('top_benchmark_weight', 0.0)):.1%})"
+                if row.get("top_benchmark")
+                else "n/a"
+            )
+            lines.append(
+                f"| {variant_label} | {row['consensus']} ({row['confidence_tier']}) | "
+                f"{float(row['mean_predicted_return']):+.2%} | {float(row['mean_ic']):.4f} | "
+                f"{float(row['mean_hit_rate']):.1%} | {float(row['mean_prob_outperform']):.1%} | "
+                f"{row['recommendation_mode']} | {float(row['recommended_sell_pct']):.0%} | "
+                f"{top_weight} |"
+            )
 
     lines += [
         "",
@@ -1953,6 +2028,38 @@ def _write_benchmark_quality_csv(
         pd.DataFrame(columns=columns).to_csv(path, index=False)
     else:
         benchmark_quality_df.loc[:, columns].to_csv(path, index=False)
+    print(f"  Wrote {path}")
+
+
+def _write_consensus_shadow_csv(
+    out_dir: Path,
+    consensus_shadow_df: pd.DataFrame | None,
+) -> None:
+    """Write the v74 shadow consensus comparison table to CSV."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / "consensus_shadow.csv"
+    columns = [
+        "variant",
+        "n_benchmarks",
+        "consensus",
+        "mean_predicted_return",
+        "mean_ic",
+        "mean_hit_rate",
+        "mean_prob_outperform",
+        "confidence_tier",
+        "weight_mode",
+        "score_col",
+        "lambda_mix",
+        "top_benchmark",
+        "top_benchmark_weight",
+        "recommendation_mode",
+        "recommended_sell_pct",
+        "is_live_path",
+    ]
+    if consensus_shadow_df is None or consensus_shadow_df.empty:
+        pd.DataFrame(columns=columns).to_csv(path, index=False)
+    else:
+        consensus_shadow_df.loc[:, columns].to_csv(path, index=False)
     print(f"  Wrote {path}")
 
 
@@ -2701,6 +2808,11 @@ def main(
         aggregate_health,
         diagnostics.get("representative_cpcv"),
     )
+    consensus_shadow_df = _build_v74_shadow_consensus(
+        signals,
+        aggregate_health,
+        diagnostics.get("representative_cpcv"),
+    )
     sell_pct = float(recommendation_mode["sell_pct"])
     mean_cal = (
         float(signals["calibrated_prob_outperform"].mean())
@@ -2783,6 +2895,17 @@ def main(
         print(f"  Aggregate OOS R^2: {aggregate_health['oos_r2']:.2%}")
     print(f"  Recommendation mode: {active_recommendation_mode['label']}")
     print(f"  Sell %: {sell_pct:.0%}")
+    if consensus_shadow_df is not None and not consensus_shadow_df.empty:
+        shadow_quality = consensus_shadow_df[
+            consensus_shadow_df["variant"] == "quality_weighted"
+        ]
+        if not shadow_quality.empty:
+            row = shadow_quality.iloc[0]
+            print(
+                "  v74 shadow consensus: "
+                f"{row['recommendation_mode']} / sell {float(row['recommended_sell_pct']):.0%} / "
+                f"{float(row['mean_predicted_return']):+.2%}"
+            )
     if shadow_summary is not None:
         print(
             "  Visible cross-check: "
@@ -2838,6 +2961,7 @@ def main(
         recommendation_mode=active_recommendation_mode,
         live_summary=live_summary,
         shadow_summary=shadow_summary,
+        consensus_shadow_df=consensus_shadow_df,
         existing_holdings=existing_holdings,
         redeploy_buckets=redeploy_buckets,
         redeploy_portfolio=redeploy_portfolio,
@@ -2899,6 +3023,7 @@ def main(
         out_dir,
         aggregate_health.get("benchmark_quality_df") if aggregate_health is not None else None,
     )
+    _write_consensus_shadow_csv(out_dir, consensus_shadow_df)
 
     # Step 5.1 (P2.7): Calibration reliability diagram
     _plot_calibration_curve(out_dir, cal_probs, cal_outcomes, cal_result)
@@ -2950,6 +3075,20 @@ def main(
             manifest_warnings.append(
                 "The v13 simpler-baseline cross-check suggests a different sell percentage."
             )
+    if consensus_shadow_df is not None and not consensus_shadow_df.empty:
+        shadow_quality = consensus_shadow_df[
+            consensus_shadow_df["variant"] == "quality_weighted"
+        ]
+        if not shadow_quality.empty:
+            shadow_row = shadow_quality.iloc[0]
+            if str(shadow_row["recommendation_mode"]) != str(recommendation_mode["label"]):
+                manifest_warnings.append(
+                    "The v74 quality-weighted consensus shadow path disagrees with the live recommendation mode."
+                )
+            elif abs(float(shadow_row["recommended_sell_pct"]) - float(recommendation_mode["sell_pct"])) > 1e-9:
+                manifest_warnings.append(
+                    "The v74 quality-weighted consensus shadow path suggests a different sell percentage."
+                )
 
     manifest = build_run_manifest(
         workflow_name="monthly_decision",
@@ -2964,6 +3103,7 @@ def main(
             str(out_dir / "diagnostic.md"),
             str(out_dir / "signals.csv"),
             str(out_dir / "benchmark_quality.csv"),
+            str(out_dir / "consensus_shadow.csv"),
         ],
         artifact_classification="production",
         cwd=str(Path(__file__).parent.parent),

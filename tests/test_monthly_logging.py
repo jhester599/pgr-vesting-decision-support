@@ -202,3 +202,4 @@ def test_main_logs_cross_check_fallback_and_completes(
     assert "Promoted v22 cross-check build failed" in caplog.text
     assert "RuntimeError: cross-check boom" in caplog.text
     assert (out_dir / "recommendation.md").exists()
+    assert (out_dir / "consensus_shadow.csv").exists()
