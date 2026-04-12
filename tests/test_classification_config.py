@@ -40,3 +40,18 @@ def test_contextual_benchmarks_subset_of_primary_forecast() -> None:
         assert ticker in PRIMARY_FORECAST_UNIVERSE, (
             f"{ticker} in CONTEXTUAL_CLASSIFIER_BENCHMARKS but not in PRIMARY_FORECAST_UNIVERSE"
         )
+
+
+def test_investable_benchmarks_subset_of_primary_forecast() -> None:
+    for ticker in INVESTABLE_CLASSIFIER_BENCHMARKS:
+        assert ticker in PRIMARY_FORECAST_UNIVERSE, (
+            f"{ticker} in INVESTABLE_CLASSIFIER_BENCHMARKS but not in PRIMARY_FORECAST_UNIVERSE"
+        )
+
+
+def test_investable_and_contextual_partition_primary_forecast() -> None:
+    union = set(INVESTABLE_CLASSIFIER_BENCHMARKS) | set(CONTEXTUAL_CLASSIFIER_BENCHMARKS)
+    assert union == set(PRIMARY_FORECAST_UNIVERSE), (
+        f"Investable + contextual does not equal PRIMARY_FORECAST_UNIVERSE. "
+        f"Diff: {union.symmetric_difference(set(PRIMARY_FORECAST_UNIVERSE))}"
+    )

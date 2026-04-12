@@ -269,7 +269,7 @@ PRIMARY_FORECAST_UNIVERSE: list[str] = [
 # ---------------------------------------------------------------------------
 
 # Investable benchmarks for the primary portfolio-weighted classifier aggregate.
-# Matches the v27 redeploy universe. VGT and VIG (SCHD proxy) are added in v124.
+# Matches the v27 redeploy universe. VGT and VIG are added in v124.
 INVESTABLE_CLASSIFIER_BENCHMARKS: list[str] = ["VOO", "VXUS", "VWO", "BND"]
 
 # Fixed base weights renormalized from balanced_pref_95_5 over the v123 investable set.
@@ -279,7 +279,7 @@ INVESTABLE_CLASSIFIER_BASE_WEIGHTS: dict[str, float] = {
     "VOO": round(0.40 / 0.65, 8),   # ≈ 0.61538462
     "VXUS": round(0.10 / 0.65, 8),  # ≈ 0.15384615
     "VWO": round(0.10 / 0.65, 8),   # ≈ 0.15384615
-    "BND": 1.0 - round(0.40 / 0.65, 8) - round(0.10 / 0.65, 8) - round(0.10 / 0.65, 8),  # absorbs rounding
+    "BND": 1.0 - round(0.40 / 0.65, 8) - round(0.10 / 0.65, 8) - round(0.10 / 0.65, 8),  # residual; guarantees sum == 1.0
 }
 
 # Contextual (non-investable) benchmarks retained for regime diagnostics.
