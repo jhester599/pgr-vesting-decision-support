@@ -78,3 +78,56 @@ def test_classifier_history_append_round_trip(tmp_path: Path) -> None:
     written = pd.read_csv(path)
     assert len(written) == 1
     assert written.loc[0, "classifier_prob_actionable_sell"] == 0.28
+
+
+# ---------------------------------------------------------------------------
+# Tests for is_contextual column in classification_shadow.csv (Task 4 / v123)
+# ---------------------------------------------------------------------------
+
+from config.features import CONTEXTUAL_CLASSIFIER_BENCHMARKS
+
+
+def test_classification_shadow_columns_includes_is_contextual() -> None:
+    from src.reporting.classification_artifacts import CLASSIFICATION_SHADOW_COLUMNS
+    assert "is_contextual" in CLASSIFICATION_SHADOW_COLUMNS
+
+
+def test_write_classification_shadow_csv_adds_is_contextual_column(
+    tmp_path,
+) -> None:
+    from src.reporting.classification_artifacts import write_classification_shadow_csv
+    import pandas as pd
+
+    detail_df = pd.DataFrame({
+        "benchmark": ["VOO", "VXUS", "VWO", "BND", "GLD", "DBC"],
+        "classifier_raw_prob_actionable_sell": [0.5] * 6,
+        "classifier_prob_actionable_sell": [0.5] * 6,
+        "classifier_history_obs": [200] * 6,
+        "classifier_weight": [0.1] * 6,
+        "classifier_weighted_contribution": [0.05] * 6,
+        "classifier_shadow_tier": ["MODERATE"] * 6,
+    })
+    out_path = write_classification_shadow_csv(tmp_path, detail_df)
+    written = pd.read_csv(out_path)
+    assert "is_contextual" in written.columns
+    contextual_map = written.set_index("benchmark")["is_contextual"]
+    assert not contextual_map["VOO"]
+    assert not contextual_map["VXUS"]
+    assert contextual_map["WO"] if "WO" in contextual_map.index else True
+    assert contextual_map["GLD"]
+    assert contextual_map["DBC"]
+    # All CONTEXTUAL_CLASSIFIER_BENCHMARKS in the df should be True
+    for ticker in ["GLD", "DBC"]:
+        assert contextual_map[ticker] == True
+
+
+def test_write_classification_shadow_csv_empty_df_has_is_contextual_column(
+    tmp_path,
+) -> None:
+    from src.reporting.classification_artifacts import write_classification_shadow_csv
+    import pandas as pd
+
+    out_path = write_classification_shadow_csv(tmp_path, None)
+    written = pd.read_csv(out_path)
+    assert "is_contextual" in written.columns
+    assert len(written) == 0
