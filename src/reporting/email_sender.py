@@ -388,11 +388,28 @@ def build_email_summary(
     lines = [
         "PGR Monthly Decision Summary",
         "",
-        f"Recommendation: {_recommendation_headline(body)}",
+        (
+            f"Recommendation: {_summary_lookup(summary_payload, 'recommendation', 'decision_headline')}"
+            if _summary_lookup(summary_payload, "recommendation", "decision_headline")
+            else f"Recommendation: {_recommendation_headline(body)}"
+        ),
+        (
+            "Hold vs sell: "
+            f"{_summary_lookup(summary_payload, 'recommendation', 'hold_vs_sell_label')}"
+            if _summary_lookup(summary_payload, "recommendation", "hold_vs_sell_label")
+            else ""
+        ),
+        (
+            "Actionability: "
+            f"{_summary_lookup(summary_payload, 'recommendation', 'actionability_label')}"
+            if _summary_lookup(summary_payload, "recommendation", "actionability_label")
+            else ""
+        ),
         f"Model view: {signal}",
         f"Recommendation mode: {mode}",
         f"Predicted 6M relative return: {predicted}",
     ]
+    lines = [line for line in lines if line]
     if exec_lines:
         lines += ["", "What's changed:"]
         lines.extend(f"- {line}" for line in exec_lines)
@@ -436,6 +453,19 @@ def build_email_summary(
             details = row.get("Details", "")
             if details:
                 lines.append(f"  {details}")
+    shadow_gate_overlay = None
+    if isinstance(summary_payload, dict):
+        raw_overlay = summary_payload.get("shadow_gate_overlay")
+        if isinstance(raw_overlay, dict):
+            shadow_gate_overlay = raw_overlay
+    if isinstance(shadow_gate_overlay, dict):
+        lines += ["", "Shadow gate overlay:"]
+        lines.append(
+            f"- {shadow_gate_overlay.get('recommendation_mode', 'n/a')}, "
+            f"sell {float(shadow_gate_overlay.get('recommended_sell_pct', 0.0)):.0%}, "
+            f"{'would change live output' if shadow_gate_overlay.get('would_change') else 'no live change'}"
+        )
+        lines.append(f"- Reason: {shadow_gate_overlay.get('reason', 'n/a')}")
     if redeploy_lines:
         lines += ["", "If redeploying sold exposure:"]
         lines.extend(f"- {line}" for line in redeploy_lines)
@@ -668,6 +698,20 @@ def build_email_html(
         )
     else:
         lead_text = "The model direction and the quality gate both support a prediction-led decision this month."
+    decision_headline = (
+        _summary_lookup(summary_payload, "recommendation", "decision_headline")
+        or _recommendation_headline(body)
+    )
+    actionability_label = _summary_lookup(
+        summary_payload,
+        "recommendation",
+        "actionability_label",
+    )
+    hold_vs_sell_label = _summary_lookup(
+        summary_payload,
+        "recommendation",
+        "hold_vs_sell_label",
+    )
 
     existing_section = ""
     if existing_guidance:
@@ -810,6 +854,25 @@ def build_email_html(
             f"<p style='margin:12px 0 0 0;color:#334155;line-height:1.5;'>{escape(str(classification_shadow.get('interpretation', '')))}</p>"
             "</div>"
         )
+    shadow_gate_overlay = None
+    if isinstance(summary_payload, dict):
+        raw_overlay = summary_payload.get("shadow_gate_overlay")
+        if isinstance(raw_overlay, dict):
+            shadow_gate_overlay = raw_overlay
+
+    agreement_section = (
+        "<div style='margin-top:20px;padding:20px;border:1px solid #dbeafe;border-radius:16px;background:#f8fbff;'>"
+        "<h2 style='margin:0 0 10px 0;font-size:20px;color:#0f172a;'>Agreement panel</h2>"
+        f"<p style='margin:0 0 8px 0;color:#334155;line-height:1.5;'><strong>{escape(decision_headline)}</strong></p>"
+        f"<p style='margin:0 0 8px 0;color:#475569;line-height:1.5;'>{escape(hold_vs_sell_label or '')}</p>"
+        f"<p style='margin:0 0 8px 0;color:#475569;line-height:1.5;'>{escape(actionability_label or '')}</p>"
+        + (
+            f"<p style='margin:0;color:#475569;line-height:1.5;'>Shadow gate overlay: {escape(str(shadow_gate_overlay.get('recommendation_mode', 'n/a')))} / sell {float(shadow_gate_overlay.get('recommended_sell_pct', 0.0)):.0%} ({'would change live output' if shadow_gate_overlay.get('would_change') else 'no live change'}).</p>"
+            if isinstance(shadow_gate_overlay, dict)
+            else ""
+        )
+        + "</div>"
+    )
 
     return (
         "<html><body style='margin:0;padding:0;background:#f3f6fb;font-family:Segoe UI,Arial,sans-serif;color:#0f172a;'>"
@@ -817,7 +880,7 @@ def build_email_html(
         "<div style='background:#ffffff;border-radius:20px;padding:24px 24px 18px 24px;"
         "box-shadow:0 8px 24px rgba(15,23,42,0.08);'>"
         "<p style='margin:0 0 10px 0;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;'>PGR Monthly Decision</p>"
-        f"<h1 style='margin:0 0 10px 0;font-size:28px;line-height:1.2;color:#0f172a;'>{escape(_recommendation_headline(body))}</h1>"
+        f"<h1 style='margin:0 0 10px 0;font-size:28px;line-height:1.2;color:#0f172a;'>{escape(decision_headline)}</h1>"
         f"<div style='margin:0 0 14px 0;'>{mode_badge}</div>"
         f"<p style='margin:0 0 18px 0;font-size:16px;line-height:1.6;color:#334155;'>{lead_text}</p>"
         "<table role='presentation' style='width:100%;border-collapse:separate;border-spacing:12px 12px;'>"
@@ -830,6 +893,7 @@ def build_email_html(
         "</tr></table>"
         f"{confidence_section}"
         f"{classification_section}"
+        f"{agreement_section}"
         "<div style='margin-top:20px;padding:20px;border:1px solid #dbeafe;border-radius:16px;background:#f8fbff;'>"
         "<h2 style='margin:0 0 10px 0;font-size:20px;color:#0f172a;'>What's changed</h2>"
         f"<ul style='margin:0 0 0 20px;padding:0;color:#334155;line-height:1.5;'>{executive_html}</ul>"

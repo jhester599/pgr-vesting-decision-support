@@ -43,16 +43,16 @@ def test_write_dashboard_snapshot_creates_static_html(tmp_path: Path) -> None:
         ),
         consensus_shadow_df=pd.DataFrame(
             {
-                "variant": ["quality_weighted"],
-                "consensus": ["NEUTRAL"],
-                "mean_predicted_return": [-0.0234],
-                "mean_ic": [0.1744],
-                "mean_hit_rate": [0.668],
-                "recommendation_mode": ["DEFER-TO-TAX-DEFAULT"],
-                "recommended_sell_pct": [0.5],
-                "top_benchmark": ["BND"],
-                "top_benchmark_weight": [0.134],
-                "is_live_path": [True],
+                "variant": ["quality_weighted", "equal_weight"],
+                "consensus": ["NEUTRAL", "NEUTRAL"],
+                "mean_predicted_return": [-0.0234, -0.0220],
+                "mean_ic": [0.1744, 0.1680],
+                "mean_hit_rate": [0.668, 0.660],
+                "recommendation_mode": ["DEFER-TO-TAX-DEFAULT", "DEFER-TO-TAX-DEFAULT"],
+                "recommended_sell_pct": [0.5, 0.5],
+                "top_benchmark": ["BND", "VOO"],
+                "top_benchmark_weight": [0.134, 0.125],
+                "is_live_path": [True, False],
             }
         ),
         classification_shadow_summary={
@@ -63,6 +63,11 @@ def test_write_dashboard_snapshot_creates_static_html(tmp_path: Path) -> None:
             "agreement_label": "Aligned",
             "interpretation": "Supports a hold/defer interpretation.",
         },
+        shadow_gate_overlay={
+            "recommendation_mode": "DEFER-TO-TAX-DEFAULT",
+            "recommended_sell_pct": 0.5,
+            "would_change": False,
+        },
     )
 
     assert path.exists()
@@ -70,6 +75,7 @@ def test_write_dashboard_snapshot_creates_static_html(tmp_path: Path) -> None:
     assert "PGR Monthly Snapshot" in html
     assert "Benchmark Quality" in html
     assert "Classification Confidence Check" in html
+    assert "Agreement Panel" in html
     assert "28.4%" in html
     assert "Per-Benchmark Signals" in html
     assert "monthly_summary.json" in html

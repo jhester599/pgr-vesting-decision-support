@@ -31,6 +31,9 @@ The production monthly output now tracks:
 - pooled and per-benchmark Clark-West diagnostics
 - benchmark-level quality exports in `benchmark_quality.csv`
 - live-vs-equal-weight comparison in `consensus_shadow.csv`
+- per-benchmark classifier detail in `classification_shadow.csv`
+- shadow gate comparison in `decision_overlays.csv`
+- append-only classifier history in `results/monthly_decisions/classification_shadow_history.csv`
 - machine-readable top-level state in `monthly_summary.json`
 
 ## Recent Promotion Record
@@ -54,6 +57,12 @@ Recent completed cycles:
   - added `monthly_summary.json`
   - retired the visible equal-weight cross-check from primary surfaces while
     keeping the diagnostic artifact
+- `v102-v117`
+  - archived the April 11 repo-level peer reviews
+  - added classifier shadow artifacts, history logging, and shadow gate overlays
+  - hardened backdated `--as-of` target truncation for monthly simulations
+  - ran bounded veto-style and permission-style classifier gate studies
+  - kept classification as shadow-only pending longer monitoring and stricter promotion gates
 
 Supporting plan documents:
 
@@ -72,6 +81,9 @@ The following remain promising but are not live:
   - classification / directional sidecar
 - `v73`
   - hybrid decision-gating design
+- `v110-v113`
+  - constrained classifier overlay candidates, with Gemini-style veto gating
+    currently the strongest shadow candidate
 
 These remain research-only until they clear a later promotion study.
 
@@ -86,6 +98,8 @@ A candidate should only be promoted when it demonstrates:
 - stable behavior across the repo's existing time-series validation framework
 - acceptable operational complexity and maintainability
 - clear documentation of the change and its reporting consequences
+- acceptable agreement and churn versus the current live recommendation path
+- no material calibration drift once sufficient matured classifier history exists
 
 ## Research vs. Production Labels
 
@@ -110,3 +124,5 @@ The most immediate governance questions are now:
   automation and notification surfaces
 - when the diagnostic-only equal-weight comparison can be further de-emphasized
   or archived
+- whether the shadow-only classifier overlay remains stable enough to justify a
+  later limited production gate candidate

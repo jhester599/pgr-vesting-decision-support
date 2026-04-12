@@ -32,6 +32,22 @@ Warnings:
 
 ---
 
+## Decision At A Glance
+
+- Hold vs Sell: **Hold 50% / Sell 50% of the next vest tranche**
+- Is this month actionable? **No — follow the default tax/diversification rule.**
+- Top-line decision: **Hold 50% / Sell 50% of the next vest tranche. No — follow the default tax/diversification rule.**
+- Shadow classifier probability: **35.2%** (MODERATE)
+
+## Agreement Panel
+
+- Live recommendation: **DEFER-TO-TAX-DEFAULT / sell 50%**
+- Consensus cross-check: **Aligned**
+- Classifier shadow: **Aligned**
+- Shadow gate overlay: **DEFER-TO-TAX-DEFAULT / sell 50%** (no live change)
+
+---
+
 ## Consensus Signal
 
 | Field | Value |
@@ -51,6 +67,23 @@ Warnings:
 > (January and July).  Monthly reports are monitoring tools, not trade signals.
 >
 > **Calibration:** Phase 2 — Platt scaling active (n=1,188 OOS obs).  ECE = 1.1% [95% CI: 1.4%–6.0%].
+
+---
+
+## Classification Confidence Check
+
+> Shadow-only interpretation layer from the v87-v96 classifier research.
+> It does not change the live recommendation or sell percentage.
+
+| Field | Value |
+|-------|-------|
+| Target | actionable_sell_3pct |
+| Construction | Separate benchmark logistic + quality-weighted aggregate |
+| P(Actionable Sell) | 35.2% |
+| Confidence Tier | MODERATE |
+| Classifier Stance | NEUTRAL |
+| Agreement with Live Recommendation | Aligned |
+| Interpretation | Shadow classifier is near its neutral band (35.2%); use it as a low-confidence interpretation layer rather than a decision override. |
 
 ---
 

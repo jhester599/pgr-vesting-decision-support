@@ -117,6 +117,32 @@
 
 ---
 
+## Shadow Gate Overlay
+
+| Field | Value |
+|-------|-------|
+| Variant | gemini_veto_0.50 |
+| Recommendation Mode | DEFER-TO-TAX-DEFAULT |
+| Recommended Sell % | 50% |
+| Would Change Live Output | No |
+| Reason | no regression sell to veto |
+| P(Actionable Sell) | 35.2% |
+
+---
+
+## Classifier Monitoring
+
+| Metric | Value |
+|--------|-------|
+| Matured observations | 0 |
+| Brier score | n/a |
+| Log loss | n/a |
+| ECE (10-bin) | n/a |
+
+> Matured-horizon diagnostics are computed only once the forecast horizon has elapsed.
+
+---
+
 ## Threshold Reference
 
 | Metric | Good | Marginal | Failing | Source |

@@ -28,6 +28,7 @@ try:
         load_pgr_prices as load_pgr_prices_data,
         parse_aggregate_health,
         parse_recommendation_summary,
+        top_level_summary_fields,
     )
 except ImportError:  # pragma: no cover - local Streamlit execution fallback
     from data import (  # type: ignore
@@ -37,6 +38,7 @@ except ImportError:  # pragma: no cover - local Streamlit execution fallback
         load_pgr_prices as load_pgr_prices_data,
         parse_aggregate_health,
         parse_recommendation_summary,
+        top_level_summary_fields,
     )
 
 
@@ -189,6 +191,7 @@ signals = bundle["signals"]
 rec_text = bundle["recommendation_text"]
 benchmark_quality = bundle["benchmark_quality"]
 consensus_shadow = bundle["consensus_shadow"]
+decision_overlays = bundle["decision_overlays"]
 summary_payload = bundle["summary"]
 
 if manifest is None and signals.empty:
@@ -197,6 +200,7 @@ if manifest is None and signals.empty:
 
 health = parse_aggregate_health(rec_text)
 summary = parse_recommendation_summary(rec_text)
+top_level = top_level_summary_fields(summary_payload)
 as_of = (
     _summary_lookup(summary_payload, "as_of_date")
     or (manifest.get("as_of_date", "-") if manifest else "-")
@@ -230,6 +234,22 @@ with tab_current:
     col_left, col_right = st.columns([3, 2])
 
     with col_left:
+        if top_level["decision_headline"] or top_level["hold_vs_sell_label"]:
+            st.subheader("Decision At A Glance")
+            if top_level["decision_headline"]:
+                st.info(str(top_level["decision_headline"]))
+            if top_level["hold_vs_sell_label"] or top_level["actionability_label"]:
+                st.caption(
+                    " | ".join(
+                        part
+                        for part in [
+                            top_level["hold_vs_sell_label"],
+                            top_level["actionability_label"],
+                        ]
+                        if part
+                    )
+                )
+
         st.subheader("Per-Benchmark Signals")
         if not signals.empty:
             st.dataframe(
@@ -274,6 +294,40 @@ with tab_current:
             interpretation = classification_shadow.get("interpretation")
             if interpretation:
                 st.info(str(interpretation))
+
+        overlay = _summary_lookup(summary_payload, "shadow_gate_overlay")
+        if isinstance(summary_payload, dict):
+            overlay = summary_payload.get("shadow_gate_overlay")
+        if not isinstance(overlay, dict) and not decision_overlays.empty:
+            shadow_rows = decision_overlays[
+                decision_overlays["variant"].astype(str) == "shadow_gate"
+            ]
+            if not shadow_rows.empty:
+                overlay = shadow_rows.iloc[0].to_dict()
+        if isinstance(overlay, dict):
+            st.subheader("Shadow Gate Overlay")
+            st.caption(
+                "Shadow-only classifier gate candidate for future promotion review."
+            )
+            overlay_cols = st.columns(4)
+            overlay_cols[0].metric(
+                "Mode",
+                str(overlay.get("recommendation_mode", "-")),
+            )
+            overlay_cols[1].metric(
+                "Sell %",
+                f"{float(overlay.get('recommended_sell_pct', 0.0)):.0%}"
+                if overlay.get("recommended_sell_pct") is not None
+                else "-",
+            )
+            overlay_cols[2].metric(
+                "Would Change",
+                "Yes" if overlay.get("would_change") else "No",
+            )
+            overlay_cols[3].metric(
+                "Reason",
+                str(overlay.get("reason", "-")),
+            )
 
     with col_right:
         st.subheader("PGR Price (1 Year)")

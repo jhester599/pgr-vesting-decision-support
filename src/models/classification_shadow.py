@@ -10,7 +10,11 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
 import config
-from src.processing.feature_engineering import build_feature_matrix_from_db, get_X_y_relative
+from src.processing.feature_engineering import (
+    build_feature_matrix_from_db,
+    get_X_y_relative,
+    truncate_relative_target_for_asof,
+)
 from src.processing.multi_total_return import load_relative_return_matrix
 from src.research.v66_utils import benchmark_quality_weights
 from src.research.v87_utils import (
@@ -47,6 +51,7 @@ class ClassificationShadowSummary:
     agreement_label: str | None
     interpretation: str | None
     benchmark_count: int
+    feature_anchor_date: str | None
     top_supporting_benchmark: str | None
     top_supporting_contribution: float | None
     top_supporting_contribution_label: str | None
@@ -182,6 +187,7 @@ def _empty_summary() -> ClassificationShadowSummary:
         agreement_label=None,
         interpretation=None,
         benchmark_count=0,
+        feature_anchor_date=None,
         top_supporting_benchmark=None,
         top_supporting_contribution=None,
         top_supporting_contribution_label=None,
@@ -202,6 +208,7 @@ def build_classification_shadow_summary(
         return _empty_summary(), pd.DataFrame()
 
     current_features = feature_df.iloc[[-1]].copy()
+    feature_anchor_date = str(pd.Timestamp(current_features.index[0]).date())
     feature_columns = feature_set_from_name(feature_df, FEATURE_SET_NAME)
     benchmarks = list(
         benchmark_quality_df["benchmark"].astype(str).tolist()
@@ -215,6 +222,11 @@ def build_classification_shadow_summary(
         rel_series = load_relative_return_matrix(conn, benchmark, 6)
         if rel_series.empty:
             continue
+        rel_series = truncate_relative_target_for_asof(
+            rel_series,
+            as_of=pd.Timestamp(as_of),
+            horizon_months=6,
+        )
 
         x_base, _ = get_X_y_relative(feature_df, rel_series, drop_na_target=True)
         if x_base.empty:
@@ -309,6 +321,7 @@ def build_classification_shadow_summary(
         agreement_label="Aligned" if agreement else "Mixed",
         interpretation=classification_interpretation(aggregated_probability, stance, tier),
         benchmark_count=int(len(detail_df)),
+        feature_anchor_date=feature_anchor_date,
         top_supporting_benchmark=str(top_row["benchmark"]),
         top_supporting_contribution=float(top_row["classifier_weighted_contribution"]),
         top_supporting_contribution_label=_format_pct(

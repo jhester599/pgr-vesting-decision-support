@@ -21,10 +21,16 @@ Current monthly production artifacts include:
 - `signals.csv`
 - `benchmark_quality.csv`
 - `consensus_shadow.csv`
+- `classification_shadow.csv`
+- `decision_overlays.csv`
 - `dashboard.html`
 - `monthly_summary.json`
 - `run_manifest.json`
 - `decision_log.md`
+
+Shared longitudinal monitoring artifacts include:
+
+- `results/monthly_decisions/classification_shadow_history.csv`
 
 ## Research Artifacts
 
@@ -44,6 +50,11 @@ Major generated artifacts should be traceable to:
 - workflow or script name
 
 Run manifests strengthen this provenance for production monthly artifacts.
+
+`monthly_summary.json` is now the preferred machine-readable contract for top-
+level decision surfaces. The email renderer, static dashboard snapshot, and
+local dashboard should prefer structured values from that file before falling
+back to markdown parsing.
 
 ## Source Of Truth
 

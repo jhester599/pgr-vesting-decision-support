@@ -1438,6 +1438,28 @@ def get_X_y_relative(
     return X, y
 
 
+def truncate_relative_target_for_asof(
+    relative_returns: pd.Series,
+    as_of: pd.Timestamp,
+    horizon_months: int,
+) -> pd.Series:
+    """Hide target rows that would need future prices beyond a simulated as-of date.
+
+    Forward return targets are only knowable once the full horizon has elapsed.
+    For a backdated ``--as-of`` run, any target row whose forward horizon would
+    extend beyond the simulated month-end observation window must be masked out.
+    The relative-return targets are month-end keyed, so we align the cutoff to
+    the month-end containing ``as_of`` before subtracting the horizon.
+    """
+    truncated = relative_returns.copy()
+    as_of_month_end = pd.Timestamp(as_of) + pd.offsets.MonthEnd(0)
+    cutoff = (
+        as_of_month_end - pd.DateOffset(months=horizon_months)
+    ) + pd.offsets.MonthEnd(0)
+    truncated.loc[truncated.index > cutoff] = np.nan
+    return truncated
+
+
 # ---------------------------------------------------------------------------
 # v4.0 — Fractional Differentiation (López de Prado FFD method)
 # ---------------------------------------------------------------------------
