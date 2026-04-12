@@ -13,6 +13,7 @@ import config
 from config.features import (
     INVESTABLE_CLASSIFIER_BENCHMARKS,
     INVESTABLE_CLASSIFIER_BASE_WEIGHTS,
+    PRIMARY_FORECAST_UNIVERSE,
 )
 from src.processing.feature_engineering import (
     build_feature_matrix_from_db,
@@ -253,11 +254,17 @@ def build_classification_shadow_summary(
     current_features = feature_df.iloc[[-1]].copy()
     feature_anchor_date = str(pd.Timestamp(current_features.index[0]).date())
     feature_columns = feature_set_from_name(feature_df, FEATURE_SET_NAME)
-    benchmarks = list(
-        benchmark_quality_df["benchmark"].astype(str).tolist()
-        if benchmark_quality_df is not None and not benchmark_quality_df.empty
-        else config.PRIMARY_FORECAST_UNIVERSE
-    )
+    if benchmark_quality_df is not None and not benchmark_quality_df.empty:
+        benchmarks_to_model = list(benchmark_quality_df["benchmark"].unique())
+        # Ensure investable benchmarks are always included even if absent from quality_df
+        for b in INVESTABLE_CLASSIFIER_BENCHMARKS:
+            if b not in benchmarks_to_model:
+                benchmarks_to_model.append(b)
+    else:
+        benchmarks_to_model = list(
+            dict.fromkeys(PRIMARY_FORECAST_UNIVERSE + INVESTABLE_CLASSIFIER_BENCHMARKS)
+        )
+    benchmarks = benchmarks_to_model
     model_factory = logistic_factory(class_weight="balanced", c_value=0.5)
 
     rows: list[dict[str, object]] = []

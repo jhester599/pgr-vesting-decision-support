@@ -43,15 +43,51 @@ def test_contextual_benchmarks_subset_of_primary_forecast() -> None:
 
 
 def test_investable_benchmarks_subset_of_primary_forecast() -> None:
+    # v124: VGT and VIG are investable classifiers but intentionally outside the
+    # 8-benchmark WFO primary ensemble (PRIMARY_FORECAST_UNIVERSE). The subset
+    # check is relaxed to exclude those two tickers; all others must remain present.
+    v124_investable_only = {"VGT", "VIG"}
     for ticker in INVESTABLE_CLASSIFIER_BENCHMARKS:
+        if ticker in v124_investable_only:
+            continue
         assert ticker in PRIMARY_FORECAST_UNIVERSE, (
             f"{ticker} in INVESTABLE_CLASSIFIER_BENCHMARKS but not in PRIMARY_FORECAST_UNIVERSE"
         )
 
 
 def test_investable_and_contextual_partition_primary_forecast() -> None:
+    # v124: VGT and VIG expanded the investable set beyond PRIMARY_FORECAST_UNIVERSE.
+    # The invariant is now: PRIMARY_FORECAST_UNIVERSE ⊆ investable ∪ contextual
+    # (the union is a superset of PRIMARY_FORECAST_UNIVERSE, not an exact partition).
+    primary = set(PRIMARY_FORECAST_UNIVERSE)
     union = set(INVESTABLE_CLASSIFIER_BENCHMARKS) | set(CONTEXTUAL_CLASSIFIER_BENCHMARKS)
-    assert union == set(PRIMARY_FORECAST_UNIVERSE), (
-        f"Investable + contextual does not equal PRIMARY_FORECAST_UNIVERSE. "
-        f"Diff: {union.symmetric_difference(set(PRIMARY_FORECAST_UNIVERSE))}"
+    assert primary.issubset(union), (
+        f"PRIMARY_FORECAST_UNIVERSE not covered by investable + contextual. "
+        f"Missing: {primary - union}"
     )
+
+
+def test_vgt_in_investable_benchmarks() -> None:
+    assert "VGT" in INVESTABLE_CLASSIFIER_BENCHMARKS
+
+
+def test_vig_in_investable_benchmarks() -> None:
+    assert "VIG" in INVESTABLE_CLASSIFIER_BENCHMARKS
+
+
+def test_v124_weights_include_vgt_and_vig() -> None:
+    assert "VGT" in INVESTABLE_CLASSIFIER_BASE_WEIGHTS
+    assert "VIG" in INVESTABLE_CLASSIFIER_BASE_WEIGHTS
+
+
+def test_v124_weights_sum_to_one() -> None:
+    total = sum(INVESTABLE_CLASSIFIER_BASE_WEIGHTS.values())
+    assert abs(total - 1.0) < 1e-6
+
+
+def test_v124_vgt_weight() -> None:
+    assert abs(INVESTABLE_CLASSIFIER_BASE_WEIGHTS["VGT"] - 0.20) < 1e-6
+
+
+def test_v124_vig_weight() -> None:
+    assert abs(INVESTABLE_CLASSIFIER_BASE_WEIGHTS["VIG"] - 0.15) < 1e-6

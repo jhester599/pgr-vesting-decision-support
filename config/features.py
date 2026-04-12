@@ -265,21 +265,25 @@ PRIMARY_FORECAST_UNIVERSE: list[str] = [
 ]
 
 # ---------------------------------------------------------------------------
-# Classification shadow: portfolio alignment (v123)
+# Classification shadow: portfolio alignment (v124)
 # ---------------------------------------------------------------------------
 
-# Investable benchmarks for the primary portfolio-weighted classifier aggregate.
-# Matches the v27 redeploy universe. VGT and VIG are added in v124.
-INVESTABLE_CLASSIFIER_BENCHMARKS: list[str] = ["VOO", "VXUS", "VWO", "BND"]
+# Investable benchmarks for portfolio-weighted aggregate (v124: adds VGT + VIG).
+# VIG serves as a proxy for SCHD (dividend/value sleeve) due to longer history
+# (~228 months vs SCHD's ~168 months). SCHD added as separate per-benchmark
+# classifier when history reaches ~185 months (~v135, late 2027).
+INVESTABLE_CLASSIFIER_BENCHMARKS: list[str] = ["VOO", "VGT", "VIG", "VXUS", "VWO", "BND"]
 
-# Fixed base weights renormalized from balanced_pref_95_5 over the v123 investable set.
-# Source weights: VOO=0.40, VXUS=0.10, VWO=0.10, BND=0.05 → raw sum=0.65 → ÷0.65.
-# These weights must sum to 1.0 exactly (verified by tests).
+# Fixed base weights from balanced_pref_95_5. Sum to exactly 1.0.
+# VIG carries the SCHD sleeve weight (0.15). If SCHD is later added as a
+# separate classifier, SCHD and VIG can share the 0.15 weight equally.
 INVESTABLE_CLASSIFIER_BASE_WEIGHTS: dict[str, float] = {
-    "VOO": round(0.40 / 0.65, 8),   # ≈ 0.61538462
-    "VXUS": round(0.10 / 0.65, 8),  # ≈ 0.15384615
-    "VWO": round(0.10 / 0.65, 8),   # ≈ 0.15384615
-    "BND": 1.0 - round(0.40 / 0.65, 8) - round(0.10 / 0.65, 8) - round(0.10 / 0.65, 8),  # residual; guarantees sum == 1.0
+    "VOO": 0.40,
+    "VGT": 0.20,
+    "VIG": 0.15,
+    "VXUS": 0.10,
+    "VWO": 0.10,
+    "BND": 0.05,
 }
 
 # Contextual (non-investable) benchmarks retained for regime diagnostics.
