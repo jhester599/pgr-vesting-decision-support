@@ -142,14 +142,14 @@ def build_composite_return_series(
     total_w = sum(weight_list)
     norm_weights = [w / total_w for w in weight_list]
 
-    combined = pd.concat(rel_series_list, axis=1).dropna(how="all")
+    combined = pd.concat(rel_series_list, axis=1).dropna(how="any")
     composite: pd.Series = sum(  # type: ignore[assignment]
         combined[s.name] * w
         for s, w in zip(rel_series_list, norm_weights)
         if s.name in combined.columns
     )
     composite.name = "composite_relative_return"
-    return composite.dropna()
+    return composite
 
 
 def run_wfo(
@@ -203,7 +203,7 @@ def run_wfo(
                     "train_start": str(X.index[train_idx[0]].date()),
                     "train_end": str(X.index[train_idx[-1]].date()),
                     "test_date": str(X.index[test_pos].date()),
-                    "y_true": int(y.iloc[test_pos]),
+                    "y_true": int(y_test.iloc[i]),
                     "y_prob": float(y_prob[i]),
                 }
             )
@@ -407,16 +407,14 @@ def main() -> None:
         f"{composite_rel.index.min().date()} to {composite_rel.index.max().date()}"
     )
 
-    # 5. Compute binary target: sell when composite rel < -threshold
-    target = (composite_rel < -THRESHOLD).astype(int)
-    target.name = TARGET_LABEL
-    positive_rate = float(target.mean())
-    print(f"Positive rate (sell signal): {positive_rate:.4f}")
+    # 5. Align features + target (binarize after alignment to avoid silent date shrinkage)
+    X_aligned, y_cont = get_X_y_relative(feature_df, composite_rel, drop_na_target=True)
+    X_aligned = X_aligned[feature_cols].copy()
+    y_aligned = (y_cont < -THRESHOLD).astype(int)
+    y_aligned.name = TARGET_LABEL
 
-    # 6. Align features + target
-    X_aligned, _ = get_X_y_relative(feature_df, composite_rel, drop_na_target=True)
-    y_aligned = target.reindex(X_aligned.index).dropna().astype(int)
-    X_aligned = X_aligned.loc[y_aligned.index, feature_cols].copy()
+    positive_rate = float(y_aligned.mean())
+    print(f"Positive rate (sell signal): {positive_rate:.4f}")
     print(f"Aligned dataset: {len(X_aligned)} observations")
 
     if len(X_aligned) < MIN_TRAIN_OBS:
