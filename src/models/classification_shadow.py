@@ -10,6 +10,10 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
 import config
+from config.features import (
+    INVESTABLE_CLASSIFIER_BENCHMARKS,
+    INVESTABLE_CLASSIFIER_BASE_WEIGHTS,
+)
 from src.processing.feature_engineering import (
     build_feature_matrix_from_db,
     get_X_y_relative,
@@ -55,6 +59,12 @@ class ClassificationShadowSummary:
     top_supporting_benchmark: str | None
     top_supporting_contribution: float | None
     top_supporting_contribution_label: str | None
+    # v123: investable portfolio-weighted aggregate
+    probability_investable_pool: float | None = None
+    probability_investable_pool_label: str | None = None
+    confidence_tier_investable_pool: str | None = None
+    stance_investable_pool: str | None = None
+    investable_benchmark_count: int = 0
 
     def to_payload(self) -> dict[str, object]:
         """Return a JSON-serializable payload for monthly summary artifacts."""
@@ -338,6 +348,23 @@ def build_classification_shadow_summary(
         ascending=False,
     ).iloc[0]
 
+    # --- Investable-pool aggregate (v123) ---
+    investable_prob_raw = _portfolio_weighted_aggregate(
+        detail_df,
+        investable_benchmarks=INVESTABLE_CLASSIFIER_BENCHMARKS,
+        base_weights=INVESTABLE_CLASSIFIER_BASE_WEIGHTS,
+    )
+    investable_benchmark_count = int(
+        detail_df["benchmark"].isin(INVESTABLE_CLASSIFIER_BENCHMARKS).sum()
+    )
+    investable_prob_label: str | None = None
+    investable_tier: str | None = None
+    investable_stance: str | None = None
+    if investable_prob_raw is not None:
+        investable_prob_label = f"{investable_prob_raw * 100:.1f}%"
+        investable_tier = classification_confidence_tier(investable_prob_raw)
+        investable_stance = classification_stance(investable_prob_raw)
+
     summary = ClassificationShadowSummary(
         enabled=True,
         target_label=ACTIONABLE_TARGET,
@@ -361,5 +388,10 @@ def build_classification_shadow_summary(
             float(top_row["classifier_weighted_contribution"]),
             decimals=1,
         ),
+        probability_investable_pool=investable_prob_raw,
+        probability_investable_pool_label=investable_prob_label,
+        confidence_tier_investable_pool=investable_tier,
+        stance_investable_pool=investable_stance,
+        investable_benchmark_count=investable_benchmark_count,
     )
     return summary, detail_df.sort_values("benchmark").reset_index(drop=True)

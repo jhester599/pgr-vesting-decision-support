@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from src.models.classification_shadow import (
+    ClassificationShadowSummary,
     agreement_with_live_recommendation,
     classification_confidence_tier,
     classification_interpretation,
@@ -140,3 +142,109 @@ def test_portfolio_weighted_aggregate_benchmark_not_in_base_weights_returns_none
         base_weights={},
     )
     assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Tests for ClassificationShadowSummary investable pool fields (Task 3 / v123)
+# ---------------------------------------------------------------------------
+
+def test_classification_shadow_summary_has_investable_pool_fields() -> None:
+    """New investable-pool fields must exist on the dataclass."""
+    summary = ClassificationShadowSummary(
+        enabled=True,
+        target_label="actionable_sell_3pct",
+        feature_set="lean_baseline",
+        model_family="separate_benchmark_logistic_balanced",
+        calibration="oos_logistic_calibration",
+        probability_actionable_sell=0.35,
+        probability_actionable_sell_label="35.0%",
+        probability_non_actionable=0.65,
+        probability_non_actionable_label="65.0%",
+        confidence_tier="MODERATE",
+        stance="NEUTRAL",
+        agreement_with_live=True,
+        agreement_label="Aligned",
+        interpretation="Test interpretation.",
+        benchmark_count=8,
+        feature_anchor_date="2026-03-31",
+        top_supporting_benchmark="GLD",
+        top_supporting_contribution=0.052,
+        top_supporting_contribution_label="5.2%",
+        # New fields
+        probability_investable_pool=0.38,
+        probability_investable_pool_label="38.0%",
+        confidence_tier_investable_pool="MODERATE",
+        stance_investable_pool="NEUTRAL",
+        investable_benchmark_count=4,
+    )
+    assert summary.probability_investable_pool == pytest.approx(0.38)
+    assert summary.probability_investable_pool_label == "38.0%"
+    assert summary.confidence_tier_investable_pool == "MODERATE"
+    assert summary.stance_investable_pool == "NEUTRAL"
+    assert summary.investable_benchmark_count == 4
+
+
+def test_classification_shadow_summary_investable_fields_default_none() -> None:
+    """New fields default to None — existing callers are backward compatible."""
+    summary = ClassificationShadowSummary(
+        enabled=False,
+        target_label="actionable_sell_3pct",
+        feature_set="lean_baseline",
+        model_family="separate_benchmark_logistic_balanced",
+        calibration="oos_logistic_calibration",
+        probability_actionable_sell=None,
+        probability_actionable_sell_label=None,
+        probability_non_actionable=None,
+        probability_non_actionable_label=None,
+        confidence_tier=None,
+        stance=None,
+        agreement_with_live=None,
+        agreement_label=None,
+        interpretation=None,
+        benchmark_count=0,
+        feature_anchor_date=None,
+        top_supporting_benchmark=None,
+        top_supporting_contribution=None,
+        top_supporting_contribution_label=None,
+    )
+    assert summary.probability_investable_pool is None
+    assert summary.confidence_tier_investable_pool is None
+    assert summary.investable_benchmark_count == 0
+
+
+def test_classification_shadow_summary_to_payload_includes_investable_fields() -> None:
+    summary = ClassificationShadowSummary(
+        enabled=True,
+        target_label="actionable_sell_3pct",
+        feature_set="lean_baseline",
+        model_family="separate_benchmark_logistic_balanced",
+        calibration="oos_logistic_calibration",
+        probability_actionable_sell=0.35,
+        probability_actionable_sell_label="35.0%",
+        probability_non_actionable=0.65,
+        probability_non_actionable_label="65.0%",
+        confidence_tier="MODERATE",
+        stance="NEUTRAL",
+        agreement_with_live=True,
+        agreement_label="Aligned",
+        interpretation="Test.",
+        benchmark_count=8,
+        feature_anchor_date="2026-03-31",
+        top_supporting_benchmark="GLD",
+        top_supporting_contribution=0.052,
+        top_supporting_contribution_label="5.2%",
+        probability_investable_pool=0.38,
+        probability_investable_pool_label="38.0%",
+        confidence_tier_investable_pool="MODERATE",
+        stance_investable_pool="NEUTRAL",
+        investable_benchmark_count=4,
+    )
+    payload = summary.to_payload()
+    assert "probability_investable_pool" in payload
+    assert "probability_investable_pool_label" in payload
+    assert "confidence_tier_investable_pool" in payload
+    assert "stance_investable_pool" in payload
+    assert "investable_benchmark_count" in payload
+    # Existing fields must still be present
+    assert "probability_actionable_sell" in payload
+    assert "confidence_tier" in payload
