@@ -128,6 +128,39 @@ def agreement_with_live_recommendation(
     return live_is_actionable == classifier_is_actionable
 
 
+def _portfolio_weighted_aggregate(
+    detail_df: pd.DataFrame,
+    investable_benchmarks: list[str],
+    base_weights: dict[str, float],
+) -> float | None:
+    """Compute portfolio-weight-aligned aggregate P(Actionable Sell).
+
+    Filters detail_df to investable benchmarks with valid calibrated
+    probabilities, renormalizes base_weights over the available subset,
+    and returns a weighted-average probability.
+
+    Returns None if no investable benchmarks have valid probabilities.
+    """
+    mask = (
+        detail_df["benchmark"].isin(investable_benchmarks)
+        & detail_df["classifier_prob_actionable_sell"].notna()
+    )
+    available = detail_df.loc[mask].copy()
+    if available.empty:
+        return None
+
+    available["_base_weight"] = available["benchmark"].map(base_weights).fillna(0.0)
+    total_weight = available["_base_weight"].sum()
+    if total_weight <= 0.0:
+        return None
+
+    available["_norm_weight"] = available["_base_weight"] / total_weight
+    aggregate = float(
+        (available["classifier_prob_actionable_sell"] * available["_norm_weight"]).sum()
+    )
+    return aggregate
+
+
 def _fit_current_probability(
     x_train: pd.DataFrame,
     y_train: pd.Series,
