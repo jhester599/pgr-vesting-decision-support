@@ -1,0 +1,2 @@
+selected_variant,source_version,gate_style,threshold,promotion_eligible
+gemini_veto_0.50,v110,veto_regression_sell,0.5,True

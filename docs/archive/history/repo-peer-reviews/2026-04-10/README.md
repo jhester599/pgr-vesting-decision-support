@@ -20,5 +20,5 @@ This directory archives external repo-level review material prepared after the
 
 ## Related Follow-Up
 
-- consolidated prior summary: [2026-04-10-v37-v60-results-summary.md](/Users/Jeff/Documents/pgr-vesting-decision-support/docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md)
-- next-cycle execution plan: [2026-04-10-v66-v73-calibration-and-decision-layer.md](/Users/Jeff/Documents/pgr-vesting-decision-support/docs/superpowers/plans/2026-04-10-v66-v73-calibration-and-decision-layer.md)
+- consolidated prior summary: `docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md`
+- next-cycle execution plan: `docs/superpowers/plans/2026-04-10-v66-v73-calibration-and-decision-layer.md`

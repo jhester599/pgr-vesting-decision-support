@@ -11,6 +11,8 @@ Expected files:
 - `signals.csv`
 - `benchmark_quality.csv`
 - `consensus_shadow.csv`
+- `classification_shadow.csv`
+- `decision_overlays.csv`
 - `dashboard.html`
 - `monthly_summary.json`
 - `run_manifest.json`
@@ -47,6 +49,14 @@ It exists so that:
 can consume the current monthly decision state without scraping markdown for
 headline fields.
 
+The structured summary now carries top-level values such as:
+
+- decision headline
+- hold-vs-sell label
+- actionability label
+- classifier shadow summary
+- shadow gate overlay summary
+
 ## Consensus Shadow Diagnostic
 
 `consensus_shadow.csv` still preserves the live-vs-equal-weight comparison.
@@ -59,6 +69,37 @@ That comparison is now diagnostic-only. It remains useful for:
 
 It is no longer rendered as a primary recommendation section in the main
 monthly memo.
+
+## Classification Shadow Diagnostic
+
+`classification_shadow.csv` is the per-benchmark classifier detail export.
+
+It is intended for:
+
+- probability inspection by benchmark
+- dashboard/email/report support
+- later calibration and drift monitoring
+
+The monthly memo, email, and dashboard surface an aggregated interpretation from
+this artifact:
+
+- `P(Actionable Sell)`
+- a low / moderate / high confidence tier
+- classifier stance
+- agreement versus the live recommendation
+
+This classifier layer is shadow-only today.
+
+## Shadow Gate Overlay
+
+`decision_overlays.csv` records the live policy and the currently selected
+shadow gate candidate side by side.
+
+It is intended for:
+
+- conservative classifier-gate monitoring
+- promotion-readiness review
+- disagreement analysis without changing live behavior
 
 ## Next Vest Section
 
@@ -126,6 +167,8 @@ The diagnostic report is the technical appendix. It includes:
 - pooled Clark-West results
 - per-benchmark diagnostics
 - calibration notes
+- shadow gate overlay status
+- matured classifier-monitoring summary when available
 - CPCV and observation-to-feature context
 
 Use the diagnostic report to understand why the recommendation mode landed where

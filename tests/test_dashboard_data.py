@@ -31,6 +31,14 @@ def test_load_latest_run_bundle_reads_new_monthly_artifacts(tmp_path: Path) -> N
         "variant,consensus,recommendation_mode\nquality_weighted,NEUTRAL,DEFER-TO-TAX-DEFAULT\n",
         encoding="utf-8",
     )
+    (latest_dir / "classification_shadow.csv").write_text(
+        "benchmark,classifier_prob_actionable_sell\nVOO,0.28\n",
+        encoding="utf-8",
+    )
+    (latest_dir / "decision_overlays.csv").write_text(
+        "variant,recommendation_mode,recommended_sell_pct\nshadow_gate,DEFER-TO-TAX-DEFAULT,0.5\n",
+        encoding="utf-8",
+    )
 
     bundle = load_latest_run_bundle(tmp_path)
 
@@ -39,6 +47,8 @@ def test_load_latest_run_bundle_reads_new_monthly_artifacts(tmp_path: Path) -> N
     assert not bundle["signals"].empty
     assert not bundle["benchmark_quality"].empty
     assert not bundle["consensus_shadow"].empty
+    assert not bundle["classification_shadow"].empty
+    assert not bundle["decision_overlays"].empty
     assert bundle["summary"]["recommendation"]["signal_label"] == "NEUTRAL (LOW CONFIDENCE)"
 
 

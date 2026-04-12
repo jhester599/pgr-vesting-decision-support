@@ -1,0 +1,2 @@
+selected_variant,agreement_rate,disagreement_months,cumulative_shadow_minus_live_all,cumulative_shadow_minus_live_disagreement,next_step_decision
+gemini_veto_0.50,0.9382716049382716,10,0.0811991810789989,0.0811991810789989,advance_to_real_time_shadow_monitoring

@@ -1,0 +1,2 @@
+selected_variant,limited_gate_candidate_ready,primary_mode_selector_ready,decision
+gemini_veto_0.50,True,False,defer_classifier_mode_promotion

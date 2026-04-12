@@ -21,7 +21,7 @@ the `v20-v24` validation/promotion sequence.
 
 ## Related Follow-Up
 
-- synthesis memo: [V25_PEER_REVIEW_SYNTHESIS.md](/Users/Jeff/.codex/worktrees/3a71/pgr-vesting-decision-support/docs/results/V25_PEER_REVIEW_SYNTHESIS.md)
-- execution plan: [codex-v25-plan.md](/Users/Jeff/.codex/worktrees/3a71/pgr-vesting-decision-support/docs/plans/codex-v25-plan.md)
-- execution results: [V25_RESULTS_SUMMARY.md](/Users/Jeff/.codex/worktrees/3a71/pgr-vesting-decision-support/docs/results/V25_RESULTS_SUMMARY.md)
-- closeout: [V25_CLOSEOUT_AND_V26_NEXT.md](/Users/Jeff/.codex/worktrees/3a71/pgr-vesting-decision-support/docs/closeouts/V25_CLOSEOUT_AND_V26_NEXT.md)
+- synthesis memo: `docs/results/V25_PEER_REVIEW_SYNTHESIS.md`
+- execution plan: `docs/plans/codex-v25-plan.md`
+- execution results: `docs/results/V25_RESULTS_SUMMARY.md`
+- closeout: `docs/closeouts/V25_CLOSEOUT_AND_V26_NEXT.md`

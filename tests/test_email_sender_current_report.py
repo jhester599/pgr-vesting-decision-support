@@ -98,6 +98,9 @@ def test_structured_summary_payload_can_drive_email_top_level_fields() -> None:
         "April 2026",
         summary_payload={
             "recommendation": {
+                "decision_headline": "Hold 50% / Sell 50% of the next vest tranche. No — follow the default tax/diversification rule.",
+                "hold_vs_sell_label": "Hold 50% / Sell 50% of the next vest tranche",
+                "actionability_label": "No — follow the default tax/diversification rule.",
                 "signal_label": "NEUTRAL (LOW CONFIDENCE)",
                 "recommendation_mode": "DEFER-TO-TAX-DEFAULT",
                 "predicted_6m_relative_return_label": "-2.34%",
@@ -115,6 +118,7 @@ def test_structured_summary_payload_can_drive_email_top_level_fields() -> None:
     html_body = msg.get_payload()[1].get_payload(decode=True).decode()
     assert "NEUTRAL (LOW CONFIDENCE)" in msg["Subject"]
     assert "Recommendation mode: DEFER-TO-TAX-DEFAULT" in plain_body
+    assert "Hold vs sell: Hold 50% / Sell 50% of the next vest tranche" in plain_body
     assert "Predicted 6M relative return: -2.34%" in plain_body
     assert "Aggregate OOS R^2" in html_body
 

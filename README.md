@@ -18,6 +18,8 @@ governance, and user-facing reporting.
   - `signals.csv`
   - `benchmark_quality.csv`
   - `consensus_shadow.csv`
+  - `classification_shadow.csv`
+  - `decision_overlays.csv`
   - `dashboard.html`
   - `monthly_summary.json`
   - `run_manifest.json`
@@ -32,6 +34,8 @@ The live monthly workflow currently uses:
 - the `v76` quality-weighted cross-benchmark consensus as the live
   recommendation path
 - the equal-weight consensus retained in diagnostic artifacts only
+- a shadow-only classifier interpretation layer and shadow gate overlay for
+  confidence and future promotion monitoring
 
 Recent production and research context is documented in:
 
@@ -39,6 +43,7 @@ Recent production and research context is documented in:
 - [2026-04-10-v74-v78-quality-weighted-promotion.md](docs/superpowers/plans/2026-04-10-v74-v78-quality-weighted-promotion.md)
 - [2026-04-11-v79-v80-post-promotion-stabilization.md](docs/superpowers/plans/2026-04-11-v79-v80-post-promotion-stabilization.md)
 - [2026-04-11-v81-v88-repo-review-and-adoption-plan.md](docs/superpowers/plans/2026-04-11-v81-v88-repo-review-and-adoption-plan.md)
+- [2026-04-11-v102-v117-post-review-enhancement-plan.md](docs/superpowers/plans/2026-04-11-v102-v117-post-review-enhancement-plan.md)
 
 ## Architecture
 

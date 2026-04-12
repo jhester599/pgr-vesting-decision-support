@@ -35,6 +35,8 @@ def test_monthly_decision_workflow_verifies_manifest() -> None:
     assert "run_manifest.json" in text
     assert "benchmark_quality.csv" in text
     assert "consensus_shadow.csv" in text
+    assert "classification_shadow.csv" in text
+    assert "decision_overlays.csv" in text
     assert "dashboard.html" in text
     assert "monthly_summary.json" in text
     assert "$GITHUB_STEP_SUMMARY" in text

@@ -199,10 +199,13 @@ def test_main_logs_cross_check_fallback_and_completes(
         importance_stability=None,
         vif_series=None,
         benchmark_quality_df=None,
+        shadow_gate_overlay=None,
+        classifier_monitoring_summary=None,
     ) -> None:
         del as_of, ensemble_results, target_horizon_months, cal_result, signals
         del obs_feature_report, representative_cpcv, conformal_coverage_summary
         del importance_stability, vif_series, benchmark_quality_df
+        del shadow_gate_overlay, classifier_monitoring_summary
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "diagnostic.md").write_text("# Diagnostic Stub\n", encoding="utf-8")
 
@@ -215,5 +218,7 @@ def test_main_logs_cross_check_fallback_and_completes(
     assert "RuntimeError: cross-check boom" in caplog.text
     assert (out_dir / "recommendation.md").exists()
     assert (out_dir / "consensus_shadow.csv").exists()
+    assert (out_dir / "classification_shadow.csv").exists()
+    assert (out_dir / "decision_overlays.csv").exists()
     assert (out_dir / "dashboard.html").exists()
     assert (out_dir / "monthly_summary.json").exists()

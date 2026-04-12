@@ -57,6 +57,8 @@ def load_latest_run_bundle(decisions_dir: Path = DECISIONS_DIR) -> dict[str, Any
             "recommendation_text": None,
             "benchmark_quality": pd.DataFrame(),
             "consensus_shadow": pd.DataFrame(),
+            "classification_shadow": pd.DataFrame(),
+            "decision_overlays": pd.DataFrame(),
             "summary": None,
         }
 
@@ -68,6 +70,8 @@ def load_latest_run_bundle(decisions_dir: Path = DECISIONS_DIR) -> dict[str, Any
         "recommendation_text": _read_text(latest / "recommendation.md"),
         "benchmark_quality": _read_csv(latest / "benchmark_quality.csv"),
         "consensus_shadow": _read_csv(latest / "consensus_shadow.csv"),
+        "classification_shadow": _read_csv(latest / "classification_shadow.csv"),
+        "decision_overlays": _read_csv(latest / "decision_overlays.csv"),
         "summary": _read_json(latest / "monthly_summary.json"),
     }
 
@@ -152,4 +156,34 @@ def parse_recommendation_summary(rec_text: str | None) -> dict[str, str | None]:
         "sell_pct": f"{sell_match.group(1)}%" if sell_match else None,
         "predicted_return": predicted_match.group(1).strip() if predicted_match else None,
         "calibration_ece": f"{ece_match.group(1)}%" if ece_match else None,
+    }
+
+
+def top_level_summary_fields(summary: dict[str, Any] | None) -> dict[str, str | None]:
+    """Return the preferred top-level decision surface fields from monthly_summary.json."""
+    if not isinstance(summary, dict):
+        return {
+            "decision_headline": None,
+            "hold_vs_sell_label": None,
+            "actionability_label": None,
+        }
+    recommendation = summary.get("recommendation", {})
+    if not isinstance(recommendation, dict):
+        recommendation = {}
+    return {
+        "decision_headline": (
+            str(recommendation.get("decision_headline"))
+            if recommendation.get("decision_headline") is not None
+            else None
+        ),
+        "hold_vs_sell_label": (
+            str(recommendation.get("hold_vs_sell_label"))
+            if recommendation.get("hold_vs_sell_label") is not None
+            else None
+        ),
+        "actionability_label": (
+            str(recommendation.get("actionability_label"))
+            if recommendation.get("actionability_label") is not None
+            else None
+        ),
     }

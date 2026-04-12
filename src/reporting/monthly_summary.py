@@ -9,6 +9,32 @@ from typing import Any
 import pandas as pd
 
 
+def build_hold_vs_sell_label(sell_pct: float) -> str:
+    """Return the top-line hold vs sell instruction."""
+    hold_pct = max(0.0, 1.0 - float(sell_pct))
+    return f"Hold {hold_pct:.0%} / Sell {float(sell_pct):.0%} of the next vest tranche"
+
+
+def build_actionability_label(recommendation_mode: str) -> str:
+    """Return a user-facing actionability label from the recommendation mode."""
+    if str(recommendation_mode).upper() == "ACTIONABLE":
+        return "Yes — this month is actionable."
+    if str(recommendation_mode).upper() == "MONITORING-ONLY":
+        return "Not yet — monitor, but keep the default vest rule."
+    return "No — follow the default tax/diversification rule."
+
+
+def build_decision_headline(
+    recommendation_mode: str,
+    sell_pct: float,
+) -> str:
+    """Return a compact decision headline for report surfaces."""
+    return (
+        f"{build_hold_vs_sell_label(sell_pct)}. "
+        f"{build_actionability_label(recommendation_mode)}"
+    )
+
+
 def _format_pct(value: float | None, decimals: int = 2) -> str | None:
     if value is None:
         return None
@@ -109,6 +135,7 @@ def build_monthly_summary_payload(
     consensus_shadow_df: pd.DataFrame | None,
     visible_cross_check: bool,
     classification_shadow_summary: dict[str, Any] | None = None,
+    shadow_gate_overlay: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the machine-readable monthly summary payload."""
     benchmark_count = int(len(signals)) if not signals.empty else 0
@@ -118,7 +145,7 @@ def build_monthly_summary_payload(
         visible_in_primary_surfaces=visible_cross_check,
     )
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "as_of_date": as_of_date,
         "run_date": run_date,
         "artifacts": {
@@ -127,6 +154,8 @@ def build_monthly_summary_payload(
             "signals_csv": "signals.csv",
             "benchmark_quality_csv": "benchmark_quality.csv",
             "consensus_shadow_csv": "consensus_shadow.csv",
+            "classification_shadow_csv": "classification_shadow.csv",
+            "decision_overlays_csv": "decision_overlays.csv",
             "dashboard_html": "dashboard.html",
             "monthly_summary_json": "monthly_summary.json",
             "run_manifest_json": "run_manifest.json",
@@ -136,6 +165,9 @@ def build_monthly_summary_payload(
             "visible_cross_check": visible_cross_check,
         },
         "recommendation": {
+            "decision_headline": build_decision_headline(recommendation_mode, sell_pct),
+            "hold_vs_sell_label": build_hold_vs_sell_label(sell_pct),
+            "actionability_label": build_actionability_label(recommendation_mode),
             "signal": consensus,
             "confidence_tier": confidence_tier,
             "signal_label": f"{consensus} ({confidence_tier} CONFIDENCE)",
@@ -167,6 +199,7 @@ def build_monthly_summary_payload(
         "warnings": warnings,
         "cross_check": cross_check,
         "classification_shadow": classification_shadow_summary,
+        "shadow_gate_overlay": shadow_gate_overlay,
     }
 
 

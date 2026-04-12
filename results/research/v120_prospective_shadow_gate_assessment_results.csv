@@ -1,0 +1,2 @@
+selected_variant,gate_style,threshold,agreement_pass,uplift_pass,disagreement_pass,churn_pass,matured_live_monitoring_n,decision
+gemini_veto_0.50,veto_regression_sell,0.5,True,True,True,False,0,advance_to_real_time_shadow_monitoring

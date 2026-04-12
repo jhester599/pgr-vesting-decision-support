@@ -1,8 +1,10 @@
 {
   "artifacts": {
     "benchmark_quality_csv": "benchmark_quality.csv",
+    "classification_shadow_csv": "classification_shadow.csv",
     "consensus_shadow_csv": "consensus_shadow.csv",
     "dashboard_html": "dashboard.html",
+    "decision_overlays_csv": "decision_overlays.csv",
     "diagnostic_md": "diagnostic.md",
     "monthly_summary_json": "monthly_summary.json",
     "recommendation_md": "recommendation.md",
@@ -10,6 +12,27 @@
     "signals_csv": "signals.csv"
   },
   "as_of_date": "2026-04-11",
+  "classification_shadow": {
+    "agreement_label": "Aligned",
+    "agreement_with_live": true,
+    "benchmark_count": 8,
+    "calibration": "oos_logistic_calibration",
+    "confidence_tier": "MODERATE",
+    "enabled": true,
+    "feature_anchor_date": "2026-03-31",
+    "feature_set": "lean_baseline",
+    "interpretation": "Shadow classifier is near its neutral band (35.2%); use it as a low-confidence interpretation layer rather than a decision override.",
+    "model_family": "separate_benchmark_logistic_balanced",
+    "probability_actionable_sell": 0.352221433788842,
+    "probability_actionable_sell_label": "35.2%",
+    "probability_non_actionable": 0.6477785662111579,
+    "probability_non_actionable_label": "64.8%",
+    "stance": "NEUTRAL",
+    "target_label": "actionable_sell_3pct",
+    "top_supporting_benchmark": "GLD",
+    "top_supporting_contribution": 0.05235832803068246,
+    "top_supporting_contribution_label": "5.2%"
+  },
   "coverage": {
     "benchmark_count": 8,
     "benchmark_quality_count": 8
@@ -29,11 +52,14 @@
     "visible_in_primary_surfaces": false
   },
   "recommendation": {
+    "actionability_label": "No \u2014 follow the default tax/diversification rule.",
     "aggregate_nw_ic": 0.20057585812473178,
     "aggregate_nw_ic_label": "0.2006",
     "aggregate_oos_r2": -0.027507655926500396,
     "aggregate_oos_r2_label": "-2.75%",
     "confidence_tier": "LOW",
+    "decision_headline": "Hold 50% / Sell 50% of the next vest tranche. No \u2014 follow the default tax/diversification rule.",
+    "hold_vs_sell_label": "Hold 50% / Sell 50% of the next vest tranche",
     "mean_hit_rate": 0.667871335059325,
     "mean_hit_rate_label": "66.8%",
     "mean_ic": 0.1743561229518615,
@@ -55,7 +81,17 @@
     "visible_cross_check": false
   },
   "run_date": "2026-04-11",
-  "schema_version": 1,
+  "schema_version": 3,
+  "shadow_gate_overlay": {
+    "classifier_prob_actionable_sell": 0.352221433788842,
+    "gate_style": "veto_regression_sell",
+    "reason": "no regression sell to veto",
+    "recommendation_mode": "DEFER-TO-TAX-DEFAULT",
+    "recommended_sell_pct": 0.5,
+    "threshold": 0.5,
+    "variant": "gemini_veto_0.50",
+    "would_change": false
+  },
   "warnings": [
     "PGR monthly EDGAR is stale: latest 2026-02-28 (42 days old, limit 35).",
     "Aggregate OOS R^2 below threshold: -2.75% < 2.00%.",

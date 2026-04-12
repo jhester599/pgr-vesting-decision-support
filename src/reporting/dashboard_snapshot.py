@@ -7,6 +7,12 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.reporting.monthly_summary import (
+    build_actionability_label,
+    build_decision_headline,
+    build_hold_vs_sell_label,
+)
+
 
 def _format_pct(value: float | int | None, *, scale: float = 100.0, decimals: int = 2) -> str:
     if value is None or pd.isna(value):
@@ -123,6 +129,7 @@ def write_dashboard_snapshot(
     benchmark_quality_df: pd.DataFrame | None,
     consensus_shadow_df: pd.DataFrame | None,
     classification_shadow_summary: dict[str, object] | None = None,
+    shadow_gate_overlay: dict[str, object] | None = None,
 ) -> Path:
     """Write a static HTML snapshot summarizing the latest monthly decision."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -130,7 +137,21 @@ def write_dashboard_snapshot(
 
     signal_table = _prepare_signal_table(signals)
     benchmark_quality_table = _prepare_benchmark_quality_table(benchmark_quality_df)
-    del consensus_shadow_df
+    cross_check_agreement = "n/a"
+    if consensus_shadow_df is not None and not consensus_shadow_df.empty:
+        live_rows = consensus_shadow_df[consensus_shadow_df["is_live_path"]]
+        shadow_rows = consensus_shadow_df[~consensus_shadow_df["is_live_path"]]
+        if not live_rows.empty and not shadow_rows.empty:
+            live_row = live_rows.iloc[0]
+            shadow_row = shadow_rows.iloc[0]
+            same_mode = str(live_row["recommendation_mode"]) == str(
+                shadow_row["recommendation_mode"]
+            )
+            same_sell = abs(
+                float(live_row["recommended_sell_pct"])
+                - float(shadow_row["recommended_sell_pct"])
+            ) <= 1e-9
+            cross_check_agreement = "Aligned" if same_mode and same_sell else "Mixed"
 
     classification_section = ""
     if isinstance(classification_shadow_summary, dict) and classification_shadow_summary.get("enabled"):
@@ -169,6 +190,44 @@ def write_dashboard_snapshot(
         "<ul>" + "".join(f"<li>{escape(warning)}</li>" for warning in warnings) + "</ul>"
         if warnings
         else "<p class='muted'>No workflow warnings for this run.</p>"
+    )
+    classifier_agreement = (
+        str(classification_shadow_summary.get("agreement_label", "n/a"))
+        if isinstance(classification_shadow_summary, dict)
+        else "n/a"
+    )
+    overlay_line = ""
+    if isinstance(shadow_gate_overlay, dict):
+        overlay_status = (
+            "would change the live output"
+            if shadow_gate_overlay.get("would_change")
+            else "no live change"
+        )
+        overlay_sell_pct = shadow_gate_overlay.get("recommended_sell_pct")
+        overlay_sell_pct_numeric = (
+            float(overlay_sell_pct)
+            if isinstance(overlay_sell_pct, (int, float))
+            else None
+        )
+        overlay_line = (
+            "<p class='muted'>Shadow gate overlay: "
+            f"{escape(str(shadow_gate_overlay.get('recommendation_mode', 'n/a')))} / sell "
+            f"{escape(_format_pct(overlay_sell_pct_numeric, decimals=0))} "
+            f"({overlay_status})"
+            "</p>"
+        )
+    disagreement_section = (
+        "<section>"
+        "<h2>Agreement Panel</h2>"
+        "<div class='cards'>"
+        f"<div class='card'><div class='label'>Hold vs Sell</div><div class='value'>{escape(build_hold_vs_sell_label(sell_pct))}</div></div>"
+        f"<div class='card'><div class='label'>Actionability</div><div class='value'>{escape(build_actionability_label(recommendation_mode))}</div></div>"
+        f"<div class='card'><div class='label'>Consensus Cross-Check</div><div class='value'>{escape(cross_check_agreement)}</div></div>"
+        f"<div class='card'><div class='label'>Classifier Agreement</div><div class='value'>{escape(classifier_agreement)}</div></div>"
+        "</div>"
+        f"<p class='muted' style='margin-top:14px;'>{escape(build_decision_headline(recommendation_mode, sell_pct))}</p>"
+        f"{overlay_line}"
+        "</section>"
     )
 
     html = f"""<!DOCTYPE html>
@@ -284,6 +343,7 @@ def write_dashboard_snapshot(
 
     {_render_table("Benchmark Quality", benchmark_quality_table)}
     {classification_section}
+    {disagreement_section}
     {_render_table("Per-Benchmark Signals", signal_table)}
 
     <section>
@@ -296,6 +356,8 @@ def write_dashboard_snapshot(
         <code>signals.csv</code>,
         <code>benchmark_quality.csv</code>,
         <code>consensus_shadow.csv</code>, and
+        <code>classification_shadow.csv</code>,
+        <code>decision_overlays.csv</code>,
         <code>monthly_summary.json</code>, and
         <code>run_manifest.json</code>.
       </p>

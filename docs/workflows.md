@@ -55,15 +55,22 @@ Outputs:
 - `results/monthly_decisions/<YYYY-MM>/signals.csv`
 - `results/monthly_decisions/<YYYY-MM>/benchmark_quality.csv`
 - `results/monthly_decisions/<YYYY-MM>/consensus_shadow.csv`
+- `results/monthly_decisions/<YYYY-MM>/classification_shadow.csv`
+- `results/monthly_decisions/<YYYY-MM>/decision_overlays.csv`
 - `results/monthly_decisions/<YYYY-MM>/dashboard.html`
 - `results/monthly_decisions/<YYYY-MM>/monthly_summary.json`
 - `results/monthly_decisions/<YYYY-MM>/run_manifest.json`
 - `results/monthly_decisions/decision_log.md`
+- `results/monthly_decisions/classification_shadow_history.csv`
 
 Notes:
 
 - the dashboard is now represented both as a committed static monthly snapshot
   and as a richer local Streamlit viewer over the same artifacts
+- the static dashboard snapshot is the primary shareable UI surface; the
+  Streamlit app remains local/operator-facing
+- classifier overlays remain shadow-only in this workflow and do not alter the
+  live recommendation mode or sell percentage
 - the email step is non-fatal by design and should not block report generation
 
 ## Historical / Manual Workflows

@@ -42,10 +42,18 @@ def test_monthly_summary_payload_and_writer(tmp_path: Path) -> None:
         visible_cross_check=False,
         classification_shadow_summary={
             "enabled": True,
+            "probability_actionable_sell": 0.284,
             "probability_actionable_sell_label": "28.4%",
             "confidence_tier": "HIGH",
             "stance": "NON-ACTIONABLE",
             "agreement_label": "Aligned",
+        },
+        shadow_gate_overlay={
+            "variant": "permission_overlay",
+            "recommendation_mode": "DEFER-TO-TAX-DEFAULT",
+            "recommended_sell_pct": 0.5,
+            "would_change": False,
+            "reason": "classifier below deviation threshold",
         },
     )
 
@@ -53,8 +61,10 @@ def test_monthly_summary_payload_and_writer(tmp_path: Path) -> None:
 
     assert path.exists()
     written = json.loads(path.read_text(encoding="utf-8"))
-    assert written["schema_version"] == 2
+    assert written["schema_version"] == 3
     assert written["recommendation"]["signal_label"] == "NEUTRAL (LOW CONFIDENCE)"
+    assert written["recommendation"]["decision_headline"].startswith("Hold 50% / Sell 50%")
     assert written["cross_check"]["visible_in_primary_surfaces"] is False
     assert written["cross_check"]["mode_agreement"] is True
     assert written["classification_shadow"]["probability_actionable_sell_label"] == "28.4%"
+    assert written["artifacts"]["classification_shadow_csv"] == "classification_shadow.csv"

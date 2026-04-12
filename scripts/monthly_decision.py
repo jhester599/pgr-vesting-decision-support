@@ -61,6 +61,7 @@ from src.processing.feature_engineering import (
     compute_vif,
     get_feature_columns,
     get_X_y_relative,
+    truncate_relative_target_for_asof,
 )
 from src.processing.multi_total_return import load_relative_return_matrix
 import numpy as np
@@ -72,6 +73,14 @@ from src.models.evaluation import (
     reconstruct_baseline_predictions,
 )
 from src.models.forecast_diagnostics import summarize_prediction_diagnostics
+from src.models.classification_gate_overlay import (
+    build_decision_overlay_frame,
+    resolve_overlay_policy_variant,
+)
+from src.models.classification_monitoring import (
+    attach_matured_classifier_outcomes,
+    summarize_matured_classifier_history,
+)
 from src.models.classification_shadow import build_classification_shadow_summary
 from src.models.consensus_shadow import build_shadow_consensus_table
 from src.models.policy_metrics import (
@@ -104,7 +113,17 @@ from src.portfolio.redeploy_portfolio import (
 )
 from src.reporting.confidence import benchmark_role_for_ticker, build_confidence_snapshot
 from src.reporting.dashboard_snapshot import write_dashboard_snapshot
+from src.reporting.classification_artifacts import (
+    append_classifier_history,
+    build_classifier_history_entry,
+    classification_history_path,
+    write_classification_shadow_csv,
+    write_decision_overlays_csv,
+)
 from src.reporting.monthly_summary import (
+    build_actionability_label,
+    build_decision_headline,
+    build_hold_vs_sell_label,
     build_monthly_summary_payload,
     write_monthly_summary,
 )
@@ -330,6 +349,11 @@ def _generate_signals(
     for etf in config.PRIMARY_FORECAST_UNIVERSE:
         rel_series = load_relative_return_matrix(conn, etf, target_horizon_months)
         if not rel_series.empty:
+            rel_series = truncate_relative_target_for_asof(
+                rel_series,
+                as_of=as_of_ts,
+                horizon_months=target_horizon_months,
+            )
             rel_matrix_cols[etf] = rel_series
     if not rel_matrix_cols:
         return pd.DataFrame(), {}, diagnostics
@@ -1597,6 +1621,7 @@ def _write_recommendation_md(
     bl_diagnostics: BLDiagnostics | None = None,
     visible_cross_check: bool = False,
     classification_shadow_summary: dict[str, object] | None = None,
+    shadow_gate_overlay: dict[str, object] | None = None,
 ) -> None:
     """Write the human-readable recommendation report."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1629,6 +1654,71 @@ def _write_recommendation_md(
         aggregate_health=aggregate_health,
         representative_cpcv=representative_cpcv,
     )
+    hold_vs_sell_label = build_hold_vs_sell_label(sell_pct)
+    actionability_label = build_actionability_label(str(recommendation_mode["label"]))
+    decision_headline = build_decision_headline(
+        str(recommendation_mode["label"]),
+        sell_pct,
+    )
+
+    cross_check_agreement = "n/a"
+    if consensus_shadow_df is not None and not consensus_shadow_df.empty:
+        live_rows = consensus_shadow_df[consensus_shadow_df["is_live_path"]]
+        shadow_rows = consensus_shadow_df[~consensus_shadow_df["is_live_path"]]
+        if not live_rows.empty and not shadow_rows.empty:
+            live_row = live_rows.iloc[0]
+            shadow_row = shadow_rows.iloc[0]
+            same_mode = str(live_row["recommendation_mode"]) == str(
+                shadow_row["recommendation_mode"]
+            )
+            same_sell = abs(
+                float(live_row["recommended_sell_pct"])
+                - float(shadow_row["recommended_sell_pct"])
+            ) <= 1e-9
+            cross_check_agreement = "Aligned" if same_mode and same_sell else "Mixed"
+
+    classifier_agreement = (
+        str(classification_shadow_summary.get("agreement_label"))
+        if isinstance(classification_shadow_summary, dict)
+        and classification_shadow_summary.get("agreement_label") is not None
+        else "n/a"
+    )
+    decision_surface_lines = [
+        "## Decision At A Glance",
+        "",
+        f"- Hold vs Sell: **{hold_vs_sell_label}**",
+        f"- Is this month actionable? **{actionability_label}**",
+        f"- Top-line decision: **{decision_headline}**",
+    ]
+    if (
+        isinstance(classification_shadow_summary, dict)
+        and classification_shadow_summary.get("enabled")
+        and classification_shadow_summary.get("probability_actionable_sell_label") is not None
+    ):
+        decision_surface_lines.append(
+            "- Shadow classifier probability: "
+            f"**{classification_shadow_summary.get('probability_actionable_sell_label')}** "
+            f"({classification_shadow_summary.get('confidence_tier', 'n/a')})"
+        )
+    decision_surface_lines += [
+        "",
+        "## Agreement Panel",
+        "",
+        f"- Live recommendation: **{recommendation_mode['label']} / sell {sell_pct:.0%}**",
+        f"- Consensus cross-check: **{cross_check_agreement}**",
+        f"- Classifier shadow: **{classifier_agreement}**",
+    ]
+    if isinstance(shadow_gate_overlay, dict):
+        decision_surface_lines.append(
+            "- Shadow gate overlay: "
+            f"**{shadow_gate_overlay.get('recommendation_mode', 'n/a')} / sell "
+            f"{float(shadow_gate_overlay.get('recommended_sell_pct', sell_pct)):.0%}** "
+            f"({'would change the live path' if shadow_gate_overlay.get('would_change') else 'no live change'})"
+        )
+    if cross_check_agreement == "Mixed" or classifier_agreement == "Mixed":
+        decision_surface_lines.append(
+            "- This month has meaningful internal disagreement, so treat the live output as lower-confidence than a fully aligned month."
+        )
 
     lines = [
         f"# PGR Monthly Decision Report — {as_of.strftime('%B %Y')}",
@@ -1652,6 +1742,10 @@ def _write_recommendation_md(
             next_vest_summary,
         ),
         *render_data_freshness_lines(freshness_report),
+        *decision_surface_lines,
+        "",
+        "---",
+        "",
         "## Consensus Signal",
         "",
         f"| Field | Value |",
@@ -2383,6 +2477,8 @@ def _write_diagnostic_report(
     importance_stability: FeatureImportanceStability | None = None,
     vif_series: pd.Series | None = None,
     benchmark_quality_df: pd.DataFrame | None = None,
+    shadow_gate_overlay: dict[str, object] | None = None,
+    classifier_monitoring_summary: dict[str, object] | None = None,
 ) -> None:
     """
     Write diagnostic.md alongside recommendation.md.
@@ -2774,6 +2870,76 @@ def _write_diagnostic_report(
         "",
         "---",
         "",
+        "## Shadow Gate Overlay",
+        "",
+        "| Field | Value |",
+        "|-------|-------|",
+        (
+            f"| Variant | {shadow_gate_overlay.get('variant', 'n/a')} |"
+            if isinstance(shadow_gate_overlay, dict)
+            else "| Variant | n/a |"
+        ),
+        (
+            f"| Recommendation Mode | {shadow_gate_overlay.get('recommendation_mode', 'n/a')} |"
+            if isinstance(shadow_gate_overlay, dict)
+            else "| Recommendation Mode | n/a |"
+        ),
+        (
+            f"| Recommended Sell % | {float(shadow_gate_overlay.get('recommended_sell_pct', 0.0)):.0%} |"
+            if isinstance(shadow_gate_overlay, dict)
+            else "| Recommended Sell % | n/a |"
+        ),
+        (
+            f"| Would Change Live Output | {'Yes' if shadow_gate_overlay.get('would_change') else 'No'} |"
+            if isinstance(shadow_gate_overlay, dict)
+            else "| Would Change Live Output | n/a |"
+        ),
+        (
+            f"| Reason | {shadow_gate_overlay.get('reason', 'n/a')} |"
+            if isinstance(shadow_gate_overlay, dict)
+            else "| Reason | n/a |"
+        ),
+        (
+            f"| P(Actionable Sell) | {float(shadow_gate_overlay['classifier_prob_actionable_sell']):.1%} |"
+            if isinstance(shadow_gate_overlay, dict)
+            and shadow_gate_overlay.get("classifier_prob_actionable_sell") is not None
+            else "| P(Actionable Sell) | n/a |"
+        ),
+        "",
+        "---",
+        "",
+        "## Classifier Monitoring",
+        "",
+        "| Metric | Value |",
+        "|--------|-------|",
+        (
+            f"| Matured observations | {classifier_monitoring_summary.get('matured_n', 0)} |"
+            if isinstance(classifier_monitoring_summary, dict)
+            else "| Matured observations | 0 |"
+        ),
+        (
+            f"| Brier score | {float(classifier_monitoring_summary['brier_score']):.4f} |"
+            if isinstance(classifier_monitoring_summary, dict)
+            and classifier_monitoring_summary.get("brier_score") is not None
+            else "| Brier score | n/a |"
+        ),
+        (
+            f"| Log loss | {float(classifier_monitoring_summary['log_loss']):.4f} |"
+            if isinstance(classifier_monitoring_summary, dict)
+            and classifier_monitoring_summary.get("log_loss") is not None
+            else "| Log loss | n/a |"
+        ),
+        (
+            f"| ECE (10-bin) | {float(classifier_monitoring_summary['ece_10']):.4f} |"
+            if isinstance(classifier_monitoring_summary, dict)
+            and classifier_monitoring_summary.get("ece_10") is not None
+            else "| ECE (10-bin) | n/a |"
+        ),
+        "",
+        "> Matured-horizon diagnostics are computed only once the forecast horizon has elapsed.",
+        "",
+        "---",
+        "",
         "## Threshold Reference",
         "",
         "| Metric | Good | Marginal | Failing | Source |",
@@ -2998,13 +3164,40 @@ def main(
     if not classification_shadow_df.empty:
         detail_index = classification_shadow_df.set_index("benchmark")
         for column in [
+            "classifier_raw_prob_actionable_sell",
             "classifier_prob_actionable_sell",
+            "classifier_history_obs",
             "classifier_shadow_tier",
             "classifier_weight",
             "classifier_weighted_contribution",
         ]:
             if column in detail_index.columns:
                 signals[column] = detail_index[column]
+
+    overlay_df = pd.DataFrame()
+    shadow_gate_overlay = None
+    overlay_variant, overlay_gate_style, overlay_threshold = resolve_overlay_policy_variant()
+    classifier_prob = None
+    if (
+        isinstance(classification_shadow_summary, dict)
+        and classification_shadow_summary.get("probability_actionable_sell") is not None
+    ):
+        classifier_prob = float(classification_shadow_summary["probability_actionable_sell"])
+        overlay_df, overlay_obj = build_decision_overlay_frame(
+            live_mode=str(active_recommendation_mode["label"]),
+            live_sell_pct=float(sell_pct),
+            consensus=consensus,
+            mean_predicted=float(mean_pred),
+            mean_ic=float(mean_ic),
+            aggregate_oos_r2=(
+                float(aggregate_health["oos_r2"]) if aggregate_health is not None else None
+            ),
+            classifier_prob_actionable_sell=classifier_prob,
+            variant=overlay_variant,
+            gate_style=overlay_gate_style,
+            threshold=overlay_threshold,
+        )
+        shadow_gate_overlay = overlay_obj.to_payload()
 
     print(f"\n  Consensus signal: {consensus} ({confidence_tier} CONFIDENCE)")
     print(f"  Predicted 6M relative return: {mean_pred:+.2%}")
@@ -3043,6 +3236,13 @@ def main(
             f"{classification_shadow_summary.get('confidence_tier', 'n/a')} / "
             f"{classification_shadow_summary.get('agreement_label', 'n/a')}"
         )
+    if isinstance(shadow_gate_overlay, dict):
+        print(
+            "  Shadow gate overlay: "
+            f"{shadow_gate_overlay.get('recommendation_mode', 'n/a')} / sell "
+            f"{float(shadow_gate_overlay.get('recommended_sell_pct', sell_pct)):.0%} / "
+            f"{shadow_gate_overlay.get('reason', 'n/a')}"
+        )
 
     # Step 4: Write outputs
     # v32.2 + v32.3 — compute policy backtest summary for recommendation.md
@@ -3077,6 +3277,49 @@ def main(
         logger.warning("BL diagnostic shadow run failed; Portfolio Optimizer section will show 'not run'", exc_info=True)
 
     out_dir = _output_dir(as_of)
+    classification_shadow_path = write_classification_shadow_csv(
+        out_dir,
+        classification_shadow_df,
+    )
+    print(f"  Wrote {classification_shadow_path}")
+    decision_overlay_path = write_decision_overlays_csv(out_dir, overlay_df)
+    print(f"  Wrote {decision_overlay_path}")
+
+    history_base_dir = out_dir.parent
+    history_path = classification_history_path(history_base_dir)
+    if history_path.exists():
+        history_df = pd.read_csv(history_path)
+    else:
+        history_df = pd.DataFrame()
+    history_df = attach_matured_classifier_outcomes(conn, history_df, horizon_months=6)
+    if not history_df.empty:
+        history_df.to_csv(history_path, index=False)
+
+    if isinstance(classification_shadow_summary, dict) and classification_shadow_summary.get("enabled"):
+        history_entry = build_classifier_history_entry(
+            as_of_date=as_of,
+            run_date=run_date,
+            feature_anchor_date=(
+                str(classification_shadow_summary.get("feature_anchor_date"))
+                if classification_shadow_summary.get("feature_anchor_date") is not None
+                else None
+            ),
+            forecast_horizon_months=6,
+            classification_shadow_summary=classification_shadow_summary,
+            live_recommendation_mode=str(active_recommendation_mode["label"]),
+            live_sell_pct=float(sell_pct),
+            shadow_gate_overlay=shadow_gate_overlay,
+        )
+        history_path = append_classifier_history(
+            base_dir=history_base_dir,
+            entry=history_entry,
+        )
+        history_df = pd.read_csv(history_path)
+        history_df = attach_matured_classifier_outcomes(conn, history_df, horizon_months=6)
+        history_df.to_csv(history_path, index=False)
+
+    classifier_monitoring_summary = summarize_matured_classifier_history(history_df).to_payload()
+
     _write_recommendation_md(
         out_dir, as_of, run_date, conn, signals,
         consensus, mean_pred, mean_ic, mean_hr, sell_pct, dry_run,
@@ -3099,6 +3342,7 @@ def main(
         bl_diagnostics=bl_diagnostics,
         visible_cross_check=visible_cross_check,
         classification_shadow_summary=classification_shadow_summary,
+        shadow_gate_overlay=shadow_gate_overlay,
     )
     _write_signals_csv(out_dir, signals)
     _append_decision_log(
@@ -3146,6 +3390,8 @@ def main(
             if aggregate_health is not None
             else None
         ),
+        shadow_gate_overlay=shadow_gate_overlay,
+        classifier_monitoring_summary=classifier_monitoring_summary,
     )
     _write_benchmark_quality_csv(
         out_dir,
@@ -3214,6 +3460,10 @@ def main(
                 manifest_warnings.append(
                     "The consensus cross-check suggests a different sell percentage."
                 )
+    if isinstance(shadow_gate_overlay, dict) and shadow_gate_overlay.get("would_change"):
+        manifest_warnings.append(
+            "The classifier shadow gate would change the live recommendation output."
+        )
 
     write_dashboard_snapshot(
         out_dir,
@@ -3235,6 +3485,7 @@ def main(
         ),
         consensus_shadow_df=consensus_shadow_df,
         classification_shadow_summary=classification_shadow_summary,
+        shadow_gate_overlay=shadow_gate_overlay,
     )
     monthly_summary = build_monthly_summary_payload(
         as_of_date=as_of.isoformat(),
@@ -3263,6 +3514,7 @@ def main(
         consensus_shadow_df=consensus_shadow_df,
         visible_cross_check=visible_cross_check,
         classification_shadow_summary=classification_shadow_summary,
+        shadow_gate_overlay=shadow_gate_overlay,
     )
     monthly_summary_path = write_monthly_summary(out_dir, monthly_summary)
     print(f"  Wrote {monthly_summary_path}")
@@ -3281,6 +3533,8 @@ def main(
             str(out_dir / "signals.csv"),
             str(out_dir / "benchmark_quality.csv"),
             str(out_dir / "consensus_shadow.csv"),
+            str(out_dir / "classification_shadow.csv"),
+            str(out_dir / "decision_overlays.csv"),
             str(out_dir / "dashboard.html"),
             str(out_dir / "monthly_summary.json"),
         ],
