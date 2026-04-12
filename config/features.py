@@ -264,6 +264,29 @@ PRIMARY_FORECAST_UNIVERSE: list[str] = [
     "VDE",   # Energy
 ]
 
+# ---------------------------------------------------------------------------
+# Classification shadow: portfolio alignment (v123)
+# ---------------------------------------------------------------------------
+
+# Investable benchmarks for the primary portfolio-weighted classifier aggregate.
+# Matches the v27 redeploy universe. VGT and VIG (SCHD proxy) are added in v124.
+INVESTABLE_CLASSIFIER_BENCHMARKS: list[str] = ["VOO", "VXUS", "VWO", "BND"]
+
+# Fixed base weights renormalized from balanced_pref_95_5 over the v123 investable set.
+# Source weights: VOO=0.40, VXUS=0.10, VWO=0.10, BND=0.05 → raw sum=0.65 → ÷0.65.
+# These weights must sum to 1.0 exactly (verified by tests).
+INVESTABLE_CLASSIFIER_BASE_WEIGHTS: dict[str, float] = {
+    "VOO": round(0.40 / 0.65, 8),   # ≈ 0.61538462
+    "VXUS": round(0.10 / 0.65, 8),  # ≈ 0.15384615
+    "VWO": round(0.10 / 0.65, 8),   # ≈ 0.15384615
+    "BND": 1.0 - round(0.40 / 0.65, 8) - round(0.10 / 0.65, 8) - round(0.10 / 0.65, 8),  # absorbs rounding
+}
+
+# Contextual (non-investable) benchmarks retained for regime diagnostics.
+# These continue to run as per-benchmark classifiers but are excluded from the
+# primary investable-pool aggregate.
+CONTEXTUAL_CLASSIFIER_BENCHMARKS: list[str] = ["DBC", "GLD", "VMBS", "VDE"]
+
 # v11.0 promoted model-specific feature sets (established in v18/v20 research).
 # Ridge v18: swaps yield_curvature for real_yield_change_6m, adds BVPS growth
 #   and NPW growth to strengthen insurance-fundamental signal.
