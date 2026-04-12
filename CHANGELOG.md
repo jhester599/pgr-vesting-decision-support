@@ -7,6 +7,86 @@ afternoon bootstrap). Development starts Day 3.
 
 ## Version History
 
+### v128 (complete)
+**Released:** 2026-04-12
+**Theme:** Benchmark-Specific Full Feature Search Across The 72-Feature Universe
+
+- `results/research/v128_benchmark_feature_search.py` â€” added a full
+  benchmark-specific feature-search harness that reproduces the incumbent
+  benchmark-specific balanced-logistic path, screens all eligible single
+  features, runs forward stepwise search, builds `L1` / elastic-net consensus
+  subsets, and evaluates a ridge full-pool control
+- `results/research/v128_feature_inventory.csv` â€” benchmark-by-feature
+  availability and eligibility inventory for the 72-column non-target matrix
+- `results/research/v128_single_feature_results.csv` â€” full single-feature
+  leaderboard across all 10 benchmark-specific classifiers
+- `results/research/v128_forward_stepwise_trace.csv` â€” complete forward-search
+  trace for every considered feature addition
+- `results/research/v128_regularized_selection_detail.csv` â€” fold-level
+  `L1` / elastic-net selection detail and consensus-subset membership flags
+- `results/research/v128_regularized_comparison.csv` â€” evaluated
+  `l1_consensus`, `elastic_net_consensus`, and `ridge_full_pool_control`
+  candidates for each benchmark
+- `results/research/v128_benchmark_feature_map.csv` â€” final benchmark-specific
+  winner map; 4 benchmarks switch away from `lean_baseline`
+  (`BND`, `DBC`, `VGT`, `VIG`)
+- `results/research/v128_benchmark_feature_search_summary.md` â€” pooled result:
+  covered balanced accuracy improves slightly (`0.5000` -> `0.5016`) and
+  `ece_10` improves materially (`0.0488` -> `0.0387`), while `brier_score`
+  is roughly flat (`0.1813` -> `0.1819`)
+- `tests/test_research_v128_benchmark_feature_search.py` â€” dedicated tests for
+  candidate-universe filtering, stepwise gate logic, consensus subset capping,
+  winner fallback behavior, and reduced end-to-end smoke execution
+- `docs/superpowers/plans/2026-04-12-v128-benchmark-specific-feature-search.md`
+  â€” implementation and handoff note for future Claude Code continuation
+
+---
+
+### v127 (complete)
+**Released:** 2026-04-12
+**Theme:** Path B Calibration Sweep On The Matched v126 Fold Frame
+
+- `results/research/v127_path_b_calibration.py` — added a strictly prequential
+  calibration sweep for Path B over the matched v126 OOS fold table
+- calibration candidates evaluated: raw Path B, prequential Platt scaling, and
+  prequential temperature scaling
+- `results/research/v127_path_b_calibration_results.csv` — candidate comparison
+  table with adoption-gate flags
+- `results/research/v127_path_b_calibration_detail.csv` — per-month calibrated
+  probability series and fitted temperature trace
+- `results/research/v127_path_b_calibration_summary.md` — conclusion: both
+  calibrators improve reliability, but neither preserves enough covered balanced
+  accuracy to replace raw Path B
+- `tests/test_research_v127_path_b_calibration.py` — mathematical and ranking
+  tests for the new calibration utilities
+- `docs/superpowers/plans/2026-04-12-v127-path-b-calibration.md` — detailed
+  handoff note for future Claude Code continuation
+
+---
+
+### v126 (complete)
+**Released:** 2026-04-12
+**Theme:** Methodology Hardening For Path B And Portfolio-Aligned Artifact Refresh
+
+- `results/research/v125_portfolio_target_classifier.py` — removed the hardcoded
+  `v92` baseline, rebuilt Path A on matched dates, and enforced rolling WFO with
+  `max_train_size=WFO_TRAIN_WINDOW_MONTHS`
+- `results/research/v125_portfolio_target_fold_detail.csv` — now stores matched
+  `path_a_prob` and `path_b_prob` on the same evaluation rows
+- `results/research/v125_portfolio_target_summary.md` — downgraded Path B from
+  promotion candidate to secondary research track because matched-v126 results
+  show improved covered balanced accuracy but worse calibration
+- `tests/test_research_v126_portfolio_target_classifier.py` — new regression
+  tests for split geometry, row-wise probability renormalization, and verdict
+  guardrails
+- `results/monthly_decisions/2026-02/`, `2026-03/`, `2026-04/` — refreshed
+  monthly artifacts so `classification_shadow` reflects the 6-benchmark
+  investable pool `{VOO, VGT, VIG, VXUS, VWO, BND}`
+- `docs/superpowers/plans/2026-04-12-v126-methodology-hardening.md` —
+  implementation and handoff note for future Claude Code continuation
+
+---
+
 ### v2.7 (complete)
 **Released:** March 2026
 **Theme:** Complete v2 Relative Return Engine

@@ -1,3 +1,3 @@
 variant,recommendation_mode,recommended_sell_pct,would_change,reason,classifier_prob_actionable_sell
-live,DEFER-TO-TAX-DEFAULT,0.5,False,live production path,0.352221433788842
-shadow_gate,DEFER-TO-TAX-DEFAULT,0.5,False,no regression sell to veto,0.352221433788842
+live,DEFER-TO-TAX-DEFAULT,0.5,False,live production path,0.35968549085744317
+shadow_gate,DEFER-TO-TAX-DEFAULT,0.5,False,no regression sell to veto,0.35968549085744317
