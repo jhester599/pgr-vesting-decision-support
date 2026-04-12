@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import pandas as pd
+
 from src.models.classification_shadow import (
     agreement_with_live_recommendation,
     classification_confidence_tier,
     classification_interpretation,
     classification_stance,
+    _portfolio_weighted_aggregate,
 )
 
 
@@ -37,9 +40,6 @@ def test_classification_interpretation_mentions_probability() -> None:
 # Tests for _portfolio_weighted_aggregate (v123)
 # ---------------------------------------------------------------------------
 
-import pandas as pd
-from src.models.classification_shadow import _portfolio_weighted_aggregate
-
 
 def _make_detail_df(rows: list[dict]) -> pd.DataFrame:
     """Build a minimal detail_df matching classification_shadow schema."""
@@ -59,7 +59,14 @@ def test_portfolio_weighted_aggregate_all_benchmarks_present() -> None:
         base_weights={"VOO": 0.6154, "VXUS": 0.1538, "VWO": 0.1538, "BND": 0.0769},
     )
     assert result is not None
-    expected = 0.6154 * 0.60 + 0.1538 * 0.40 + 0.1538 * 0.50 + 0.0769 * 0.20
+    weights = {"VOO": 0.6154, "VXUS": 0.1538, "VWO": 0.1538, "BND": 0.0769}
+    total_w = sum(weights.values())
+    expected = (
+        weights["VOO"] * 0.60
+        + weights["VXUS"] * 0.40
+        + weights["VWO"] * 0.50
+        + weights["BND"] * 0.20
+    ) / total_w
     assert abs(result - expected) < 1e-4
 
 
@@ -117,5 +124,19 @@ def test_portfolio_weighted_aggregate_empty_df_returns_none() -> None:
         pd.DataFrame(columns=["benchmark", "classifier_prob_actionable_sell"]),
         investable_benchmarks=["VOO", "VXUS", "VWO", "BND"],
         base_weights={"VOO": 0.6154, "VXUS": 0.1538, "VWO": 0.1538, "BND": 0.0769},
+    )
+    assert result is None
+
+
+def test_portfolio_weighted_aggregate_benchmark_not_in_base_weights_returns_none() -> None:
+    # VOO is in detail_df with a valid prob, but base_weights is empty
+    # → total_weight == 0.0 → should return None
+    detail_df = _make_detail_df([
+        {"benchmark": "VOO", "classifier_prob_actionable_sell": 0.60},
+    ])
+    result = _portfolio_weighted_aggregate(
+        detail_df,
+        investable_benchmarks=["VOO"],
+        base_weights={},
     )
     assert result is None
