@@ -677,6 +677,50 @@ from `pgr_edgar_monthly` — the same monthly 8-K supplements that supply
 
 ---
 
+### v122 — Classifier Audit + Peer Reviews (2026-04-12)
+
+**Theme:** Classification layer audit, portfolio alignment gap identified,
+dual peer-review research cycle completed.
+
+**Classifier audit (v122):**
+- Monthly shadow classifier audit run as-of 2026-04-11 (feature anchor 2026-03-31)
+- Shadow model: `separate_benchmark_logistic_balanced`, lean 12-feature baseline,
+  `oos_logistic_calibration`, benchmark-quality weighted aggregation
+- Pooled metrics: accuracy 68.89%, balanced accuracy 58.27%, Brier 0.2278
+- Calibrated shadow path: accuracy 75.38%, balanced accuracy 51.32%, Brier 0.1852, ECE 0.0813
+- April 2026 snapshot: P(Actionable Sell) = 35.2%, MODERATE confidence, NEUTRAL stance
+- Top feature: `combined_ratio_ttm` (standardized importance 1.245) — underwriting quality
+  dominates across all benchmarks; macro/rates layer (credit spreads, real yields) secondary
+- Results archived: `results/research/v122_classifier_audit_summary.md`,
+  `v122_classifier_audit_coefficients.csv`, `v122_classifier_audit_feature_totals.csv`
+
+**Portfolio alignment gap identified:**
+- v27 established two separate ETF universes: forecast benchmarks vs investable redeploy
+- Current classifier uses regression quality weights to aggregate 8 benchmark probabilities,
+  but the user's redeploy portfolio is {VOO, VGT, SCHD, VXUS, VWO, BND}
+- VGT and SCHD are entirely absent from the classifier; DBC, GLD, VMBS, VDE are in the
+  classifier but not investable — the aggregated signal answers the wrong question
+
+**Peer review cycle:**
+- Deep research prompt drafted: `docs/superpowers/plans/2026-04-12-v123-classification-enhancement-research-prompt.md`
+- Two independent reviews commissioned and archived:
+  - `docs/archive/history/peer-reviews/2026-04-12/claude_opus_peerreview_20260412.md`
+  - `docs/archive/history/peer-reviews/2026-04-12/chatgpt_peerreview_20260412.md`
+- Both reports converge on: portfolio-weighted aggregation (fixed redeploy weights), VGT
+  addition now, SCHD deferred, replace prequential calibration with temperature/Platt
+  scaling, benchmark-specific feature subsetting (not expansion), veto gate as first
+  production role requiring ≥ 24 matured prospective months
+
+**Synthesis and planning:**
+- Synthesis plan: `docs/superpowers/plans/2026-04-12-v123-v128-classification-enhancement-plan.md`
+- Key architectural decision: Path A (per-benchmark → portfolio-weighted aggregation) and
+  Path B (single composite portfolio-target classifier) will run in parallel from v125;
+  architecture selection made empirically based on balanced accuracy and calibration results
+
+**Active next cycle:** v123–v128 classification enhancement (see ROADMAP.md)
+
+---
+
 ### Candidate Features — EDGAR Monthly 8-K (Future Sprint)
 
 Full column documentation in `docs/PGR_EDGAR_CACHE_DATA_DICTIONARY.md`.

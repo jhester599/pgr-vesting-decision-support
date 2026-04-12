@@ -4,69 +4,59 @@ For completed work and release history, see [CHANGELOG.md](CHANGELOG.md).
 
 ## Current State
 
-**Master baseline: v86** - the live monthly workflow now uses the promoted
-quality-weighted consensus on top of the `v38` shrinkage-calibrated prediction
-stack, with the adoption-and-contract cleanup completed across workflow,
-dashboard, email, and docs.
+**Master baseline: v122** — the live monthly workflow uses the quality-weighted
+consensus regression path (v76/v38 stack) with a shadow classification layer
+(v122 classifier audit). A full `v87–v122` classification research arc has been
+completed. Two external deep research peer reviews were commissioned on 2026-04-12
+and synthesized into the active `v123–v128` enhancement plan.
 
 **Current operating posture**
 
-- production recommendation path: quality-weighted consensus
-- equal-weight comparison: retained in diagnostic artifacts only
-- monthly artifacts now include `benchmark_quality.csv`,
-  `consensus_shadow.csv`, `dashboard.html`, and `monthly_summary.json`
-- deferred but still promising research branches:
-  - `v70` per-benchmark shrinkage
-  - `v46` classification
-  - `v73` hybrid decision gating
+- production recommendation path: quality-weighted regression consensus (v76/v38)
+- shadow classification: per-benchmark separate logistic, lean 12-feature baseline,
+  prequential calibration, quality-weighted aggregation (`separate_benchmark_logistic_balanced`)
+- monthly artifacts include `benchmark_quality.csv`, `consensus_shadow.csv`,
+  `classification_shadow.csv`, `dashboard.html`, and `monthly_summary.json`
+- April 2026 classifier snapshot: P(Actionable Sell) = 35.2%, stance NEUTRAL
+- classifier remains shadow-only; production promotion requires ≥ 24 matured
+  prospective months meeting calibration, balanced accuracy, and precision gates
 
-## Near-Term Backlog
+## Active Research Direction: v123–v128
 
-### Post-Promotion Monitoring
+The active plan is documented in:
 
-- run the next clean monthly report on current production
-- keep checking that the equal-weight diagnostic path remains redundant before
-  removing the underlying artifact entirely
+- [`docs/superpowers/plans/2026-04-12-v123-v128-classification-enhancement-plan.md`](docs/superpowers/plans/2026-04-12-v123-v128-classification-enhancement-plan.md)
 
-### Structured Output Adoption
+Summary of the v123–v128 arc:
 
-- continue moving secondary consumers toward `monthly_summary.json` instead of
-  scraping markdown for top-level fields
-- decide whether additional automation or notification surfaces should read the
-  summary payload directly
+| Version | Theme | Type |
+|---|---|---|
+| v123 | Portfolio-aligned aggregation plumbing | Research + shadow |
+| v124 | VGT classifier addition | Shadow expansion |
+| v125 | Path B composite portfolio-target classifier | Parallel research |
+| v126 | Calibration overhaul + asymmetric threshold optimization | Research |
+| v127 | Benchmark-specific feature subsetting (L1→L2) | Research |
+| v128 | New feature candidates + promotion governance | Research + governance |
+| v130+ | SCHD preparation and conditional per-benchmark inclusion | Future |
 
-### Classification-Led Decision Research
+**The single highest-priority change (v123):** replace quality-weighted aggregation
+with portfolio-weighted aggregation over the investable redeploy universe {VOO, VGT,
+VXUS, VWO, BND}, using fixed `balanced_pref_95_5` base weights. This closes the
+portfolio alignment gap identified in the 2026-04-12 peer reviews.
 
-- deepen the `v46` classification branch rather than treating it as a single
-  promising result
-- compare per-benchmark classifiers, pooled panel classifiers, and hybrid
-  classifier + regression policies
-- use [2026-04-11-v87-v96-classification-hybrid-research.md](docs/superpowers/plans/2026-04-11-v87-v96-classification-hybrid-research.md)
-  as the active planning reference for this work
-- that plan now explicitly incorporates archived peer-review guidance on:
-  - composite / basket targets
-  - pooled vs separate benchmark structures
-  - lean feature-set discipline
-  - calibration-first decision gating
-- current outcome from the completed `v87-v96` cycle:
-  - no production promotion
-  - most promising follow-on is a classifier-only benchmark-panel shadow path
-    using the `actionable_sell_3pct` target and prequentially calibrated
-    probabilities
-- current outcome from the completed `v102-v117` cycle:
-  - no classifier promotion
-  - strongest constrained gate candidate is the Gemini-style veto overlay
-  - next active phase is prospective shadow monitoring in
-    [2026-04-11-v118-v121-prospective-shadow-monitoring.md](docs/superpowers/plans/2026-04-11-v118-v121-prospective-shadow-monitoring.md)
+**Key architectural decision resolved:** both Path A (per-benchmark classifiers →
+portfolio-weighted aggregation) and Path B (single classifier on composite portfolio
+target) will be developed in parallel from v125. Architecture selection will be made
+empirically after results are in hand.
 
 ## Strategic Backlog
 
 | Item | Description |
 |---|---|
-| Structured monthly schema follow-through | Expand `monthly_summary.json` usage into future automations and non-markdown consumers |
-| Secondary calibration branch | Revisit `v70` if benchmark-specific variance control becomes more important than raw hit rate |
-| Decision-layer follow-on | Revisit `v46` + `v73` as a policy-layer abstention or gating branch after the current production path settles |
-| Cross-check retirement cleanup | Decide when the equal-weight diagnostic artifact itself can be de-emphasized further or archived |
+| SCHD per-benchmark classifier | Add when history reaches ≥ 185 observations (~v135, late 2027) |
+| Structured monthly schema follow-through | Expand `monthly_summary.json` into future automations |
+| Promotion gate implementation | v128: implement gate check infrastructure; gate remains off until 24 matured prospective months |
+| Composite target Path B evaluation | v125: empirical head-to-head vs Path A |
 
 ## Development Principles
 

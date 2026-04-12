@@ -35,14 +35,14 @@ Lean baseline features:
 
 Per-benchmark training rows used in the current audit fit:
 
-- `BND` (`train_n=222`): `combined_ratio_ttm` (1.079), `yield_slope` (0.405), `book_value_per_share_growth_yoy` (0.391)
-- `DBC` (`train_n=236`): `combined_ratio_ttm` (1.684), `mom_12m` (0.726), `vix` (0.634)
-- `GLD` (`train_n=251`): `combined_ratio_ttm` (1.259), `nfci` (0.555), `real_rate_10y` (0.460)
-- `VDE` (`train_n=252`): `combined_ratio_ttm` (1.258), `credit_spread_hy` (0.580), `real_yield_change_6m` (0.517)
-- `VMBS` (`train_n=190`): `combined_ratio_ttm` (1.134), `yield_slope` (0.814), `credit_spread_hy` (0.585)
-- `VOO` (`train_n=181`): `combined_ratio_ttm` (1.148), `real_yield_change_6m` (0.813), `credit_spread_hy` (0.781)
-- `VWO` (`train_n=247`): `credit_spread_hy` (1.625), `combined_ratio_ttm` (1.552), `real_yield_change_6m` (0.770)
-- `VXUS` (`train_n=176`): `combined_ratio_ttm` (0.942), `real_yield_change_6m` (0.747), `credit_spread_hy` (0.670)
+- `BND` (`train_n=222`): `combined_ratio_ttm` (1.088), `book_value_per_share_growth_yoy` (0.397), `yield_slope` (0.367)
+- `DBC` (`train_n=236`): `combined_ratio_ttm` (1.677), `mom_12m` (0.720), `vix` (0.653)
+- `GLD` (`train_n=251`): `combined_ratio_ttm` (1.208), `real_rate_10y` (0.512), `nfci` (0.393)
+- `VDE` (`train_n=252`): `combined_ratio_ttm` (1.229), `real_yield_change_6m` (0.487), `real_rate_10y` (0.484)
+- `VMBS` (`train_n=190`): `combined_ratio_ttm` (1.197), `yield_slope` (0.723), `credit_spread_hy` (0.597)
+- `VOO` (`train_n=181`): `combined_ratio_ttm` (1.151), `credit_spread_hy` (0.850), `real_yield_change_6m` (0.770)
+- `VWO` (`train_n=247`): `credit_spread_hy` (1.768), `combined_ratio_ttm` (1.527), `real_yield_change_6m` (0.674)
+- `VXUS` (`train_n=176`): `combined_ratio_ttm` (0.883), `credit_spread_hy` (0.749), `real_yield_change_6m` (0.665)
 
 ## Accuracy And Calibration
 
@@ -83,12 +83,12 @@ This audit uses standardized absolute logistic coefficients within each benchmar
 
 Top weighted features across the eight-benchmark monthly pool:
 
-- `combined_ratio_ttm`: weighted importance 1.256
-- `credit_spread_hy`: weighted importance 0.658
-- `real_yield_change_6m`: weighted importance 0.547
-- `mom_12m`: weighted importance 0.389
-- `yield_slope`: weighted importance 0.370
-- `real_rate_10y`: weighted importance 0.309
+- `combined_ratio_ttm`: weighted importance 1.245
+- `credit_spread_hy`: weighted importance 0.653
+- `real_yield_change_6m`: weighted importance 0.507
+- `mom_12m`: weighted importance 0.378
+- `yield_slope`: weighted importance 0.349
+- `real_rate_10y`: weighted importance 0.310
 
 Interpretation:
 
