@@ -153,3 +153,30 @@ def test_write_classification_shadow_csv_writes_dual_track_columns(tmp_path) -> 
     assert "benchmark_specific_prob_actionable_sell" in written.columns
     assert "benchmark_specific_tier" in written.columns
     assert "classifier_prob_actionable_sell" in written.columns
+
+
+def test_monthly_summary_json_includes_path_b_fields() -> None:
+    """monthly_summary.json must include path_b fields via to_payload()."""
+    import pytest
+    from src.models.classification_shadow import ClassificationShadowSummary
+
+    s = ClassificationShadowSummary(
+        enabled=True,
+        target_label="t", feature_set="f", model_family="m", calibration="c",
+        probability_actionable_sell=0.4, probability_actionable_sell_label="40%",
+        probability_non_actionable=0.6, probability_non_actionable_label="60%",
+        confidence_tier="LOW", stance="NEUTRAL",
+        agreement_with_live=True, agreement_label="Aligned",
+        interpretation="x", benchmark_count=4, feature_anchor_date="2026-01-31",
+        top_supporting_benchmark="VOO", top_supporting_contribution=0.01,
+        top_supporting_contribution_label="1.0%",
+        probability_path_b_temp_scaled=0.56,
+        probability_path_b_temp_scaled_label="56.0%",
+        confidence_tier_path_b="MODERATE",
+        stance_path_b="LEAN_SELL",
+    )
+    payload = s.to_payload()
+    assert payload["probability_path_b_temp_scaled"] == pytest.approx(0.56)
+    assert payload["probability_path_b_temp_scaled_label"] == "56.0%"
+    assert payload["confidence_tier_path_b"] == "MODERATE"
+    assert payload["stance_path_b"] == "LEAN_SELL"
