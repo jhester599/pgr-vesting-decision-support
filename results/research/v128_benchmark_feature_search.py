@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -29,17 +28,6 @@ from sklearn.metrics import balanced_accuracy_score, log_loss
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-
-warnings.filterwarnings(
-    "ignore",
-    message=r"Inconsistent values: penalty=l1 with l1_ratio=0\.0.*",
-    category=UserWarning,
-)
-warnings.filterwarnings(
-    "ignore",
-    message=r"'penalty' was deprecated in version 1\.8.*",
-    category=FutureWarning,
-)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -386,7 +374,6 @@ class CachedEvaluator:
 
         def _model_builder() -> LogisticRegression:
             return LogisticRegression(
-                penalty="l2",
                 C=0.5,
                 class_weight="balanced",
                 solver="lbfgs",
@@ -555,16 +542,24 @@ def build_consensus_subset(
 
 
 def _regularized_param_grid(selector: str) -> list[dict[str, object]]:
-    """Return the hyperparameter grid for one regularized selector."""
+    """Return the hyperparameter grid for one regularized selector.
+
+    Uses sklearn 1.8+ forward-compatible form: l1_ratio selects regularisation
+    type instead of the deprecated penalty= keyword.
+      l1_ratio=1  → L1  (saga solver required)
+      l1_ratio=0  → L2  (lbfgs solver)
+      0 < l1_ratio < 1  → elastic net  (saga solver)
+    """
     if selector == "l1":
         return [
-            {"penalty": "l1", "solver": "liblinear", "C": c_value}
+            {"l1_ratio": 1.0, "solver": "saga", "C": c_value}
             for c_value in L1_C_GRID
         ]
     if selector == "elastic_net":
+        # sklearn 1.8+: elastic net is expressed via a fractional l1_ratio (0 < l1_ratio < 1)
+        # without setting penalty=.  saga is the only solver supporting this.
         return [
             {
-                "penalty": "elasticnet",
                 "solver": "saga",
                 "C": c_value,
                 "l1_ratio": l1_ratio,
@@ -574,16 +569,23 @@ def _regularized_param_grid(selector: str) -> list[dict[str, object]]:
         ]
     if selector == "ridge":
         return [
-            {"penalty": "l2", "solver": "lbfgs", "C": c_value}
+            {"l1_ratio": 0.0, "solver": "lbfgs", "C": c_value}
             for c_value in RIDGE_C_GRID
         ]
     raise ValueError(f"Unsupported selector '{selector}'.")
 
 
 def _regularized_model_builder(spec: dict[str, object]) -> Any:
-    """Return a fold-safe scaled logistic pipeline for regularized models."""
+    """Return a fold-safe scaled logistic pipeline for regularized models.
+
+    Accepts spec dicts produced by _regularized_param_grid.  Regularisation
+    type is conveyed entirely via l1_ratio (sklearn 1.8+ forward-compatible
+    form); the deprecated penalty= keyword is never passed.
+      l1_ratio=1            → L1  (saga solver)
+      l1_ratio=0            → L2  (lbfgs solver)
+      0 < l1_ratio < 1      → elastic net  (saga solver)
+    """
     logistic_kwargs: dict[str, object] = {
-        "penalty": str(spec["penalty"]),
         "C": float(spec["C"]),
         "solver": str(spec["solver"]),
         "class_weight": "balanced",

@@ -288,9 +288,17 @@ def logistic_factory(
     c_value: float = 1.0,
 ) -> Callable[[], LogisticRegression]:
     """Return a small-sample logistic model factory."""
-    solver = "liblinear" if penalty == "l1" else "lbfgs"
+    # sklearn 1.8+: penalty= is deprecated; use l1_ratio to select regularisation type.
+    # l1_ratio=0  → L2 (equivalent to former penalty='l2', the default)
+    # l1_ratio=1  → L1 (equivalent to former penalty='l1'); saga supports l1_ratio
+    if penalty == "l1":
+        l1_ratio: float = 1.0
+        solver = "saga"
+    else:
+        l1_ratio = 0.0
+        solver = "lbfgs"
     return lambda: LogisticRegression(
-        penalty=penalty,
+        l1_ratio=l1_ratio,
         C=c_value,
         class_weight=class_weight,
         max_iter=5000,

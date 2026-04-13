@@ -51,7 +51,7 @@ def _build_classifier_pipeline(model_type: str) -> Pipeline:
                 (
                     "classifier",
                     LogisticRegression(
-                        penalty="elasticnet",
+                        # sklearn 1.8+: elastic net via l1_ratio=0.5, no penalty=
                         solver="saga",
                         l1_ratio=0.5,
                         C=1.0,
