@@ -1,0 +1,44 @@
+{
+  "artifact_classification": "production",
+  "as_of_date": "2026-02-28",
+  "git_sha": "085cc3eb4369f9b9649b04f019b3eeae6261611c-dirty",
+  "latest_dates": {
+    "daily_dividends.ex_date": "2026-04-02",
+    "daily_prices.date": "2026-04-10",
+    "fred_macro_monthly.month_end": "2026-04-30",
+    "model_performance_log.month_end": "2026-04-30",
+    "monthly_relative_returns.date": "2025-09-30",
+    "pgr_edgar_monthly.month_end": "2026-02-28",
+    "pgr_fundamentals_quarterly.period_end": "2025-12-31"
+  },
+  "outputs": [
+    "results\\monthly_decisions\\2026-02\\recommendation.md",
+    "results\\monthly_decisions\\2026-02\\diagnostic.md",
+    "results\\monthly_decisions\\2026-02\\signals.csv",
+    "results\\monthly_decisions\\2026-02\\benchmark_quality.csv",
+    "results\\monthly_decisions\\2026-02\\consensus_shadow.csv",
+    "results\\monthly_decisions\\2026-02\\classification_shadow.csv",
+    "results\\monthly_decisions\\2026-02\\decision_overlays.csv",
+    "results\\monthly_decisions\\2026-02\\dashboard.html",
+    "results\\monthly_decisions\\2026-02\\monthly_summary.json"
+  ],
+  "row_counts": {
+    "daily_dividends": 2383,
+    "daily_prices": 29189,
+    "fred_macro_monthly": 8034,
+    "model_performance_log": 3,
+    "monthly_relative_returns": 9448,
+    "pgr_edgar_monthly": 257,
+    "pgr_fundamentals_quarterly": 72
+  },
+  "run_timestamp_utc": "2026-04-13T12:52:39.030565+00:00",
+  "schema_version": "003_model_retrain_log",
+  "script_name": "scripts/monthly_decision.py",
+  "warnings": [
+    "PGR monthly EDGAR is stale: latest 2026-02-28 (44 days old, limit 35).",
+    "Aggregate OOS R^2 below threshold: -6.04% < 2.00%.",
+    "Representative CPCV verdict is FAIL.",
+    "Trailing conformal coverage deviates materially from nominal: 60.4% vs 80%."
+  ],
+  "workflow_name": "monthly_decision"
+}

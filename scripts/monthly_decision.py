@@ -1700,6 +1700,20 @@ def _write_recommendation_md(
             f"**{classification_shadow_summary.get('probability_actionable_sell_label')}** "
             f"({classification_shadow_summary.get('confidence_tier', 'n/a')})"
         )
+        investable_label = classification_shadow_summary.get("probability_investable_pool_label")
+        investable_stance = classification_shadow_summary.get("stance_investable_pool", "n/a")
+        if investable_label is not None:
+            decision_surface_lines.append(
+                f"- **Portfolio-aligned P(Actionable Sell):** {investable_label} "
+                f"[{investable_stance}] _(investable pool, fixed weights)_"
+            )
+        path_b_label = classification_shadow_summary.get("probability_path_b_temp_scaled_label")
+        path_b_stance = classification_shadow_summary.get("stance_path_b", "n/a")
+        if path_b_label is not None:
+            decision_surface_lines.append(
+                f"- **Path B P(Actionable Sell):** {path_b_label} "
+                f"[{path_b_stance}] _(composite portfolio target, temp-scaled)_"
+            )
     decision_surface_lines += [
         "",
         "## Agreement Panel",
@@ -1861,6 +1875,16 @@ def _write_recommendation_md(
             f"| P(Actionable Sell) | {classification_shadow_summary.get('probability_actionable_sell_label', 'n/a')} |",
             f"| Confidence Tier | {classification_shadow_summary.get('confidence_tier', 'n/a')} |",
             f"| Classifier Stance | {classification_shadow_summary.get('stance', 'n/a')} |",
+            f"| Portfolio-aligned P(Actionable Sell) | "
+            f"{classification_shadow_summary.get('probability_investable_pool_label', 'n/a')} "
+            f"[{classification_shadow_summary.get('stance_investable_pool', 'n/a')}] |",
+            f"| Investable Pool Confidence Tier | "
+            f"{classification_shadow_summary.get('confidence_tier_investable_pool', 'n/a')} |",
+            f"| Path B P(Actionable Sell) | "
+            f"{classification_shadow_summary.get('probability_path_b_temp_scaled_label', 'n/a')} "
+            f"[{classification_shadow_summary.get('stance_path_b', 'n/a')}] |",
+            f"| Path B Confidence Tier | "
+            f"{classification_shadow_summary.get('confidence_tier_path_b', 'n/a')} |",
             f"| Agreement with Live Recommendation | {classification_shadow_summary.get('agreement_label', 'n/a')} |",
             f"| Interpretation | {classification_shadow_summary.get('interpretation', 'n/a')} |",
         ]

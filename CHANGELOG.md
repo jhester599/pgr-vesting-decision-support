@@ -7,6 +7,109 @@ afternoon bootstrap). Development starts Day 3.
 
 ## Version History
 
+### v131 (complete)
+**Released:** 2026-04-13
+**Theme:** Temperature-Scaled Path B Composite Classifier Wired Into Production Shadow
+
+- `src/models/path_b_classifier.py` — new module: composite return builder, Path B logistic
+  classifier, and prequential temperature scaling utilities extracted from v125/v127/v130
+  research scripts
+- `src/models/classification_shadow.py` — `ClassificationShadowSummary` gains 4 new fields:
+  `probability_path_b_temp_scaled`, `probability_path_b_temp_scaled_label`,
+  `confidence_tier_path_b`, `stance_path_b`; `build_classification_shadow_summary()` computes
+  Path B live using the adopted temperature scaling from v130
+- `scripts/monthly_decision.py` — monthly `recommendation.md` now shows Path B
+  `P(Actionable Sell)` alongside the portfolio-aligned investable-pool signal
+- `src/reporting/dashboard_snapshot.py` — Classification Confidence Check section adds
+  Portfolio-aligned and Path B probability cards
+- Monthly artifacts (2026-02, 2026-03, 2026-04) refreshed with new fields
+- `tests/test_path_b_classifier.py` — unit tests for the new classifier module
+- `tests/test_classification_shadow.py` — extended with Path B field presence tests
+- Adoption basis: v130 proved temperature-scaled Path B achieves BA delta +0.0725 vs Path A
+  matched (≥ 0.03 threshold), Brier 0.1917 < Path A 0.2058, ECE ratio 1.24× < 1.5× ceiling
+
+---
+
+### v128 (complete)
+**Released:** 2026-04-12
+**Theme:** Benchmark-Specific Full Feature Search Across The 72-Feature Universe
+
+- `results/research/v128_benchmark_feature_search.py` â€” added a full
+  benchmark-specific feature-search harness that reproduces the incumbent
+  benchmark-specific balanced-logistic path, screens all eligible single
+  features, runs forward stepwise search, builds `L1` / elastic-net consensus
+  subsets, and evaluates a ridge full-pool control
+- `results/research/v128_feature_inventory.csv` â€” benchmark-by-feature
+  availability and eligibility inventory for the 72-column non-target matrix
+- `results/research/v128_single_feature_results.csv` â€” full single-feature
+  leaderboard across all 10 benchmark-specific classifiers
+- `results/research/v128_forward_stepwise_trace.csv` â€” complete forward-search
+  trace for every considered feature addition
+- `results/research/v128_regularized_selection_detail.csv` â€” fold-level
+  `L1` / elastic-net selection detail and consensus-subset membership flags
+- `results/research/v128_regularized_comparison.csv` â€” evaluated
+  `l1_consensus`, `elastic_net_consensus`, and `ridge_full_pool_control`
+  candidates for each benchmark
+- `results/research/v128_benchmark_feature_map.csv` â€” final benchmark-specific
+  winner map; 4 benchmarks switch away from `lean_baseline`
+  (`BND`, `DBC`, `VGT`, `VIG`)
+- `results/research/v128_benchmark_feature_search_summary.md` â€” pooled result:
+  covered balanced accuracy improves slightly (`0.5000` -> `0.5016`) and
+  `ece_10` improves materially (`0.0488` -> `0.0387`), while `brier_score`
+  is roughly flat (`0.1813` -> `0.1819`)
+- `tests/test_research_v128_benchmark_feature_search.py` â€” dedicated tests for
+  candidate-universe filtering, stepwise gate logic, consensus subset capping,
+  winner fallback behavior, and reduced end-to-end smoke execution
+- `docs/superpowers/plans/2026-04-12-v128-benchmark-specific-feature-search.md`
+  â€” implementation and handoff note for future Claude Code continuation
+
+---
+
+### v127 (complete)
+**Released:** 2026-04-12
+**Theme:** Path B Calibration Sweep On The Matched v126 Fold Frame
+
+- `results/research/v127_path_b_calibration.py` — added a strictly prequential
+  calibration sweep for Path B over the matched v126 OOS fold table
+- calibration candidates evaluated: raw Path B, prequential Platt scaling, and
+  prequential temperature scaling
+- `results/research/v127_path_b_calibration_results.csv` — candidate comparison
+  table with adoption-gate flags
+- `results/research/v127_path_b_calibration_detail.csv` — per-month calibrated
+  probability series and fitted temperature trace
+- `results/research/v127_path_b_calibration_summary.md` — conclusion: both
+  calibrators improve reliability, but neither preserves enough covered balanced
+  accuracy to replace raw Path B
+- `tests/test_research_v127_path_b_calibration.py` — mathematical and ranking
+  tests for the new calibration utilities
+- `docs/superpowers/plans/2026-04-12-v127-path-b-calibration.md` — detailed
+  handoff note for future Claude Code continuation
+
+---
+
+### v126 (complete)
+**Released:** 2026-04-12
+**Theme:** Methodology Hardening For Path B And Portfolio-Aligned Artifact Refresh
+
+- `results/research/v125_portfolio_target_classifier.py` — removed the hardcoded
+  `v92` baseline, rebuilt Path A on matched dates, and enforced rolling WFO with
+  `max_train_size=WFO_TRAIN_WINDOW_MONTHS`
+- `results/research/v125_portfolio_target_fold_detail.csv` — now stores matched
+  `path_a_prob` and `path_b_prob` on the same evaluation rows
+- `results/research/v125_portfolio_target_summary.md` — downgraded Path B from
+  promotion candidate to secondary research track because matched-v126 results
+  show improved covered balanced accuracy but worse calibration
+- `tests/test_research_v126_portfolio_target_classifier.py` — new regression
+  tests for split geometry, row-wise probability renormalization, and verdict
+  guardrails
+- `results/monthly_decisions/2026-02/`, `2026-03/`, `2026-04/` — refreshed
+  monthly artifacts so `classification_shadow` reflects the 6-benchmark
+  investable pool `{VOO, VGT, VIG, VXUS, VWO, BND}`
+- `docs/superpowers/plans/2026-04-12-v126-methodology-hardening.md` —
+  implementation and handoff note for future Claude Code continuation
+
+---
+
 ### v2.7 (complete)
 **Released:** March 2026
 **Theme:** Complete v2 Relative Return Engine
@@ -674,6 +777,50 @@ from `pgr_edgar_monthly` — the same monthly 8-K supplements that supply
 - `src/ingestion/exceptions.py` / `multi_ticker_loader.py` / `multi_dividend_loader.py` —
   AV `"Information"` (soft advisory) now raises `AVRateLimitAdvisory` and continues
   batch; only `"Note"` (hard quota) raises `AVRateLimitError` and stops
+
+---
+
+### v122 — Classifier Audit + Peer Reviews (2026-04-12)
+
+**Theme:** Classification layer audit, portfolio alignment gap identified,
+dual peer-review research cycle completed.
+
+**Classifier audit (v122):**
+- Monthly shadow classifier audit run as-of 2026-04-11 (feature anchor 2026-03-31)
+- Shadow model: `separate_benchmark_logistic_balanced`, lean 12-feature baseline,
+  `oos_logistic_calibration`, benchmark-quality weighted aggregation
+- Pooled metrics: accuracy 68.89%, balanced accuracy 58.27%, Brier 0.2278
+- Calibrated shadow path: accuracy 75.38%, balanced accuracy 51.32%, Brier 0.1852, ECE 0.0813
+- April 2026 snapshot: P(Actionable Sell) = 35.2%, MODERATE confidence, NEUTRAL stance
+- Top feature: `combined_ratio_ttm` (standardized importance 1.245) — underwriting quality
+  dominates across all benchmarks; macro/rates layer (credit spreads, real yields) secondary
+- Results archived: `results/research/v122_classifier_audit_summary.md`,
+  `v122_classifier_audit_coefficients.csv`, `v122_classifier_audit_feature_totals.csv`
+
+**Portfolio alignment gap identified:**
+- v27 established two separate ETF universes: forecast benchmarks vs investable redeploy
+- Current classifier uses regression quality weights to aggregate 8 benchmark probabilities,
+  but the user's redeploy portfolio is {VOO, VGT, SCHD, VXUS, VWO, BND}
+- VGT and SCHD are entirely absent from the classifier; DBC, GLD, VMBS, VDE are in the
+  classifier but not investable — the aggregated signal answers the wrong question
+
+**Peer review cycle:**
+- Deep research prompt drafted: `docs/superpowers/plans/2026-04-12-v123-classification-enhancement-research-prompt.md`
+- Two independent reviews commissioned and archived:
+  - `docs/archive/history/peer-reviews/2026-04-12/claude_opus_peerreview_20260412.md`
+  - `docs/archive/history/peer-reviews/2026-04-12/chatgpt_peerreview_20260412.md`
+- Both reports converge on: portfolio-weighted aggregation (fixed redeploy weights), VGT
+  addition now, SCHD deferred, replace prequential calibration with temperature/Platt
+  scaling, benchmark-specific feature subsetting (not expansion), veto gate as first
+  production role requiring ≥ 24 matured prospective months
+
+**Synthesis and planning:**
+- Synthesis plan: `docs/superpowers/plans/2026-04-12-v123-v128-classification-enhancement-plan.md`
+- Key architectural decision: Path A (per-benchmark → portfolio-weighted aggregation) and
+  Path B (single composite portfolio-target classifier) will run in parallel from v125;
+  architecture selection made empirically based on balanced accuracy and calibration results
+
+**Active next cycle:** v123–v128 classification enhancement (see ROADMAP.md)
 
 ---
 

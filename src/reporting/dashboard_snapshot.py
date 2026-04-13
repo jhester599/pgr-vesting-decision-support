@@ -169,6 +169,15 @@ def write_dashboard_snapshot(
         interpretation = escape(
             str(classification_shadow_summary.get("interpretation", "-"))
         )
+        investable_prob = escape(
+            str(classification_shadow_summary.get("probability_investable_pool_label", "-"))
+        )
+        path_b_prob = escape(
+            str(classification_shadow_summary.get("probability_path_b_temp_scaled_label", "-"))
+        )
+        path_b_tier = escape(
+            str(classification_shadow_summary.get("confidence_tier_path_b", "-"))
+        )
         classification_section = (
             "<section>"
             "<h2>Classification Confidence Check</h2>"
@@ -181,6 +190,9 @@ def write_dashboard_snapshot(
             f"<div class='card'><div class='label'>Confidence Tier</div><div class='value'>{tier}</div></div>"
             f"<div class='card'><div class='label'>Classifier Stance</div><div class='value'>{stance}</div></div>"
             f"<div class='card'><div class='label'>Agreement</div><div class='value'>{agreement}</div></div>"
+            f"<div class='card'><div class='label'>Portfolio-Aligned P(Sell)</div><div class='value'>{investable_prob}</div></div>"
+            f"<div class='card'><div class='label'>Path B P(Sell)</div><div class='value'>{path_b_prob}</div></div>"
+            f"<div class='card'><div class='label'>Path B Tier</div><div class='value'>{path_b_tier}</div></div>"
             "</div>"
             f"<p class='muted' style='margin-top:14px;'>{interpretation}</p>"
             "</section>"

@@ -55,7 +55,7 @@ def _fit_benchmark_coefficients(as_of: pd.Timestamp, benchmarks: list[str]) -> p
             if x_train.empty or len(np.unique(y_train.to_numpy(dtype=int))) < 2:
                 continue
 
-            x_values = x_train.to_numpy(dtype=float)
+            x_values = x_train.to_numpy(dtype=float).copy()  # .copy() ensures writable (pandas 3.0+)
             medians = np.nanmedian(x_values, axis=0)
             medians = np.where(np.isnan(medians), 0.0, medians)
             for idx in range(x_values.shape[1]):

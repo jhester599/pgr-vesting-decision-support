@@ -1,0 +1,7 @@
+as_of_date,model,features,n_features,n_obs,n_covered,balanced_accuracy_covered,brier_score
+2022-03-31,vgt_2feature,rate_adequacy_gap_yoy|severity_index_yoy,2,150,5,0.6666666666666666,0.25187583544357056
+2022-03-31,lean_baseline,mom_12m|vol_63d|yield_slope|real_yield_change_6m|real_rate_10y|credit_spread_hy|nfci|vix|combined_ratio_ttm|investment_income_growth_yoy|book_value_per_share_growth_yoy|npw_growth_yoy,12,150,38,0.5789473684210527,0.2748223206127743
+2023-03-31,vgt_2feature,rate_adequacy_gap_yoy|severity_index_yoy,2,162,9,0.8571428571428572,0.24598289598256717
+2023-03-31,lean_baseline,mom_12m|vol_63d|yield_slope|real_yield_change_6m|real_rate_10y|credit_spread_hy|nfci|vix|combined_ratio_ttm|investment_income_growth_yoy|book_value_per_share_growth_yoy|npw_growth_yoy,12,162,38,0.5789473684210527,0.27444016088613093
+2024-03-31,vgt_2feature,rate_adequacy_gap_yoy|severity_index_yoy,2,174,21,0.9473684210526316,0.23079891365809785
+2024-03-31,lean_baseline,mom_12m|vol_63d|yield_slope|real_yield_change_6m|real_rate_10y|credit_spread_hy|nfci|vix|combined_ratio_ttm|investment_income_growth_yoy|book_value_per_share_growth_yoy|npw_growth_yoy,12,174,38,0.5789473684210527,0.2648310364230749

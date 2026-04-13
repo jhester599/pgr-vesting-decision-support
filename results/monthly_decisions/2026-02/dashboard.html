@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PGR Monthly Dashboard - 2026-02-28</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(180deg, #f4f7fb 0%, #eef3f8 100%);
+      color: #122033;
+      margin: 0;
+      padding: 24px;
+    }
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+    .hero {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(18, 32, 51, 0.08);
+      margin-bottom: 20px;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .card {
+      background: #f7fafc;
+      border: 1px solid #d8e3ef;
+      border-radius: 16px;
+      padding: 14px 16px;
+    }
+    .label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #4f6780;
+      margin-bottom: 8px;
+    }
+    .value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    section {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 22px 24px;
+      box-shadow: 0 10px 30px rgba(18, 32, 51, 0.06);
+      margin-bottom: 20px;
+    }
+    h1, h2 {
+      margin-top: 0;
+    }
+    .muted {
+      color: #596f86;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .data-table th,
+    .data-table td {
+      border-bottom: 1px solid #e2e8f0;
+      padding: 10px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .data-table th {
+      background: #f7fafc;
+    }
+    code {
+      background: #eef3f8;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="hero">
+      <p class="label">Monthly Decision Dashboard</p>
+      <h1>PGR Monthly Snapshot</h1>
+      <p class="muted">
+        Static monthly dashboard generated from the committed artifact bundle.
+        This snapshot is intended for email linking and lightweight review
+        without a live Streamlit process.
+      </p>
+      <p><strong>As-of Date:</strong> 2026-02-28<br>
+      <strong>Recommendation Layer:</strong> Live production recommendation layer (quality-weighted consensus)<br>
+      <strong>Recommendation Mode:</strong> DEFER-TO-TAX-DEFAULT</p>
+      <div class="cards">
+        <div class="card"><div class="label">Consensus</div><div class="value">UNDERPERFORM</div></div>
+        <div class="card"><div class="label">Sell %</div><div class="value">+50%</div></div>
+        <div class="card"><div class="label">Predicted 6M Return</div><div class="value">-2.54%</div></div>
+        <div class="card"><div class="label">Mean IC</div><div class="value">0.1422</div></div>
+        <div class="card"><div class="label">Mean Hit Rate</div><div class="value">+66.9%</div></div>
+        <div class="card"><div class="label">Aggregate OOS R^2</div><div class="value">-6.04%</div></div>
+      </div>
+    </div>
+
+    <section>
+      <h2>Workflow Warnings</h2>
+      <ul><li>PGR monthly EDGAR is stale: latest 2026-02-28 (44 days old, limit 35).</li><li>Aggregate OOS R^2 below threshold: -6.04% &lt; 2.00%.</li><li>Representative CPCV verdict is FAIL.</li><li>Trailing conformal coverage deviates materially from nominal: 60.4% vs 80%.</li></ul>
+    </section>
+
+    <section><h2>Benchmark Quality</h2><table class="dataframe data-table">
+  <thead>
+    <tr style="text-align: left;">
+      <th>Benchmark</th>
+      <th>OOS R^2</th>
+      <th>NW IC</th>
+      <th>Hit Rate</th>
+      <th>CW t-stat</th>
+      <th>CW p-value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>DBC</td>
+      <td>+1.82%</td>
+      <td>0.2976</td>
+      <td>+74.1%</td>
+      <td>2.0555</td>
+      <td>0.0207</td>
+    </tr>
+    <tr>
+      <td>VOO</td>
+      <td>-11.69%</td>
+      <td>0.0036</td>
+      <td>+63.9%</td>
+      <td>1.7008</td>
+      <td>0.0459</td>
+    </tr>
+    <tr>
+      <td>VDE</td>
+      <td>-5.73%</td>
+      <td>0.1705</td>
+      <td>+64.4%</td>
+      <td>1.6451</td>
+      <td>0.0509</td>
+    </tr>
+    <tr>
+      <td>VMBS</td>
+      <td>-13.97%</td>
+      <td>0.2345</td>
+      <td>+80.0%</td>
+      <td>1.1521</td>
+      <td>0.1258</td>
+    </tr>
+    <tr>
+      <td>VXUS</td>
+      <td>-9.51%</td>
+      <td>0.0472</td>
+      <td>+68.6%</td>
+      <td>1.0310</td>
+      <td>0.1525</td>
+    </tr>
+    <tr>
+      <td>VWO</td>
+      <td>-12.03%</td>
+      <td>0.1015</td>
+      <td>+62.6%</td>
+      <td>0.6387</td>
+      <td>0.2619</td>
+    </tr>
+    <tr>
+      <td>BND</td>
+      <td>-15.94%</td>
+      <td>0.2441</td>
+      <td>+72.7%</td>
+      <td>0.5719</td>
+      <td>0.2841</td>
+    </tr>
+    <tr>
+      <td>GLD</td>
+      <td>-14.88%</td>
+      <td>0.2198</td>
+      <td>+61.1%</td>
+      <td>0.4714</td>
+      <td>0.3190</td>
+    </tr>
+  </tbody>
+</table></section>
+    <section><h2>Classification Confidence Check</h2><p class='muted'>Shadow-only interpretation layer from the v87-v96 classifier research. It does not change the live recommendation or sell percentage.</p><div class='cards'><div class='card'><div class='label'>P(Actionable Sell)</div><div class='value'>34.7%</div></div><div class='card'><div class='label'>Confidence Tier</div><div class='value'>MODERATE</div></div><div class='card'><div class='label'>Classifier Stance</div><div class='value'>NEUTRAL</div></div><div class='card'><div class='label'>Agreement</div><div class='value'>Aligned</div></div><div class='card'><div class='label'>Portfolio-Aligned P(Sell)</div><div class='value'>40.1%</div></div><div class='card'><div class='label'>Path B P(Sell)</div><div class='value'>54.6%</div></div><div class='card'><div class='label'>Path B Tier</div><div class='value'>LOW</div></div></div><p class='muted' style='margin-top:14px;'>Shadow classifier is near its neutral band (34.7%); use it as a low-confidence interpretation layer rather than a decision override.</p></section>
+    <section><h2>Agreement Panel</h2><div class='cards'><div class='card'><div class='label'>Hold vs Sell</div><div class='value'>Hold 50% / Sell 50% of the next vest tranche</div></div><div class='card'><div class='label'>Actionability</div><div class='value'>No — follow the default tax/diversification rule.</div></div><div class='card'><div class='label'>Consensus Cross-Check</div><div class='value'>Aligned</div></div><div class='card'><div class='label'>Classifier Agreement</div><div class='value'>Aligned</div></div></div><p class='muted' style='margin-top:14px;'>Hold 50% / Sell 50% of the next vest tranche. No — follow the default tax/diversification rule.</p><p class='muted'>Shadow gate overlay: DEFER-TO-TAX-DEFAULT / sell +50% (no live change)</p></section>
+    <section><h2>Per-Benchmark Signals</h2><table class="dataframe data-table">
+  <thead>
+    <tr style="text-align: left;">
+      <th>Benchmark</th>
+      <th>Signal</th>
+      <th>Predicted Return</th>
+      <th>IC</th>
+      <th>Hit Rate</th>
+      <th>Confidence</th>
+      <th>P(Outperform)</th>
+      <th>P(Actionable Sell)</th>
+      <th>Cls Tier</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>VOO</td>
+      <td>NEUTRAL</td>
+      <td>-1.36%</td>
+      <td>-0.0665</td>
+      <td>+55.1%</td>
+      <td>LOW</td>
+      <td>+67.1%</td>
+      <td>+38.7%</td>
+      <td>MODERATE</td>
+    </tr>
+    <tr>
+      <td>VXUS</td>
+      <td>NEUTRAL</td>
+      <td>+0.34%</td>
+      <td>0.0216</td>
+      <td>+70.6%</td>
+      <td>LOW</td>
+      <td>+69.6%</td>
+      <td>+35.2%</td>
+      <td>MODERATE</td>
+    </tr>
+    <tr>
+      <td>VWO</td>
+      <td>UNDERPERFORM</td>
+      <td>-3.11%</td>
+      <td>0.0999</td>
+      <td>+60.9%</td>
+      <td>LOW</td>
+      <td>+82.5%</td>
+      <td>+34.5%</td>
+      <td>MODERATE</td>
+    </tr>
+    <tr>
+      <td>VMBS</td>
+      <td>OUTPERFORM</td>
+      <td>+2.28%</td>
+      <td>0.1981</td>
+      <td>+76.7%</td>
+      <td>LOW</td>
+      <td>+69.7%</td>
+      <td>+24.8%</td>
+      <td>HIGH</td>
+    </tr>
+    <tr>
+      <td>BND</td>
+      <td>OUTPERFORM</td>
+      <td>+3.03%</td>
+      <td>0.2354</td>
+      <td>+71.0%</td>
+      <td>LOW</td>
+      <td>+74.3%</td>
+      <td>+23.6%</td>
+      <td>HIGH</td>
+    </tr>
+    <tr>
+      <td>GLD</td>
+      <td>UNDERPERFORM</td>
+      <td>-10.04%</td>
+      <td>0.1725</td>
+      <td>+59.7%</td>
+      <td>LOW</td>
+      <td>+58.7%</td>
+      <td>+42.0%</td>
+      <td>LOW</td>
+    </tr>
+    <tr>
+      <td>DBC</td>
+      <td>UNDERPERFORM</td>
+      <td>-4.54%</td>
+      <td>0.2298</td>
+      <td>+73.1%</td>
+      <td>LOW</td>
+      <td>+42.9%</td>
+      <td>+47.1%</td>
+      <td>LOW</td>
+    </tr>
+    <tr>
+      <td>VDE</td>
+      <td>UNDERPERFORM</td>
+      <td>-6.28%</td>
+      <td>0.1329</td>
+      <td>+63.1%</td>
+      <td>LOW</td>
+      <td>+53.9%</td>
+      <td>+32.2%</td>
+      <td>MODERATE</td>
+    </tr>
+  </tbody>
+</table></section>
+
+    <section>
+      <h2>Artifact Notes</h2>
+      <p class="muted">
+        Source files for this snapshot live alongside this HTML file in the same
+        monthly folder:
+        <code>recommendation.md</code>,
+        <code>diagnostic.md</code>,
+        <code>signals.csv</code>,
+        <code>benchmark_quality.csv</code>,
+        <code>consensus_shadow.csv</code>, and
+        <code>classification_shadow.csv</code>,
+        <code>decision_overlays.csv</code>,
+        <code>monthly_summary.json</code>, and
+        <code>run_manifest.json</code>.
+      </p>
+      <p class="muted">
+        The equal-weight comparison remains available in
+        <code>consensus_shadow.csv</code> for diagnostics, but it is no longer
+        promoted as a primary decision surface in the monthly snapshot.
+      </p>
+    </section>
+  </div>
+</body>
+</html>

@@ -264,6 +264,44 @@ PRIMARY_FORECAST_UNIVERSE: list[str] = [
     "VDE",   # Energy
 ]
 
+# ---------------------------------------------------------------------------
+# Classification shadow: portfolio alignment (v124)
+# ---------------------------------------------------------------------------
+
+# Investable benchmarks for portfolio-weighted aggregate (v124: adds VGT + VIG).
+# VIG serves as a proxy for SCHD (dividend/value sleeve) due to longer history
+# (~228 months vs SCHD's ~168 months). SCHD added as separate per-benchmark
+# classifier when history reaches ~185 months (~v135, late 2027).
+INVESTABLE_CLASSIFIER_BENCHMARKS: list[str] = ["VOO", "VGT", "VIG", "VXUS", "VWO", "BND"]
+
+# Fixed base weights from balanced_pref_95_5. Sum to exactly 1.0.
+# VIG carries the SCHD sleeve weight (0.15). If SCHD is later added as a
+# separate classifier, SCHD and VIG can share the 0.15 weight equally.
+INVESTABLE_CLASSIFIER_BASE_WEIGHTS: dict[str, float] = {
+    "VOO": 0.40,
+    "VGT": 0.20,
+    "VIG": 0.15,
+    "VXUS": 0.10,
+    "VWO": 0.10,
+    "BND": 0.05,
+}
+
+# Contextual (non-investable) benchmarks retained for regime diagnostics.
+# These continue to run as per-benchmark classifiers but are excluded from the
+# primary investable-pool aggregate.
+CONTEXTUAL_CLASSIFIER_BENCHMARKS: list[str] = ["DBC", "GLD", "VMBS", "VDE"]
+
+# ---------------------------------------------------------------------------
+# v129: Dual-track shadow integration
+# ---------------------------------------------------------------------------
+import os as _os
+
+V128_BENCHMARK_FEATURE_MAP_PATH: str = _os.path.join(
+    "results", "research", "v128_benchmark_feature_map.csv"
+)
+
+DUAL_TRACK_LEAN_BASELINE_OVERRIDES: frozenset[str] = frozenset({"VGT"})
+
 # v11.0 promoted model-specific feature sets (established in v18/v20 research).
 # Ridge v18: swaps yield_curvature for real_yield_change_6m, adds BVPS growth
 #   and NPW growth to strengthen insurance-fundamental signal.

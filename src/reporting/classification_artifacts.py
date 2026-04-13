@@ -9,6 +9,8 @@ from typing import Any
 
 import pandas as pd
 
+from config.features import CONTEXTUAL_CLASSIFIER_BENCHMARKS
+
 
 CLASSIFICATION_SHADOW_COLUMNS = [
     "benchmark",
@@ -18,6 +20,11 @@ CLASSIFICATION_SHADOW_COLUMNS = [
     "classifier_weight",
     "classifier_weighted_contribution",
     "classifier_shadow_tier",
+    "is_contextual",
+    # v129: dual-track benchmark-specific columns
+    "benchmark_specific_features",
+    "benchmark_specific_prob_actionable_sell",
+    "benchmark_specific_tier",
 ]
 
 DECISION_OVERLAY_COLUMNS = [
@@ -96,7 +103,9 @@ def write_classification_shadow_csv(
     if detail_df is None or detail_df.empty:
         pd.DataFrame(columns=CLASSIFICATION_SHADOW_COLUMNS).to_csv(path, index=False)
         return path
-    _ensure_columns(detail_df, CLASSIFICATION_SHADOW_COLUMNS).to_csv(path, index=False)
+    df = detail_df.copy()
+    df["is_contextual"] = df["benchmark"].isin(CONTEXTUAL_CLASSIFIER_BENCHMARKS)
+    _ensure_columns(df, CLASSIFICATION_SHADOW_COLUMNS).to_csv(path, index=False)
     return path
 
 
