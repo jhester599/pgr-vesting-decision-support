@@ -28,6 +28,14 @@ from src.processing.feature_engineering import (
 )
 from src.processing.multi_total_return import load_relative_return_matrix
 from src.research.v66_utils import benchmark_quality_weights
+from src.models.path_b_classifier import (
+    apply_prequential_temperature_scaling,
+    build_composite_return_series,
+    fit_path_b_classifier,
+    PATH_B_THRESHOLD,
+    _apply_temperature as _path_b_apply_temperature,
+    _fit_temperature_grid as _path_b_fit_temperature_grid,
+)
 from src.research.v87_utils import (
     build_target_series,
     evaluate_binary_time_series,
@@ -74,6 +82,11 @@ class ClassificationShadowSummary:
     investable_benchmark_count: int = 0
     # v129: dual-track delta between benchmark-specific and lean-baseline probs
     dual_track_delta: dict[str, float] | None = None
+    # v131: Path B composite portfolio-target classifier (temperature-scaled)
+    probability_path_b_temp_scaled: float | None = None
+    probability_path_b_temp_scaled_label: str | None = None
+    confidence_tier_path_b: str | None = None
+    stance_path_b: str | None = None
 
     def to_payload(self) -> dict[str, object]:
         """Return a JSON-serializable payload for monthly summary artifacts."""
@@ -514,6 +527,73 @@ def build_classification_shadow_summary(
                 for _, r in _delta_rows.iterrows()
             }
 
+    # --- v131: Path B composite portfolio-target classifier (temperature-scaled) ---
+    _path_b_prob_scaled: float | None = None
+    _path_b_label: str | None = None
+    _path_b_tier: str | None = None
+    _path_b_stance: str | None = None
+
+    try:
+        # Build composite return series and binary target
+        _composite_rel = build_composite_return_series(
+            conn, weights=INVESTABLE_CLASSIFIER_BASE_WEIGHTS, as_of=as_of
+        )
+        _y_composite = (_composite_rel < -PATH_B_THRESHOLD).astype(int)
+        # Align with feature matrix using lean baseline features
+        _lean_cols = [c for c in feature_columns if c in feature_df.columns]
+        _aligned = (
+            feature_df[_lean_cols]
+            .join(_y_composite, how="inner")
+            .dropna()
+        )
+        _composite_col = _y_composite.name
+        if len(_aligned) >= 30 and _aligned[_composite_col].nunique() >= 2:
+            _X_b = _aligned[_lean_cols]
+            _y_b = _aligned[_composite_col].astype(int)
+            # WFO OOS probabilities for prequential temperature calibration
+            from sklearn.model_selection import TimeSeriesSplit
+            _tscv = TimeSeriesSplit(n_splits=10, test_size=3, gap=8, max_train_size=60)
+            _oos_probs_list: list[float] = []
+            _oos_labels_list: list[int] = []
+            for _tr, _te in _tscv.split(_X_b):
+                if len(_tr) < 30:
+                    continue
+                _m = LogisticRegression(
+                    C=0.5,
+                    class_weight="balanced",
+                    solver="lbfgs",
+                    max_iter=1000,
+                )
+                try:
+                    _m.fit(_X_b.iloc[_tr], _y_b.iloc[_tr])
+                    _oos_probs_list.extend(
+                        _m.predict_proba(_X_b.iloc[_te])[:, 1].tolist()
+                    )
+                    _oos_labels_list.extend(_y_b.iloc[_te].tolist())
+                except Exception:
+                    continue
+            if len(_oos_probs_list) >= 10:
+                _oos_probs_arr = np.array(_oos_probs_list, dtype=float)
+                _oos_labels_arr = np.array(_oos_labels_list, dtype=int)
+                # Train on all data, get current-month raw probability
+                _path_b_prob_raw = fit_path_b_classifier(
+                    _X_b, _y_b, feature_cols=_lean_cols
+                )
+                if _path_b_prob_raw is not None:
+                    # Fit temperature using all available OOS history
+                    if len(np.unique(_oos_labels_arr)) >= 2:
+                        _avg_temp = _path_b_fit_temperature_grid(
+                            _oos_labels_arr, _oos_probs_arr
+                        )
+                        _path_b_prob_scaled = _path_b_apply_temperature(
+                            _path_b_prob_raw, _avg_temp
+                        )
+                        _path_b_label = _format_pct(_path_b_prob_scaled, decimals=1)
+                        _path_b_tier = classification_confidence_tier(_path_b_prob_scaled)
+                        _path_b_stance = classification_stance(_path_b_prob_scaled)
+    except Exception:
+        pass  # Path B failure is non-fatal; fields remain None
+
     summary = ClassificationShadowSummary(
         enabled=True,
         target_label=ACTIONABLE_TARGET,
@@ -543,5 +623,9 @@ def build_classification_shadow_summary(
         stance_investable_pool=investable_stance,
         investable_benchmark_count=investable_benchmark_count,
         dual_track_delta=_dual_track_delta,
+        probability_path_b_temp_scaled=_path_b_prob_scaled,
+        probability_path_b_temp_scaled_label=_path_b_label,
+        confidence_tier_path_b=_path_b_tier,
+        stance_path_b=_path_b_stance,
     )
     return summary, detail_df.sort_values("benchmark").reset_index(drop=True)

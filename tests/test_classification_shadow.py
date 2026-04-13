@@ -297,3 +297,69 @@ def test_classification_shadow_summary_to_payload_includes_investable_fields() -
     # Existing fields must still be present
     assert "probability_actionable_sell" in payload
     assert "confidence_tier" in payload
+
+
+# ---------------------------------------------------------------------------
+# v131: Path B composite portfolio-target classifier fields
+# ---------------------------------------------------------------------------
+
+def test_classification_shadow_summary_has_path_b_fields() -> None:
+    import dataclasses
+    from src.models.classification_shadow import ClassificationShadowSummary
+    field_names = {f.name for f in dataclasses.fields(ClassificationShadowSummary)}
+    assert "probability_path_b_temp_scaled" in field_names
+    assert "probability_path_b_temp_scaled_label" in field_names
+    assert "confidence_tier_path_b" in field_names
+    assert "stance_path_b" in field_names
+
+
+def test_classification_shadow_summary_path_b_fields_default_none() -> None:
+    from src.models.classification_shadow import ClassificationShadowSummary
+    # Construct with only required fields; new fields should default to None
+    s = ClassificationShadowSummary(
+        enabled=True,
+        target_label="actionable_sell_3pct",
+        feature_set="lean_baseline",
+        model_family="separate_benchmark_logistic_balanced",
+        calibration="oos_logistic_calibration",
+        probability_actionable_sell=0.35,
+        probability_actionable_sell_label="35.0%",
+        probability_non_actionable=0.65,
+        probability_non_actionable_label="65.0%",
+        confidence_tier="MODERATE",
+        stance="NEUTRAL",
+        agreement_with_live=True,
+        agreement_label="Aligned",
+        interpretation="Test.",
+        benchmark_count=8,
+        feature_anchor_date="2026-03-31",
+        top_supporting_benchmark="GLD",
+        top_supporting_contribution=0.052,
+        top_supporting_contribution_label="5.2%",
+    )
+    assert s.probability_path_b_temp_scaled is None
+    assert s.confidence_tier_path_b is None
+
+
+def test_to_payload_includes_path_b_keys() -> None:
+    from src.models.classification_shadow import ClassificationShadowSummary
+    s = ClassificationShadowSummary(
+        enabled=True,
+        target_label="t", feature_set="f", model_family="m", calibration="c",
+        probability_actionable_sell=0.4, probability_actionable_sell_label="40%",
+        probability_non_actionable=0.6, probability_non_actionable_label="60%",
+        confidence_tier="LOW", stance="NEUTRAL",
+        agreement_with_live=True, agreement_label="Aligned",
+        interpretation="x", benchmark_count=4, feature_anchor_date="2026-01-31",
+        top_supporting_benchmark="VOO", top_supporting_contribution=0.01,
+        top_supporting_contribution_label="1.0%",
+        probability_path_b_temp_scaled=0.58,
+        probability_path_b_temp_scaled_label="58.0%",
+        confidence_tier_path_b="MODERATE",
+        stance_path_b="LEAN_SELL",
+    )
+    payload = s.to_payload()
+    assert "probability_path_b_temp_scaled" in payload
+    assert "probability_path_b_temp_scaled_label" in payload
+    assert "confidence_tier_path_b" in payload
+    assert "stance_path_b" in payload
