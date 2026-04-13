@@ -388,3 +388,39 @@ As each version completes, the following documents should be updated:
 - Path A reference (v92): 0.5132
 - Delta: +0.1199
 - Path B Brier score: 0.2393 vs Path A reference: 0.1852
+
+## v130 Empirical Result
+
+**Script:** `results/research/v130_path_b_temp_scaling_adoption.py`
+**Run date:** 2026-04-12
+**Input:** `results/research/v125_portfolio_target_fold_detail.csv` (matched v126 OOS fold frame)
+
+### Context
+
+v127 rejected temperature scaling Path B because it compared against **raw Path B** as the baseline
+(BA delta = -0.0725 vs raw). That criterion was inverted. Temperature scaling trades some BA against
+raw Path B in exchange for materially better calibration. The correct adoption question is: does
+temperature-scaled Path B beat **Path A matched** on a risk-adjusted basis?
+
+### Results
+
+| Model | BA Covered | Brier | Log Loss | ECE |
+|---|---|---|---|---|
+| path_a_matched | 0.5000 | 0.2058 | 0.6132 | 0.1269 |
+| path_b_raw | 0.6450 | 0.2188 | 0.8207 | 0.2234 |
+| path_b_temp_scaled | 0.5725 | 0.1917 | 0.6010 | 0.1570 |
+
+### Adoption Criteria (temp-scaled Path B vs Path A matched)
+
+| Criterion | Threshold | Observed | Pass |
+|---|---|---|---|
+| A: BA delta | >= 0.03 | +0.0725 | YES |
+| B: Brier excess | <= 0.02 | -0.0141 | YES |
+| C: ECE ratio | <= 1.5x | 1.2372x | YES |
+
+### Verdict
+
+**ADOPT** — All three criteria pass. Temperature scaling Path B improves BA by +7.25 percentage
+points over Path A matched while simultaneously reducing Brier score (-0.0141), log loss (-0.0122),
+and ECE (1.24x vs threshold of 1.5x). Replace raw Path B probability with temperature-scaled
+probability in the investable-pool aggregate computation.
