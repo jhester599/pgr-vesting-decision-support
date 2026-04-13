@@ -7,6 +7,29 @@ afternoon bootstrap). Development starts Day 3.
 
 ## Version History
 
+### v131 (complete)
+**Released:** 2026-04-13
+**Theme:** Temperature-Scaled Path B Composite Classifier Wired Into Production Shadow
+
+- `src/models/path_b_classifier.py` — new module: composite return builder, Path B logistic
+  classifier, and prequential temperature scaling utilities extracted from v125/v127/v130
+  research scripts
+- `src/models/classification_shadow.py` — `ClassificationShadowSummary` gains 4 new fields:
+  `probability_path_b_temp_scaled`, `probability_path_b_temp_scaled_label`,
+  `confidence_tier_path_b`, `stance_path_b`; `build_classification_shadow_summary()` computes
+  Path B live using the adopted temperature scaling from v130
+- `scripts/monthly_decision.py` — monthly `recommendation.md` now shows Path B
+  `P(Actionable Sell)` alongside the portfolio-aligned investable-pool signal
+- `src/reporting/dashboard_snapshot.py` — Classification Confidence Check section adds
+  Portfolio-aligned and Path B probability cards
+- Monthly artifacts (2026-02, 2026-03, 2026-04) refreshed with new fields
+- `tests/test_path_b_classifier.py` — unit tests for the new classifier module
+- `tests/test_classification_shadow.py` — extended with Path B field presence tests
+- Adoption basis: v130 proved temperature-scaled Path B achieves BA delta +0.0725 vs Path A
+  matched (≥ 0.03 threshold), Brier 0.1917 < Path A 0.2058, ECE ratio 1.24× < 1.5× ceiling
+
+---
+
 ### v128 (complete)
 **Released:** 2026-04-12
 **Theme:** Benchmark-Specific Full Feature Search Across The 72-Feature Universe

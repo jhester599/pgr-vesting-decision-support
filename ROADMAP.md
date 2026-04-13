@@ -19,9 +19,12 @@ universe.
 - shadow classification: per-benchmark separate logistic, lean 12-feature baseline,
   prequential calibration, quality-weighted aggregation
   (`separate_benchmark_logistic_balanced`)
+- Path B (temperature-scaled composite portfolio-target classifier) now runs alongside
+  Path A in shadow mode; both signals appear in monthly artifacts
 - monthly artifacts include `benchmark_quality.csv`, `consensus_shadow.csv`,
   `classification_shadow.csv`, `dashboard.html`, and `monthly_summary.json`
-- April 2026 classifier snapshot: P(Actionable Sell) = 35.2%, stance `NEUTRAL`
+- April 2026 classifier snapshot: Path A P(Actionable Sell) = 36.0%, stance `NEUTRAL`;
+  Path B temp-scaled P(Actionable Sell) = 53.4%, stance `NEUTRAL`, tier `LOW`
 - classifier remains shadow-only; production promotion requires >= 24 matured
   prospective months meeting calibration, balanced accuracy, and precision gates
 - v128 benchmark-specific selection switched 4 of 10 benchmarks away from the
@@ -46,8 +49,10 @@ Summary of the v123-v129 arc:
 | v126 | Methodology hardening: matched Path A parity, rolling WFO enforcement, artifact refresh | Research hygiene |
 | v127 | Path B calibration sweep on matched v126 folds | Research |
 | v128 | Full benchmark-specific feature search over the 72-feature universe with forward stepwise plus L1 / elastic-net cross-checks | Research |
-| v129 | Optional benchmark-specific shadow integration, prospective monitoring, and promotion governance | Research + governance |
-| v130+ | SCHD preparation and conditional per-benchmark inclusion | Future |
+| v129 | Dual-track benchmark-specific shadow integration and promotion governance | Research + governance |
+| v130 | Temperature-scaled Path B adoption analysis vs Path A matched | Research |
+| v131 | Temperature-scaled Path B wired into production shadow artifacts | Shadow integration |
+| v132+ | SCHD preparation and conditional per-benchmark inclusion | Future |
 
 **The single highest-priority completed change (v123):** replace
 quality-weighted aggregation with portfolio-weighted aggregation over the
@@ -72,7 +77,7 @@ upgrade first, not an immediate promotion trigger.
 | SCHD per-benchmark classifier | Add when history reaches >= 185 observations (~v135, late 2027) |
 | Structured monthly schema follow-through | Expand `monthly_summary.json` into future automations |
 | Promotion gate implementation | v129: implement gate check infrastructure; gate remains off until 24 matured prospective months |
-| Composite target Path B evaluation | v127 completed calibration sweep; no candidate clears adoption gate, so Path B remains diagnostic-only |
+| Composite target Path B evaluation | v127 completed calibration sweep; v130 re-evaluated against Path A matched and adopted; v131 wired into shadow artifacts |
 | Benchmark-specific feature-map integration | v128 completed map selection; shadow integration remains a follow-on decision |
 | VGT robustness audit | Re-run the VGT search across nearby as-of dates and require evidence that the winning signal family remains stable, not just the exact 2-feature pair |
 | VGT selector-agreement gate | Before adopting the VGT-specific subset, require forward-stepwise and regularized selectors to agree on the same signal cluster or produce comparable prospective results |
