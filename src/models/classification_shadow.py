@@ -101,18 +101,24 @@ def _format_pct(value: float | None, decimals: int = 1) -> str | None:
 
 def classification_confidence_tier(probability_actionable_sell: float) -> str:
     """Map actionable-sell probability into a simple confidence tier."""
-    if probability_actionable_sell >= 0.70 or probability_actionable_sell <= 0.30:
+    if (
+        probability_actionable_sell >= config.SHADOW_CLASSIFIER_HIGH_THRESH
+        or probability_actionable_sell <= config.SHADOW_CLASSIFIER_LOW_THRESH
+    ):
         return "HIGH"
-    if probability_actionable_sell >= 0.60 or probability_actionable_sell <= 0.40:
+    if (
+        probability_actionable_sell >= config.SHADOW_CLASSIFIER_MODERATE_HIGH_THRESH
+        or probability_actionable_sell <= config.SHADOW_CLASSIFIER_MODERATE_LOW_THRESH
+    ):
         return "MODERATE"
     return "LOW"
 
 
 def classification_stance(probability_actionable_sell: float) -> str:
     """Return the shadow classifier stance from the actionable-sell probability."""
-    if probability_actionable_sell >= 0.70:
+    if probability_actionable_sell >= config.SHADOW_CLASSIFIER_HIGH_THRESH:
         return "ACTIONABLE-SELL"
-    if probability_actionable_sell <= 0.30:
+    if probability_actionable_sell <= config.SHADOW_CLASSIFIER_LOW_THRESH:
         return "NON-ACTIONABLE"
     return "NEUTRAL"
 
