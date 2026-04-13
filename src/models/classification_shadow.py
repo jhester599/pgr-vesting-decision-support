@@ -202,8 +202,8 @@ def _fit_current_probability(
     if x_train.empty or x_current.empty or len(np.unique(y_train.to_numpy(dtype=int))) < 2:
         return None
 
-    x_train_values = x_train.to_numpy(dtype=float)
-    x_current_values = x_current.to_numpy(dtype=float)
+    x_train_values = x_train.to_numpy(dtype=float).copy()  # .copy() ensures writable (pandas 3.0+)
+    x_current_values = x_current.to_numpy(dtype=float).copy()
     medians = np.nanmedian(x_train_values, axis=0)
     medians = np.where(np.isnan(medians), 0.0, medians)
 

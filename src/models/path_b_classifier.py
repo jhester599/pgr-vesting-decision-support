@@ -269,7 +269,7 @@ def fit_path_b_classifier(
     if len(np.unique(y_sub.to_numpy(dtype=int))) < 2:
         return None
 
-    x_vals = X_sub.to_numpy(dtype=float)
+    x_vals = X_sub.to_numpy(dtype=float).copy()  # .copy() ensures writable (pandas 3.0+)
     medians = np.nanmedian(x_vals, axis=0)
     medians = np.where(np.isnan(medians), 0.0, medians)
     for col_idx in range(x_vals.shape[1]):
@@ -283,7 +283,7 @@ def fit_path_b_classifier(
             max_iter=1000,
         )
         model.fit(x_vals, y_sub.to_numpy(dtype=int))
-        last_row = X.iloc[[-1]][usable].to_numpy(dtype=float)
+        last_row = X.iloc[[-1]][usable].to_numpy(dtype=float).copy()  # writable
         for col_idx in range(last_row.shape[1]):
             last_row[np.isnan(last_row[:, col_idx]), col_idx] = medians[col_idx]
         return float(model.predict_proba(last_row)[:, 1][0])

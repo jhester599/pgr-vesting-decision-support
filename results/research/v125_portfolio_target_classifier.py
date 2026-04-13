@@ -122,14 +122,14 @@ def _impute_train_test(
     x_test: pd.DataFrame,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Impute train/test folds using training medians only."""
-    x_train_vals = x_train.to_numpy(dtype=float)
+    x_train_vals = x_train.to_numpy(dtype=float).copy()  # .copy() ensures writable (pandas 3.0+)
     medians = np.nanmedian(x_train_vals, axis=0)
     medians = np.where(np.isnan(medians), 0.0, medians)
     for col_idx in range(x_train_vals.shape[1]):
         nan_mask = np.isnan(x_train_vals[:, col_idx])
         x_train_vals[nan_mask, col_idx] = medians[col_idx]
 
-    x_test_vals = x_test.to_numpy(dtype=float)
+    x_test_vals = x_test.to_numpy(dtype=float).copy()  # writable
     for col_idx in range(x_test_vals.shape[1]):
         nan_mask = np.isnan(x_test_vals[:, col_idx])
         x_test_vals[nan_mask, col_idx] = medians[col_idx]
