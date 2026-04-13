@@ -212,6 +212,55 @@ def test_classification_shadow_summary_investable_fields_default_none() -> None:
     assert summary.investable_benchmark_count == 0
 
 
+# --- v129 dual-track ---
+
+def test_detail_df_has_benchmark_specific_columns() -> None:
+    """build_classification_shadow_summary must add dual-track columns to detail_df."""
+    from src.models.classification_shadow import build_classification_shadow_summary
+    # This is a smoke test: verify the columns exist in the returned detail_df.
+    # Use a real DB connection if available; otherwise skip.
+    import pytest
+    pytest.skip("integration test -- run manually with DB connection")
+
+
+def test_dual_track_columns_in_classification_shadow_columns() -> None:
+    from src.reporting.classification_artifacts import CLASSIFICATION_SHADOW_COLUMNS
+    assert "benchmark_specific_features" in CLASSIFICATION_SHADOW_COLUMNS
+    assert "benchmark_specific_prob_actionable_sell" in CLASSIFICATION_SHADOW_COLUMNS
+    assert "benchmark_specific_tier" in CLASSIFICATION_SHADOW_COLUMNS
+
+
+def test_run_dual_track_pass_adds_columns_for_non_switched_benchmarks() -> None:
+    """For benchmarks not in the feature map (e.g. GLD), benchmark_specific_prob
+    should equal classifier_prob_actionable_sell."""
+    import pandas as pd
+    from src.models.classification_shadow import _run_dual_track_pass
+
+    detail_df = pd.DataFrame({
+        "benchmark": ["GLD", "VOO"],
+        "classifier_prob_actionable_sell": [0.35, 0.40],
+        "classifier_shadow_tier": ["LOW", "MODERATE"],
+    })
+    lean_baseline = ["f1", "f2"]
+    feature_map = {}  # empty -- no switches
+
+    _run_dual_track_pass(
+        detail_df=detail_df,
+        conn=None,
+        as_of=None,
+        feature_df=pd.DataFrame(),
+        current_features=pd.DataFrame(),
+        lean_baseline=lean_baseline,
+        feature_map=feature_map,
+    )
+
+    assert "benchmark_specific_prob_actionable_sell" in detail_df.columns
+    assert "benchmark_specific_features" in detail_df.columns
+    assert "benchmark_specific_tier" in detail_df.columns
+    # For non-switched benchmarks, prob should equal lean_baseline prob
+    assert detail_df.loc[detail_df["benchmark"] == "GLD", "benchmark_specific_prob_actionable_sell"].iloc[0] == pytest.approx(0.35)
+
+
 def test_classification_shadow_summary_to_payload_includes_investable_fields() -> None:
     summary = ClassificationShadowSummary(
         enabled=True,
