@@ -123,3 +123,33 @@ def test_write_classification_shadow_csv_empty_df_has_is_contextual_column(
     written = pd.read_csv(out_path)
     assert "is_contextual" in written.columns
     assert len(written) == 0
+
+
+def test_classification_shadow_columns_has_dual_track_columns() -> None:
+    assert "benchmark_specific_features" in CLASSIFICATION_SHADOW_COLUMNS
+    assert "benchmark_specific_prob_actionable_sell" in CLASSIFICATION_SHADOW_COLUMNS
+    assert "benchmark_specific_tier" in CLASSIFICATION_SHADOW_COLUMNS
+
+
+def test_write_classification_shadow_csv_writes_dual_track_columns(tmp_path) -> None:
+    import pandas as pd
+    from src.reporting.classification_artifacts import write_classification_shadow_csv
+    detail_df = pd.DataFrame({
+        "benchmark": ["BND", "VGT"],
+        "classifier_raw_prob_actionable_sell": [0.40, 0.30],
+        "classifier_prob_actionable_sell": [0.38, 0.29],
+        "classifier_history_obs": [120, 150],
+        "classifier_weight": [0.1, 0.2],
+        "classifier_weighted_contribution": [0.038, 0.058],
+        "classifier_shadow_tier": ["MODERATE", "HIGH"],
+        "is_contextual": [False, False],
+        "benchmark_specific_features": ["pb_ratio|npw_per_pif_yoy", "lean_baseline"],
+        "benchmark_specific_prob_actionable_sell": [0.44, 0.29],
+        "benchmark_specific_tier": ["MODERATE", "HIGH"],
+    })
+    path = write_classification_shadow_csv(tmp_path, detail_df)
+    written = pd.read_csv(path)
+    assert "benchmark_specific_features" in written.columns
+    assert "benchmark_specific_prob_actionable_sell" in written.columns
+    assert "benchmark_specific_tier" in written.columns
+    assert "classifier_prob_actionable_sell" in written.columns

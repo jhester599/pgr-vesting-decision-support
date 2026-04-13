@@ -21,6 +21,10 @@ CLASSIFICATION_SHADOW_COLUMNS = [
     "classifier_weighted_contribution",
     "classifier_shadow_tier",
     "is_contextual",
+    # v129: dual-track benchmark-specific columns
+    "benchmark_specific_features",
+    "benchmark_specific_prob_actionable_sell",
+    "benchmark_specific_tier",
 ]
 
 DECISION_OVERLAY_COLUMNS = [
