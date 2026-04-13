@@ -507,7 +507,10 @@ def build_classification_shadow_summary(
         )
         if not _delta_rows.empty:
             _dual_track_delta = {
-                str(r["benchmark"]): float(r["benchmark_specific_prob_actionable_sell"]) - float(r["classifier_prob_actionable_sell"])
+                str(r["benchmark"]): (
+                    float(r["benchmark_specific_prob_actionable_sell"])
+                    - float(r["classifier_prob_actionable_sell"])
+                )
                 for _, r in _delta_rows.iterrows()
             }
 
