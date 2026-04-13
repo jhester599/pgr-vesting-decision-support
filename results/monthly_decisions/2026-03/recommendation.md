@@ -1,7 +1,7 @@
 # PGR Monthly Decision Report — March 2026
 
 **As-of Date:** 2026-03-31  
-**Run Date:** 2026-04-12  
+**Run Date:** 2026-04-13  
 **Model Version:** v11.1 (lean 2-model ensemble: Ridge + GBT, v18 feature sets, 8-benchmark PRIMARY_FORECAST_UNIVERSE, inverse-variance weighting, v38 post-ensemble shrinkage alpha=0.50, C(8,2)=28 CPCV paths; ElasticNet+BayesianRidge retired after v18/v20 research showed Ridge+GBT outperforms on IC, hit rate, and obs/feature ratio)  
 **Recommendation Layer:** Live production recommendation layer (quality-weighted consensus)  
 
@@ -23,12 +23,12 @@
 
 | Feed | Latest Date | Age | Limit | Status |
 |------|-------------|-----|-------|--------|
-| Daily prices | 2026-04-10 | 2 days | 10 days | **OK** |
+| Daily prices | 2026-04-10 | 3 days | 10 days | **OK** |
 | FRED macro | 2026-04-30 | 0 days | 45 days | **OK** |
-| PGR monthly EDGAR | 2026-02-28 | 43 days | 35 days | **STALE** |
+| PGR monthly EDGAR | 2026-02-28 | 44 days | 35 days | **STALE** |
 
 Warnings:
-- PGR monthly EDGAR is stale: latest 2026-02-28 (43 days old, limit 35).
+- PGR monthly EDGAR is stale: latest 2026-02-28 (44 days old, limit 35).
 
 ---
 
@@ -39,6 +39,7 @@ Warnings:
 - Top-line decision: **Hold 50% / Sell 50% of the next vest tranche. No — follow the default tax/diversification rule.**
 - Shadow classifier probability: **36.0%** (MODERATE)
 - **Portfolio-aligned P(Actionable Sell):** 42.4% [NEUTRAL] _(investable pool, fixed weights)_
+- **Path B P(Actionable Sell):** 53.4% [NEUTRAL] _(composite portfolio target, temp-scaled)_
 
 ## Agreement Panel
 
@@ -85,6 +86,8 @@ Warnings:
 | Classifier Stance | NEUTRAL |
 | Portfolio-aligned P(Actionable Sell) | 42.4% [NEUTRAL] |
 | Investable Pool Confidence Tier | LOW |
+| Path B P(Actionable Sell) | 53.4% [NEUTRAL] |
+| Path B Confidence Tier | LOW |
 | Agreement with Live Recommendation | Aligned |
 | Interpretation | Shadow classifier is near its neutral band (36.0%); use it as a low-confidence interpretation layer rather than a decision override. |
 
@@ -105,10 +108,10 @@ Warnings:
 
 ## Model Health
 
-- Latest tracked month: **2026-03-31**
-- Rolling 12M IC: **0.1846**
-- Rolling 12M Hit Rate: **67.5%**
-- Rolling 12M ECE: **2.1%**
+- Latest tracked month: **2026-04-30**
+- Rolling 12M IC: **0.1798**
+- Rolling 12M Hit Rate: **67.4%**
+- Rolling 12M ECE: **2.2%**
 - IC breach streak: **0** month(s)
 - Status: **Stable: no sustained rolling-IC drift alert is active.**
 
@@ -219,19 +222,19 @@ Recommended action at next vesting event: **DEFAULT 50% SALE** for diversificati
 
 ## Suggested Redeploy Portfolio
 
-- Default posture: `95%` equities / `5%` bonds across the curated investable universe.
+- Default posture: `94%` equities / `6%` bonds across the curated investable universe.
 - Monthly tilts use a `25%` signal overlay around the base weights, so the recommendation can adapt without becoming a full tactical allocation model.
 - Investable universe used in the monthly workflow: `VOO, VGT, SCHD, VXUS, VWO, BND`.
 - Constraint note: The current project universe does not yet include a dedicated small-cap ETF, so the value sleeve uses SCHD and the broad-market sleeve stays in VOO.
 
 | Fund | Allocation | Sleeve | Why it is included | PGR Correlation | Relative Signal | P(Benchmark Beats PGR) |
 |------|------------|--------|--------------------|-----------------|-----------------|------------------------|
-| VOO | 37% | Broad US equity core | Core US beta sleeve that keeps the portfolio equity-heavy without recreating single-stock PGR risk. | 0.14 | Keep near base (+1.4%) | 32.3% |
-| VGT | 19% | Technology tilt | Growth engine and explicit tech tilt when the relative signal supports owning more innovation exposure than a pure core index. | 0.36 | Base-weight only (n/a) | n/a |
+| VOO | 28% | Broad US equity core | Core US beta sleeve that keeps the portfolio equity-heavy without recreating single-stock PGR risk. | 0.14 | Keep near base (+1.4%) | 32.3% |
+| VGT | 22% | Technology tilt | Growth engine and explicit tech tilt when the relative signal supports owning more innovation exposure than a pure core index. | 0.36 | Base-weight only (n/a) | n/a |
+| SCHD | 17% | Value / dividend tilt | Closest current project proxy for a value sleeve; adds a cheaper, income-oriented counterweight to the tech allocation. | 0.29 | Base-weight only (n/a) | n/a |
 | VWO | 16% | Emerging-markets satellite | Higher-growth international sleeve kept modest because it is more volatile than the core international allocation. | 0.30 | Supportive (-0.8%) | n/a |
-| SCHD | 14% | Value / dividend tilt | Closest current project proxy for a value sleeve; adds a cheaper, income-oriented counterweight to the tech allocation. | 0.29 | Base-weight only (n/a) | n/a |
-| VXUS | 9% | International core | Primary geographic diversifier away from a US employer-stock concentration. | 0.28 | Keep near base (+3.0%) | 29.9% |
-| BND | 5% | Bond ballast | Small stabilizer sleeve kept intentionally light so the redeploy portfolio stays above 90% equities in normal months. | 0.04 | Only keep at floor weight (+3.4%) | 25.0% |
+| VXUS | 11% | International core | Primary geographic diversifier away from a US employer-stock concentration. | 0.28 | Keep near base (+3.0%) | 29.9% |
+| BND | 6% | Bond ballast | Small stabilizer sleeve kept intentionally light so the redeploy portfolio stays above 90% equities in normal months. | 0.04 | Only keep at floor weight (+3.4%) | 25.0% |
 
 ## Per-Benchmark Signals
 

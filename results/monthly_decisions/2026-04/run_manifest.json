@@ -1,7 +1,7 @@
 {
   "artifact_classification": "production",
   "as_of_date": "2026-04-11",
-  "git_sha": "79c378c83e5c8913d65afc59402d1b813a0e9923-dirty",
+  "git_sha": "085cc3eb4369f9b9649b04f019b3eeae6261611c-dirty",
   "latest_dates": {
     "daily_dividends.ex_date": "2026-04-02",
     "daily_prices.date": "2026-04-10",
@@ -31,11 +31,11 @@
     "pgr_edgar_monthly": 257,
     "pgr_fundamentals_quarterly": 72
   },
-  "run_timestamp_utc": "2026-04-12T19:20:10.331525+00:00",
+  "run_timestamp_utc": "2026-04-13T12:53:48.247019+00:00",
   "schema_version": "003_model_retrain_log",
   "script_name": "scripts/monthly_decision.py",
   "warnings": [
-    "PGR monthly EDGAR is stale: latest 2026-02-28 (43 days old, limit 35).",
+    "PGR monthly EDGAR is stale: latest 2026-02-28 (44 days old, limit 35).",
     "Aggregate OOS R^2 below threshold: -4.53% < 2.00%.",
     "Representative CPCV verdict is FAIL.",
     "Trailing conformal coverage deviates materially from nominal: 56.2% vs 80%."

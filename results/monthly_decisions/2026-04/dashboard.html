@@ -106,7 +106,7 @@
 
     <section>
       <h2>Workflow Warnings</h2>
-      <ul><li>PGR monthly EDGAR is stale: latest 2026-02-28 (43 days old, limit 35).</li><li>Aggregate OOS R^2 below threshold: -4.53% &lt; 2.00%.</li><li>Representative CPCV verdict is FAIL.</li><li>Trailing conformal coverage deviates materially from nominal: 56.2% vs 80%.</li></ul>
+      <ul><li>PGR monthly EDGAR is stale: latest 2026-02-28 (44 days old, limit 35).</li><li>Aggregate OOS R^2 below threshold: -4.53% &lt; 2.00%.</li><li>Representative CPCV verdict is FAIL.</li><li>Trailing conformal coverage deviates materially from nominal: 56.2% vs 80%.</li></ul>
     </section>
 
     <section><h2>Benchmark Quality</h2><table class="dataframe data-table">
@@ -187,7 +187,7 @@
     </tr>
   </tbody>
 </table></section>
-    <section><h2>Classification Confidence Check</h2><p class='muted'>Shadow-only interpretation layer from the v87-v96 classifier research. It does not change the live recommendation or sell percentage.</p><div class='cards'><div class='card'><div class='label'>P(Actionable Sell)</div><div class='value'>36.0%</div></div><div class='card'><div class='label'>Confidence Tier</div><div class='value'>MODERATE</div></div><div class='card'><div class='label'>Classifier Stance</div><div class='value'>NEUTRAL</div></div><div class='card'><div class='label'>Agreement</div><div class='value'>Aligned</div></div></div><p class='muted' style='margin-top:14px;'>Shadow classifier is near its neutral band (36.0%); use it as a low-confidence interpretation layer rather than a decision override.</p></section>
+    <section><h2>Classification Confidence Check</h2><p class='muted'>Shadow-only interpretation layer from the v87-v96 classifier research. It does not change the live recommendation or sell percentage.</p><div class='cards'><div class='card'><div class='label'>P(Actionable Sell)</div><div class='value'>36.0%</div></div><div class='card'><div class='label'>Confidence Tier</div><div class='value'>MODERATE</div></div><div class='card'><div class='label'>Classifier Stance</div><div class='value'>NEUTRAL</div></div><div class='card'><div class='label'>Agreement</div><div class='value'>Aligned</div></div><div class='card'><div class='label'>Portfolio-Aligned P(Sell)</div><div class='value'>42.4%</div></div><div class='card'><div class='label'>Path B P(Sell)</div><div class='value'>53.4%</div></div><div class='card'><div class='label'>Path B Tier</div><div class='value'>LOW</div></div></div><p class='muted' style='margin-top:14px;'>Shadow classifier is near its neutral band (36.0%); use it as a low-confidence interpretation layer rather than a decision override.</p></section>
     <section><h2>Agreement Panel</h2><div class='cards'><div class='card'><div class='label'>Hold vs Sell</div><div class='value'>Hold 50% / Sell 50% of the next vest tranche</div></div><div class='card'><div class='label'>Actionability</div><div class='value'>No — follow the default tax/diversification rule.</div></div><div class='card'><div class='label'>Consensus Cross-Check</div><div class='value'>Aligned</div></div><div class='card'><div class='label'>Classifier Agreement</div><div class='value'>Aligned</div></div></div><p class='muted' style='margin-top:14px;'>Hold 50% / Sell 50% of the next vest tranche. No — follow the default tax/diversification rule.</p><p class='muted'>Shadow gate overlay: DEFER-TO-TAX-DEFAULT / sell +50% (no live change)</p></section>
     <section><h2>Per-Benchmark Signals</h2><table class="dataframe data-table">
   <thead>

@@ -19,6 +19,15 @@
     "calibration": "oos_logistic_calibration",
     "confidence_tier": "MODERATE",
     "confidence_tier_investable_pool": "LOW",
+    "confidence_tier_path_b": "LOW",
+    "dual_track_delta": {
+      "BND": 0.7107592289794268,
+      "VGT": 0.0,
+      "VIG": -0.10130947554762099,
+      "VOO": 0.0,
+      "VWO": 0.0,
+      "VXUS": 0.0
+    },
     "enabled": true,
     "feature_anchor_date": "2026-02-27",
     "feature_set": "lean_baseline",
@@ -31,8 +40,11 @@
     "probability_investable_pool_label": "40.1%",
     "probability_non_actionable": 0.652868760640571,
     "probability_non_actionable_label": "65.3%",
+    "probability_path_b_temp_scaled": 0.5457812901000333,
+    "probability_path_b_temp_scaled_label": "54.6%",
     "stance": "NEUTRAL",
     "stance_investable_pool": "NEUTRAL",
+    "stance_path_b": "NEUTRAL",
     "target_label": "actionable_sell_3pct",
     "top_supporting_benchmark": "DBC",
     "top_supporting_contribution": 0.07074270085619995,
@@ -85,7 +97,7 @@
     "label": "Live production recommendation layer (quality-weighted consensus)",
     "visible_cross_check": false
   },
-  "run_date": "2026-04-12",
+  "run_date": "2026-04-13",
   "schema_version": 3,
   "shadow_gate_overlay": {
     "classifier_prob_actionable_sell": 0.347131239359429,
@@ -98,7 +110,7 @@
     "would_change": false
   },
   "warnings": [
-    "PGR monthly EDGAR is stale: latest 2026-02-28 (43 days old, limit 35).",
+    "PGR monthly EDGAR is stale: latest 2026-02-28 (44 days old, limit 35).",
     "Aggregate OOS R^2 below threshold: -6.04% < 2.00%.",
     "Representative CPCV verdict is FAIL.",
     "Trailing conformal coverage deviates materially from nominal: 60.4% vs 80%."

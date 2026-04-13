@@ -1,7 +1,7 @@
 # PGR Monthly Decision Report — February 2026
 
 **As-of Date:** 2026-02-28  
-**Run Date:** 2026-04-12  
+**Run Date:** 2026-04-13  
 **Model Version:** v11.1 (lean 2-model ensemble: Ridge + GBT, v18 feature sets, 8-benchmark PRIMARY_FORECAST_UNIVERSE, inverse-variance weighting, v38 post-ensemble shrinkage alpha=0.50, C(8,2)=28 CPCV paths; ElasticNet+BayesianRidge retired after v18/v20 research showed Ridge+GBT outperforms on IC, hit rate, and obs/feature ratio)  
 **Recommendation Layer:** Live production recommendation layer (quality-weighted consensus)  
 
@@ -23,12 +23,12 @@
 
 | Feed | Latest Date | Age | Limit | Status |
 |------|-------------|-----|-------|--------|
-| Daily prices | 2026-04-10 | 2 days | 10 days | **OK** |
+| Daily prices | 2026-04-10 | 3 days | 10 days | **OK** |
 | FRED macro | 2026-04-30 | 0 days | 45 days | **OK** |
-| PGR monthly EDGAR | 2026-02-28 | 43 days | 35 days | **STALE** |
+| PGR monthly EDGAR | 2026-02-28 | 44 days | 35 days | **STALE** |
 
 Warnings:
-- PGR monthly EDGAR is stale: latest 2026-02-28 (43 days old, limit 35).
+- PGR monthly EDGAR is stale: latest 2026-02-28 (44 days old, limit 35).
 
 ---
 
@@ -39,6 +39,7 @@ Warnings:
 - Top-line decision: **Hold 50% / Sell 50% of the next vest tranche. No — follow the default tax/diversification rule.**
 - Shadow classifier probability: **34.7%** (MODERATE)
 - **Portfolio-aligned P(Actionable Sell):** 40.1% [NEUTRAL] _(investable pool, fixed weights)_
+- **Path B P(Actionable Sell):** 54.6% [NEUTRAL] _(composite portfolio target, temp-scaled)_
 
 ## Agreement Panel
 
@@ -85,6 +86,8 @@ Warnings:
 | Classifier Stance | NEUTRAL |
 | Portfolio-aligned P(Actionable Sell) | 40.1% [NEUTRAL] |
 | Investable Pool Confidence Tier | LOW |
+| Path B P(Actionable Sell) | 54.6% [NEUTRAL] |
+| Path B Confidence Tier | LOW |
 | Agreement with Live Recommendation | Aligned |
 | Interpretation | Shadow classifier is near its neutral band (34.7%); use it as a low-confidence interpretation layer rather than a decision override. |
 
@@ -105,10 +108,10 @@ Warnings:
 
 ## Model Health
 
-- Latest tracked month: **2026-03-31**
-- Rolling 12M IC: **0.1846**
-- Rolling 12M Hit Rate: **67.5%**
-- Rolling 12M ECE: **2.1%**
+- Latest tracked month: **2026-04-30**
+- Rolling 12M IC: **0.1798**
+- Rolling 12M Hit Rate: **67.4%**
+- Rolling 12M ECE: **2.2%**
 - IC breach streak: **0** month(s)
 - Status: **Stable: no sustained rolling-IC drift alert is active.**
 
