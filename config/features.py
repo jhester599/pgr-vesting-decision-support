@@ -291,6 +291,17 @@ INVESTABLE_CLASSIFIER_BASE_WEIGHTS: dict[str, float] = {
 # primary investable-pool aggregate.
 CONTEXTUAL_CLASSIFIER_BENCHMARKS: list[str] = ["DBC", "GLD", "VMBS", "VDE"]
 
+# ---------------------------------------------------------------------------
+# v129: Dual-track shadow integration
+# ---------------------------------------------------------------------------
+import os as _os
+
+V128_BENCHMARK_FEATURE_MAP_PATH: str = _os.path.join(
+    "results", "research", "v128_benchmark_feature_map.csv"
+)
+
+DUAL_TRACK_LEAN_BASELINE_OVERRIDES: frozenset[str] = frozenset({"VGT"})
+
 # v11.0 promoted model-specific feature sets (established in v18/v20 research).
 # Ridge v18: swaps yield_curvature for real_yield_change_6m, adds BVPS growth
 #   and NPW growth to strengthen insurance-fundamental signal.

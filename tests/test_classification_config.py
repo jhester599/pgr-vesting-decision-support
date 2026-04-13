@@ -91,3 +91,15 @@ def test_v124_vgt_weight() -> None:
 
 def test_v124_vig_weight() -> None:
     assert abs(INVESTABLE_CLASSIFIER_BASE_WEIGHTS["VIG"] - 0.15) < 1e-6
+
+
+def test_v128_feature_map_path_constant_exists() -> None:
+    from config import features as f
+    assert hasattr(f, "V128_BENCHMARK_FEATURE_MAP_PATH")
+    assert str(f.V128_BENCHMARK_FEATURE_MAP_PATH).endswith("v128_benchmark_feature_map.csv")
+
+
+def test_dual_track_lean_baseline_overrides_contains_vgt() -> None:
+    from config import features as f
+    assert hasattr(f, "DUAL_TRACK_LEAN_BASELINE_OVERRIDES")
+    assert "VGT" in f.DUAL_TRACK_LEAN_BASELINE_OVERRIDES
