@@ -80,10 +80,10 @@ SUMMARY_MD = RESULTS_DIR / "v129_vgt_robustness_audit_summary.md"
 def model_builder() -> LogisticRegression:
     """Construct the same balanced logistic model used in v128."""
     return LogisticRegression(
-        penalty="l2",
         C=0.5,
         class_weight="balanced",
         solver="lbfgs",
+        l1_ratio=0.0,
         max_iter=5000,
         random_state=42,
     )
@@ -382,7 +382,7 @@ def _write_summary(
         "",
         "- Re-run the WFO evaluation at 3 as-of dates: 2022-03-31, 2023-03-31, 2024-03-31",
         "- Same WFO geometry: max_train=60, test_size=6, gap=8 (TimeSeriesSplit)",
-        "- Same model: LogisticRegression(C=0.5, class_weight='balanced', penalty='l2')",
+        "- Same model: LogisticRegression(C=0.5, class_weight='balanced', l1_ratio=0.0, solver='lbfgs')",
         "- Same calibration: prequential logistic calibration",
         "- Covered BA computed on observations where P(sell) <= 0.30 or >= 0.70",
         "",
