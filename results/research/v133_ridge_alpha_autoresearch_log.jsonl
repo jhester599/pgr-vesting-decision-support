@@ -1,0 +1,4 @@
+{"ts": "2026-04-14T06:57:50", "alpha_min": 0.0001, "alpha_max": 100.0, "n_alpha": 60, "pooled_oos_r2": -0.590614, "pooled_ic": 0.131703, "pooled_hit_rate": 0.686782, "pooled_sigma_ratio": 0.928206}
+{"ts": "2026-04-14T06:58:05", "alpha_min": 0.0001, "alpha_max": 1000.0, "n_alpha": 60, "pooled_oos_r2": -0.454833, "pooled_ic": 0.118135, "pooled_hit_rate": 0.699234, "pooled_sigma_ratio": 0.855533}
+{"ts": "2026-04-14T06:58:19", "alpha_min": 0.0001, "alpha_max": 10000.0, "n_alpha": 60, "pooled_oos_r2": -0.455067, "pooled_ic": 0.123655, "pooled_hit_rate": 0.693487, "pooled_sigma_ratio": 0.853497}
+{"ts": "2026-04-14T06:58:33", "alpha_min": 0.0001, "alpha_max": 100000.0, "n_alpha": 60, "pooled_oos_r2": -0.466021, "pooled_ic": 0.124717, "pooled_hit_rate": 0.69636, "pooled_sigma_ratio": 0.861053}

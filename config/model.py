@@ -44,6 +44,10 @@ ENSEMBLE_MODELS: list[str] = ["ridge", "gbt"]
 # inverse-variance weighted benchmark prediction.  Research showed alpha=0.50
 # improved pooled OOS R^2 materially without harming IC or hit rate.
 ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA: float = 0.50
+# v133 - Ridge inner-CV alpha grid bounds for research harnesses
+RIDGE_ALPHA_MIN: float = 1e-4
+RIDGE_ALPHA_MAX: float = 1e2
+RIDGE_ALPHA_N: int = 50
 # v74 shadow promotion study: keep live consensus unchanged, but monitor a
 # quality-weighted cross-benchmark consensus built from the new v69 diagnostics.
 V74_SHADOW_CONSENSUS_SCORE_COL: str = "nw_ic"

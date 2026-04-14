@@ -7,6 +7,151 @@ afternoon bootstrap). Development starts Day 3.
 
 ## Version History
 
+### v137 (research complete)
+**Released:** 2026-04-14
+**Theme:** Standalone GBT Parameter Sweep Harness + First Bounded Search
+
+- `results/research/v137_gbt_param_sweep.py` - new standalone GBT research
+  harness for evaluating tree depth, boosting rounds, learning rate, and
+  subsample on the production research frame
+- `tests/test_research_v137_gbt_param_sweep.py` - new guardrail tests for the
+  GBT parameter ranges and baseline smoke run
+- `results/research/v137_gbt_params_candidate.json` - candidate params file
+  updated to the best observed bounded-search configuration
+- `results/research/v137_gbt_param_autoresearch_log.jsonl` and
+  `results/research/v137_gbt_param_search_summary.md` - bounded-search log and
+  summary
+- Established standalone GBT baseline at `pooled_oos_r2=-0.4629`,
+  `pooled_ic=0.1040`, `pooled_hit_rate=0.6485`
+- Best bounded candidate so far:
+  `max_depth=1`, `n_estimators=25`, `learning_rate=0.05`, `subsample=0.8`
+  with `pooled_oos_r2=-0.2675`
+
+---
+
+### v136 (research complete)
+**Released:** 2026-04-14
+**Theme:** Backlog Prioritization Artifacts Refreshed After The Bounded Sweeps
+
+- `docs/research/backlog.md` - new structured backlog seeded with the open
+  research items referenced by the 2026-04-13 execution plan and refreshed
+  with the current post-v129/v133/v134/v135/v137 state
+- `docs/research/backlog_scoring_rubric.md` - scoring rubric used for the local
+  predict-equivalent prioritization pass
+- `results/research/v136_predict_output.json` - ranked backlog output with 10
+  entries and 5 items at `consensus_score >= 7`
+- Current top priorities after the bounded sweep set:
+  `DATA-01`, `REG-01`, and `BL-01`
+
+---
+
+### v133 (research complete)
+**Released:** 2026-04-14
+**Theme:** Ridge Alpha Re-Baseline Harness + Bounded High-Alpha Sweep
+
+- `config/model.py` - added `RIDGE_ALPHA_MIN`, `RIDGE_ALPHA_MAX`, and
+  `RIDGE_ALPHA_N` constants for research harnesses
+- `results/research/v133_ridge_alpha_sweep.py` - new ridge-only research
+  harness for injecting explicit alpha grids into the production research frame
+- `tests/test_research_v133_ridge_alpha_sweep.py` - new tests covering the
+  default smoke path and alpha-grid validation
+- `results/research/v133_alpha_max_candidate.txt` - current best bounded-sweep
+  `alpha_max` candidate (`1000.0`)
+- `results/research/v133_ridge_alpha_autoresearch_log.jsonl` and
+  `results/research/v133_ridge_alpha_search_summary.md` - bounded-sweep log and
+  summary
+- Established current ridge-only baseline at `pooled_oos_r2=-0.5906`
+  (`alpha_max=1e2`, 60-grid sweep); best bounded candidate improved this to
+  `-0.4548` at `alpha_max=1e3`, still far below the historical v38 ensemble
+  reference and therefore not a promotion candidate
+
+---
+
+### v134 (research complete)
+**Released:** 2026-04-14
+**Theme:** FRED Publication Lag Sweep Harness + First Bounded Search
+
+- `docs/data/fred_publication_lag_reference.md` - new internal reference table
+  documenting the intended publication-lag floor for each configured FRED
+  series, separating the nine daily/weekly candidates from the slower monthly
+  series that should not be reduced in autonomous search
+- `results/research/v134_fred_lag_sweep.py` - new production-frame research
+  harness for testing JSON lag overrides against the current 8-benchmark
+  Ridge+GBT ensemble path and reporting pooled OOS R^2, IC, and hit rate
+- `tests/test_research_v134_fred_lag_sweep.py` - new tests covering baseline
+  recovery, invalid lag rejection, unknown-series rejection, and candidate JSON
+  parsing
+- `results/research/v134_lag_candidate.json` - autoresearch candidate file for
+  the nine eligible daily/weekly series; updated after the first bounded sweep
+  to the best observed candidate (`T10YIE -> 0`, all others remain `1`)
+- `results/research/v134_fred_lag_autoresearch_log.jsonl` - machine-readable
+  log of the bounded sweep across the baseline, all-zero candidate, and all
+  single-toggle candidates
+- `results/research/v134_fred_lag_search_summary.md` - summary artifact for the
+  first completed sweep
+- Established the live-state baseline for this harness at
+  `pooled_oos_r2=-0.1578`, `pooled_ic=0.1261`, `pooled_hit_rate=0.6906`, which
+  is weaker than the older plan's v38-era reference and therefore becomes the
+  correct comparison point for future Target 4 work
+- First bounded sweep result: only `T10YIE -> 0` improved R^2, and only
+  marginally (`-0.1578` -> `-0.1573`), so there is no current evidence that
+  broad lag reductions should be promoted into live config
+
+---
+
+### v129 (research complete)
+**Released:** 2026-04-14
+**Theme:** Re-scoped Benchmark Feature-Map Evaluation Harness
+
+- `results/research/v129_feature_map_eval.py` - new re-scoped Target 1 harness
+  built on the existing `v128` benchmark-WFO machinery because the current
+  `v125` fold-detail artifact does not store the per-benchmark logits or
+  coefficients that the original plan assumed
+- `tests/test_research_v129_feature_map_eval.py` - new tests for the canonical
+  v128 pooled baselines, candidate-map validation, and coverage-floor CLI
+  behavior
+- `results/research/v129_candidate_map.csv` - file-backed candidate map in the
+  target schema used by the new harness
+- Verified canonical built-in baselines:
+  `lean_baseline -> covered_ba=0.5000, coverage=0.8700`,
+  `v128_map -> covered_ba=0.5016, coverage=0.8891`
+- Verified file-backed candidate replay on the re-scoped frame:
+  `covered_ba=0.6164`, `coverage=0.6564`
+
+---
+
+### v135 (research complete)
+**Released:** 2026-04-14
+**Theme:** Path B Temperature Parameter Search Harness + First 80-Iteration Sweep
+
+- `results/research/v135_temp_param_search.py` - new research harness for
+  tuning the Path B prequential temperature grid upper bound and warmup window
+  while holding the v131 asymmetric abstention pair fixed
+  (`low=0.15`, `high=0.70`)
+- `tests/test_research_v135_temp_param_search.py` - new math/guardrail tests
+  covering baseline recovery, temperature-bound validation, warmup validation,
+  log-grid construction, and CLI low-coverage exit behaviour
+- `results/research/v135_temp_max_candidate.txt` and
+  `results/research/v135_warmup_candidate.txt` - autoresearch candidate files
+  updated to the current best observed configuration from the first bounded
+  sweep: `temp_max=2.5`, `warmup=42`
+- `results/research/v135_temp_param_autoresearch_log.jsonl` - machine-readable
+  log of the first 80-point search grid
+  (`10 temp_max candidates x 8 warmup candidates`, plus baseline row)
+- `results/research/v135_temp_param_search_summary.md` - summary artifact for
+  the first completed sweep
+- Verified default baseline for the new harness:
+  `covered_ba=0.6322`, `coverage=0.4524` at `(temp_max=3.0, warmup=24)`,
+  which reflects the existing `v131` threshold pair rather than the older
+  `v130` `(0.30, 0.70)` baseline of `0.5725`
+- First bounded sweep result: best configuration
+  `(temp_max=2.5, warmup=42)` achieved `covered_ba=0.6987`,
+  `coverage=0.5476`, `brier=0.1589`; this clears the Target 5 success gate on
+  the selection frame and requires future temporal hold-out validation before
+  any config promotion
+
+---
+
 ### v131 (complete)
 **Released:** 2026-04-13
 **Theme:** Temperature-Scaled Path B Composite Classifier Wired Into Production Shadow
