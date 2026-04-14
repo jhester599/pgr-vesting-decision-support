@@ -2,6 +2,19 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **2026-04-14 runtime profile note (Target 2 baseline, before the first optimization pass):**
+> Slowest 10 tests observed from `python -m pytest --tb=no -q --durations=10`:
+> 1. `tests/test_research_v128_benchmark_feature_search.py::test_run_feature_search_smoke_covers_all_benchmarks_with_small_subset` â€” ~24.86s
+> 2. `tests/test_research_v134_fred_lag_sweep.py::test_default_no_override_recovers_v38_style_baseline` â€” ~14.10s
+> 3. `tests/test_research_v133_ridge_alpha_sweep.py::test_default_grid_produces_reasonable_r2` â€” ~11.96s
+> 4. `tests/test_research_v129_feature_map_eval.py::test_file_strategy_accepts_candidate_map_artifact` â€” ~5.70s
+> 5. `tests/test_research_v129_feature_map_eval.py::test_main_returns_exit_code_1_when_coverage_too_low` â€” ~4.74s
+> 6. `tests/test_multi_benchmark_wfo.py::TestRunAllBenchmarks::test_ridge_model_type_stored` â€” ~3.37s
+> 7. `tests/test_multi_benchmark_wfo.py::TestLoggingFallbacks::test_run_ensemble_benchmarks_logs_failed_model_and_continues` â€” ~2.80s
+> 8. `tests/test_research_v137_gbt_param_sweep.py::test_default_params_produce_reasonable_r2` â€” ~2.63s
+> 9. `tests/test_cpcv.py::TestCPCVResult::test_model_type_field_set` â€” ~1.86s
+> 10. `tests/test_wfo_engine.py::TestPredictCurrent::test_predict_current_is_not_last_fold_mean` â€” ~1.35s
+
 **Goal:** Run eight targeted autoresearch optimization loops against the pgr-vesting-decision-support project, advancing the Path B temp-scaled classifier shadow toward its 24-month promotion gate and tightening the regression ensemble's calibration and hyperparameter choices.
 
 **Architecture:** Each section is a self-contained autoresearch loop specification. Prerequisites must be satisfied before the loop runs. Guards protect invariants that must not regress between iterations. Metrics are single-number shell extractions that autoresearch can drive without human intervention.

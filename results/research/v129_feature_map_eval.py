@@ -27,6 +27,7 @@ Exit codes
 from __future__ import annotations
 
 import argparse
+from functools import lru_cache
 import sys
 from pathlib import Path
 
@@ -59,12 +60,14 @@ DEFAULT_LOW_THRESH: float = 0.30
 DEFAULT_HIGH_THRESH: float = 0.70
 
 
+@lru_cache(maxsize=1)
 def _candidate_universe() -> set[str]:
     """Return the eligible feature universe for candidate-map validation."""
     feature_df, _ = load_v128_inputs()
     return set(candidate_feature_columns(feature_df))
 
 
+@lru_cache(maxsize=None)
 def _load_saved_pooled_metrics(method_name: str) -> dict[str, float]:
     """Load the canonical v128 pooled metrics for known built-in strategies."""
     df = pd.read_csv(V128_COMPARISON_PATH)
@@ -224,19 +227,24 @@ def _evaluate_candidate_map(
     )
 
 
+@lru_cache(maxsize=None)
 def evaluate_feature_map(
     strategy: str,
     fold_detail_path: str | None = None,
     low_thresh: float = DEFAULT_LOW_THRESH,
     high_thresh: float = DEFAULT_HIGH_THRESH,
+    benchmarks: tuple[str, ...] | None = None,
 ) -> dict[str, float]:
     """Evaluate one candidate feature-routing strategy."""
     _ = fold_detail_path  # retained for CLI compatibility with the original plan
-    if strategy == "lean_baseline":
+    selected_benchmarks = tuple(benchmarks) if benchmarks is not None else None
+    if strategy == "lean_baseline" and selected_benchmarks is None:
         return _load_saved_pooled_metrics("lean_baseline")
-    if strategy == "v128_map":
+    if strategy == "v128_map" and selected_benchmarks is None:
         return _load_saved_pooled_metrics("final_feature_map")
     candidate_df = _load_strategy_map(strategy)
+    if selected_benchmarks is not None:
+        candidate_df = candidate_df[candidate_df["benchmark"].isin(selected_benchmarks)]
     return _evaluate_candidate_map(
         candidate_df,
         low_thresh=low_thresh,

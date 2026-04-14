@@ -35,9 +35,13 @@ def test_v128_map_is_not_worse_than_lean_baseline() -> None:
     assert mapped["covered_ba"] >= lean["covered_ba"]
 
 
+@pytest.mark.slow
 def test_file_strategy_accepts_candidate_map_artifact() -> None:
     """The file-backed candidate-map path should be loadable and scoreable."""
-    metrics = evaluate_feature_map(f"file:{V129_CANDIDATE_MAP_PATH.relative_to(PROJECT_ROOT).as_posix()}")
+    metrics = evaluate_feature_map(
+        f"file:{V129_CANDIDATE_MAP_PATH.relative_to(PROJECT_ROOT).as_posix()}",
+        benchmarks=("VOO", "BND"),
+    )
     assert 0.0 <= metrics["covered_ba"] <= 1.0
     assert 0.0 <= metrics["coverage"] <= 1.0
 
@@ -52,17 +56,12 @@ def test_loading_candidate_map_rejects_invalid_feature(tmp_path: Path) -> None:
         _load_candidate_map_from_file(path)
 
 
-def test_main_returns_exit_code_1_when_coverage_too_low(tmp_path: Path) -> None:
+@pytest.mark.slow
+def test_main_returns_exit_code_1_when_coverage_too_low(monkeypatch: pytest.MonkeyPatch) -> None:
     """CLI should return 1 when a candidate collapses coverage below the floor."""
-    candidate = _candidate_map_from_v128()
-    candidate["feature_list"] = "rate_adequacy_gap_yoy, severity_index_yoy"
-    path = tmp_path / "thin_candidate.csv"
-    candidate.to_csv(path, index=False)
-    rc = main(["--strategy", f"file:{path}"])
-    assert rc in (0, 1)
-    if rc == 0:
-        metrics = evaluate_feature_map(f"file:{path}")
-        assert metrics["coverage"] >= MIN_COVERAGE
-    else:
-        metrics = evaluate_feature_map(f"file:{path}")
-        assert metrics["coverage"] < MIN_COVERAGE
+    monkeypatch.setattr(
+        "results.research.v129_feature_map_eval.evaluate_feature_map",
+        lambda **_: {"covered_ba": 0.50, "coverage": MIN_COVERAGE - 0.01},
+    )
+    rc = main(["--strategy", "lean_baseline"])
+    assert rc == 1

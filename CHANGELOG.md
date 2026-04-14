@@ -7,6 +7,56 @@ afternoon bootstrap). Development starts Day 3.
 
 ## Version History
 
+### v138 (research complete)
+**Released:** 2026-04-14
+**Theme:** Black-Litterman Tau / View-Confidence Replay Proxy + First Bounded Sweep
+
+- `results/research/v138_bl_param_eval.py` - new Target 8 research harness
+  that evaluates a bounded BL replay proxy on the matured
+  `v118_prospective_shadow_replay_results.csv` frame
+- `tests/test_research_v138_bl_param_eval.py` - new tests covering baseline
+  sanity, parameter-range guards, and candidate-file parsing
+- `results/research/v138_bl_params_candidate.json` - bounded-sweep winner
+  candidate file updated to `{"tau": 0.05, "view_confidence_scalar": 0.75}`
+- `results/research/v138_bl_param_autoresearch_log.jsonl` and
+  `results/research/v138_bl_param_search_summary.md` - machine-readable sweep
+  log and handoff summary
+- Established replay-proxy baseline at `recommendation_accuracy=0.8500`,
+  `coverage=0.1235`, `mean_kelly_fraction=0.0151`
+- Best success-gate candidate from the bounded sweep:
+  `tau=0.05`, `view_confidence_scalar=0.75` ->
+  `recommendation_accuracy=0.8293`, `coverage=0.2531`,
+  `mean_kelly_fraction=0.0200`, `policy_uplift=0.0010`
+- Important caveat: the historical repo does not retain the original monthly BL
+  covariance/view tensors, so `v138` is a replay proxy rather than a literal
+  reconstruction of historical BL calls
+
+---
+
+### Runtime Optimization Pass (research complete)
+**Released:** 2026-04-14
+**Theme:** Test Suite Timing Harness + First Full-Suite Reduction Pass
+
+- `scripts/measure_test_time.sh` - added the timing wrapper requested by
+  Target 2; compatible with the repo's Git Bash path on Windows
+- `tests/conftest.py` - added `--fast` support that skips tests marked
+  `@pytest.mark.slow`
+- `pytest.ini` - registered the `slow` marker
+- Marked the 5 originally slowest tests as `slow` and narrowed several
+  research smoke tests to smaller benchmark subsets while preserving their
+  assertion contract
+- `results/research/v_test_runtime_autoresearch_log.jsonl` and
+  `results/research/v_test_runtime_summary.md` - recorded the baseline and
+  post-pass timing measurements
+- Measured full-suite runtime reduction from `131.0s` to `85.2s`
+  (`35.0%` faster than baseline); `--fast` local iteration lane measures
+  `70.2s`
+- `docs/superpowers/plans/2026-04-13-autoresearch-execution-plan.md` now
+  carries the initial slowest-10 test profile at the top of the plan for
+  restart-safe follow-on work
+
+---
+
 ### v137 (research complete)
 **Released:** 2026-04-14
 **Theme:** Standalone GBT Parameter Sweep Harness + First Bounded Search

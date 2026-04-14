@@ -1,0 +1,3 @@
+{"phase": "initial_full_suite_baseline", "elapsed_seconds": 131.0, "notes": "Measured with scripts/measure_test_time.sh before the subset-smoke and CLI-stub optimizations."}
+{"phase": "post_optimization_full_suite", "elapsed_seconds": 85.2, "notes": "After adding --fast support, marking slow tests, caching v129 pure evals, and reducing smoke-test benchmark scope."}
+{"phase": "post_optimization_fast_lane", "elapsed_seconds": 70.2, "notes": "Measured with scripts/measure_test_time.sh --fast."}

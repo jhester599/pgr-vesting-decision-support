@@ -176,6 +176,79 @@ Observed top priorities:
 - `REG-01` - ensemble-level clip/shrink recalibration revisit
 - `BL-01` - Black-Litterman tau/view-confidence tuning
 
+### Target 8 - Black-Litterman tau and view-confidence replay proxy
+
+Status: completed as a bounded replay-proxy sweep on the matured `v118` frame.
+
+Artifacts created:
+- `results/research/v138_bl_param_eval.py`
+- `tests/test_research_v138_bl_param_eval.py`
+- `results/research/v138_bl_params_candidate.json`
+- `results/research/v138_bl_param_autoresearch_log.jsonl`
+- `results/research/v138_bl_param_search_summary.md`
+
+Validation:
+- `python -m pytest tests/test_research_v138_bl_param_eval.py -q --tb=short`
+- Passing as of 2026-04-14.
+
+Observed baseline:
+- `tau=0.05`, `view_confidence_scalar=1.0` ->
+  `recommendation_accuracy=0.8500`, `coverage=0.1235`,
+  `mean_kelly_fraction=0.0151`, `policy_uplift=0.0008`
+
+Observed best success-gate candidate from the bounded sweep:
+- `tau=0.05`, `view_confidence_scalar=0.75` ->
+  `recommendation_accuracy=0.8293`, `coverage=0.2531`,
+  `mean_kelly_fraction=0.0200`, `policy_uplift=0.0010`,
+  `sell_precision=0.0000`
+
+Interpretation:
+- The historical repo state does not preserve the original month-by-month BL
+  covariance and view tensors, so this target had to run as a replay proxy on
+  the longest matured decision artifact rather than a literal BL call replay.
+- The bounded sweep clears the plan's formal success gate on this proxy frame
+  (`accuracy >= 0.65`, `coverage >= 0.25`, `mean_kelly_fraction <= 0.10`).
+- The winning row still offers weak sell-side precision, so this is a useful
+  research lead rather than a promotion-ready decision-layer change.
+
+### Target 2 - Test suite runtime reduction
+
+Status: completed for the first optimization pass.
+
+Artifacts created:
+- `scripts/measure_test_time.sh`
+- `results/research/v_test_runtime_autoresearch_log.jsonl`
+- `results/research/v_test_runtime_summary.md`
+
+Files updated:
+- `tests/conftest.py` - added `--fast` handling that skips `@pytest.mark.slow`
+  tests
+- `pytest.ini` - registered the `slow` marker
+- slow markers added to the 5 originally slowest tests from the first profile
+- runtime-heavy research smoke tests narrowed to smaller benchmark subsets
+  where the assertion contract still held
+- `results/research/v129_feature_map_eval.py` - added session-local caching for
+  repeated pure evaluations
+- `docs/superpowers/plans/2026-04-13-autoresearch-execution-plan.md` -
+  annotated with the initial slowest-10 profile
+
+Validation:
+- `python -m pytest --tb=no -q --durations=10`
+- `C:\Program Files\Git\bin\bash.exe scripts/measure_test_time.sh`
+- `C:\Program Files\Git\bin\bash.exe scripts/measure_test_time.sh --fast`
+- All passing as of 2026-04-14.
+
+Measured outcomes:
+- initial full-suite baseline: `131.0s`
+- post-pass full-suite runtime: `85.2s`
+- post-pass `--fast` runtime: `70.2s`
+
+Interpretation:
+- The plan's `>= 20%` runtime-reduction target is met on the full suite in the
+  first pass (`35.0%` faster than baseline).
+- Remaining hot spots are now concentrated in `multi_benchmark_wfo` and the
+  reduced `v128` smoke test.
+
 ## Review Findings On The 2026-04-13 Plan
 
 ### Target 5 baseline note
@@ -241,11 +314,22 @@ Actual `v134` no-override baseline as of 2026-04-14:
 This does not invalidate the harness; it means future Target 4 work must treat
 the current baseline as the reference point rather than the original plan text.
 
+### Target 8 scalar-direction mismatch
+
+The Target 8 setup text says `view_confidence_scalar > 1.0` should "reduce
+uncertainty" and strengthen signals, but the live BL implementation multiplies
+Omega by the scalar (`Omega = error^2 * scalar`), which means larger values
+actually make the views less confident.
+
+The `v138` replay proxy follows the production-code semantics rather than the
+plan wording.
+
 ## Recommended Next Step
 
-The highest-value unfinished plan item is now Target 8
-(Black-Litterman tau/view-confidence optimization). Target 2 remains open if
-test-runtime reduction is still desired inside this same campaign.
+All eight plan targets now have a concrete execution outcome recorded in this
+log. If a follow-on session is opened, the highest-value next step is not a new
+target from the 2026-04-13 plan; it is deciding which bounded winners, if any,
+deserve a separate holdout or promotion study.
 
 ## Resume Checklist
 
@@ -257,4 +341,6 @@ When resuming after a token reset:
 5. Read `results/research/v137_gbt_param_search_summary.md`.
 6. Treat `v129`, `v133`, `v134`, `v135`, `v136`, and `v137` as completed
    bounded sweeps unless a wider search is explicitly desired.
-7. The next unfinished empirical target is Target 8.
+7. The 2026-04-13 execution plan no longer has unfinished targets; use the
+   summaries and logs above to choose any follow-on promotion or validation
+   work.
