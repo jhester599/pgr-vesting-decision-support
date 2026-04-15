@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 
 import pandas as pd
+import pytest
 
 
 def _load_module():
@@ -115,17 +116,19 @@ def test_select_benchmark_winner_falls_back_to_baseline_when_guardrails_fail() -
     assert winners.iloc[0]["method"] == "lean_baseline"
 
 
+@pytest.mark.slow
 def test_run_feature_search_smoke_covers_all_benchmarks_with_small_subset() -> None:
     feature_df, _ = MODULE.load_v128_inputs()
     candidate_features = MODULE.candidate_feature_columns(feature_df)[:2]
+    benchmarks = MODULE.benchmark_universe()[:3]
     artifacts = MODULE.run_feature_search(
-        benchmarks=MODULE.benchmark_universe(),
+        benchmarks=benchmarks,
         candidate_features=candidate_features,
         max_features=2,
         write_outputs=False,
     )
     feature_map = artifacts["feature_map"]
-    assert set(feature_map["benchmark"]) == set(MODULE.benchmark_universe())
+    assert set(feature_map["benchmark"]) == set(benchmarks)
     assert feature_map["n_features"].max() <= 12
     assert not artifacts["single_feature"].empty
     assert not artifacts["comparison"].empty

@@ -1,0 +1,126 @@
+{
+  "rankings": [
+    {
+      "id": "DATA-01",
+      "name": "EDGAR Filing Lag Review",
+      "consensus_score": 8.6,
+      "persona_scores": {
+        "quant_researcher": 8.0,
+        "risk_manager": 9.5,
+        "data_engineer": 8.5,
+        "portfolio_manager": 8.5
+      },
+      "dissents": []
+    },
+    {
+      "id": "REG-01",
+      "name": "Ensemble-Level Clip/Shrink Blend Revisit",
+      "consensus_score": 8.1,
+      "persona_scores": {
+        "quant_researcher": 8.5,
+        "risk_manager": 7.5,
+        "data_engineer": 8.0,
+        "portfolio_manager": 8.5
+      },
+      "dissents": []
+    },
+    {
+      "id": "BL-01",
+      "name": "Black-Litterman Tau/View Tuning",
+      "consensus_score": 7.8,
+      "persona_scores": {
+        "quant_researcher": 7.0,
+        "risk_manager": 8.0,
+        "data_engineer": 7.5,
+        "portfolio_manager": 8.5
+      },
+      "dissents": []
+    },
+    {
+      "id": "INFRA-01",
+      "name": "Conformal Coverage Calibration",
+      "consensus_score": 7.4,
+      "persona_scores": {
+        "quant_researcher": 7.0,
+        "risk_manager": 8.0,
+        "data_engineer": 7.0,
+        "portfolio_manager": 7.5
+      },
+      "dissents": []
+    },
+    {
+      "id": "CLS-02",
+      "name": "Firth Logistic For Short-History Benchmarks",
+      "consensus_score": 7.1,
+      "persona_scores": {
+        "quant_researcher": 7.5,
+        "risk_manager": 7.5,
+        "data_engineer": 6.5,
+        "portfolio_manager": 7.0
+      },
+      "dissents": []
+    },
+    {
+      "id": "FEAT-01",
+      "name": "DTWEXBGS Post-v128 Feature Search",
+      "consensus_score": 6.8,
+      "persona_scores": {
+        "quant_researcher": 7.0,
+        "risk_manager": 6.0,
+        "data_engineer": 7.0,
+        "portfolio_manager": 7.0
+      },
+      "dissents": []
+    },
+    {
+      "id": "FEAT-02",
+      "name": "WTI 3M Momentum For DBC/VDE",
+      "consensus_score": 6.5,
+      "persona_scores": {
+        "quant_researcher": 7.0,
+        "risk_manager": 6.0,
+        "data_engineer": 6.0,
+        "portfolio_manager": 7.0
+      },
+      "dissents": []
+    },
+    {
+      "id": "CLS-01",
+      "name": "SCHD Per-Benchmark Classifier Addition",
+      "consensus_score": 6.0,
+      "persona_scores": {
+        "quant_researcher": 5.5,
+        "risk_manager": 6.0,
+        "data_engineer": 6.0,
+        "portfolio_manager": 6.5
+      },
+      "dissents": []
+    },
+    {
+      "id": "REG-02",
+      "name": "Rank-Normalized GBT With New Search Region",
+      "consensus_score": 5.7,
+      "persona_scores": {
+        "quant_researcher": 5.5,
+        "risk_manager": 5.5,
+        "data_engineer": 6.0,
+        "portfolio_manager": 6.0
+      },
+      "dissents": []
+    },
+    {
+      "id": "CLS-03",
+      "name": "Path A vs Path B Production Decision",
+      "consensus_score": 5.0,
+      "persona_scores": {
+        "quant_researcher": 5.0,
+        "risk_manager": 5.5,
+        "data_engineer": 4.5,
+        "portfolio_manager": 5.0
+      },
+      "dissents": [
+        "Blocked by the 24 matured prospective-month requirement despite high strategic importance."
+      ]
+    }
+  ]
+}

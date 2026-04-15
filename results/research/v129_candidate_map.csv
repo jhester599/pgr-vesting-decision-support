@@ -1,0 +1,11 @@
+benchmark,feature_set,feature_list
+BND,elastic_net_consensus,"pb_ratio, npw_per_pif_yoy, mortgage_spread_30y_10y, motor_vehicle_ins_cpi_yoy, combined_ratio_ttm, npw_growth_yoy, roe, credit_spread_hy, excess_bond_premium_proxy, real_yield_change_6m, npw_vs_npe_spread_pct, mom_6m"
+DBC,elastic_net_consensus,"combined_ratio_ttm, underwriting_margin_ttm, real_yield_change_6m, rate_adequacy_gap_yoy, baa10y_spread, commodity_equity_momentum, npw_per_pif_yoy, real_rate_10y, ppi_auto_ins_yoy, npw_growth_yoy, investment_income_growth_yoy, credit_spread_hy"
+GLD,lean_baseline,"mom_12m, vol_63d, yield_slope, real_yield_change_6m, real_rate_10y, credit_spread_hy, nfci, vix, combined_ratio_ttm, investment_income_growth_yoy, book_value_per_share_growth_yoy, npw_growth_yoy"
+VDE,lean_baseline,"mom_12m, vol_63d, yield_slope, real_yield_change_6m, real_rate_10y, credit_spread_hy, nfci, vix, combined_ratio_ttm, investment_income_growth_yoy, book_value_per_share_growth_yoy, npw_growth_yoy"
+VGT,forward_stepwise,"rate_adequacy_gap_yoy, severity_index_yoy"
+VIG,elastic_net_consensus,"pb_ratio, wti_return_3m, monthly_combined_ratio_delta, real_yield_change_6m, baa10y_spread, yield_curvature, npw_per_pif_yoy, vwo_vxus_spread_6m, underwriting_income_3m, combined_ratio_ttm, mom_3m, commodity_equity_momentum"
+VMBS,lean_baseline,"mom_12m, vol_63d, yield_slope, real_yield_change_6m, real_rate_10y, credit_spread_hy, nfci, vix, combined_ratio_ttm, investment_income_growth_yoy, book_value_per_share_growth_yoy, npw_growth_yoy"
+VOO,lean_baseline,"mom_12m, vol_63d, yield_slope, real_yield_change_6m, real_rate_10y, credit_spread_hy, nfci, vix, combined_ratio_ttm, investment_income_growth_yoy, book_value_per_share_growth_yoy, npw_growth_yoy"
+VWO,lean_baseline,"mom_12m, vol_63d, yield_slope, real_yield_change_6m, real_rate_10y, credit_spread_hy, nfci, vix, combined_ratio_ttm, investment_income_growth_yoy, book_value_per_share_growth_yoy, npw_growth_yoy"
+VXUS,lean_baseline,"mom_12m, vol_63d, yield_slope, real_yield_change_6m, real_rate_10y, credit_spread_hy, nfci, vix, combined_ratio_ttm, investment_income_growth_yoy, book_value_per_share_growth_yoy, npw_growth_yoy"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import config
 import pandas as pd
 import pytest
 
@@ -363,3 +364,11 @@ def test_to_payload_includes_path_b_keys() -> None:
     assert "probability_path_b_temp_scaled_label" in payload
     assert "confidence_tier_path_b" in payload
     assert "stance_path_b" in payload
+
+
+def test_shadow_classifier_config_constants_unchanged() -> None:
+    """Guard: config tier constants must stay at v131 baseline values until v132 adopts new ones."""
+    assert config.SHADOW_CLASSIFIER_HIGH_THRESH == pytest.approx(0.70)
+    assert config.SHADOW_CLASSIFIER_LOW_THRESH == pytest.approx(0.30)
+    assert config.SHADOW_CLASSIFIER_MODERATE_HIGH_THRESH == pytest.approx(0.60)
+    assert config.SHADOW_CLASSIFIER_MODERATE_LOW_THRESH == pytest.approx(0.40)

@@ -44,6 +44,10 @@ ENSEMBLE_MODELS: list[str] = ["ridge", "gbt"]
 # inverse-variance weighted benchmark prediction.  Research showed alpha=0.50
 # improved pooled OOS R^2 materially without harming IC or hit rate.
 ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA: float = 0.50
+# v133 - Ridge inner-CV alpha grid bounds for research harnesses
+RIDGE_ALPHA_MIN: float = 1e-4
+RIDGE_ALPHA_MAX: float = 1e2
+RIDGE_ALPHA_N: int = 50
 # v74 shadow promotion study: keep live consensus unchanged, but monitor a
 # quality-weighted cross-benchmark consensus built from the new v69 diagnostics.
 V74_SHADOW_CONSENSUS_SCORE_COL: str = "nw_ic"
@@ -96,6 +100,29 @@ DIAG_CPCV_MIN_POSITIVE_PATHS: int = 19
 # VIF > WARN_THRESHOLD is flagged as moderate multicollinearity (⚠️).
 VIF_HIGH_THRESHOLD: float = 10.0
 VIF_WARN_THRESHOLD: float = 5.0
+
+# ---------------------------------------------------------------------------
+# v131/v132 — Shadow classifier probability tier thresholds
+#
+# These four values define both the abstention band and the confidence-tier
+# system used across classification_shadow, consensus_shadow, and
+# multi_benchmark_wfo. Centralised here so a single edit propagates to all
+# three call sites if thresholds are ever updated after v132 validation.
+#
+# Tier logic (applied to any P(actionable-sell) or P(outperform)):
+#   P >= HIGH_THRESH              → ACTIONABLE-SELL  / HIGH confidence
+#   P <= LOW_THRESH               → NON-ACTIONABLE   / HIGH confidence
+#   P >= MODERATE_HIGH_THRESH     → MODERATE sell confidence
+#   P <= MODERATE_LOW_THRESH      → MODERATE hold confidence
+#   otherwise                     → NEUTRAL / LOW confidence
+#
+# v131 autoresearch sweep found (0.15, 0.70) improves covered BA by +6pp
+# with 45% coverage; v132 temporal hold-out required before adoption.
+# ---------------------------------------------------------------------------
+SHADOW_CLASSIFIER_HIGH_THRESH: float = 0.70
+SHADOW_CLASSIFIER_LOW_THRESH: float = 0.30
+SHADOW_CLASSIFIER_MODERATE_HIGH_THRESH: float = 0.60
+SHADOW_CLASSIFIER_MODERATE_LOW_THRESH: float = 0.40
 
 # ---------------------------------------------------------------------------
 # v5.1 — Probability Calibration

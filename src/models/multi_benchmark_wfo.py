@@ -401,8 +401,10 @@ def get_confidence_tier(y_hat: float, y_std: float) -> tuple[str, float]:
     Platt scaling or isotonic regression calibration.
 
     Tier thresholds:
-      - HIGH:     P(outperform) ≥ 0.70 or ≤ 0.30 (strong directional conviction)
-      - MODERATE: P(outperform) ≥ 0.60 or ≤ 0.40
+      - HIGH:     P(outperform) ≥ config.SHADOW_CLASSIFIER_HIGH_THRESH or
+                  ≤ config.SHADOW_CLASSIFIER_LOW_THRESH (strong directional conviction)
+      - MODERATE: P(outperform) ≥ config.SHADOW_CLASSIFIER_MODERATE_HIGH_THRESH or
+                  ≤ config.SHADOW_CLASSIFIER_MODERATE_LOW_THRESH
       - LOW:      otherwise (signal near 50/50)
 
     Args:
@@ -418,9 +420,9 @@ def get_confidence_tier(y_hat: float, y_std: float) -> tuple[str, float]:
     else:
         prob = float(_norm.cdf(y_hat / y_std))
 
-    if prob >= 0.70 or prob <= 0.30:
+    if prob >= config.SHADOW_CLASSIFIER_HIGH_THRESH or prob <= config.SHADOW_CLASSIFIER_LOW_THRESH:
         tier = "HIGH"
-    elif prob >= 0.60 or prob <= 0.40:
+    elif prob >= config.SHADOW_CLASSIFIER_MODERATE_HIGH_THRESH or prob <= config.SHADOW_CLASSIFIER_MODERATE_LOW_THRESH:
         tier = "MODERATE"
     else:
         tier = "LOW"

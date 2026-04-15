@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import config
 import pandas as pd
 
 
@@ -115,9 +116,15 @@ def summarize_consensus_variant(
     else:
         consensus = "NEUTRAL"
 
-    if mean_prob_outperform >= 0.70 or mean_prob_outperform <= 0.30:
+    if (
+        mean_prob_outperform >= config.SHADOW_CLASSIFIER_HIGH_THRESH
+        or mean_prob_outperform <= config.SHADOW_CLASSIFIER_LOW_THRESH
+    ):
         confidence_tier = "HIGH"
-    elif mean_prob_outperform >= 0.60 or mean_prob_outperform <= 0.40:
+    elif (
+        mean_prob_outperform >= config.SHADOW_CLASSIFIER_MODERATE_HIGH_THRESH
+        or mean_prob_outperform <= config.SHADOW_CLASSIFIER_MODERATE_LOW_THRESH
+    ):
         confidence_tier = "MODERATE"
     else:
         confidence_tier = "LOW"
