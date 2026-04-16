@@ -200,6 +200,33 @@ plt.close(fig)
 print(f"Saved: {out3}")
 
 
+# ── 7b. Chart 3b: Repurchase Dollar Amount — capped at $400M ─────────────────
+fig, ax = plt.subplots(figsize=(12, 5))
+ax.bar(dates_repdol, repdol_vals, width=20, color=GREEN, alpha=0.85)
+style_ax(ax, "PGR — Share Repurchase Dollar Amount (Monthly, axis capped at $400M)", "Repurchase $ (millions)", GREEN)
+ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"${x:,.0f}M"))
+ax.set_ylim(0, 400)
+add_split_line(ax, ymax_frac=0.88)
+
+# Outlier bar (Oct 2004, $1.49B) is clipped — mark it explicitly
+ax.annotate(
+    "Oct 2004 ASR: $1,487M\n(bar clipped — exceeds axis)",
+    xy=(asr_date, 400), xytext=(asr_date + datetime.timedelta(days=500), 355),
+    fontsize=8, color="#2ca02c",
+    arrowprops=dict(arrowstyle="->", color="#2ca02c", lw=0.9),
+    bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#2ca02c", alpha=0.85),
+)
+# Draw a small upward-pointing arrow stub above the clipped bar to signal truncation
+ax.annotate("", xy=(asr_date, 400), xytext=(asr_date, 385),
+            arrowprops=dict(arrowstyle="->", color="#2ca02c", lw=1.2))
+
+fig.tight_layout()
+out3b = os.path.join(OUT_DIR, "pgr_repurchase_dollar_amount_capped.png")
+fig.savefig(out3b, dpi=150, bbox_inches="tight")
+plt.close(fig)
+print(f"Saved: {out3b}")
+
+
 # ── 8. Chart 4: Share Price ───────────────────────────────────────────────────
 fig, ax = plt.subplots(figsize=(12, 5))
 ax.plot(dates_price, price_vals, color=RED, linewidth=1.8)
