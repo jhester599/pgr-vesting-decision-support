@@ -7,6 +7,29 @@ afternoon bootstrap). Development starts Day 3.
 
 ## Version History
 
+### v151 (shadow/docs complete)
+**Released:** 2026-04-17
+**Theme:** Side-By-Side Shadow Promotion For The v139-v150 Follow-On Winners
+
+- Added `src/reporting/shadow_followon.py` to load the surviving
+  `v139-v150` candidate files and build one reporting-only
+  `autoresearch_followon_v150` shadow payload
+- `scripts/monthly_decision.py` now threads one additive follow-on shadow lane
+  through the monthly reporting pipeline while leaving live recommendation
+  behavior unchanged
+- `src/reporting/monthly_summary.py` now preserves
+  `classification_shadow_variants` and `decision_overlay_variants` alongside
+  the existing baseline-compatible fields
+- `src/reporting/dashboard_snapshot.py` now renders a “Shadow Variant
+  Comparison” section so the current shadow lane and the follow-on lane appear
+  side-by-side in `dashboard.html`
+- `src/reporting/classification_artifacts.py` now preserves a `variant` column
+  in `classification_shadow.csv` and `decision_overlays.csv`
+- Added focused pytest coverage for the follow-on helper plus the new variant
+  reporting path
+
+---
+
 ### v150 (research complete)
 **Released:** 2026-04-16
 **Theme:** Neutral-Band Replay Proxy Review On Top Of The Updated Kelly Baseline

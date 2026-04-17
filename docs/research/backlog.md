@@ -13,10 +13,12 @@
   candidates on the current post-v138 frame
 - `v146`, `v147`, `v148`, and `v150` all closed as no-change confirmations on
   the bounded follow-through grids
+- `v151` now surfaces the promoted winners side-by-side in monthly shadow
+  artifacts under the reporting-only variant `autoresearch_followon_v150`
 - `v145` recorded a promising but tradeoff-heavy `(48, 6)` WFO window result,
   so the incumbent `{"train": 60, "test": 6}` candidate remains in place
-- The next restart point is `v151` reporting/artifact polish, not additional
-  research harness scaffolding
+- The next restart point is `v152` final synthesis, not additional shadow
+  plumbing
 
 ### BL-01 â€” Black-Litterman Tau/View Tuning
 **Status:** open

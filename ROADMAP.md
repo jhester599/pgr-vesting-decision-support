@@ -82,7 +82,9 @@ Current execution progress on 2026-04-16:
   `{"fraction": 0.50, "cap": 0.25}`
 - `v150` complete: neutral-band review kept the incumbent `0.015` setting after
   the Kelly update
-- Next restart point: `v151` reporting and artifact polish
+- `v151` complete: the promoted `v139-v150` winners now appear in one
+  reporting-only side-by-side shadow lane named `autoresearch_followon_v150`
+- Next restart point: `v152` final synthesis and next-session handoff
 
 ## Prior Research Direction: v123-v129
 
