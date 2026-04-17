@@ -7,6 +7,243 @@ afternoon bootstrap). Development starts Day 3.
 
 ## Version History
 
+### v150 (research complete)
+**Released:** 2026-04-16
+**Theme:** Neutral-Band Replay Proxy Review On Top Of The Updated Kelly Baseline
+
+- `results/research/v150_neutral_band_autoresearch_log.jsonl` and
+  `results/research/v150_neutral_band_search_summary.md` now record the first
+  bounded neutral-band review after the `v149` Kelly candidate update
+- Re-ran the replay proxy against the updated Kelly baseline
+  `{"fraction": 0.50, "cap": 0.25}` and tested neutral-band values
+  `0.00`, `0.01`, `0.015`, `0.02`, `0.03`, `0.05`
+- Utility score stayed flat at `0.0021` across the tested band values, so the
+  decision was driven by the coverage/success-rate tradeoff rather than raw
+  objective movement
+- Wider bands such as `0.03` improved success rate to `0.8293`, but they cut
+  coverage to `0.2531`; because the gains were mostly a selectivity tradeoff,
+  `results/research/v150_neutral_band_candidate.txt` remains unchanged at
+  `0.015` as the more stable research-only setting
+
+---
+
+### v149 (research complete)
+**Released:** 2026-04-16
+**Theme:** Kelly Fraction / Cap Replay-Proxy Bounded Sweep
+
+- `results/research/v149_kelly_autoresearch_log.jsonl` and
+  `results/research/v149_kelly_search_summary.md` now record the first bounded
+  Kelly fraction/cap sweep on the preserved `v138` BL replay-proxy frame
+- Established the incumbent candidate baseline at
+  `{"fraction": 0.25, "cap": 0.20}` with
+  `utility_score=0.0010`, `coverage=0.2531`, `success_rate=0.8293`
+- Tested bounded alternatives:
+  `(0.10, 0.10)`, `(0.15, 0.15)`, `(0.25, 0.20)`, `(0.35, 0.20)`,
+  `(0.35, 0.25)`, `(0.50, 0.25)`
+- `results/research/v149_kelly_candidate.json` is updated to
+  `{"fraction": 0.50, "cap": 0.25}`, which delivered the best bounded utility
+  score observed in the grid:
+  `utility_score=0.0021`, `coverage=0.4506`, `success_rate=0.7671`
+- This is a more aggressive research-only candidate and remains subject to a
+  later promotion decision rather than automatic adoption
+
+---
+
+### v148 (research complete)
+**Released:** 2026-04-16
+**Theme:** Positive-Class Weight Replay-Proxy Review
+
+- `results/research/v148_class_weight_autoresearch_log.jsonl` and
+  `results/research/v148_class_weight_search_summary.md` now record the first
+  bounded positive-class weighting review on the preserved Path B frame
+- Re-established the incumbent candidate baseline at `positive_weight=1.00`
+  with `covered_ba=0.6987`, `coverage=0.5476`
+- Tested bounded alternatives `0.75`, `1.25`, `1.50`, and `2.00`
+- None of the tested alternatives beat the incumbent on covered balanced
+  accuracy, so `results/research/v148_class_weight_candidate.txt` remains
+  unchanged at `1.0`
+
+---
+
+### v147 (research complete)
+**Released:** 2026-04-16
+**Theme:** Coverage-Weighted Path A / Path B Aggregate Proxy Review
+
+- `results/research/v147_aggregate_autoresearch_log.jsonl` and
+  `results/research/v147_aggregate_search_summary.md` now record the first
+  bounded coverage-weighted Path A / Path B aggregation review
+- Re-established the incumbent multiplier baseline at `1.0`, which produced
+  `covered_ba=0.5000`, `coverage=0.4405`
+- Tested bounded multipliers `0.50`, `0.75`, `1.25`, `1.50`, and `2.00`
+- None of the tested multipliers improved covered balanced accuracy above the
+  baseline value, so `results/research/v147_path_b_multiplier_candidate.txt`
+  remains unchanged at `1.0`
+
+---
+
+### v146 (research complete)
+**Released:** 2026-04-16
+**Theme:** Threshold Follow-Through Review On The Tuned v135 Baseline
+
+- `results/research/v146_threshold_autoresearch_log.jsonl` and
+  `results/research/v146_threshold_search_summary.md` now record the first
+  bounded threshold follow-through review on top of the tuned `v135` Path B
+  temperature baseline
+- Re-established the incumbent candidate baseline at
+  `{"low": 0.15, "high": 0.70}` with
+  `covered_ba=0.6987`, `coverage=0.5476`
+- Tested bounded threshold pairs:
+  `(0.10, 0.65)`, `(0.10, 0.70)`, `(0.15, 0.65)`, `(0.15, 0.70)`,
+  `(0.20, 0.70)`, `(0.20, 0.75)`
+- None of the tested pairs improved covered balanced accuracy over the current
+  candidate while maintaining an obviously better tradeoff, so
+  `results/research/v146_threshold_candidate.json` remains unchanged at
+  `{"low": 0.15, "high": 0.70}`
+
+---
+
+### v145 (research complete)
+**Released:** 2026-04-16
+**Theme:** Bounded WFO Train/Test Window Review On The Current Ensemble Frame
+
+- `results/research/v145_wfo_autoresearch_log.jsonl` and
+  `results/research/v145_wfo_search_summary.md` now record the first bounded
+  WFO train/test window review on the post-v138 ensemble frame
+- Re-established the incumbent candidate baseline at
+  `train=60`, `test=6` with
+  `pooled_oos_r2=-0.1578`, `pooled_ic=0.1261`, `pooled_hit_rate=0.6906`
+- Tested bounded alternatives:
+  `(48,6)`, `(54,6)`, `(72,6)`, `(60,3)`, `(60,9)`
+- `(48,6)` improved pooled OOS R^2 to `-0.1570` and pooled IC to `0.1856`,
+  but it reduced pooled hit rate to `0.6535`; because no tested window pair
+  improved the full headline set cleanly, `results/research/v145_wfo_candidate.json`
+  remains unchanged at `{"train": 60, "test": 6}`
+
+---
+
+### v144 (research complete)
+**Released:** 2026-04-16
+**Theme:** Conformal Coverage / ACI Gamma Bounded Replay Tuning
+
+- `results/research/v144_conformal_autoresearch_log.jsonl` and
+  `results/research/v144_conformal_search_summary.md` now record the first
+  bounded conformal replay grid on the pooled ensemble OOS frame
+- Established the initial candidate baseline at
+  `coverage=0.80`, `aci_gamma=0.05` with
+  `coverage=0.7962`, `target_coverage=0.8000`, `coverage_gap=-0.0038`
+- Best bounded candidate from the tested grid:
+  `coverage=0.75`, `aci_gamma=0.03` ->
+  `coverage=0.7490`, `target_coverage=0.7500`, `coverage_gap=-0.0010`
+- `results/research/v144_conformal_candidate.json` is updated to
+  `{"coverage": 0.75, "aci_gamma": 0.03}` as the cleanest bounded
+  coverage-gap result so far on this replay harness
+
+---
+
+### v143 (research complete)
+**Released:** 2026-04-16
+**Theme:** Correlation-Pruned Feature-Override Bounded Sweep
+
+- `results/research/v143_corr_prune_autoresearch_log.jsonl` and
+  `results/research/v143_corr_prune_search_summary.md` now record the first
+  bounded greedy correlation-pruning sweep on the current regression frame
+- Re-established the incumbent pruning-threshold baseline at `rho=0.95`, which
+  matched the no-prune pooled baseline:
+  `pooled_oos_r2=-0.1578`, `pooled_ic=0.1261`, `pooled_hit_rate=0.6906`
+- Best bounded candidate from the tested grid:
+  `rho=0.80` ->
+  `pooled_oos_r2=-0.1569`, `pooled_ic=0.1411`, `pooled_hit_rate=0.6944`
+- `results/research/v143_corr_prune_candidate.txt` is updated to `0.80` as the
+  first observed threshold that improved all three pooled headline metrics on
+  the tested frame
+
+---
+
+### v142 (research complete)
+**Released:** 2026-04-16
+**Theme:** EDGAR Filing-Lag Bounded Review On The Post-v138 Regression Frame
+
+- `results/research/v142_edgar_lag_autoresearch_log.jsonl` and
+  `results/research/v142_edgar_lag_search_summary.md` now record the first
+  bounded four-point lag review on the current 8-benchmark ensemble frame
+- Re-established the post-v138 EDGAR baseline at
+  `pooled_oos_r2=-0.1578`, `pooled_ic=0.1261`, `pooled_hit_rate=0.6906`
+  with `lag=2`
+- Sweep result:
+  `lag=0 -> pooled_oos_r2=-0.1882`,
+  `lag=1 -> pooled_oos_r2=-0.1638`,
+  `lag=2 -> pooled_oos_r2=-0.1578`,
+  `lag=3 -> pooled_oos_r2=-0.1808`
+- `lag=1` improved IC to `0.1492`, but it weakened both pooled OOS R^2 and hit
+  rate versus the current setting, so the research-only winner remains the
+  existing `lag=2` candidate
+
+---
+
+### v141 (research complete)
+**Released:** 2026-04-16
+**Theme:** Fixed Ridge-vs-GBT Blend-Weight Sweep On The Current Ensemble Frame
+
+- `results/research/v141_blend_weight_autoresearch_log.jsonl` and
+  `results/research/v141_blend_weight_search_summary.md` now record the first
+  bounded fixed-weight search around the current inverse-variance ensemble
+  frame
+- Established the fixed-weight midpoint baseline at
+  `pooled_oos_r2=-0.1634`, `pooled_ic=0.1250`, `pooled_hit_rate=0.6906`
+  with `ridge_weight=0.50`
+- First bounded sweep tested `ridge_weight` values
+  `0.30`, `0.40`, `0.50`, `0.55`, `0.60`, `0.65`, and `0.70`
+- `results/research/v141_blend_weight_candidate.txt` is updated to `0.60`,
+  which produced the best balanced improvement on the tested frame:
+  `pooled_oos_r2=-0.1624`, `pooled_ic=0.1263`, `pooled_hit_rate=0.6935`
+- The nearby `0.65` and `0.70` settings slightly improved hit rate and IC, but
+  they gave back enough OOS R^2 that `0.60` remains the cleanest research-only
+  winner for any later promotion decision
+
+---
+
+### v140 (research complete)
+**Released:** 2026-04-16
+**Theme:** Ensemble Shrinkage Alpha Re-Check On The Current Production Frame
+
+- `results/research/v140_shrinkage_autoresearch_log.jsonl` and
+  `results/research/v140_shrinkage_search_summary.md` now record the first
+  bounded shrinkage re-check on the current 8-benchmark ensemble frame
+- Re-established the post-v138 baseline at
+  `pooled_oos_r2=-0.1578`, `pooled_ic=0.1261`, `pooled_hit_rate=0.6906`
+  with `shrinkage=0.50`
+- Sweep result: `shrinkage` values from `0.35` through `0.65` were
+  operationally flat on the tested frame, producing no meaningful pooled metric
+  separation
+- Because the metric surface is flat,
+  `results/research/v140_shrinkage_candidate.txt` stays at `0.50` and the
+  block closes as a no-change confirmation rather than a promotion candidate
+
+---
+
+### v139 (scaffold complete)
+**Released:** 2026-04-16
+**Theme:** Autoresearch Follow-On Scaffolding For The Post-v138 Queue
+
+- Created `docs/superpowers/plans/2026-04-16-v139-v152-autoresearch-followon.md`
+  as the restart-safe follow-on plan for the remaining April 2026 research queue
+- Added `src/research/v139_utils.py` to centralize benchmark loading, temporary
+  config patching, pooled ensemble reconstruction, and feature-pruning helpers
+  for the new follow-on research harnesses
+- Added research-only follow-on harness scaffolding and candidate files:
+  `v140_shrinkage_eval.py`, `v141_blend_eval.py`, `v142_edgar_lag_eval.py`,
+  `v143_corr_prune_eval.py`, `v144_conformal_eval.py`,
+  `v145_wfo_window_sweep.py`, `v146_threshold_sweep.py`,
+  `v147_coverage_weighted_aggregate.py`, `v148_class_weight_eval.py`,
+  `v149_kelly_eval.py`, and `v150_neutral_band_eval.py`
+- Added matching pytest coverage for `v140` through `v150`, covering candidate
+  file schemas, range guards, CLI-like failure behavior, and broad metric sanity
+- Refreshed `ROADMAP.md` and `docs/research/backlog.md` so the documented active
+  direction now starts from the actual `v138` repo state rather than the older
+  pre-autoresearch classification arc
+
+---
+
 ### v138 (research complete)
 **Released:** 2026-04-14
 **Theme:** Black-Litterman Tau / View-Confidence Replay Proxy + First Bounded Sweep

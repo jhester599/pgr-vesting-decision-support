@@ -1,0 +1,7 @@
+{"run_tag":"v141-2026-04-16","candidate":0.30,"pooled_oos_r2":-0.1746,"pooled_ic":0.1193,"pooled_hit_rate":0.6676,"decision":"discard","note":"Clearly weaker than the midpoint baseline."}
+{"run_tag":"v141-2026-04-16","candidate":0.40,"pooled_oos_r2":-0.1675,"pooled_ic":0.1231,"pooled_hit_rate":0.6830,"decision":"discard","note":"Improves on 0.30 but remains weaker than the baseline candidate."}
+{"run_tag":"v141-2026-04-16","candidate":0.50,"pooled_oos_r2":-0.1634,"pooled_ic":0.1250,"pooled_hit_rate":0.6906,"decision":"baseline","note":"Midpoint baseline for the bounded fixed-weight sweep."}
+{"run_tag":"v141-2026-04-16","candidate":0.55,"pooled_oos_r2":-0.1625,"pooled_ic":0.1255,"pooled_hit_rate":0.6916,"decision":"discard","note":"Improves on the baseline but is narrowly weaker than 0.60 on all three headline metrics."}
+{"run_tag":"v141-2026-04-16","candidate":0.60,"pooled_oos_r2":-0.1624,"pooled_ic":0.1263,"pooled_hit_rate":0.6935,"decision":"keep","note":"Best balanced bounded candidate; improves pooled OOS R2, IC, and hit rate versus 0.50."}
+{"run_tag":"v141-2026-04-16","candidate":0.65,"pooled_oos_r2":-0.1631,"pooled_ic":0.1260,"pooled_hit_rate":0.6954,"decision":"discard","note":"Higher hit rate but gives back enough pooled OOS R2 to lose the balanced comparison versus 0.60."}
+{"run_tag":"v141-2026-04-16","candidate":0.70,"pooled_oos_r2":-0.1645,"pooled_ic":0.1265,"pooled_hit_rate":0.6944,"decision":"discard","note":"IC and hit rate improve slightly, but pooled OOS R2 regresses too far versus 0.60."}

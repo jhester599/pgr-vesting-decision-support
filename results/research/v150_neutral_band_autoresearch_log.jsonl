@@ -1,0 +1,6 @@
+{"run_tag":"v150-2026-04-16","candidate":0.000,"success_rate":0.7222,"coverage":1.0000,"utility_score":0.0021,"decision":"discard","note":"Maximal coverage but lower success rate than narrower bands."}
+{"run_tag":"v150-2026-04-16","candidate":0.010,"success_rate":0.7383,"coverage":0.6605,"utility_score":0.0021,"decision":"discard","note":"Utility stayed flat; tradeoff did not clearly beat the incumbent stable setting."}
+{"run_tag":"v150-2026-04-16","candidate":0.015,"success_rate":0.7671,"coverage":0.4506,"utility_score":0.0021,"decision":"keep","note":"Incumbent neutral-band retained as the more stable tradeoff after the Kelly update."}
+{"run_tag":"v150-2026-04-16","candidate":0.020,"success_rate":0.7778,"coverage":0.3889,"utility_score":0.0021,"decision":"discard","note":"Slight success-rate gain, but mostly a selectivity tradeoff versus the incumbent."}
+{"run_tag":"v150-2026-04-16","candidate":0.030,"success_rate":0.8293,"coverage":0.2531,"utility_score":0.0021,"decision":"discard","note":"Higher success rate came with much lower coverage and no utility gain."}
+{"run_tag":"v150-2026-04-16","candidate":0.050,"success_rate":0.7857,"coverage":0.0864,"utility_score":0.0021,"decision":"discard","note":"Coverage became too sparse without utility improvement."}

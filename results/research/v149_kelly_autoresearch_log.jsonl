@@ -1,0 +1,6 @@
+{"run_tag":"v149-2026-04-16","candidate":{"fraction":0.10,"cap":0.10},"utility_score":0.0004,"coverage":0.0123,"success_rate":0.0000,"decision":"discard","note":"Utility score too low and coverage almost absent."}
+{"run_tag":"v149-2026-04-16","candidate":{"fraction":0.15,"cap":0.15},"utility_score":0.0006,"coverage":0.0864,"success_rate":0.7857,"decision":"discard","note":"Improves utility versus the smallest candidate, but remains well below the incumbent."}
+{"run_tag":"v149-2026-04-16","candidate":{"fraction":0.25,"cap":0.20},"utility_score":0.0010,"coverage":0.2531,"success_rate":0.8293,"decision":"baseline","note":"Incumbent Kelly candidate before the bounded sweep."}
+{"run_tag":"v149-2026-04-16","candidate":{"fraction":0.35,"cap":0.20},"utility_score":0.0015,"coverage":0.3580,"success_rate":0.7759,"decision":"discard","note":"Improves utility materially, but is not the strongest bounded candidate."}
+{"run_tag":"v149-2026-04-16","candidate":{"fraction":0.35,"cap":0.25},"utility_score":0.0015,"coverage":0.3580,"success_rate":0.7759,"decision":"discard","note":"Equivalent to the 0.35/0.20 point on the tested frame."}
+{"run_tag":"v149-2026-04-16","candidate":{"fraction":0.50,"cap":0.25},"utility_score":0.0021,"coverage":0.4506,"success_rate":0.7671,"decision":"keep","note":"Best bounded utility-score candidate observed in the replay-proxy grid."}
