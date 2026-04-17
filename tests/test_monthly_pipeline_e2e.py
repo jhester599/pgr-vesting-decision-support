@@ -253,20 +253,34 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
     assert len(consensus_shadow_df) == 2
     classification_shadow_df = pd.read_csv(classification_shadow_path)
     assert {
+        "variant",
         "benchmark",
         "classifier_raw_prob_actionable_sell",
         "classifier_prob_actionable_sell",
     }.issubset(classification_shadow_df.columns)
+    assert set(classification_shadow_df["variant"]) == {
+        "baseline_shadow",
+        "autoresearch_followon_v150",
+    }
     decision_overlays_df = pd.read_csv(decision_overlays_path)
     assert {"variant", "recommendation_mode", "recommended_sell_pct"}.issubset(
         decision_overlays_df.columns
     )
-    assert len(decision_overlays_df) == 2
+    assert len(decision_overlays_df) == 4
+    assert set(decision_overlays_df["variant"]) == {
+        "baseline_shadow",
+        "autoresearch_followon_v150",
+    }
     monthly_summary = json.loads(monthly_summary_path.read_text(encoding="utf-8"))
     assert monthly_summary["recommendation"]["signal_label"] == "UNDERPERFORM (LOW CONFIDENCE)"
     assert monthly_summary["schema_version"] == 3
     assert monthly_summary["cross_check"]["visible_in_primary_surfaces"] is False
     assert monthly_summary["classification_shadow"]["probability_actionable_sell_label"] == "28.4%"
+    assert len(monthly_summary["classification_shadow_variants"]) == 2
+    assert len(monthly_summary["decision_overlay_variants"]) == 2
+    assert {
+        variant["variant"] for variant in monthly_summary["classification_shadow_variants"]
+    } == {"baseline_shadow", "autoresearch_followon_v150"}
     assert monthly_summary["shadow_gate_overlay"]["variant"] in {
         "gemini_veto_0.50",
         "permission_overlay",
@@ -275,6 +289,8 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
 
     dashboard_html = dashboard_path.read_text(encoding="utf-8")
     assert "Classification Confidence Check" in dashboard_html
+    assert "Shadow Variant Comparison" in dashboard_html
+    assert "Autoresearch Follow-On" in dashboard_html
     assert "Agreement Panel" in dashboard_html
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
