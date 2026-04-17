@@ -32,8 +32,11 @@ def load_followon_candidate_bundle() -> dict[str, Any]:
 def build_followon_shadow_payload(
     *,
     probability_actionable_sell: float | None,
+    probability_actionable_sell_label: str | None = None,
     confidence_tier: str | None,
     stance: str | None,
+    probability_investable_pool_label: str | None = None,
+    probability_path_b_temp_scaled_label: str | None = None,
 ) -> dict[str, Any]:
     """Build the compact side-by-side follow-on shadow payload."""
     return {
@@ -41,7 +44,22 @@ def build_followon_shadow_payload(
         "label": FOLLOWON_VARIANT_LABEL,
         "reporting_only": True,
         "probability_actionable_sell": probability_actionable_sell,
+        "probability_actionable_sell_label": probability_actionable_sell_label,
         "confidence_tier": confidence_tier,
         "stance": stance,
+        "probability_investable_pool_label": probability_investable_pool_label,
+        "probability_path_b_temp_scaled_label": probability_path_b_temp_scaled_label,
         "candidate_sources": load_followon_candidate_bundle(),
     }
+
+
+def build_followon_decision_overlay_payload(
+    baseline_overlay: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Build a reporting-only decision-layer comparison payload."""
+    payload = dict(baseline_overlay or {})
+    payload["variant"] = FOLLOWON_VARIANT_NAME
+    payload["label"] = FOLLOWON_VARIANT_LABEL
+    payload["reporting_only"] = True
+    payload["candidate_sources"] = load_followon_candidate_bundle()
+    return payload

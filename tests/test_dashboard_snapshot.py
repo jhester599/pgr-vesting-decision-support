@@ -68,6 +68,20 @@ def test_write_dashboard_snapshot_creates_static_html(tmp_path: Path) -> None:
             "recommended_sell_pct": 0.5,
             "would_change": False,
         },
+        classification_shadow_variants=[
+            {
+                "variant": "baseline_shadow",
+                "label": "Current Shadow",
+                "stance": "NON-ACTIONABLE",
+                "probability_actionable_sell_label": "28.4%",
+            },
+            {
+                "variant": "autoresearch_followon_v150",
+                "label": "Autoresearch Follow-On",
+                "stance": "NEUTRAL",
+                "probability_actionable_sell_label": "31.2%",
+            },
+        ],
     )
 
     assert path.exists()
@@ -75,6 +89,9 @@ def test_write_dashboard_snapshot_creates_static_html(tmp_path: Path) -> None:
     assert "PGR Monthly Snapshot" in html
     assert "Benchmark Quality" in html
     assert "Classification Confidence Check" in html
+    assert "Shadow Variant Comparison" in html
+    assert "Current Shadow" in html
+    assert "Autoresearch Follow-On" in html
     assert "Agreement Panel" in html
     assert "28.4%" in html
     assert "Per-Benchmark Signals" in html
