@@ -17,8 +17,30 @@
   artifacts under the reporting-only variant `autoresearch_followon_v150`
 - `v145` recorded a promising but tradeoff-heavy `(48, 6)` WFO window result,
   so the incumbent `{"train": 60, "test": 6}` candidate remains in place
-- The next restart point is `v152` final synthesis, not additional shadow
-  plumbing
+- `v152` is now complete, so this follow-on cycle is closed
+- The durable shadow-only promotion outcome is the additive
+  `autoresearch_followon_v150` reporting lane built from the `v141`, `v143`,
+  `v144`, and `v149` winners
+- The next autonomous session should start from the ranked backlog below rather
+  than reopening any `v140-v150` follow-through sweeps
+
+## Ranked Next Queue
+
+1. `BL-01` - Black-Litterman tau/view tuning
+   Reason: highest-value remaining decision-layer calibration task now that the
+   replay-proxy and Kelly follow-through work are complete.
+2. `CLS-02` - Firth logistic for short-history benchmarks
+   Reason: most direct remaining classifier-stability improvement that is not
+   blocked on prospective shadow time.
+3. `FEAT-01` - DTWEXBGS post-v128 feature search
+   Reason: small-scope benchmark-specific feature follow-up with a plausible
+   upside and low integration risk.
+4. `FEAT-02` - WTI 3M momentum for DBC/VDE
+   Reason: still a credible domain feature addition, but it depends on a clean
+   external-series verification pass first.
+
+Leave `CLS-03` blocked on the matured-month gate, and leave `REG-02` deferred
+until a future ensemble-level plan justifies reopening the standalone GBT line.
 
 ### BL-01 â€” Black-Litterman Tau/View Tuning
 **Status:** open

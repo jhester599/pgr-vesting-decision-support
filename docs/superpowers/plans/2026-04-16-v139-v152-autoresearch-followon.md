@@ -28,7 +28,11 @@ new settings into live config without a later explicit promotion cycle.
   `{"fraction": 0.50, "cap": 0.25}`
 - `v150` complete: neutral-band replay review kept the incumbent `0.015`
   setting on stability grounds
-- current restart target: `docs/closeouts/V150_CLOSEOUT_AND_V151_NEXT.md`
+- `v151` complete: the surviving winners now appear side-by-side in one
+  reporting-only shadow lane named `autoresearch_followon_v150`
+- `v152` complete: final synthesis, ranking, and handoff documentation are now
+  recorded
+- current handoff target: `docs/closeouts/V152_CLOSEOUT_AND_HANDOFF.md`
 
 ## Already Complete On Master
 
@@ -44,19 +48,14 @@ new settings into live config without a later explicit promotion cycle.
 
 ## Remaining Open Targets
 
-- `v140` shrinkage alpha sweep
-- `v141` fixed Ridge-vs-GBT blend-weight sweep
-- `v142` EDGAR filing-lag review
-- `v143` correlation-pruned feature-set evaluation
-- `v144` conformal coverage and ACI gamma tuning
-- `v145` bounded WFO train/test window sweep
-- `v146` Path B threshold sweep on the tuned v135 baseline
-- `v147` coverage-weighted Path A / Path B aggregation proxy
-- `v148` positive-class weighting replay proxy
-- `v149` Kelly fraction / cap replay proxy
-- `v150` neutral-band replay proxy
-- `v151` reporting and artifact polish
-- `v152` final synthesis and ranked handoff
+None inside this plan. The `v139-v152` cycle is complete.
+
+Recommended next backlog after this handoff:
+
+1. `BL-01` Black-Litterman tau/view tuning
+2. `CLS-02` Firth logistic for short-history benchmarks
+3. `FEAT-01` DTWEXBGS post-v128 feature search
+4. `FEAT-02` WTI 3M momentum for DBC/VDE
 
 ## Implemented Scaffolding In This Branch
 
@@ -96,9 +95,9 @@ new settings into live config without a later explicit promotion cycle.
 
 ## Next Commands
 
-Start the next documentation/polish block:
+Start the next autonomous cycle from the ranked backlog, not from this plan:
 
 ```bash
-python -m pytest tests/test_research_v149_kelly_eval.py tests/test_research_v150_neutral_band_eval.py -q --tb=short
-# then refresh v151 reporting/docs artifacts using the latest v140-v150 candidate files
+python -m pytest tests/test_shadow_followon.py tests/test_monthly_pipeline_e2e.py -q --tb=short
+# then author the next plan from docs/research/backlog.md, starting with BL-01 unless priorities change
 ```
