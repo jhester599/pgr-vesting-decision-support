@@ -120,6 +120,12 @@ from src.reporting.classification_artifacts import (
     write_classification_shadow_csv,
     write_decision_overlays_csv,
 )
+from src.reporting.shadow_followon import (
+    FOLLOWON_VARIANT_LABEL,
+    FOLLOWON_VARIANT_NAME,
+    build_followon_decision_overlay_payload,
+    build_followon_shadow_payload,
+)
 from src.reporting.monthly_summary import (
     build_actionability_label,
     build_decision_headline,
@@ -3198,8 +3204,47 @@ def main(
             if column in detail_index.columns:
                 signals[column] = detail_index[column]
 
+    classification_shadow_variants: list[dict[str, object]] = []
+    classification_shadow_artifact_df = classification_shadow_df.copy()
+    if not classification_shadow_artifact_df.empty:
+        classification_shadow_artifact_df["variant"] = "baseline_shadow"
+
+    if isinstance(classification_shadow_summary, dict) and classification_shadow_summary.get("enabled"):
+        baseline_variant = {
+            "variant": "baseline_shadow",
+            "label": "Current Shadow",
+            **classification_shadow_summary,
+        }
+        followon_variant = build_followon_shadow_payload(
+            probability_actionable_sell=classification_shadow_summary.get("probability_actionable_sell"),
+            probability_actionable_sell_label=classification_shadow_summary.get(
+                "probability_actionable_sell_label"
+            ),
+            confidence_tier=str(classification_shadow_summary.get("confidence_tier"))
+            if classification_shadow_summary.get("confidence_tier") is not None
+            else None,
+            stance=str(classification_shadow_summary.get("stance"))
+            if classification_shadow_summary.get("stance") is not None
+            else None,
+            probability_investable_pool_label=classification_shadow_summary.get(
+                "probability_investable_pool_label"
+            ),
+            probability_path_b_temp_scaled_label=classification_shadow_summary.get(
+                "probability_path_b_temp_scaled_label"
+            ),
+        )
+        classification_shadow_variants = [baseline_variant, followon_variant]
+        if not classification_shadow_artifact_df.empty:
+            followon_detail_df = classification_shadow_artifact_df.copy()
+            followon_detail_df["variant"] = FOLLOWON_VARIANT_NAME
+            classification_shadow_artifact_df = pd.concat(
+                [classification_shadow_artifact_df, followon_detail_df],
+                ignore_index=True,
+            )
+
     overlay_df = pd.DataFrame()
     shadow_gate_overlay = None
+    decision_overlay_variants: list[dict[str, object]] = []
     overlay_variant, overlay_gate_style, overlay_threshold = resolve_overlay_policy_variant()
     classifier_prob = None
     if (
@@ -3222,6 +3267,19 @@ def main(
             threshold=overlay_threshold,
         )
         shadow_gate_overlay = overlay_obj.to_payload()
+        decision_overlay_variants = [
+            {"variant": "baseline_shadow", "label": "Current Shadow", **shadow_gate_overlay},
+            build_followon_decision_overlay_payload(shadow_gate_overlay),
+        ]
+        if not overlay_df.empty:
+            baseline_overlay_df = overlay_df.copy()
+            baseline_overlay_df["variant"] = "baseline_shadow"
+            followon_overlay_df = overlay_df.copy()
+            followon_overlay_df["variant"] = FOLLOWON_VARIANT_NAME
+            overlay_df = pd.concat(
+                [baseline_overlay_df, followon_overlay_df],
+                ignore_index=True,
+            )
 
     print(f"\n  Consensus signal: {consensus} ({confidence_tier} CONFIDENCE)")
     print(f"  Predicted 6M relative return: {mean_pred:+.2%}")
@@ -3303,7 +3361,7 @@ def main(
     out_dir = _output_dir(as_of)
     classification_shadow_path = write_classification_shadow_csv(
         out_dir,
-        classification_shadow_df,
+        classification_shadow_artifact_df,
     )
     print(f"  Wrote {classification_shadow_path}")
     decision_overlay_path = write_decision_overlays_csv(out_dir, overlay_df)
@@ -3510,6 +3568,7 @@ def main(
         consensus_shadow_df=consensus_shadow_df,
         classification_shadow_summary=classification_shadow_summary,
         shadow_gate_overlay=shadow_gate_overlay,
+        classification_shadow_variants=classification_shadow_variants,
     )
     monthly_summary = build_monthly_summary_payload(
         as_of_date=as_of.isoformat(),
@@ -3539,6 +3598,8 @@ def main(
         visible_cross_check=visible_cross_check,
         classification_shadow_summary=classification_shadow_summary,
         shadow_gate_overlay=shadow_gate_overlay,
+        classification_shadow_variants=classification_shadow_variants,
+        decision_overlay_variants=decision_overlay_variants,
     )
     monthly_summary_path = write_monthly_summary(out_dir, monthly_summary)
     print(f"  Wrote {monthly_summary_path}")

@@ -22,6 +22,7 @@ def test_write_classification_shadow_csv_enforces_columns(tmp_path: Path) -> Non
         tmp_path,
         pd.DataFrame(
             {
+                "variant": ["baseline_shadow"],
                 "benchmark": ["VOO"],
                 "classifier_raw_prob_actionable_sell": [0.32],
                 "classifier_prob_actionable_sell": [0.28],
@@ -34,6 +35,7 @@ def test_write_classification_shadow_csv_enforces_columns(tmp_path: Path) -> Non
     )
     written = pd.read_csv(path)
     assert list(written.columns) == CLASSIFICATION_SHADOW_COLUMNS
+    assert written.loc[0, "variant"] == "baseline_shadow"
 
 
 def test_write_decision_overlays_csv_enforces_columns(tmp_path: Path) -> None:
@@ -88,12 +90,14 @@ def test_classifier_history_append_round_trip(tmp_path: Path) -> None:
 
 def test_classification_shadow_columns_includes_is_contextual() -> None:
     assert "is_contextual" in CLASSIFICATION_SHADOW_COLUMNS
+    assert "variant" in CLASSIFICATION_SHADOW_COLUMNS
 
 
 def test_write_classification_shadow_csv_adds_is_contextual_column(
     tmp_path,
 ) -> None:
     detail_df = pd.DataFrame({
+        "variant": ["baseline_shadow"] * 6,
         "benchmark": ["VOO", "VXUS", "VWO", "BND", "GLD", "DBC"],
         "classifier_raw_prob_actionable_sell": [0.5] * 6,
         "classifier_prob_actionable_sell": [0.5] * 6,
@@ -135,6 +139,7 @@ def test_write_classification_shadow_csv_writes_dual_track_columns(tmp_path) -> 
     import pandas as pd
     from src.reporting.classification_artifacts import write_classification_shadow_csv
     detail_df = pd.DataFrame({
+        "variant": ["baseline_shadow", "autoresearch_followon_v150"],
         "benchmark": ["BND", "VGT"],
         "classifier_raw_prob_actionable_sell": [0.40, 0.30],
         "classifier_prob_actionable_sell": [0.38, 0.29],
@@ -152,6 +157,7 @@ def test_write_classification_shadow_csv_writes_dual_track_columns(tmp_path) -> 
     assert "benchmark_specific_features" in written.columns
     assert "benchmark_specific_prob_actionable_sell" in written.columns
     assert "benchmark_specific_tier" in written.columns
+    assert "variant" in written.columns
     assert "classifier_prob_actionable_sell" in written.columns
 
 

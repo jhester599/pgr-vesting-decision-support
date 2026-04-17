@@ -1,0 +1,6 @@
+{"run_tag":"v146-2026-04-16","candidate":{"low":0.10,"high":0.65},"covered_ba":0.6737,"coverage":0.4643,"decision":"discard","note":"Weaker covered balanced accuracy than the incumbent threshold pair."}
+{"run_tag":"v146-2026-04-16","candidate":{"low":0.10,"high":0.70},"covered_ba":0.6902,"coverage":0.4524,"decision":"discard","note":"Close, but still weaker than the incumbent threshold pair on covered balanced accuracy."}
+{"run_tag":"v146-2026-04-16","candidate":{"low":0.15,"high":0.65},"covered_ba":0.6856,"coverage":0.5595,"decision":"discard","note":"Higher coverage than baseline, but covered balanced accuracy regressed."}
+{"run_tag":"v146-2026-04-16","candidate":{"low":0.15,"high":0.70},"covered_ba":0.6987,"coverage":0.5476,"decision":"keep","note":"Incumbent threshold pair retained after the bounded follow-through review."}
+{"run_tag":"v146-2026-04-16","candidate":{"low":0.20,"high":0.70},"covered_ba":0.6139,"coverage":0.6905,"decision":"discard","note":"Coverage rose, but covered balanced accuracy weakened materially."}
+{"run_tag":"v146-2026-04-16","candidate":{"low":0.20,"high":0.75},"covered_ba":0.5538,"coverage":0.6429,"decision":"discard","note":"Clearly weaker than the incumbent threshold pair."}

@@ -1,0 +1,4 @@
+{"run_tag":"v142-2026-04-16","candidate":0,"pooled_oos_r2":-0.1882,"pooled_ic":0.0962,"pooled_hit_rate":0.6609,"decision":"discard","note":"Clearly weaker than the incumbent lag=2 candidate."}
+{"run_tag":"v142-2026-04-16","candidate":1,"pooled_oos_r2":-0.1638,"pooled_ic":0.1492,"pooled_hit_rate":0.6810,"decision":"discard","note":"Improves IC materially, but pooled OOS R2 and hit rate remain weaker than lag=2."}
+{"run_tag":"v142-2026-04-16","candidate":2,"pooled_oos_r2":-0.1578,"pooled_ic":0.1261,"pooled_hit_rate":0.6906,"decision":"keep","note":"Incumbent lag retained as the best balanced setting on the tested frame."}
+{"run_tag":"v142-2026-04-16","candidate":3,"pooled_oos_r2":-0.1808,"pooled_ic":0.1118,"pooled_hit_rate":0.6753,"decision":"discard","note":"Weaker than the incumbent lag=2 candidate on every headline metric."}

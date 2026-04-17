@@ -1,0 +1,5 @@
+{"run_tag":"v148-2026-04-16","candidate":0.75,"covered_ba":0.6118,"coverage":0.5952,"decision":"discard","note":"Coverage increased, but covered balanced accuracy weakened substantially."}
+{"run_tag":"v148-2026-04-16","candidate":1.00,"covered_ba":0.6987,"coverage":0.5476,"decision":"keep","note":"Incumbent positive-class weight retained after bounded replay review."}
+{"run_tag":"v148-2026-04-16","candidate":1.25,"covered_ba":0.6950,"coverage":0.5000,"decision":"discard","note":"Near the baseline, but still weaker on covered balanced accuracy."}
+{"run_tag":"v148-2026-04-16","candidate":1.50,"covered_ba":0.6928,"coverage":0.4762,"decision":"discard","note":"Weaker than the incumbent baseline."}
+{"run_tag":"v148-2026-04-16","candidate":2.00,"covered_ba":0.6737,"coverage":0.4643,"decision":"discard","note":"Clearly weaker than the incumbent baseline."}

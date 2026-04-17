@@ -1,0 +1,5 @@
+{"run_tag":"v143-2026-04-16","candidate":0.80,"pooled_oos_r2":-0.1569,"pooled_ic":0.1411,"pooled_hit_rate":0.6944,"decision":"keep","note":"Best bounded threshold; improved all three pooled headline metrics on the tested frame."}
+{"run_tag":"v143-2026-04-16","candidate":0.85,"pooled_oos_r2":-0.1578,"pooled_ic":0.1261,"pooled_hit_rate":0.6906,"decision":"discard","note":"Equivalent to the incumbent baseline on the tested frame."}
+{"run_tag":"v143-2026-04-16","candidate":0.90,"pooled_oos_r2":-0.1578,"pooled_ic":0.1261,"pooled_hit_rate":0.6906,"decision":"discard","note":"Equivalent to the incumbent baseline on the tested frame."}
+{"run_tag":"v143-2026-04-16","candidate":0.95,"pooled_oos_r2":-0.1578,"pooled_ic":0.1261,"pooled_hit_rate":0.6906,"decision":"baseline","note":"Incumbent candidate before the bounded sweep."}
+{"run_tag":"v143-2026-04-16","candidate":0.99,"pooled_oos_r2":-0.1578,"pooled_ic":0.1261,"pooled_hit_rate":0.6906,"decision":"discard","note":"Equivalent to the incumbent baseline on the tested frame."}

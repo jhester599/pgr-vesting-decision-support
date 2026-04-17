@@ -136,6 +136,8 @@ def build_monthly_summary_payload(
     visible_cross_check: bool,
     classification_shadow_summary: dict[str, Any] | None = None,
     shadow_gate_overlay: dict[str, Any] | None = None,
+    classification_shadow_variants: list[dict[str, Any]] | None = None,
+    decision_overlay_variants: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build the machine-readable monthly summary payload."""
     benchmark_count = int(len(signals)) if not signals.empty else 0
@@ -200,6 +202,8 @@ def build_monthly_summary_payload(
         "cross_check": cross_check,
         "classification_shadow": classification_shadow_summary,
         "shadow_gate_overlay": shadow_gate_overlay,
+        "classification_shadow_variants": classification_shadow_variants or [],
+        "decision_overlay_variants": decision_overlay_variants or [],
     }
 
 

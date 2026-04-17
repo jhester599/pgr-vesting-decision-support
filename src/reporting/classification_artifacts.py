@@ -13,6 +13,7 @@ from config.features import CONTEXTUAL_CLASSIFIER_BENCHMARKS
 
 
 CLASSIFICATION_SHADOW_COLUMNS = [
+    "variant",
     "benchmark",
     "classifier_raw_prob_actionable_sell",
     "classifier_prob_actionable_sell",
@@ -104,6 +105,8 @@ def write_classification_shadow_csv(
         pd.DataFrame(columns=CLASSIFICATION_SHADOW_COLUMNS).to_csv(path, index=False)
         return path
     df = detail_df.copy()
+    if "variant" not in df.columns:
+        df["variant"] = "baseline_shadow"
     df["is_contextual"] = df["benchmark"].isin(CONTEXTUAL_CLASSIFIER_BENCHMARKS)
     _ensure_columns(df, CLASSIFICATION_SHADOW_COLUMNS).to_csv(path, index=False)
     return path

@@ -130,6 +130,7 @@ def write_dashboard_snapshot(
     consensus_shadow_df: pd.DataFrame | None,
     classification_shadow_summary: dict[str, object] | None = None,
     shadow_gate_overlay: dict[str, object] | None = None,
+    classification_shadow_variants: list[dict[str, object]] | None = None,
 ) -> Path:
     """Write a static HTML snapshot summarizing the latest monthly decision."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -195,6 +196,32 @@ def write_dashboard_snapshot(
             f"<div class='card'><div class='label'>Path B Tier</div><div class='value'>{path_b_tier}</div></div>"
             "</div>"
             f"<p class='muted' style='margin-top:14px;'>{interpretation}</p>"
+            "</section>"
+        )
+
+    comparison_section = ""
+    if classification_shadow_variants:
+        variant_cards: list[str] = []
+        for variant in classification_shadow_variants:
+            variant_cards.append(
+                "<div class='card'>"
+                f"<div class='label'>{escape(str(variant.get('label', '-')))}</div>"
+                f"<div class='value'>{escape(str(variant.get('stance', '-')))}</div>"
+                f"<div class='muted'>P(Actionable Sell): "
+                f"{escape(str(variant.get('probability_actionable_sell_label', '-')))}</div>"
+                f"<div class='muted'>Tier: {escape(str(variant.get('confidence_tier', '-')))}</div>"
+                "</div>"
+            )
+        comparison_section = (
+            "<section>"
+            "<h2>Shadow Variant Comparison</h2>"
+            "<p class='muted'>"
+            "Current shadow and the autoresearch follow-on lane are shown side-by-side "
+            "for monitoring only. They do not change the live recommendation."
+            "</p>"
+            "<div class='cards'>"
+            + "".join(variant_cards)
+            + "</div>"
             "</section>"
         )
 
@@ -355,6 +382,7 @@ def write_dashboard_snapshot(
 
     {_render_table("Benchmark Quality", benchmark_quality_table)}
     {classification_section}
+    {comparison_section}
     {disagreement_section}
     {_render_table("Per-Benchmark Signals", signal_table)}
 

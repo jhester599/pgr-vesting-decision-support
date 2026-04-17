@@ -1,0 +1,6 @@
+{"run_tag":"v147-2026-04-16","candidate":0.50,"covered_ba":0.5000,"coverage":0.4048,"decision":"discard","note":"Coverage shifted, but covered balanced accuracy did not improve above baseline."}
+{"run_tag":"v147-2026-04-16","candidate":0.75,"covered_ba":0.5000,"coverage":0.4286,"decision":"discard","note":"Coverage shifted, but covered balanced accuracy did not improve above baseline."}
+{"run_tag":"v147-2026-04-16","candidate":1.00,"covered_ba":0.5000,"coverage":0.4405,"decision":"keep","note":"Incumbent multiplier retained after bounded aggregate review."}
+{"run_tag":"v147-2026-04-16","candidate":1.25,"covered_ba":0.5000,"coverage":0.4405,"decision":"discard","note":"No improvement over the incumbent baseline."}
+{"run_tag":"v147-2026-04-16","candidate":1.50,"covered_ba":0.5000,"coverage":0.4405,"decision":"discard","note":"No improvement over the incumbent baseline."}
+{"run_tag":"v147-2026-04-16","candidate":2.00,"covered_ba":0.5000,"coverage":0.4524,"decision":"discard","note":"Coverage rose slightly, but covered balanced accuracy did not improve."}

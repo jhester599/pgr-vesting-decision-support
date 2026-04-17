@@ -1,0 +1,7 @@
+{"run_tag":"v140-2026-04-16","candidate":0.35,"pooled_oos_r2":-0.1578,"pooled_ic":0.1261,"pooled_hit_rate":0.6906,"decision":"discard","note":"No separation versus incumbent 0.50 on the tested frame."}
+{"run_tag":"v140-2026-04-16","candidate":0.40,"pooled_oos_r2":-0.1578,"pooled_ic":0.1261,"pooled_hit_rate":0.6906,"decision":"discard","note":"No separation versus incumbent 0.50 on the tested frame."}
+{"run_tag":"v140-2026-04-16","candidate":0.45,"pooled_oos_r2":-0.1578,"pooled_ic":0.1261,"pooled_hit_rate":0.6906,"decision":"discard","note":"No separation versus incumbent 0.50 on the tested frame."}
+{"run_tag":"v140-2026-04-16","candidate":0.50,"pooled_oos_r2":-0.1578,"pooled_ic":0.1261,"pooled_hit_rate":0.6906,"decision":"keep","note":"Incumbent candidate retained because the bounded sweep was flat."}
+{"run_tag":"v140-2026-04-16","candidate":0.55,"pooled_oos_r2":-0.1578,"pooled_ic":0.1261,"pooled_hit_rate":0.6906,"decision":"discard","note":"No separation versus incumbent 0.50 on the tested frame."}
+{"run_tag":"v140-2026-04-16","candidate":0.60,"pooled_oos_r2":-0.1578,"pooled_ic":0.1261,"pooled_hit_rate":0.6906,"decision":"discard","note":"No separation versus incumbent 0.50 on the tested frame."}
+{"run_tag":"v140-2026-04-16","candidate":0.65,"pooled_oos_r2":-0.1578,"pooled_ic":0.1261,"pooled_hit_rate":0.6906,"decision":"discard","note":"No separation versus incumbent 0.50 on the tested frame."}

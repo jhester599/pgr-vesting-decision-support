@@ -55,6 +55,14 @@ def test_monthly_summary_payload_and_writer(tmp_path: Path) -> None:
             "would_change": False,
             "reason": "classifier below deviation threshold",
         },
+        classification_shadow_variants=[
+            {"variant": "baseline_shadow"},
+            {"variant": "autoresearch_followon_v150"},
+        ],
+        decision_overlay_variants=[
+            {"variant": "baseline_shadow"},
+            {"variant": "autoresearch_followon_v150"},
+        ],
     )
 
     path = write_monthly_summary(tmp_path, payload)
@@ -67,4 +75,6 @@ def test_monthly_summary_payload_and_writer(tmp_path: Path) -> None:
     assert written["cross_check"]["visible_in_primary_surfaces"] is False
     assert written["cross_check"]["mode_agreement"] is True
     assert written["classification_shadow"]["probability_actionable_sell_label"] == "28.4%"
+    assert len(written["classification_shadow_variants"]) == 2
+    assert len(written["decision_overlay_variants"]) == 2
     assert written["artifacts"]["classification_shadow_csv"] == "classification_shadow.csv"
