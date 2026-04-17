@@ -7,6 +7,31 @@ afternoon bootstrap). Development starts Day 3.
 
 ## Version History
 
+### v152 (docs complete)
+**Released:** 2026-04-17
+**Theme:** Final Synthesis And Handoff For The v139-v152 Follow-On Cycle
+
+- Closed the `v139-v152` follow-on arc with one final synthesis pass across the
+  bounded research harnesses, the candidate files, and the `v151` side-by-side
+  shadow promotion
+- Recorded the durable winners from the cycle as:
+  `v141_blend_weight_candidate.txt = 0.60`,
+  `v143_corr_prune_candidate.txt = 0.80`,
+  `v144_conformal_candidate.json = {"coverage": 0.75, "aci_gamma": 0.03}`,
+  and `v149_kelly_candidate.json = {"fraction": 0.50, "cap": 0.25}`
+- Confirmed that the `v151` reporting-only shadow lane
+  `autoresearch_followon_v150` is the only promotion outcome from this cycle;
+  the live monthly recommendation path is still unchanged
+- Marked the bounded no-change confirmations explicitly for `v140`, `v142`,
+  `v145`, `v146`, `v147`, `v148`, and `v150`, so the next session does not
+  waste time re-running settled follow-through work
+- Added the final handoff note in
+  `docs/closeouts/V152_CLOSEOUT_AND_HANDOFF.md` and refreshed the roadmap,
+  backlog, and follow-on plan so the next autonomous session can start from the
+  ranked post-merge backlog instead of reopening this cycle
+
+---
+
 ### v151 (shadow/docs complete)
 **Released:** 2026-04-17
 **Theme:** Side-By-Side Shadow Promotion For The v139-v150 Follow-On Winners

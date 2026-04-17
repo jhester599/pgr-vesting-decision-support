@@ -4,11 +4,11 @@ For completed work and release history, see [CHANGELOG.md](CHANGELOG.md).
 
 ## Current State
 
-**Master baseline: v138** - the live monthly workflow uses the quality-weighted
-consensus regression path (v76/v38 stack) with the shadow classification and
-decision-layer research artifacts completed through the 2026-04-14 bounded
-sweep set. The local autoresearch stack now includes `v129`, `v131`,
-`v133-v138`, and the runtime optimization pass.
+**Master baseline: v151** - the repository now includes the merged
+`v139-v150` follow-on research artifacts plus the `v151` side-by-side shadow
+reporting lane. The live monthly workflow still uses the quality-weighted
+consensus regression path (v76/v38 stack), while the follow-on winners remain
+reporting-only in shadow artifacts.
 
 **Current operating posture**
 
@@ -84,7 +84,22 @@ Current execution progress on 2026-04-16:
   the Kelly update
 - `v151` complete: the promoted `v139-v150` winners now appear in one
   reporting-only side-by-side shadow lane named `autoresearch_followon_v150`
-- Next restart point: `v152` final synthesis and next-session handoff
+- `v152` complete: the cycle is now closed with a final synthesis and ranked
+  handoff note in `docs/closeouts/V152_CLOSEOUT_AND_HANDOFF.md`
+
+Recommended next autonomous queue after `v152`:
+
+1. `BL-01` - Black-Litterman tau/view tuning on the preserved replay-proxy
+   frame, using the new follow-on winners only as shadow-side context
+2. `CLS-02` - Firth logistic / short-history classifier stabilization research
+   for thin benchmarks
+3. `FEAT-01` - DTWEXBGS post-v128 feature search, starting with the benchmarks
+   most likely to benefit from currency momentum
+4. `FEAT-02` - WTI 3M momentum follow-through for the commodity / energy slice
+
+Keep `CLS-03` blocked until the prospective-month gate matures, and keep
+`REG-02` deferred until there is a stronger ensemble-level reason to reopen the
+GBT line.
 
 ## Prior Research Direction: v123-v129
 
