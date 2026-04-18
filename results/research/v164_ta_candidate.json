@@ -1,0 +1,17 @@
+{
+  "version": "v164",
+  "recommendation": "monitor_only",
+  "reason": "Research-only TA feature factory and broad-screen harness are implemented and tested, but empirical v162/v163 artifacts have not yet promoted any feature.",
+  "eligible_future_outcomes": [
+    "abandon_ta",
+    "monitor_only",
+    "shadow_candidate",
+    "replacement_candidate"
+  ],
+  "production_changes": false,
+  "shadow_changes": false,
+  "next_commands": [
+    "python results/research/v162_ta_broad_screen.py",
+    "python results/research/v163_ta_survivor_confirm.py"
+  ]
+}
