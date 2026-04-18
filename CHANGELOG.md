@@ -12,8 +12,12 @@ afternoon bootstrap). Development starts Day 3.
 - New research-only feature factory: `src/research/v160_ta_features.py`
 - New harnesses: `results/research/v162_ta_broad_screen.py` and
   `results/research/v163_ta_survivor_confirm.py`
-- Candidate outcome: `monitor_only` until empirical v162/v163 artifacts are run
-  and reviewed
+- Ran v162/v163 empirical artifacts on the current database snapshot; no extra
+  Alpha Vantage workflow scheduling was required
+- Fixed v162 artifact shaping so duplicated baseline rows no longer inflate
+  baseline-delta detail outputs
+- Candidate outcome: `replacement_candidate` for a later shadow-only
+  classification replacement plan
 - No production config, live monthly decision, or shadow-reporting changes
 
 ## BL-01 (2026-04-18)

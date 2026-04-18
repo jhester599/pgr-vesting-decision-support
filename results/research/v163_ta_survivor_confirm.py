@@ -5,14 +5,20 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 OUTPUT_DIR = Path("results") / "research"
 CONFIRM_PATH = OUTPUT_DIR / "v163_ta_survivor_confirm_summary.csv"
 PAYLOAD_PATH = OUTPUT_DIR / "v163_ta_survivor_candidate.json"
+DETAIL_PATH = OUTPUT_DIR / "v162_ta_broad_screen_detail.csv"
 
 
 def select_survivors(
@@ -23,23 +29,66 @@ def select_survivors(
     """Select a capped, group-diversified survivor set from screen results."""
     if screen_summary.empty:
         return screen_summary.copy()
-    ranked = screen_summary.sort_values(
-        by=["positive_benchmark_count", "mean_delta_score", "feature"],
+    ranked_source = screen_summary.copy()
+    if "experiment_mode" in ranked_source:
+        ranked_source = ranked_source.loc[
+            ranked_source["experiment_mode"].ne("baseline")
+        ].copy()
+    if "positive_benchmark_count" in ranked_source:
+        ranked_source = ranked_source.loc[
+            ranked_source["positive_benchmark_count"].fillna(0).ge(3)
+        ].copy()
+    if "mean_delta_score" in ranked_source:
+        ranked_source = ranked_source.loc[
+            ranked_source["mean_delta_score"].fillna(float("-inf")).gt(0.0)
+        ].copy()
+    if ranked_source.empty:
+        return ranked_source
+    sort_cols = ["positive_benchmark_count", "mean_delta_score", "feature"]
+    ranked = ranked_source.sort_values(
+        by=sort_cols,
         ascending=[False, False, True],
     )
+    if "model_family" in ranked:
+        pieces = [
+            ranked.loc[ranked["model_family"].eq("classification")],
+            ranked.loc[ranked["model_family"].eq("regression")],
+            ranked.loc[
+                ~ranked["model_family"].isin(["classification", "regression"])
+            ],
+        ]
+        ranked = pd.concat([piece for piece in pieces if not piece.empty], ignore_index=True)
     selected_rows: list[pd.Series] = []
     groups: set[str] = set()
+    features: set[str] = set()
     for _, row in ranked.iterrows():
         group = str(row.get("feature_group", ""))
+        feature = str(row.get("feature", ""))
         if len(selected_rows) >= max_features:
             break
+        if feature in features:
+            continue
         if group not in groups and len(groups) >= max_groups:
             continue
         selected_rows.append(row)
         groups.add(group)
+        features.add(feature)
     if not selected_rows:
         return ranked.head(0).copy()
     return pd.DataFrame(selected_rows).reset_index(drop=True)
+
+
+def _json_clean(value: Any) -> Any:
+    """Return deterministic JSON-safe values without NaN tokens."""
+    if isinstance(value, dict):
+        return {str(key): _json_clean(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_clean(item) for item in value]
+    if pd.isna(value):
+        return None
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
 
 
 def prune_correlated_features(
@@ -98,9 +147,9 @@ def build_candidate_payload(
     if recommendation not in allowed:
         raise ValueError(f"Unsupported recommendation: {recommendation}")
     ordered = survivors.sort_values("feature").reset_index(drop=True)
-    features = ordered["feature"].astype(str).tolist() if "feature" in ordered else []
+    features = sorted(ordered["feature"].dropna().astype(str).unique().tolist()) if "feature" in ordered else []
     groups = sorted(ordered["feature_group"].dropna().astype(str).unique().tolist()) if "feature_group" in ordered else []
-    rows = ordered.to_dict(orient="records")
+    rows = _json_clean(ordered.to_dict(orient="records"))
     return {
         "version": "v163",
         "recommendation": recommendation,
@@ -108,6 +157,69 @@ def build_candidate_payload(
         "feature_groups": groups,
         "rows": rows,
     }
+
+
+def summarize_benchmark_family_slices(
+    detail: pd.DataFrame,
+    survivors: pd.DataFrame,
+) -> pd.DataFrame:
+    """Summarize selected survivor rows by benchmark-family slices."""
+    if detail.empty or survivors.empty:
+        return pd.DataFrame()
+
+    rows: list[dict[str, Any]] = []
+    key_cols = ["model_family", "model_type", "feature", "experiment_mode"]
+    selected_keys = survivors[key_cols].drop_duplicates()
+    selected_detail = detail.merge(selected_keys, on=key_cols, how="inner")
+    if selected_detail.empty:
+        return pd.DataFrame()
+    selected_detail["benchmark_family"] = selected_detail["benchmark"].map(
+        assign_benchmark_family
+    )
+
+    metric_cols = [
+        "delta_ic",
+        "delta_oos_r2",
+        "delta_balanced_accuracy",
+        "delta_brier_score",
+    ]
+    for keys, group in selected_detail.groupby(
+        key_cols + ["benchmark_family"],
+        dropna=False,
+    ):
+        model_family, model_type, feature, experiment_mode, benchmark_family = keys
+        row: dict[str, Any] = {
+            "slice_type": "benchmark_family",
+            "slice_label": benchmark_family,
+            "model_family": model_family,
+            "model_type": model_type,
+            "feature": feature,
+            "experiment_mode": experiment_mode,
+            "n_benchmarks": int(group["benchmark"].nunique()),
+        }
+        for col in metric_cols:
+            if col in group:
+                row[f"mean_{col}"] = float(group[col].mean())
+        rows.append(row)
+    return pd.DataFrame(rows).sort_values(
+        by=["feature", "model_family", "model_type", "slice_label"],
+    )
+
+
+def infer_recommendation(survivors: pd.DataFrame) -> str:
+    """Map the capped survivor set to a conservative v164 outcome label."""
+    if survivors.empty:
+        return "abandon_ta"
+    strong = survivors.loc[
+        survivors["positive_benchmark_count"].fillna(0).ge(4)
+        & survivors["mean_delta_score"].fillna(0.0).gt(0.0)
+    ]
+    if strong.empty:
+        return "monitor_only"
+    replacement = strong["experiment_mode"].astype(str).str.startswith("replace_")
+    if replacement.any():
+        return "replacement_candidate"
+    return "shadow_candidate"
 
 
 def run_survivor_confirmation(
@@ -140,10 +252,20 @@ def run_survivor_confirmation(
         if "positive_benchmark_count" not in screen.columns:
             screen["positive_benchmark_count"] = 0
         survivors = select_survivors(screen)
-        recommendation = "monitor_only" if not survivors.empty else "abandon_ta"
+        recommendation = infer_recommendation(survivors)
         payload = build_candidate_payload(survivors, recommendation=recommendation)
         output_dir.mkdir(parents=True, exist_ok=True)
-        survivors.to_csv(output_dir / CONFIRM_PATH.name, index=False)
+        confirm_rows = [survivors.assign(slice_type="all_benchmarks", slice_label="all")]
+        detail_path = output_dir / DETAIL_PATH.name
+        if detail_path.exists() and not survivors.empty:
+            detail = pd.read_csv(detail_path)
+            family_slices = summarize_benchmark_family_slices(detail, survivors)
+            if not family_slices.empty:
+                confirm_rows.append(family_slices)
+        pd.concat(confirm_rows, ignore_index=True, sort=False).to_csv(
+            output_dir / CONFIRM_PATH.name,
+            index=False,
+        )
 
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / PAYLOAD_PATH.name).write_text(

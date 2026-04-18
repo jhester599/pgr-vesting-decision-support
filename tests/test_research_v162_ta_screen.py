@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -105,3 +106,162 @@ def test_regression_and_classification_records_contain_baseline_deltas() -> None
     assert abs(float(reg_row["delta_oos_r2"]) - 0.01) < 1e-12
     assert abs(float(cls_row["delta_balanced_accuracy"]) - 0.06) < 1e-12
     assert abs(float(cls_row["delta_brier_score"]) + 0.02) < 1e-12
+
+
+def test_duplicate_baselines_do_not_expand_delta_records() -> None:
+    from results.research.v162_ta_broad_screen import attach_baseline_deltas
+
+    records = pd.DataFrame(
+        [
+            {
+                "model_family": "regression",
+                "benchmark": "VOO",
+                "model_type": "ridge",
+                "experiment_mode": "baseline",
+                "feature": "__baseline__",
+                "ic": 0.10,
+            },
+            {
+                "model_family": "regression",
+                "benchmark": "VOO",
+                "model_type": "ridge",
+                "experiment_mode": "baseline",
+                "feature": "__baseline__",
+                "ic": 0.10,
+            },
+            {
+                "model_family": "regression",
+                "benchmark": "VOO",
+                "model_type": "ridge",
+                "experiment_mode": "add_feature",
+                "feature": "ta_ratio_roc_6m_voo",
+                "ic": 0.12,
+            },
+        ]
+    )
+
+    with_deltas = attach_baseline_deltas(records)
+
+    assert len(with_deltas) == len(records)
+    assert abs(
+        with_deltas.loc[
+            with_deltas["experiment_mode"] == "add_feature",
+            "delta_ic",
+        ].iloc[0]
+        - 0.02
+    ) < 1e-12
+
+
+def test_classification_positive_count_uses_ba_and_brier() -> None:
+    from results.research.v162_ta_broad_screen import summarize_screen
+
+    records = pd.DataFrame(
+        [
+            {
+                "model_family": "classification",
+                "benchmark": "VOO",
+                "model_type": "ridge",
+                "experiment_mode": "add_feature",
+                "feature": "ta_pgr_obv_detrended",
+                "feature_group": "pgr_volume",
+                "family": "volume",
+                "delta_balanced_accuracy": 0.01,
+                "delta_brier_score": 0.02,
+            },
+            {
+                "model_family": "classification",
+                "benchmark": "BND",
+                "model_type": "ridge",
+                "experiment_mode": "add_feature",
+                "feature": "ta_pgr_obv_detrended",
+                "feature_group": "pgr_volume",
+                "family": "volume",
+                "delta_balanced_accuracy": -0.01,
+                "delta_brier_score": -0.02,
+            },
+            {
+                "model_family": "classification",
+                "benchmark": "GLD",
+                "model_type": "ridge",
+                "experiment_mode": "add_feature",
+                "feature": "ta_pgr_obv_detrended",
+                "feature_group": "pgr_volume",
+                "family": "volume",
+                "delta_balanced_accuracy": -0.01,
+                "delta_brier_score": 0.02,
+            },
+        ]
+    )
+
+    summary = summarize_screen(records).iloc[0]
+
+    assert summary["positive_benchmark_count"] == 2
+    assert summary["feature_group"] == "pgr_volume"
+
+
+def test_compact_detail_records_removes_stale_expansion() -> None:
+    from results.research.v162_ta_broad_screen import compact_detail_records
+
+    records = pd.DataFrame(
+        [
+            {
+                "model_family": "regression",
+                "benchmark": "VOO",
+                "model_type": "ridge",
+                "experiment_mode": "baseline",
+                "feature": "__baseline__",
+                "ic": 0.10,
+                "baseline_ic": 0.10,
+                "delta_ic": 0.00,
+            },
+            {
+                "model_family": "regression",
+                "benchmark": "VOO",
+                "model_type": "ridge",
+                "experiment_mode": "baseline",
+                "feature": "__baseline__",
+                "ic": 0.10,
+                "baseline_ic": 0.10,
+                "delta_ic": 0.00,
+            },
+            {
+                "model_family": "regression",
+                "benchmark": "VOO",
+                "model_type": "ridge",
+                "experiment_mode": "add_feature",
+                "feature": "ta_ratio_roc_6m_voo",
+                "ic": 0.12,
+                "baseline_ic": 999.00,
+                "delta_ic": 999.00,
+            },
+        ]
+    )
+
+    compact = compact_detail_records(records, benchmarks=("VOO",))
+
+    assert len(compact) == 2
+    assert "feature_group" in compact.columns
+    assert abs(
+        compact.loc[
+            compact["experiment_mode"] == "add_feature",
+            "delta_ic",
+        ].iloc[0]
+        - 0.02
+    ) < 1e-12
+
+
+def test_broad_screen_script_can_run_from_file_path() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "results/research/v162_ta_broad_screen.py",
+            "--help",
+        ],
+        cwd=PROJECT_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Run v162 broad TA feature screen" in result.stdout

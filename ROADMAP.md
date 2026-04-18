@@ -87,12 +87,13 @@ Summary:
 - `v161` adds a research-only pandas/numpy TA feature factory
 - `v162` adds a broad-but-pruned regression and classification screen
 - `v163` adds capped survivor confirmation and correlation pruning
-- `v164` records the initial `monitor_only` synthesis with no production or
+- `v164` records a `replacement_candidate` synthesis with no production or
   shadow changes
 
-Next empirical step: run `results/research/v162_ta_broad_screen.py`, then
-`results/research/v163_ta_survivor_confirm.py`, before considering any future
-shadow-candidate plan.
+Next empirical step: create a separate shadow-only classification replacement
+plan. Start with `ta_pgr_obv_detrended` replacing `mom_12m` and
+`ta_pgr_natr_63d` replacing `vol_63d`, then compare one representative ratio
+Bollinger feature before any production discussion.
 
 ## Prior Research Direction: v139-v152
 

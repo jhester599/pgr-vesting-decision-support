@@ -1,17 +1,90 @@
 {
   "version": "v164",
-  "recommendation": "monitor_only",
-  "reason": "Research-only TA feature factory and broad-screen harness are implemented and tested, but empirical v162/v163 artifacts have not yet promoted any feature.",
-  "eligible_future_outcomes": [
-    "abandon_ta",
-    "monitor_only",
-    "shadow_candidate",
-    "replacement_candidate"
-  ],
+  "recommendation": "replacement_candidate",
   "production_changes": false,
   "shadow_changes": false,
-  "next_commands": [
-    "python results/research/v162_ta_broad_screen.py",
-    "python results/research/v163_ta_survivor_confirm.py"
+  "source_artifacts": [
+    "results/research/v162_ta_broad_screen_summary.csv",
+    "results/research/v163_ta_survivor_confirm_summary.csv",
+    "results/research/v163_ta_survivor_candidate.json"
+  ],
+  "recommended_next_direction": "Create a separate shadow-only classification replacement plan; do not promote TA directly to production.",
+  "feature_groups": [
+    "pgr_volatility",
+    "pgr_volume",
+    "ratio_bollinger"
+  ],
+  "features": [
+    "ta_pgr_natr_63d",
+    "ta_pgr_obv_detrended",
+    "ta_ratio_bb_pct_b_6m_vwo",
+    "ta_ratio_bb_width_6m_vde",
+    "ta_ratio_bb_width_6m_voo",
+    "ta_ratio_bb_width_6m_vxus"
+  ],
+  "preferred_minimal_candidate": {
+    "model_family": "classification",
+    "model_type": "ridge",
+    "intent": "replacement_not_addition",
+    "feature_swaps": [
+      {
+        "replace": "mom_12m",
+        "with": "ta_pgr_obv_detrended"
+      },
+      {
+        "replace": "vol_63d",
+        "with": "ta_pgr_natr_63d"
+      }
+    ],
+    "diagnostic_bollinger_family": [
+      "ta_ratio_bb_pct_b_6m_vwo",
+      "ta_ratio_bb_width_6m_vde",
+      "ta_ratio_bb_width_6m_voo",
+      "ta_ratio_bb_width_6m_vxus"
+    ]
+  },
+  "survivors": [
+    {
+      "feature": "ta_pgr_obv_detrended",
+      "experiment_mode": "replace_mom_12m",
+      "mean_delta_balanced_accuracy": 0.0376821852616901,
+      "mean_delta_brier_score": -0.0292470200873387,
+      "positive_benchmark_count": 8
+    },
+    {
+      "feature": "ta_pgr_natr_63d",
+      "experiment_mode": "replace_vol_63d",
+      "mean_delta_balanced_accuracy": 0.0263412357867358,
+      "mean_delta_brier_score": -0.0316465138961575,
+      "positive_benchmark_count": 8
+    },
+    {
+      "feature": "ta_ratio_bb_pct_b_6m_vwo",
+      "experiment_mode": "replace_vol_63d",
+      "mean_delta_balanced_accuracy": 0.0147373690032656,
+      "mean_delta_brier_score": -0.0292427216680533,
+      "positive_benchmark_count": 8
+    },
+    {
+      "feature": "ta_ratio_bb_width_6m_vde",
+      "experiment_mode": "replace_vix",
+      "mean_delta_balanced_accuracy": 0.0387559693552479,
+      "mean_delta_brier_score": -0.0132712361968019,
+      "positive_benchmark_count": 7
+    },
+    {
+      "feature": "ta_ratio_bb_width_6m_voo",
+      "experiment_mode": "replace_vix",
+      "mean_delta_balanced_accuracy": 0.0311475061552233,
+      "mean_delta_brier_score": -0.011710557993088,
+      "positive_benchmark_count": 7
+    },
+    {
+      "feature": "ta_ratio_bb_width_6m_vxus",
+      "experiment_mode": "replace_vol_63d",
+      "mean_delta_balanced_accuracy": 0.0300887545507781,
+      "mean_delta_brier_score": -0.0110458541570974,
+      "positive_benchmark_count": 7
+    }
   ]
 }
