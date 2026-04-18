@@ -1,0 +1,214 @@
+{
+  "bl_tau_winner": 0.05,
+  "bl_risk_aversion_winner": 2.5,
+  "incumbent_tau": 0.05,
+  "incumbent_risk_aversion": 2.5,
+  "winner_rank_corr": NaN,
+  "incumbent_rank_corr": NaN,
+  "delta_rank_corr": NaN,
+  "win_threshold": 0.05,
+  "recommendation": "keep_incumbent",
+  "quality_filter_bypassed": true,
+  "rows": [
+    {
+      "tau": 0.01,
+      "risk_aversion": 1.5,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.01,
+      "risk_aversion": 2.0,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.01,
+      "risk_aversion": 2.5,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.01,
+      "risk_aversion": 3.0,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.01,
+      "risk_aversion": 4.0,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.025,
+      "risk_aversion": 1.5,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.025,
+      "risk_aversion": 2.0,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.025,
+      "risk_aversion": 2.5,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.025,
+      "risk_aversion": 3.0,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.025,
+      "risk_aversion": 4.0,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.05,
+      "risk_aversion": 1.5,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.05,
+      "risk_aversion": 2.0,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.05,
+      "risk_aversion": 2.5,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.05,
+      "risk_aversion": 3.0,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.05,
+      "risk_aversion": 4.0,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.1,
+      "risk_aversion": 1.5,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.1,
+      "risk_aversion": 2.0,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.1,
+      "risk_aversion": 2.5,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.1,
+      "risk_aversion": 3.0,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.1,
+      "risk_aversion": 4.0,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.2,
+      "risk_aversion": 1.5,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.2,
+      "risk_aversion": 2.0,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.2,
+      "risk_aversion": 2.5,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.2,
+      "risk_aversion": 3.0,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    },
+    {
+      "tau": 0.2,
+      "risk_aversion": 4.0,
+      "mean_rank_corr": NaN,
+      "fallback_rate": 1.0,
+      "n_valid_scenarios": 0,
+      "n_scenarios": 50
+    }
+  ]
+}
