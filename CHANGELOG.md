@@ -5,6 +5,16 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v155 (2026-04-17)
+
+- FEAT-02: WTI 3M momentum evaluation for DBC/VDE classifiers
+- Harness: `results/research/v155_wti_momentum_eval.py`
+- Feature tested: `wti_return_3m` (macro_rates_spreads family)
+- Candidate: `results/research/v155_wti_candidate.json`
+  - WTI winners: [] (DBC delta=+0.0051, VDE delta=+0.0206 — both below 0.04 threshold)
+  - Recommendation: no_benefit
+- No production config changes
+
 ## v154 (2026-04-17)
 
 - CLS-02: Firth-penalized logistic research harness for short-history benchmarks

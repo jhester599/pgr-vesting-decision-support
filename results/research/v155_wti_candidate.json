@@ -1,0 +1,30 @@
+{
+  "benchmarks_tested": [
+    "DBC",
+    "VDE"
+  ],
+  "wti_feature": "wti_return_3m",
+  "win_threshold_ba": 0.04,
+  "rows": [
+    {
+      "benchmark": "DBC",
+      "base_ba_covered": 0.599025974025974,
+      "aug_ba_covered": 0.6041095890410959,
+      "delta_ba_covered": 0.0050836150151218895,
+      "base_coverage": 0.8405797101449275,
+      "aug_coverage": 0.8596491228070176,
+      "wti_feature_available": true
+    },
+    {
+      "benchmark": "VDE",
+      "base_ba_covered": 0.5378787878787878,
+      "aug_ba_covered": 0.5584615384615385,
+      "delta_ba_covered": 0.02058275058275061,
+      "base_coverage": 0.8188405797101449,
+      "aug_coverage": 0.7894736842105263,
+      "wti_feature_available": true
+    }
+  ],
+  "wti_winners": [],
+  "recommendation": "no_benefit"
+}
