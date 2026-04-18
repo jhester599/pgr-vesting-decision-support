@@ -158,6 +158,7 @@ def run_tau_sweep(
                     returns_df,
                     risk_aversion=ra,
                     tau=tau,
+                    risk_free_rate=0.0,
                     return_diagnostics=True,
                 )
                 if diag.fallback_used:

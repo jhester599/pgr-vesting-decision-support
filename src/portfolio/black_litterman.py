@@ -74,6 +74,7 @@ def build_bl_weights(
     view_confidence_scalar: float | None = None,
     market_weights: dict[str, float] | None = None,
     tau: float | None = None,
+    risk_free_rate: float | None = None,
     return_diagnostics: bool = False,
 ) -> dict[str, float] | tuple[dict[str, float], BLDiagnostics]:
     """
@@ -100,6 +101,9 @@ def build_bl_weights(
         tau:                    BL prior uncertainty scalar τ (default: config.BL_TAU).
                                 Controls how much the model trusts the views vs the
                                 equilibrium prior. Higher τ → more weight on views.
+        risk_free_rate:         Risk-free rate for max-Sharpe optimisation (default: 0.04).
+                                Must be in the same time units as the returns in returns_df.
+                                Pass 0.0 to optimise without a risk-free floor.
         return_diagnostics:     If True, return ``(weights, diagnostics)`` where
                                 diagnostics includes whether a fallback path was
                                 used and why.
@@ -253,7 +257,8 @@ def build_bl_weights(
         # Efficient frontier: max Sharpe with BL inputs
         from pypfopt import EfficientFrontier
         ef = EfficientFrontier(bl_returns, bl_cov, weight_bounds=(0, config.KELLY_MAX_POSITION))
-        ef.max_sharpe(risk_free_rate=0.04)  # 4% risk-free rate
+        _rf = risk_free_rate if risk_free_rate is not None else 0.04
+        ef.max_sharpe(risk_free_rate=_rf)
         raw_weights = ef.clean_weights()
         return _finish(
             dict(raw_weights),
