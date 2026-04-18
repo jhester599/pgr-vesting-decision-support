@@ -5,6 +5,17 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v157 (2026-04-17)
+
+- FEAT-03: Term premium 3M differential evaluation across all 8 benchmarks
+- Derived feature: `term_premium_diff_3m` (computed as `term_premium_10y.diff(3)`)
+- Harness: `results/research/v157_term_premium_eval.py`
+- Candidate: `results/research/v157_term_premium_candidate.json`
+  - Source available: True
+  - Term premium winners: [] (VOO delta=-0.0003, VXUS delta=+0.0000, VWO delta=+0.0006, VMBS delta=+0.0064, BND delta=-0.0875, GLD delta=-0.0151, DBC delta=+0.0051, VDE delta=+0.0169 — all below 0.02 threshold)
+  - Recommendation: no_benefit
+- No production config changes; derived feature computed in harness only
+
 ## v156 (2026-04-17)
 
 - FEAT-01: USD index momentum evaluation for BND/VXUS/VWO classifiers
