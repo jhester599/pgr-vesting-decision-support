@@ -26,18 +26,11 @@
 
 ## Ranked Next Queue
 
-1. `BL-01` - Black-Litterman tau/view tuning
-   Reason: highest-value remaining decision-layer calibration task now that the
-   replay-proxy and Kelly follow-through work are complete.
-2. `CLS-02` - Firth logistic for short-history benchmarks
-   Reason: most direct remaining classifier-stability improvement that is not
-   blocked on prospective shadow time.
-3. `FEAT-01` - DTWEXBGS post-v128 feature search
-   Reason: small-scope benchmark-specific feature follow-up with a plausible
-   upside and low integration risk.
-4. `FEAT-02` - WTI 3M momentum for DBC/VDE
-   Reason: still a credible domain feature addition, but it depends on a clean
-   external-series verification pass first.
+1. `CLS-02` - Firth logistic for short-history benchmarks — **in-progress (v154)**
+2. `FEAT-02` - WTI 3M momentum for DBC/VDE — **in-progress (v155)**
+3. `FEAT-01` - DTWEXBGS post-v128 feature search — **in-progress (v156)**
+4. `FEAT-03` - Term premium 3M differential signal — **in-progress (v157)**
+5. `BL-01` - Black-Litterman tau/view tuning — open (deferred per 2026-04-17 peer review)
 
 Leave `CLS-03` blocked on the matured-month gate, and leave `REG-02` deferred
 until a future ensemble-level plan justifies reopening the standalone GBT line.
@@ -167,3 +160,12 @@ until a future ensemble-level plan justifies reopening the standalone GBT line.
 **Depends on:** CLS-04
 **Expected metric impact:** covered BA up modestly at acceptable coverage
 **Last touched:** v147
+
+### FEAT-03 — Term Premium 3M Differential Signal
+**Status:** open
+**Priority:** medium
+**Rationale:** The 10Y term premium is already in the feature matrix as `term_premium_10y`, but a 3-month change (`term_premium_diff_3m`) has not been tested. Sudden jumps in term premium historically signal equity headwinds; the differenced series may improve classifier timing without requiring new data.
+**Estimated effort:** S
+**Depends on:** none
+**Expected metric impact:** BA_covered up slightly for rate-sensitive benchmarks (BND, VOO); ECE stable
+**Last touched:** 2026-04-17 peer review

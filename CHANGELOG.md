@@ -5,6 +5,16 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v153 (2026-04-17)
+
+- Archived 2026-04-17 ChatGPT repo peer review under
+  `docs/archive/history/repo-peer-reviews/2026-04-17/`
+- Added FEAT-03 (term premium 3M diff) to backlog
+- Updated backlog queue: CLS-02 → FEAT-02 → FEAT-01 → FEAT-03 → BL-01
+- Noted priority shift: classification-first per 2026-04-17 peer review
+  (BL-01 deferred until after v158 synthesis)
+- Created plan: `docs/superpowers/plans/2026-04-17-v153-v158-classification-feature-research.md`
+
 ## Version History
 
 ### v152 (docs complete)

@@ -27,7 +27,30 @@ reporting-only in shadow artifacts.
 - v128 benchmark-specific selection switched 4 of 10 benchmarks away from the
   shared `lean_baseline` map: `BND`, `DBC`, `VGT`, and `VIG`
 
-## Active Research Direction: v139-v152
+## Active Research Direction: v153-v158
+
+The active plan is documented in:
+
+- [`docs/superpowers/plans/2026-04-17-v153-v158-classification-feature-research.md`](docs/superpowers/plans/2026-04-17-v153-v158-classification-feature-research.md)
+
+Source peer review: [`docs/archive/history/repo-peer-reviews/2026-04-17/chatgpt_repo_peerreview_20260417.md`](docs/archive/history/repo-peer-reviews/2026-04-17/chatgpt_repo_peerreview_20260417.md)
+
+Summary of the v153-v158 classification and feature research arc:
+
+| Version | Theme | Type |
+|---|---|---|
+| v153 | Archive 2026-04-17 peer review; update backlog with FEAT-03; reorder priorities | Documentation |
+| v154 | CLS-02: Firth-penalized logistic for short-history benchmarks | Classifier research |
+| v155 | FEAT-02: WTI 3M momentum for DBC/VDE classification | Feature research |
+| v156 | FEAT-01: USD index momentum (DTWEXBGS) for BND/VXUS/VWO | Feature research |
+| v157 | FEAT-03: Term premium 3M differential signal | Feature research |
+| v158 | Synthesis: compare all four experiments; update shadow lane if any winner qualifies | Research + shadow |
+
+Working rule: research-only. No automatic promotion into the live monthly decision path. Mandatory closeout after each completed block.
+
+Priority shift from v152 closeout: the 2026-04-17 peer review re-orders the queue to classification-first (CLS-02 before BL-01) on the basis that predictive signal improvements take precedence over decision-layer policy tuning. BL-01 remains open and should follow after v158 synthesis.
+
+## Prior Research Direction: v139-v152
 
 The active follow-on plan is documented in:
 
