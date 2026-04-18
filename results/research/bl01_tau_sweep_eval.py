@@ -40,7 +40,12 @@ CANDIDATE_PATH = PROJECT_ROOT / "results" / "research" / "bl01_tau_candidate.jso
 # ---------------------------------------------------------------------------
 
 def _rank_corr(x: np.ndarray, y: np.ndarray) -> float:
-    """Spearman rank correlation (numpy only, no scipy)."""
+    """Spearman rank correlation (numpy only, no scipy).
+
+    Note: uses the exact Spearman formula which assumes no ties. With ties,
+    argsort breaks them arbitrarily. In the sweep context IC values are drawn
+    from continuous uniform distributions making ties essentially impossible.
+    """
     n = len(x)
     if n < 3:
         return 0.0
@@ -141,36 +146,28 @@ def run_tau_sweep(
     Returns list of result rows, one per (tau, risk_aversion) combination.
     Row keys: tau, risk_aversion, mean_rank_corr, fallback_rate, n_valid_scenarios, n_scenarios.
     """
-    import config as _cfg
-
     rows: list[dict[str, Any]] = []
     for tau in tau_grid:
         for ra in ra_grid:
             rank_corrs: list[float] = []
             n_fallbacks: int = 0
-            orig_tau = _cfg.BL_TAU
-            try:
-                _cfg.BL_TAU = tau
-                for seed in range(n_scenarios):
-                    returns_df, signals = _make_scenario(seed, benchmarks, n_months)
-                    result = build_bl_weights(
-                        signals,
-                        returns_df,
-                        risk_aversion=ra,
-                        return_diagnostics=True,
-                    )
-                    weights, diag = result
-                    if diag.fallback_used:
-                        n_fallbacks += 1
-                        continue
-                    rank_corrs.append(_compute_ic_rank_correlation(weights, signals))
-            finally:
-                _cfg.BL_TAU = orig_tau
-
+            for seed in range(n_scenarios):
+                returns_df, signals = _make_scenario(seed, benchmarks, n_months)
+                weights, diag = build_bl_weights(
+                    signals,
+                    returns_df,
+                    risk_aversion=ra,
+                    tau=tau,
+                    return_diagnostics=True,
+                )
+                if diag.fallback_used:
+                    n_fallbacks += 1
+                    continue
+                rank_corrs.append(_compute_ic_rank_correlation(weights, signals))
             rows.append({
                 "tau": tau,
                 "risk_aversion": ra,
-                "mean_rank_corr": float(np.mean(rank_corrs)) if rank_corrs else 0.0,
+                "mean_rank_corr": float(np.mean(rank_corrs)) if rank_corrs else float("nan"),
                 "fallback_rate": n_fallbacks / n_scenarios,
                 "n_valid_scenarios": len(rank_corrs),
                 "n_scenarios": n_scenarios,
@@ -190,7 +187,10 @@ def select_winner(
         {"tau": incumbent_tau, "risk_aversion": incumbent_ra, "mean_rank_corr": 0.0, "fallback_rate": 0.0},
     )
     incumbent_corr = incumbent_row["mean_rank_corr"]
-    eligible = [r for r in rows if r["fallback_rate"] < 0.50] or rows
+    eligible = [r for r in rows if r["fallback_rate"] < 0.50]
+    all_filtered = not eligible
+    if all_filtered:
+        eligible = rows
     best_row = max(eligible, key=lambda r: r["mean_rank_corr"])
     best_corr = best_row["mean_rank_corr"]
     delta = best_corr - incumbent_corr
@@ -212,17 +212,20 @@ def select_winner(
         "delta_rank_corr": round(delta, 6),
         "win_threshold": win_threshold,
         "recommendation": recommendation,
+        "quality_filter_bypassed": all_filtered,
         "rows": rows,
     }
 
 
 def run_bl01_sweep(
     candidate_path: Path = CANDIDATE_PATH,
-    tau_grid: list[float] = TAU_GRID,
-    ra_grid: list[float] = RISK_AVERSION_GRID,
+    tau_grid: list[float] | None = None,
+    ra_grid: list[float] | None = None,
     n_scenarios: int = N_SCENARIOS,
 ) -> dict[str, Any]:
     """Run the full BL-01 sweep and write the candidate JSON."""
+    tau_grid = tau_grid if tau_grid is not None else TAU_GRID
+    ra_grid = ra_grid if ra_grid is not None else RISK_AVERSION_GRID
     print(f"Running BL-01 sweep: {len(tau_grid)}×{len(ra_grid)} grid × {n_scenarios} scenarios...")
     rows = run_tau_sweep(tau_grid, ra_grid, n_scenarios, BENCHMARKS)
     candidate = select_winner(rows, INCUMBENT_TAU, INCUMBENT_RA, WIN_THRESHOLD_RANK_CORR)
