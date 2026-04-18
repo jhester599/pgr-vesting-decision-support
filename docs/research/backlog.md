@@ -26,12 +26,26 @@
 
 ## Ranked Next Queue
 
-1. `v159` — Wire Firth logistic for VMBS/BND into shadow classification lane
-2. `BL-01` - Black-Litterman tau/view tuning — **complete (2026-04-18)**
-3. `CLS-03` — Path A vs Path B production decision — blocked (24 matured months)
+1. `TA-01` — Alpha Vantage technical-analysis broad feature research — **monitor_only scaffold complete (2026-04-18)**
+2. `v159` — Wire Firth logistic for VMBS/BND into shadow classification lane — **complete (2026-04-18)**
+3. `BL-01` - Black-Litterman tau/view tuning — **complete (2026-04-18)**
+4. `CLS-03` — Path A vs Path B production decision — blocked (24 matured months)
 
 Leave `CLS-03` blocked on the matured-month gate, and leave `REG-02` deferred
 until a future ensemble-level plan justifies reopening the standalone GBT line.
+
+### TA-01 — Alpha Vantage Technical-Analysis Broad Feature Research
+**Status:** monitor_only scaffold complete
+**Priority:** medium
+**Rationale:** Three external TA reports converged on a low-prior but defensible
+one-cycle broad screen if redundant Alpha Vantage indicator families are pruned
+before modeling and all tests remain WFO-only.
+**Estimated effort:** M
+**Depends on:** empirical v162/v163 harness runs
+**Expected metric impact:** unknown; likely directional/classification lift if any
+**Last touched:** v164 (2026-04-18)
+**Outcome:** research-only scaffold and candidate inventory complete; no
+production or shadow promotion until empirical artifacts clear gates.
 
 ### BL-01 — Black-Litterman Tau/View Tuning
 **Status:** complete

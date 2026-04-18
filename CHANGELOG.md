@@ -5,6 +5,17 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v164 (2026-04-18)
+
+- TA-01 technical-analysis research scaffold: archived three Alpha Vantage TA
+  reports and created `v160-v164` implementation plan
+- New research-only feature factory: `src/research/v160_ta_features.py`
+- New harnesses: `results/research/v162_ta_broad_screen.py` and
+  `results/research/v163_ta_survivor_confirm.py`
+- Candidate outcome: `monitor_only` until empirical v162/v163 artifacts are run
+  and reviewed
+- No production config, live monthly decision, or shadow-reporting changes
+
 ## BL-01 (2026-04-18)
 
 - Black-Litterman tau/risk_aversion Monte Carlo sweep: 5×5 grid × 50 scenarios

@@ -71,6 +71,29 @@ Completed next queue after `v158`:
 - `BL-01` complete: tau/risk_aversion sweep found incumbent optimal; see `docs/closeouts/BL01_CLOSEOUT_AND_HANDOFF.md`
 - Next: `CLS-03` (time-locked on 24 matured months), `CLS-01` (depends on CLS-03)
 
+## Active Research Direction: v160-v164 TA-01
+
+The active technical-analysis research plan is documented in:
+
+- [`docs/superpowers/plans/2026-04-18-v160-v164-technical-analysis-feature-research.md`](docs/superpowers/plans/2026-04-18-v160-v164-technical-analysis-feature-research.md)
+
+Source reports are archived in:
+
+- [`docs/archive/history/v160-ta-research-reports/`](docs/archive/history/v160-ta-research-reports/)
+
+Summary:
+
+- `v160` archives and synthesizes the three Alpha Vantage TA research reports
+- `v161` adds a research-only pandas/numpy TA feature factory
+- `v162` adds a broad-but-pruned regression and classification screen
+- `v163` adds capped survivor confirmation and correlation pruning
+- `v164` records the initial `monitor_only` synthesis with no production or
+  shadow changes
+
+Next empirical step: run `results/research/v162_ta_broad_screen.py`, then
+`results/research/v163_ta_survivor_confirm.py`, before considering any future
+shadow-candidate plan.
+
 ## Prior Research Direction: v139-v152
 
 The active follow-on plan is documented in:
