@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -115,3 +116,11 @@ def test_select_winner_output_keys() -> None:
         "recommendation",
     ]:
         assert key in result, f"Missing key: {key}"
+
+
+def test_make_scenario_same_seed_is_reproducible() -> None:
+    from results.research.bl01_tau_sweep_eval import BENCHMARKS, _make_scenario
+    returns_a, signals_a = _make_scenario(seed=42, benchmarks=BENCHMARKS)
+    returns_b, signals_b = _make_scenario(seed=42, benchmarks=BENCHMARKS)
+    pd.testing.assert_frame_equal(returns_a, returns_b)
+    assert [signals_a[b].mean_ic for b in BENCHMARKS] == [signals_b[b].mean_ic for b in BENCHMARKS]

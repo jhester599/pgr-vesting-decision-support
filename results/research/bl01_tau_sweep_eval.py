@@ -149,8 +149,8 @@ def run_tau_sweep(
             rank_corrs: list[float] = []
             n_fallbacks: int = 0
             orig_tau = _cfg.BL_TAU
-            _cfg.BL_TAU = tau
             try:
+                _cfg.BL_TAU = tau
                 for seed in range(n_scenarios):
                     returns_df, signals = _make_scenario(seed, benchmarks, n_months)
                     result = build_bl_weights(
