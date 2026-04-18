@@ -50,6 +50,21 @@ Working rule: research-only. No automatic promotion into the live monthly decisi
 
 Priority shift from v152 closeout: the 2026-04-17 peer review re-orders the queue to classification-first (CLS-02 before BL-01) on the basis that predictive signal improvements take precedence over decision-layer policy tuning. BL-01 remains open and should follow after v158 synthesis.
 
+Current execution progress on 2026-04-17:
+
+- `v153` complete: archived peer review, updated backlog and priorities
+- `v154` complete: Firth logistic — **VMBS +0.0412, BND +0.0704 (winners)**
+- `v155` complete: WTI momentum — no benefit (DBC +0.005, VDE +0.021)
+- `v156` complete: USD momentum — no benefit (BND -0.077, VXUS flat, VWO +0.009)
+- `v157` complete: term premium diff — no benefit (best VDE +0.017)
+- `v158` complete: synthesis and handoff documented
+
+Recommended next queue after `v158`:
+
+1. `v159` — Firth logistic shadow integration for VMBS and BND
+2. `BL-01` — Black-Litterman tau/view tuning
+3. `CLS-03` — Path A vs Path B (time-locked)
+
 ## Prior Research Direction: v139-v152
 
 The active follow-on plan is documented in:

@@ -5,6 +5,14 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v158 (2026-04-17)
+
+- Synthesis of v153-v157 classification and feature research cycle
+- Sole winner: CLS-02 Firth logistic for VMBS (+0.0412) and BND (+0.0704)
+- No-benefit: FEAT-02 WTI momentum, FEAT-01 USD momentum, FEAT-03 term premium diff
+- See `results/research/v158_synthesis_summary.md` for full outcome table
+- Next queue: v159 (Firth shadow integration) → BL-01 → CLS-03
+
 ## v157 (2026-04-17)
 
 - FEAT-03: Term premium 3M differential evaluation across all 8 benchmarks
