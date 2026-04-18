@@ -5,6 +5,16 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## BL-01 (2026-04-18)
+
+- Black-Litterman tau/risk_aversion Monte Carlo sweep: 5×5 grid × 50 scenarios
+- Harness: `results/research/bl01_tau_sweep_eval.py`
+- Candidate: `results/research/bl01_tau_candidate.json`
+- Recommendation: keep_incumbent — tau=0.05, risk_aversion=2.5 retained (delta +0.009, threshold 0.05)
+- Incumbent rank_corr=0.8643 already near-optimal; no config change warranted
+- Side effect: added `risk_free_rate` parameter to `build_bl_weights` (production default unchanged)
+- Next: CLS-03 (time-locked), CLS-01
+
 ## v158 (2026-04-17)
 
 - Synthesis of v153-v157 classification and feature research cycle
