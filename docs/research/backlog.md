@@ -27,20 +27,21 @@
 ## Ranked Next Queue
 
 1. `v159` — Wire Firth logistic for VMBS/BND into shadow classification lane
-2. `BL-01` - Black-Litterman tau/view tuning — open
+2. `BL-01` - Black-Litterman tau/view tuning — **complete (2026-04-18)**
 3. `CLS-03` — Path A vs Path B production decision — blocked (24 matured months)
 
 Leave `CLS-03` blocked on the matured-month gate, and leave `REG-02` deferred
 until a future ensemble-level plan justifies reopening the standalone GBT line.
 
-### BL-01 â€” Black-Litterman Tau/View Tuning
-**Status:** open
+### BL-01 — Black-Litterman Tau/View Tuning
+**Status:** complete
 **Priority:** medium
 **Rationale:** The decision layer still uses untuned BL priors even though the regression and classifier research stack has moved materially since the original defaults.
 **Estimated effort:** M
 **Depends on:** none
 **Expected metric impact:** recommendation accuracy up, policy uplift up modestly
-**Last touched:** 2026-04-13 plan
+**Last touched:** 2026-04-18
+**Outcome:** keep_incumbent — tau=0.05, risk_aversion=2.5 are already near-optimal (rank_corr=0.8643, best alternative delta=+0.009 below 0.05 threshold). No config change. Side effect: `risk_free_rate` parameter added to `build_bl_weights`.
 
 ### CLS-01 â€” SCHD Per-Benchmark Classifier Addition
 **Status:** deferred
