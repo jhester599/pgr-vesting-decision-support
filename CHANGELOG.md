@@ -5,6 +5,17 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v156 (2026-04-17)
+
+- FEAT-01: USD index momentum evaluation for BND/VXUS/VWO classifiers
+- Features tested: `usd_broad_return_3m`, `usd_momentum_6m`
+- Harness: `results/research/v156_usd_momentum_eval.py`
+- Candidate: `results/research/v156_usd_candidate.json`
+  - USD features available: ['usd_broad_return_3m', 'usd_momentum_6m']
+  - USD winners: [] (BND delta=-0.0767, VXUS delta=+0.0000, VWO delta=+0.0087 — all below 0.03 threshold)
+  - Recommendation: no_benefit
+- No production config changes
+
 ## v155 (2026-04-17)
 
 - FEAT-02: WTI 3M momentum evaluation for DBC/VDE classifiers
