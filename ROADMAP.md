@@ -59,11 +59,16 @@ Current execution progress on 2026-04-17:
 - `v157` complete: term premium diff — no benefit (best VDE +0.017)
 - `v158` complete: synthesis and handoff documented
 
-Recommended next queue after `v158`:
+Completed next queue after `v158`:
 
-1. `v159` — Firth logistic shadow integration for VMBS and BND
-2. `BL-01` — Black-Litterman tau/view tuning
+1. `v159` — Firth logistic shadow integration for VMBS and BND — **complete (2026-04-18)**
+2. `BL-01` — Black-Litterman tau/view tuning — open
 3. `CLS-03` — Path A vs Path B (time-locked)
+
+## Active Research Direction: v159 + BL-01
+
+- `v159` complete: Firth shadow lane wired; see `docs/closeouts/V159_CLOSEOUT_AND_HANDOFF.md`
+- `BL-01` open: Black-Litterman tau/view tuning (next priority)
 
 ## Prior Research Direction: v139-v152
 

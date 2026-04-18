@@ -5,6 +5,15 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v159 (2026-04-18)
+
+- Firth shadow integration: wired `firth_shadow_v159` reporting lane into monthly pipeline
+- New module: `src/reporting/firth_shadow.py` (load_firth_candidate, build_firth_shadow_payload)
+- Monthly shadow now produces three variants: baseline_shadow, autoresearch_followon_v150, firth_shadow_v159
+- Research findings surfaced: VMBS +0.0412 BA_cov, BND +0.0704 BA_cov (from v154 Firth candidate)
+- No production config or live recommendation changes
+- Next: BL-01 Black-Litterman tau/view tuning
+
 ## v158 (2026-04-17)
 
 - Synthesis of v153-v157 classification and feature research cycle

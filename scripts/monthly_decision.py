@@ -126,6 +126,10 @@ from src.reporting.shadow_followon import (
     build_followon_decision_overlay_payload,
     build_followon_shadow_payload,
 )
+from src.reporting.firth_shadow import (
+    FIRTH_SHADOW_VARIANT_NAME,
+    build_firth_shadow_payload,
+)
 from src.reporting.monthly_summary import (
     build_actionability_label,
     build_decision_headline,
@@ -3233,12 +3237,32 @@ def main(
                 "probability_path_b_temp_scaled_label"
             ),
         )
-        classification_shadow_variants = [baseline_variant, followon_variant]
+        firth_variant = build_firth_shadow_payload(
+            probability_actionable_sell=classification_shadow_summary.get("probability_actionable_sell"),
+            probability_actionable_sell_label=classification_shadow_summary.get(
+                "probability_actionable_sell_label"
+            ),
+            confidence_tier=str(classification_shadow_summary.get("confidence_tier"))
+            if classification_shadow_summary.get("confidence_tier") is not None
+            else None,
+            stance=str(classification_shadow_summary.get("stance"))
+            if classification_shadow_summary.get("stance") is not None
+            else None,
+            probability_investable_pool_label=classification_shadow_summary.get(
+                "probability_investable_pool_label"
+            ),
+            probability_path_b_temp_scaled_label=classification_shadow_summary.get(
+                "probability_path_b_temp_scaled_label"
+            ),
+        )
+        classification_shadow_variants = [baseline_variant, followon_variant, firth_variant]
         if not classification_shadow_artifact_df.empty:
             followon_detail_df = classification_shadow_artifact_df.copy()
             followon_detail_df["variant"] = FOLLOWON_VARIANT_NAME
+            firth_detail_df = classification_shadow_artifact_df.copy()
+            firth_detail_df["variant"] = FIRTH_SHADOW_VARIANT_NAME
             classification_shadow_artifact_df = pd.concat(
-                [classification_shadow_artifact_df, followon_detail_df],
+                [classification_shadow_artifact_df, followon_detail_df, firth_detail_df],
                 ignore_index=True,
             )
 

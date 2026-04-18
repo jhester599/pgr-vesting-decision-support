@@ -261,6 +261,7 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
     assert set(classification_shadow_df["variant"]) == {
         "baseline_shadow",
         "autoresearch_followon_v150",
+        "firth_shadow_v159",
     }
     decision_overlays_df = pd.read_csv(decision_overlays_path)
     assert {"variant", "recommendation_mode", "recommended_sell_pct"}.issubset(
@@ -276,11 +277,15 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
     assert monthly_summary["schema_version"] == 3
     assert monthly_summary["cross_check"]["visible_in_primary_surfaces"] is False
     assert monthly_summary["classification_shadow"]["probability_actionable_sell_label"] == "28.4%"
-    assert len(monthly_summary["classification_shadow_variants"]) == 2
+    assert len(monthly_summary["classification_shadow_variants"]) == 3
     assert len(monthly_summary["decision_overlay_variants"]) == 2
     assert {
         variant["variant"] for variant in monthly_summary["classification_shadow_variants"]
-    } == {"baseline_shadow", "autoresearch_followon_v150"}
+    } == {"baseline_shadow", "autoresearch_followon_v150", "firth_shadow_v159"}
+    assert any(
+        v.get("variant") == "firth_shadow_v159"
+        for v in monthly_summary.get("classification_shadow_variants", [])
+    ), "firth_shadow_v159 variant must appear in monthly shadow variants"
     assert monthly_summary["shadow_gate_overlay"]["variant"] in {
         "gemini_veto_0.50",
         "permission_overlay",
