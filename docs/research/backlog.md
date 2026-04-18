@@ -26,18 +26,9 @@
 
 ## Ranked Next Queue
 
-1. `BL-01` - Black-Litterman tau/view tuning
-   Reason: highest-value remaining decision-layer calibration task now that the
-   replay-proxy and Kelly follow-through work are complete.
-2. `CLS-02` - Firth logistic for short-history benchmarks
-   Reason: most direct remaining classifier-stability improvement that is not
-   blocked on prospective shadow time.
-3. `FEAT-01` - DTWEXBGS post-v128 feature search
-   Reason: small-scope benchmark-specific feature follow-up with a plausible
-   upside and low integration risk.
-4. `FEAT-02` - WTI 3M momentum for DBC/VDE
-   Reason: still a credible domain feature addition, but it depends on a clean
-   external-series verification pass first.
+1. `v159` — Wire Firth logistic for VMBS/BND into shadow classification lane
+2. `BL-01` - Black-Litterman tau/view tuning — open
+3. `CLS-03` — Path A vs Path B production decision — blocked (24 matured months)
 
 Leave `CLS-03` blocked on the matured-month gate, and leave `REG-02` deferred
 until a future ensemble-level plan justifies reopening the standalone GBT line.
@@ -60,14 +51,14 @@ until a future ensemble-level plan justifies reopening the standalone GBT line.
 **Expected metric impact:** better portfolio alignment, unknown BA impact
 **Last touched:** v124-v128 cycle
 
-### CLS-02 â€” Firth Logistic For Short-History Benchmarks
-**Status:** open
+### CLS-02 — Firth Logistic For Short-History Benchmarks
+**Status:** complete
 **Priority:** medium
 **Rationale:** Short-history benchmarks still risk unstable logistic fits under small-sample class imbalance.
 **Estimated effort:** M
 **Depends on:** none
-**Expected metric impact:** classifier calibration up, covered BA up slightly
-**Last touched:** 2026-04-13 plan
+**Expected metric impact:** VMBS BA_cov +0.0412, BND BA_cov +0.0704; shadow adoption pending v159
+**Last touched:** v154 (2026-04-17)
 
 ### CLS-03 â€” Path A vs Path B Production Decision
 **Status:** blocked
@@ -96,23 +87,23 @@ until a future ensemble-level plan justifies reopening the standalone GBT line.
 **Expected metric impact:** low-confidence OOS R2 improvement
 **Last touched:** v137
 
-### FEAT-01 â€” DTWEXBGS Post-v128 Feature Search
-**Status:** open
+### FEAT-01 — DTWEXBGS Post-v128 Feature Search
+**Status:** complete
 **Priority:** medium
 **Rationale:** Currency momentum remains a plausible benchmark-specific feature addition after the v128 feature-map work.
 **Estimated effort:** S
 **Depends on:** none
-**Expected metric impact:** per-benchmark BA and ECE up slightly
-**Last touched:** v128
+**Expected metric impact:** no benefit observed (BND -0.077, VXUS flat, VWO +0.009)
+**Last touched:** v156 (2026-04-17)
 
-### FEAT-02 â€” WTI 3M Momentum For DBC/VDE
-**Status:** open
+### FEAT-02 — WTI 3M Momentum For DBC/VDE
+**Status:** complete
 **Priority:** medium
 **Rationale:** Energy/commodity benchmarks likely still underuse oil-specific state information.
 **Estimated effort:** M
 **Depends on:** external series verification
-**Expected metric impact:** DBC/VDE benchmark R2 and BA up slightly
-**Last touched:** 2026-04-13 plan
+**Expected metric impact:** no benefit at 0.04 threshold (DBC +0.005, VDE +0.021)
+**Last touched:** v155 (2026-04-17)
 
 ### DATA-01 â€” EDGAR Filing Lag Review
 **Status:** complete
@@ -167,3 +158,12 @@ until a future ensemble-level plan justifies reopening the standalone GBT line.
 **Depends on:** CLS-04
 **Expected metric impact:** covered BA up modestly at acceptable coverage
 **Last touched:** v147
+
+### FEAT-03 — Term Premium 3M Differential Signal
+**Status:** complete
+**Priority:** medium
+**Rationale:** The 10Y term premium is already in the feature matrix as `term_premium_10y`, but a 3-month change (`term_premium_diff_3m`) has not been tested. Sudden jumps in term premium historically signal equity headwinds; the differenced series may improve classifier timing without requiring new data.
+**Estimated effort:** S
+**Depends on:** none
+**Expected metric impact:** no benefit at 0.02 threshold (best VDE +0.017)
+**Last touched:** v157 (2026-04-17)

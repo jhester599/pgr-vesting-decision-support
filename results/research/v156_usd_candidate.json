@@ -1,0 +1,56 @@
+{
+  "benchmarks_tested": [
+    "BND",
+    "VXUS",
+    "VWO"
+  ],
+  "usd_features_requested": [
+    "usd_broad_return_3m",
+    "usd_momentum_6m"
+  ],
+  "usd_features_available": [
+    "usd_broad_return_3m",
+    "usd_momentum_6m"
+  ],
+  "win_threshold_ba": 0.03,
+  "rows": [
+    {
+      "benchmark": "BND",
+      "usd_features_added": [
+        "usd_broad_return_3m",
+        "usd_momentum_6m"
+      ],
+      "base_ba_covered": 0.5312124849939976,
+      "aug_ba_covered": 0.45454545454545453,
+      "delta_ba_covered": -0.07666703044854312,
+      "base_coverage": 0.9126984126984127,
+      "aug_coverage": 0.9259259259259259
+    },
+    {
+      "benchmark": "VXUS",
+      "usd_features_added": [
+        "usd_broad_return_3m",
+        "usd_momentum_6m"
+      ],
+      "base_ba_covered": 0.6020408163265306,
+      "aug_ba_covered": 0.6020408163265306,
+      "delta_ba_covered": 0.0,
+      "base_coverage": 0.8076923076923077,
+      "aug_coverage": 0.8076923076923077
+    },
+    {
+      "benchmark": "VWO",
+      "usd_features_added": [
+        "usd_broad_return_3m",
+        "usd_momentum_6m"
+      ],
+      "base_ba_covered": 0.5709728867623605,
+      "aug_ba_covered": 0.5797101449275363,
+      "delta_ba_covered": 0.008737258165175787,
+      "base_coverage": 0.6159420289855072,
+      "aug_coverage": 0.5648148148148148
+    }
+  ],
+  "usd_winners": [],
+  "recommendation": "no_benefit"
+}

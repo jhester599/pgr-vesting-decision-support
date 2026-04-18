@@ -5,6 +5,66 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v158 (2026-04-17)
+
+- Synthesis of v153-v157 classification and feature research cycle
+- Sole winner: CLS-02 Firth logistic for VMBS (+0.0412) and BND (+0.0704)
+- No-benefit: FEAT-02 WTI momentum, FEAT-01 USD momentum, FEAT-03 term premium diff
+- See `results/research/v158_synthesis_summary.md` for full outcome table
+- Next queue: v159 (Firth shadow integration) → BL-01 → CLS-03
+
+## v157 (2026-04-17)
+
+- FEAT-03: Term premium 3M differential evaluation across all 8 benchmarks
+- Derived feature: `term_premium_diff_3m` (computed as `term_premium_10y.diff(3)`)
+- Harness: `results/research/v157_term_premium_eval.py`
+- Candidate: `results/research/v157_term_premium_candidate.json`
+  - Source available: True
+  - Term premium winners: [] (VOO delta=-0.0003, VXUS delta=+0.0000, VWO delta=+0.0006, VMBS delta=+0.0064, BND delta=-0.0875, GLD delta=-0.0151, DBC delta=+0.0051, VDE delta=+0.0169 — all below 0.02 threshold)
+  - Recommendation: no_benefit
+- No production config changes; derived feature computed in harness only
+
+## v156 (2026-04-17)
+
+- FEAT-01: USD index momentum evaluation for BND/VXUS/VWO classifiers
+- Features tested: `usd_broad_return_3m`, `usd_momentum_6m`
+- Harness: `results/research/v156_usd_momentum_eval.py`
+- Candidate: `results/research/v156_usd_candidate.json`
+  - USD features available: ['usd_broad_return_3m', 'usd_momentum_6m']
+  - USD winners: [] (BND delta=-0.0767, VXUS delta=+0.0000, VWO delta=+0.0087 — all below 0.03 threshold)
+  - Recommendation: no_benefit
+- No production config changes
+
+## v155 (2026-04-17)
+
+- FEAT-02: WTI 3M momentum evaluation for DBC/VDE classifiers
+- Harness: `results/research/v155_wti_momentum_eval.py`
+- Feature tested: `wti_return_3m` (macro_rates_spreads family)
+- Candidate: `results/research/v155_wti_candidate.json`
+  - WTI winners: [] (DBC delta=+0.0051, VDE delta=+0.0206 — both below 0.04 threshold)
+  - Recommendation: no_benefit
+- No production config changes
+
+## v154 (2026-04-17)
+
+- CLS-02: Firth-penalized logistic research harness for short-history benchmarks
+- Implemented IRLS Firth logistic in `src/research/v154_utils.py`
+- Harness: `results/research/v154_firth_logistic_eval.py`
+- Candidate: `results/research/v154_firth_candidate.json`
+  - Firth winners: VMBS (+0.0412 BA), BND (+0.0704 BA)
+  - Recommendation: adopt_firth_for_thin_benchmarks
+- No production config changes
+
+## v153 (2026-04-17)
+
+- Archived 2026-04-17 ChatGPT repo peer review under
+  `docs/archive/history/repo-peer-reviews/2026-04-17/`
+- Added FEAT-03 (term premium 3M diff) to backlog
+- Updated backlog queue: CLS-02 → FEAT-02 → FEAT-01 → FEAT-03 → BL-01
+- Noted priority shift: classification-first per 2026-04-17 peer review
+  (BL-01 deferred until after v158 synthesis)
+- Created plan: `docs/superpowers/plans/2026-04-17-v153-v158-classification-feature-research.md`
+
 ## Version History
 
 ### v152 (docs complete)

@@ -27,7 +27,45 @@ reporting-only in shadow artifacts.
 - v128 benchmark-specific selection switched 4 of 10 benchmarks away from the
   shared `lean_baseline` map: `BND`, `DBC`, `VGT`, and `VIG`
 
-## Active Research Direction: v139-v152
+## Active Research Direction: v153-v158
+
+The active plan is documented in:
+
+- [`docs/superpowers/plans/2026-04-17-v153-v158-classification-feature-research.md`](docs/superpowers/plans/2026-04-17-v153-v158-classification-feature-research.md)
+
+Source peer review: [`docs/archive/history/repo-peer-reviews/2026-04-17/chatgpt_repo_peerreview_20260417.md`](docs/archive/history/repo-peer-reviews/2026-04-17/chatgpt_repo_peerreview_20260417.md)
+
+Summary of the v153-v158 classification and feature research arc:
+
+| Version | Theme | Type |
+|---|---|---|
+| v153 | Archive 2026-04-17 peer review; update backlog with FEAT-03; reorder priorities | Documentation |
+| v154 | CLS-02: Firth-penalized logistic for short-history benchmarks | Classifier research |
+| v155 | FEAT-02: WTI 3M momentum for DBC/VDE classification | Feature research |
+| v156 | FEAT-01: USD index momentum (DTWEXBGS) for BND/VXUS/VWO | Feature research |
+| v157 | FEAT-03: Term premium 3M differential signal | Feature research |
+| v158 | Synthesis: compare all four experiments; update shadow lane if any winner qualifies | Research + shadow |
+
+Working rule: research-only. No automatic promotion into the live monthly decision path. Mandatory closeout after each completed block.
+
+Priority shift from v152 closeout: the 2026-04-17 peer review re-orders the queue to classification-first (CLS-02 before BL-01) on the basis that predictive signal improvements take precedence over decision-layer policy tuning. BL-01 remains open and should follow after v158 synthesis.
+
+Current execution progress on 2026-04-17:
+
+- `v153` complete: archived peer review, updated backlog and priorities
+- `v154` complete: Firth logistic — **VMBS +0.0412, BND +0.0704 (winners)**
+- `v155` complete: WTI momentum — no benefit (DBC +0.005, VDE +0.021)
+- `v156` complete: USD momentum — no benefit (BND -0.077, VXUS flat, VWO +0.009)
+- `v157` complete: term premium diff — no benefit (best VDE +0.017)
+- `v158` complete: synthesis and handoff documented
+
+Recommended next queue after `v158`:
+
+1. `v159` — Firth logistic shadow integration for VMBS and BND
+2. `BL-01` — Black-Litterman tau/view tuning
+3. `CLS-03` — Path A vs Path B (time-locked)
+
+## Prior Research Direction: v139-v152
 
 The active follow-on plan is documented in:
 
