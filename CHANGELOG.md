@@ -5,6 +5,16 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v154 (2026-04-17)
+
+- CLS-02: Firth-penalized logistic research harness for short-history benchmarks
+- Implemented IRLS Firth logistic in `src/research/v154_utils.py`
+- Harness: `results/research/v154_firth_logistic_eval.py`
+- Candidate: `results/research/v154_firth_candidate.json`
+  - Firth winners: VMBS (+0.0412 BA), BND (+0.0704 BA)
+  - Recommendation: adopt_firth_for_thin_benchmarks
+- No production config changes
+
 ## v153 (2026-04-17)
 
 - Archived 2026-04-17 ChatGPT repo peer review under
