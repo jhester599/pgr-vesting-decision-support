@@ -26,7 +26,7 @@
 
 ## Ranked Next Queue
 
-1. `TA-01` — Alpha Vantage technical-analysis broad feature research — **monitor_only scaffold complete (2026-04-18)**
+1. `CLS-03` â€” Path A vs Path B production decision â€” blocked (24 matured months)
 2. `v159` — Wire Firth logistic for VMBS/BND into shadow classification lane — **complete (2026-04-18)**
 3. `BL-01` - Black-Litterman tau/view tuning — **complete (2026-04-18)**
 4. `CLS-03` — Path A vs Path B production decision — blocked (24 matured months)
@@ -35,17 +35,52 @@ Leave `CLS-03` blocked on the matured-month gate, and leave `REG-02` deferred
 until a future ensemble-level plan justifies reopening the standalone GBT line.
 
 ### TA-01 — Alpha Vantage Technical-Analysis Broad Feature Research
-**Status:** monitor_only scaffold complete
+**Status:** complete
 **Priority:** medium
 **Rationale:** Three external TA reports converged on a low-prior but defensible
 one-cycle broad screen if redundant Alpha Vantage indicator families are pruned
 before modeling and all tests remain WFO-only.
 **Estimated effort:** M
-**Depends on:** empirical v162/v163 harness runs
-**Expected metric impact:** unknown; likely directional/classification lift if any
+**Depends on:** none
+**Expected metric impact:** classification replacement candidates identified
 **Last touched:** v164 (2026-04-18)
-**Outcome:** research-only scaffold and candidate inventory complete; no
-production or shadow promotion until empirical artifacts clear gates.
+**Outcome:** replacement_candidate. No production or shadow change, but the
+v162/v163 artifacts justify a separate shadow-only replacement plan.
+
+### TA-02 - TA Classification Replacement Shadow Plan
+**Status:** complete
+**Priority:** medium
+**Rationale:** TA-01 found the strongest signal in replacement-style
+classification candidates rather than additive feature expansion.
+**Estimated effort:** M
+**Depends on:** TA-01
+**Expected metric impact:** balanced accuracy and Brier improvement in
+historical shadow diagnostics
+**Last touched:** v165 (2026-04-18)
+**Candidate scope:** test `mom_12m -> ta_pgr_obv_detrended`,
+`vol_63d -> ta_pgr_natr_63d`, and one representative ratio Bollinger feature
+under reporting-only shadow constraints.
+**Outcome:** shadow_monitor. `ta_minimal_plus_vwo_pct_b` was strongest
+historically (+0.0584 mean BA, -0.0656 mean Brier, 8/8 positive benchmarks),
+while `ta_minimal_replacement` remains the simpler comparison.
+
+### TA-03 - Monthly TA Shadow Artifact Lane
+**Status:** complete
+**Priority:** medium
+**Rationale:** v165 produced promising historical replacement diagnostics, but
+the signal needs prospective monthly monitoring before any promotion discussion.
+**Estimated effort:** M
+**Depends on:** TA-02
+**Expected metric impact:** governance and monitoring evidence; no immediate
+production impact
+**Last touched:** v166 (2026-04-18)
+**Candidate scope:** write reporting-only monthly artifacts for
+`ta_minimal_plus_vwo_pct_b` and `ta_minimal_replacement`. Append prospective
+probabilities to history without changing production recommendations, sell
+percentages, or classifier gate overlays.
+**Outcome:** complete. TA replacement variants are included in
+`classification_shadow.csv` and `monthly_summary.json` as reporting-only rows.
+The weekly data workflow verifies required `PGR` and `VWO` price coverage.
 
 ### BL-01 — Black-Litterman Tau/View Tuning
 **Status:** complete

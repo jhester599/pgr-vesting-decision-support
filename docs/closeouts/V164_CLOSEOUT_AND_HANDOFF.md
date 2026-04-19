@@ -4,40 +4,69 @@ Created: 2026-04-18
 
 ## Completed Block
 
-`v160-v164` implements the research-only technical-analysis feature scaffold
-requested after the Alpha Vantage deep-research review. It archives the source
-reports, pre-registers the broad-but-pruned candidate universe, adds pure
-pandas/numpy TA feature construction, and adds broad-screen plus survivor
-confirmation harnesses.
+`v160-v164` completed the research-only technical-analysis feature arc. It
+archived the source reports, pre-registered the broad-but-pruned Alpha Vantage
+indicator universe, implemented pure pandas/numpy TA feature construction, ran
+the broad screen, produced capped survivor confirmation artifacts, and wrote a
+go/no-go synthesis.
 
-## Final Outcomes
+## Final Outcome
 
-- Reports archived under `docs/archive/history/v160-ta-research-reports/`
-- Plan saved at
+Recommendation: `replacement_candidate`
+
+No production or shadow behavior changed. The empirical result is strong enough
+to justify a later shadow-only replacement plan, not a direct production
+promotion.
+
+## Key Artifacts
+
+- Reports: `docs/archive/history/v160-ta-research-reports/`
+- Plan:
   `docs/superpowers/plans/2026-04-18-v160-v164-technical-analysis-feature-research.md`
-- New research module: `src/research/v160_ta_features.py`
-- New research harnesses:
-  - `results/research/v162_ta_broad_screen.py`
-  - `results/research/v163_ta_survivor_confirm.py`
-- Synthesis artifacts:
+- Feature factory: `src/research/v160_ta_features.py`
+- Broad screen: `results/research/v162_ta_broad_screen.py`
+- Survivor confirmation: `results/research/v163_ta_survivor_confirm.py`
+- Empirical outputs:
+  - `results/research/v162_ta_broad_screen_detail.csv`
+  - `results/research/v162_ta_broad_screen_summary.csv`
+  - `results/research/v163_ta_survivor_confirm_summary.csv`
+  - `results/research/v163_ta_survivor_candidate.json`
   - `results/research/v164_ta_synthesis_summary.md`
   - `results/research/v164_ta_candidate.json`
 
-## Promotion Boundaries
+## Survivor Summary
 
-- Production: no change
-- Shadow reporting: no change
-- Research: `monitor_only` until empirical v162/v163 harness outputs are
-  reviewed
+The v163 confirmation step prioritized the pre-registered primary target:
+binary PGR-vs-benchmark outperformance classification. The strongest
+replacement candidates were:
+
+- `ta_pgr_obv_detrended` replacing `mom_12m`
+- `ta_pgr_natr_63d` replacing `vol_63d`
+- one representative ratio Bollinger signal, with `ta_ratio_bb_pct_b_6m_vwo`
+  the cleanest first candidate
+
+The broader Bollinger-width variants were interesting but should be treated as
+diagnostic alternatives until one representative feature proves robust in a
+prediction-level shadow run.
+
+## API And Workflow Note
+
+The existing database snapshot already contained the required PGR, benchmark,
+and peer daily/monthly history for this research pass. No new Alpha Vantage
+workflow schedule was added. If future backfill is needed, avoid collisions
+with the existing Friday weekly price fetch, Sunday peer fetch, and monthly
+8-K/decision workflows.
 
 ## Recommended Next Queue
 
-1. Run `python results/research/v162_ta_broad_screen.py` against the fixed DB
-   snapshot.
-2. Run `python results/research/v163_ta_survivor_confirm.py`.
-3. Review whether any survivor qualifies for a separate shadow-candidate plan.
-4. If no survivor clears gates, mark `TA-01` as `abandon_ta` and return to the
-   non-TA backlog.
+1. Create a new shadow-only classification replacement plan.
+2. Test a minimal feature swap candidate:
+   `mom_12m -> ta_pgr_obv_detrended` and `vol_63d -> ta_pgr_natr_63d`.
+3. Compare exactly one ratio Bollinger representative against that minimal
+   candidate.
+4. Require prediction-level WFO diagnostics, regime slices, correlation
+   pruning, and reporting-only monthly shadow output before any production
+   discussion.
 
 ## Verification
 

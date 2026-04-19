@@ -87,12 +87,22 @@ Summary:
 - `v161` adds a research-only pandas/numpy TA feature factory
 - `v162` adds a broad-but-pruned regression and classification screen
 - `v163` adds capped survivor confirmation and correlation pruning
-- `v164` records the initial `monitor_only` synthesis with no production or
+- `v164` records a `replacement_candidate` synthesis with no production or
   shadow changes
 
-Next empirical step: run `results/research/v162_ta_broad_screen.py`, then
-`results/research/v163_ta_survivor_confirm.py`, before considering any future
-shadow-candidate plan.
+v165 follow-through is complete. It tested the TA replacement candidates in a
+classification shadow harness and produced a `shadow_monitor` outcome. The
+strongest historical variant is `ta_minimal_plus_vwo_pct_b`, with
+`ta_minimal_replacement` retained as the simpler comparison.
+
+v166 completes the reporting-only monthly artifact lane. `classification_shadow.csv`
+and `monthly_summary.json` now include `ta_minimal_replacement` and
+`ta_minimal_plus_vwo_pct_b` as monitoring variants. The classifier gate overlay,
+sell percentage, and production recommendation path remain unchanged.
+
+Next empirical step: monitor the TA variants prospectively until enough
+matured observations exist to evaluate calibration, Brier score, balanced
+accuracy, and stability.
 
 ## Prior Research Direction: v139-v152
 

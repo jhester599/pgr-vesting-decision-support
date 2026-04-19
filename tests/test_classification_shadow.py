@@ -10,6 +10,8 @@ from src.models.classification_shadow import (
     classification_confidence_tier,
     classification_interpretation,
     classification_stance,
+    build_ta_replacement_variant_payloads,
+    _apply_ta_feature_swaps,
     _portfolio_weighted_aggregate,
 )
 
@@ -37,6 +39,59 @@ def test_classification_interpretation_mentions_probability() -> None:
     interpretation = classification_interpretation(0.28, "NON-ACTIONABLE", "HIGH")
     assert "28.0%" in interpretation
     assert "hold/defer" in interpretation
+
+
+def test_apply_ta_feature_swaps_preserves_feature_count() -> None:
+    baseline = ["mom_12m", "vol_63d", "yield_slope", "vix"]
+    swapped = _apply_ta_feature_swaps(
+        baseline,
+        {
+            "mom_12m": "ta_pgr_obv_detrended",
+            "vol_63d": "ta_pgr_natr_63d",
+        },
+    )
+
+    assert swapped == [
+        "ta_pgr_obv_detrended",
+        "ta_pgr_natr_63d",
+        "yield_slope",
+        "vix",
+    ]
+    assert len(swapped) == len(baseline)
+
+
+def test_build_ta_replacement_variant_payloads_are_reporting_only() -> None:
+    detail_df = pd.DataFrame(
+        [
+            {
+                "variant": "ta_minimal_replacement",
+                "benchmark": "VOO",
+                "classifier_prob_actionable_sell": 0.40,
+                "classifier_weight": 0.75,
+                "classifier_weighted_contribution": 0.30,
+                "classifier_shadow_tier": "LOW",
+            },
+            {
+                "variant": "ta_minimal_replacement",
+                "benchmark": "BND",
+                "classifier_prob_actionable_sell": 0.20,
+                "classifier_weight": 0.25,
+                "classifier_weighted_contribution": 0.05,
+                "classifier_shadow_tier": "HIGH",
+            },
+        ]
+    )
+
+    payloads = build_ta_replacement_variant_payloads(
+        detail_df,
+        feature_anchor_date="2026-04-30",
+    )
+
+    assert payloads[0]["variant"] == "ta_minimal_replacement"
+    assert payloads[0]["probability_actionable_sell"] == 0.35
+    assert payloads[0]["probability_actionable_sell_label"] == "35.0%"
+    assert payloads[0]["reporting_only"] is True
+    assert payloads[0]["affects_gate_overlay"] is False
 
 
 # ---------------------------------------------------------------------------

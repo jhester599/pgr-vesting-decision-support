@@ -1,0 +1,428 @@
+[
+  {
+    "feature": "ta_ratio_roc_6m_voo",
+    "feature_group": "ratio_momentum",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_ema_gap_12m_voo",
+    "feature_group": "ratio_trend",
+    "family": "trend",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_rsi_6m_voo",
+    "feature_group": "ratio_oscillator",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_bb_pct_b_6m_voo",
+    "feature_group": "ratio_bollinger",
+    "family": "volatility",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_bb_width_6m_voo",
+    "feature_group": "ratio_bollinger",
+    "family": "volatility",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_voo__x__ta_pgr_natr_63d",
+    "feature_group": "volatility_interaction",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_voo__x__ta_pgr_adx_63d",
+    "feature_group": "trend_strength_interaction",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_vxus",
+    "feature_group": "ratio_momentum",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_ema_gap_12m_vxus",
+    "feature_group": "ratio_trend",
+    "family": "trend",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_rsi_6m_vxus",
+    "feature_group": "ratio_oscillator",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_bb_pct_b_6m_vxus",
+    "feature_group": "ratio_bollinger",
+    "family": "volatility",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_bb_width_6m_vxus",
+    "feature_group": "ratio_bollinger",
+    "family": "volatility",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_vxus__x__ta_pgr_natr_63d",
+    "feature_group": "volatility_interaction",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_vxus__x__ta_pgr_adx_63d",
+    "feature_group": "trend_strength_interaction",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_vwo",
+    "feature_group": "ratio_momentum",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_ema_gap_12m_vwo",
+    "feature_group": "ratio_trend",
+    "family": "trend",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_rsi_6m_vwo",
+    "feature_group": "ratio_oscillator",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_bb_pct_b_6m_vwo",
+    "feature_group": "ratio_bollinger",
+    "family": "volatility",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_bb_width_6m_vwo",
+    "feature_group": "ratio_bollinger",
+    "family": "volatility",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_vwo__x__ta_pgr_natr_63d",
+    "feature_group": "volatility_interaction",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_vwo__x__ta_pgr_adx_63d",
+    "feature_group": "trend_strength_interaction",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_vmbs",
+    "feature_group": "ratio_momentum",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_ema_gap_12m_vmbs",
+    "feature_group": "ratio_trend",
+    "family": "trend",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_rsi_6m_vmbs",
+    "feature_group": "ratio_oscillator",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_bb_pct_b_6m_vmbs",
+    "feature_group": "ratio_bollinger",
+    "family": "volatility",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_bb_width_6m_vmbs",
+    "feature_group": "ratio_bollinger",
+    "family": "volatility",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_vmbs__x__ta_pgr_natr_63d",
+    "feature_group": "volatility_interaction",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_vmbs__x__ta_pgr_adx_63d",
+    "feature_group": "trend_strength_interaction",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_bnd",
+    "feature_group": "ratio_momentum",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_ema_gap_12m_bnd",
+    "feature_group": "ratio_trend",
+    "family": "trend",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_rsi_6m_bnd",
+    "feature_group": "ratio_oscillator",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_bb_pct_b_6m_bnd",
+    "feature_group": "ratio_bollinger",
+    "family": "volatility",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_bb_width_6m_bnd",
+    "feature_group": "ratio_bollinger",
+    "family": "volatility",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_bnd__x__ta_pgr_natr_63d",
+    "feature_group": "volatility_interaction",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_bnd__x__ta_pgr_adx_63d",
+    "feature_group": "trend_strength_interaction",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_gld",
+    "feature_group": "ratio_momentum",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_ema_gap_12m_gld",
+    "feature_group": "ratio_trend",
+    "family": "trend",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_rsi_6m_gld",
+    "feature_group": "ratio_oscillator",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_bb_pct_b_6m_gld",
+    "feature_group": "ratio_bollinger",
+    "family": "volatility",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_bb_width_6m_gld",
+    "feature_group": "ratio_bollinger",
+    "family": "volatility",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_gld__x__ta_pgr_natr_63d",
+    "feature_group": "volatility_interaction",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_gld__x__ta_pgr_adx_63d",
+    "feature_group": "trend_strength_interaction",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_dbc",
+    "feature_group": "ratio_momentum",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_ema_gap_12m_dbc",
+    "feature_group": "ratio_trend",
+    "family": "trend",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_rsi_6m_dbc",
+    "feature_group": "ratio_oscillator",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_bb_pct_b_6m_dbc",
+    "feature_group": "ratio_bollinger",
+    "family": "volatility",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_bb_width_6m_dbc",
+    "feature_group": "ratio_bollinger",
+    "family": "volatility",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_dbc__x__ta_pgr_natr_63d",
+    "feature_group": "volatility_interaction",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_dbc__x__ta_pgr_adx_63d",
+    "feature_group": "trend_strength_interaction",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_vde",
+    "feature_group": "ratio_momentum",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_ema_gap_12m_vde",
+    "feature_group": "ratio_trend",
+    "family": "trend",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_rsi_6m_vde",
+    "feature_group": "ratio_oscillator",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_bb_pct_b_6m_vde",
+    "feature_group": "ratio_bollinger",
+    "family": "volatility",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_bb_width_6m_vde",
+    "feature_group": "ratio_bollinger",
+    "family": "volatility",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_vde__x__ta_pgr_natr_63d",
+    "feature_group": "volatility_interaction",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_ratio_roc_6m_vde__x__ta_pgr_adx_63d",
+    "feature_group": "trend_strength_interaction",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_pgr_natr_63d",
+    "feature_group": "pgr_volatility",
+    "family": "volatility",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_pgr_adx_63d",
+    "feature_group": "pgr_trend_strength",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_pgr_macd_hist_norm",
+    "feature_group": "pgr_momentum",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_pgr_obv_detrended",
+    "feature_group": "pgr_volume",
+    "family": "volume",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_voo_pc_tech",
+    "feature_group": "benchmark_regime",
+    "family": "regime",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_bnd_macd_hist_norm",
+    "feature_group": "benchmark_regime",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_peer_ratio_roc_6m",
+    "feature_group": "peer_relative",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_peer_ratio_rsi_6m",
+    "feature_group": "peer_relative",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_peer_ratio_ema_gap_12m",
+    "feature_group": "peer_relative",
+    "family": "trend",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_gld_roc_6m",
+    "feature_group": "benchmark_regime",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_dbc_roc_6m",
+    "feature_group": "benchmark_regime",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "ta_vde_roc_6m",
+    "feature_group": "benchmark_regime",
+    "family": "momentum",
+    "include_in_model": true
+  },
+  {
+    "feature": "candlestick_pattern_count",
+    "feature_group": "diagnostic_excluded",
+    "family": "pattern",
+    "include_in_model": false
+  },
+  {
+    "feature": "ht_dcphase_sin_cos",
+    "feature_group": "diagnostic_excluded",
+    "family": "hilbert",
+    "include_in_model": false
+  },
+  {
+    "feature": "typical_price_transform",
+    "feature_group": "diagnostic_excluded",
+    "family": "price_transform",
+    "include_in_model": false
+  }
+]

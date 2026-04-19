@@ -14,6 +14,7 @@ from config.features import CONTEXTUAL_CLASSIFIER_BENCHMARKS
 
 CLASSIFICATION_SHADOW_COLUMNS = [
     "variant",
+    "variant_label",
     "benchmark",
     "classifier_raw_prob_actionable_sell",
     "classifier_prob_actionable_sell",
@@ -26,6 +27,9 @@ CLASSIFICATION_SHADOW_COLUMNS = [
     "benchmark_specific_features",
     "benchmark_specific_prob_actionable_sell",
     "benchmark_specific_tier",
+    # v165/TA-03: reporting-only TA replacement variants
+    "feature_set",
+    "reporting_only",
 ]
 
 DECISION_OVERLAY_COLUMNS = [

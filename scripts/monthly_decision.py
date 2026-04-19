@@ -81,7 +81,10 @@ from src.models.classification_monitoring import (
     attach_matured_classifier_outcomes,
     summarize_matured_classifier_history,
 )
-from src.models.classification_shadow import build_classification_shadow_summary
+from src.models.classification_shadow import (
+    build_classification_shadow_summary,
+    build_ta_replacement_shadow_variants,
+)
 from src.models.consensus_shadow import build_shadow_consensus_table
 from src.models.policy_metrics import (
     FIXED_POLICIES,
@@ -3240,6 +3243,25 @@ def main(
             classification_shadow_artifact_df = pd.concat(
                 [classification_shadow_artifact_df, followon_detail_df],
                 ignore_index=True,
+            )
+        try:
+            ta_detail_df, ta_variant_payloads = build_ta_replacement_shadow_variants(
+                conn,
+                as_of,
+                baseline_detail_df=classification_shadow_df,
+            )
+            if ta_variant_payloads:
+                classification_shadow_variants.extend(ta_variant_payloads)
+            if not ta_detail_df.empty:
+                classification_shadow_artifact_df = pd.concat(
+                    [classification_shadow_artifact_df, ta_detail_df],
+                    ignore_index=True,
+                    sort=False,
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception(
+                "[TA shadow] Could not build TA replacement shadow variants. Error=%r",
+                exc,
             )
 
     overlay_df = pd.DataFrame()

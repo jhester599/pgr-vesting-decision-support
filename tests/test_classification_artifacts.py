@@ -133,6 +133,9 @@ def test_classification_shadow_columns_has_dual_track_columns() -> None:
     assert "benchmark_specific_features" in CLASSIFICATION_SHADOW_COLUMNS
     assert "benchmark_specific_prob_actionable_sell" in CLASSIFICATION_SHADOW_COLUMNS
     assert "benchmark_specific_tier" in CLASSIFICATION_SHADOW_COLUMNS
+    assert "variant_label" in CLASSIFICATION_SHADOW_COLUMNS
+    assert "feature_set" in CLASSIFICATION_SHADOW_COLUMNS
+    assert "reporting_only" in CLASSIFICATION_SHADOW_COLUMNS
 
 
 def test_write_classification_shadow_csv_writes_dual_track_columns(tmp_path) -> None:
