@@ -90,6 +90,16 @@ this artifact:
 
 This classifier layer is shadow-only today.
 
+Recent monthly reports may also include reporting-only TA replacement variants:
+
+- `ta_minimal_replacement`
+- `ta_minimal_plus_vwo_pct_b`
+
+These rows are monitoring-only. They do not affect the live recommendation,
+sell percentage, or shadow gate overlay. Their prospective probabilities are
+tracked in `results/monthly_decisions/ta_shadow_variant_history.csv` for later
+matured-outcome review.
+
 ## Shadow Gate Overlay
 
 `decision_overlays.csv` records the live policy and the currently selected

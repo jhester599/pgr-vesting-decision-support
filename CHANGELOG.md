@@ -5,6 +5,18 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v170 (2026-04-19)
+
+- Added `docs/README.md` as the active documentation map
+- Labeled `docs/plans/` and `docs/results/` as legacy directories with README
+  files while preserving old references
+- Updated operator docs for the monthly output verifier, TA shadow ledger, and
+  calendar-aware PGR EDGAR freshness
+- Added `docs/repo-hygiene-review-2026-04-19.md` and `archive/README.md`
+- Promoted the BL-01 and v159 local plan drafts into tracked historical plan
+  docs with explicit closeout references
+- Removed duplicate `.hypothesis/` ignore entry
+
 ## v169 (2026-04-19)
 
 - Added reusable monthly postcondition verifier:

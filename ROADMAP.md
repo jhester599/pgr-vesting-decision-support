@@ -114,6 +114,11 @@ v169 adds a reusable monthly postcondition verifier so artifact checks,
 calendar-aware freshness, and TA shadow ledger checks live in testable Python
 instead of inline workflow glue.
 
+v170 clarifies the documentation layout: active operator docs are indexed in
+`docs/README.md`, legacy `docs/plans/` and `docs/results/` are labeled without
+moving old references, and the current hygiene review is recorded in
+`docs/repo-hygiene-review-2026-04-19.md`.
+
 Next empirical step: monitor the TA variants prospectively until enough
 matured observations exist to evaluate calibration, Brier score, balanced
 accuracy, and stability.

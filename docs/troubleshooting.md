@@ -68,11 +68,14 @@ Symptoms:
 Action:
 
 - run `scripts/monthly_decision.py --dry-run --skip-fred`
+- run `scripts/verify_monthly_outputs.py --summary-path workflow_summary.md`
 - inspect model-quality gate output and DB health
 - confirm the target month folder does not already exist unless intentionally rerunning
 - treat missing CSV artifacts as a reporting-path regression, not as optional output
 - treat a missing `monthly_summary.json` as a contract regression for email,
   dashboard, and future automation consumers
+- treat missing TA shadow ledger rows as a monitoring regression when
+  reporting-only TA variants appear in `monthly_summary.json`
 
 ## Email Rendering Drift
 

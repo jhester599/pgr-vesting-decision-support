@@ -34,6 +34,8 @@ The production monthly output now tracks:
 - per-benchmark classifier detail in `classification_shadow.csv`
 - shadow gate comparison in `decision_overlays.csv`
 - append-only classifier history in `results/monthly_decisions/classification_shadow_history.csv`
+- reporting-only TA replacement variant history in
+  `results/monthly_decisions/ta_shadow_variant_history.csv`
 - machine-readable top-level state in `monthly_summary.json`
 
 ## Recent Promotion Record
@@ -63,6 +65,13 @@ Recent completed cycles:
   - hardened backdated `--as-of` target truncation for monthly simulations
   - ran bounded veto-style and permission-style classifier gate studies
   - kept classification as shadow-only pending longer monitoring and stricter promotion gates
+- `v160-v169`
+  - screened Alpha Vantage-style technical-analysis features under WFO-only
+    research constraints
+  - selected two reporting-only TA replacement classifier variants for
+    prospective shadow monitoring
+  - added a durable TA shadow history ledger and reusable monthly output
+    verifier
 
 Supporting plan documents:
 
@@ -84,6 +93,9 @@ The following remain promising but are not live:
 - `v110-v113`
   - constrained classifier overlay candidates, with Gemini-style veto gating
     currently the strongest shadow candidate
+- `v165-v169`
+  - TA replacement classifier variants, monitored only through monthly shadow
+    artifacts and the TA ledger until enough 6M horizons mature
 
 These remain research-only until they clear a later promotion study.
 

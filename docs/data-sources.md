@@ -38,6 +38,8 @@ Operational notes:
 - the live HTML parser now covers a broad slice of the historical CSV shape
 - monthly results are stored in `pgr_edgar_monthly`
 - the committed CSV remains the historical baseline / backfill source
+- freshness checks are calendar-aware: prior-month PGR monthly 8-K data is
+  required only after the configured filing grace window
 
 ## Local CSV Inputs
 

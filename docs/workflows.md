@@ -62,6 +62,7 @@ Outputs:
 - `results/monthly_decisions/<YYYY-MM>/run_manifest.json`
 - `results/monthly_decisions/decision_log.md`
 - `results/monthly_decisions/classification_shadow_history.csv`
+- `results/monthly_decisions/ta_shadow_variant_history.csv`
 
 Notes:
 
@@ -71,6 +72,10 @@ Notes:
   Streamlit app remains local/operator-facing
 - classifier overlays remain shadow-only in this workflow and do not alter the
   live recommendation mode or sell percentage
+- reporting-only TA shadow variants remain monitoring-only and are checked by
+  `scripts/verify_monthly_outputs.py`
+- monthly postconditions are verified by
+  `python scripts/verify_monthly_outputs.py --summary-path workflow_summary.md`
 - the email step is non-fatal by design and should not block report generation
 
 ## Historical / Manual Workflows
