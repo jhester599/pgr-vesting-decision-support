@@ -5,6 +5,17 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v167 (2026-04-18)
+
+- Added durable TA shadow variant history ledger:
+  `results/monthly_decisions/ta_shadow_variant_history.csv`
+- Monthly runs now append/upsert reporting-only TA replacement variants by
+  `as_of_date` and `variant`
+- Ledger rows track forecast anchor, 6M maturity date, probability, stance,
+  confidence tier, benchmark count, and future realized-outcome placeholders
+- No production recommendation, live monthly decision, or classifier gate
+  behavior changes
+
 ## v166 (2026-04-18)
 
 - TA-03 monthly shadow artifact lane: `classification_shadow.csv` now carries

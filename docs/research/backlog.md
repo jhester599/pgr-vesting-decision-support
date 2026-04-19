@@ -82,6 +82,24 @@ percentages, or classifier gate overlays.
 `classification_shadow.csv` and `monthly_summary.json` as reporting-only rows.
 The weekly data workflow verifies required `PGR` and `VWO` price coverage.
 
+### TA-04 - TA Shadow Monitoring Ledger
+**Status:** complete
+**Priority:** medium
+**Rationale:** Monthly TA shadow rows need a durable prospective ledger so the
+project can evaluate matured calibration and accuracy later without scraping
+point-in-time monthly JSON artifacts.
+**Estimated effort:** S
+**Depends on:** TA-03
+**Expected metric impact:** governance and monitoring evidence; no immediate
+production impact
+**Last touched:** v167 (2026-04-18)
+**Candidate scope:** append/upsert reporting-only TA variant probabilities by
+`as_of_date` and `variant`, preserve 6M maturity dates, and reserve realized
+outcome fields for future evaluation.
+**Outcome:** complete. Monthly runs write
+`results/monthly_decisions/ta_shadow_variant_history.csv`; production
+recommendations and classifier gate overlays remain unchanged.
+
 ### BL-01 — Black-Litterman Tau/View Tuning
 **Status:** complete
 **Priority:** medium

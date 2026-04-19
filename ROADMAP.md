@@ -100,6 +100,11 @@ and `monthly_summary.json` now include `ta_minimal_replacement` and
 `ta_minimal_plus_vwo_pct_b` as monitoring variants. The classifier gate overlay,
 sell percentage, and production recommendation path remain unchanged.
 
+v167 adds a durable TA shadow variant history ledger at
+`results/monthly_decisions/ta_shadow_variant_history.csv`. Monthly runs now
+upsert reporting-only TA variant probabilities by `as_of_date` and `variant`,
+with 6M maturity dates and placeholders for eventual realized outcomes.
+
 Next empirical step: monitor the TA variants prospectively until enough
 matured observations exist to evaluate calibration, Brier score, balanced
 accuracy, and stability.

@@ -9,9 +9,13 @@ from config.features import CONTEXTUAL_CLASSIFIER_BENCHMARKS
 from src.reporting.classification_artifacts import (
     CLASSIFICATION_SHADOW_COLUMNS,
     DECISION_OVERLAY_COLUMNS,
+    TA_SHADOW_VARIANT_HISTORY_COLUMNS,
     append_classifier_history,
+    append_ta_shadow_variant_history,
     build_classifier_history_entry,
+    build_ta_shadow_variant_history_entries,
     classification_history_path,
+    ta_shadow_variant_history_path,
     write_classification_shadow_csv,
     write_decision_overlays_csv,
 )
@@ -81,6 +85,103 @@ def test_classifier_history_append_round_trip(tmp_path: Path) -> None:
     written = pd.read_csv(path)
     assert len(written) == 1
     assert written.loc[0, "classifier_prob_actionable_sell"] == 0.28
+
+
+def test_ta_shadow_variant_history_filters_reporting_only_variants() -> None:
+    entries = build_ta_shadow_variant_history_entries(
+        as_of_date=date(2026, 4, 18),
+        run_date=date(2026, 4, 18),
+        forecast_horizon_months=6,
+        classification_shadow_variants=[
+            {
+                "variant": "baseline_shadow",
+                "probability_actionable_sell": 0.20,
+                "feature_anchor_date": "2026-03-31",
+                "benchmark_count": 8,
+            },
+            {
+                "variant": "ta_minimal_replacement",
+                "probability_actionable_sell": 0.31,
+                "stance": "NON-ACTIONABLE",
+                "confidence_tier": "HIGH",
+                "feature_anchor_date": "2026-03-31",
+                "benchmark_count": 8,
+                "reporting_only": True,
+            },
+            {
+                "variant": "ta_minimal_plus_vwo_pct_b",
+                "probability_actionable_sell": 0.34,
+                "stance": "NEUTRAL",
+                "confidence_tier": "MODERATE",
+                "feature_anchor_date": "2026-03-31",
+                "benchmark_count": 8,
+                "reporting_only": True,
+            },
+        ],
+    )
+
+    assert [entry.variant for entry in entries] == [
+        "ta_minimal_replacement",
+        "ta_minimal_plus_vwo_pct_b",
+    ]
+    assert entries[0].mature_on_date == "2026-09-30"
+    assert entries[0].is_horizon_mature is False
+    assert entries[0].probability_actionable_sell == 0.31
+    assert entries[0].benchmark_count == 8
+
+
+def test_ta_shadow_variant_history_append_upserts_by_asof_and_variant(
+    tmp_path: Path,
+) -> None:
+    first_entries = build_ta_shadow_variant_history_entries(
+        as_of_date=date(2026, 4, 18),
+        run_date=date(2026, 4, 18),
+        forecast_horizon_months=6,
+        classification_shadow_variants=[
+            {
+                "variant": "ta_minimal_replacement",
+                "probability_actionable_sell": 0.31,
+                "feature_anchor_date": "2026-03-31",
+                "benchmark_count": 8,
+                "reporting_only": True,
+            },
+            {
+                "variant": "ta_minimal_plus_vwo_pct_b",
+                "probability_actionable_sell": 0.34,
+                "feature_anchor_date": "2026-03-31",
+                "benchmark_count": 8,
+                "reporting_only": True,
+            },
+        ],
+    )
+    second_entries = build_ta_shadow_variant_history_entries(
+        as_of_date=date(2026, 4, 18),
+        run_date=date(2026, 4, 19),
+        forecast_horizon_months=6,
+        classification_shadow_variants=[
+            {
+                "variant": "ta_minimal_replacement",
+                "probability_actionable_sell": 0.29,
+                "feature_anchor_date": "2026-03-31",
+                "benchmark_count": 8,
+                "reporting_only": True,
+            },
+        ],
+    )
+
+    path = append_ta_shadow_variant_history(
+        base_dir=tmp_path,
+        entries=first_entries,
+    )
+    append_ta_shadow_variant_history(base_dir=tmp_path, entries=second_entries)
+
+    assert path == ta_shadow_variant_history_path(tmp_path)
+    written = pd.read_csv(path)
+    assert list(written.columns) == TA_SHADOW_VARIANT_HISTORY_COLUMNS
+    assert len(written) == 2
+    updated = written[written["variant"] == "ta_minimal_replacement"].iloc[0]
+    assert updated["run_date"] == "2026-04-19"
+    assert updated["probability_actionable_sell"] == 0.29
 
 
 # ---------------------------------------------------------------------------

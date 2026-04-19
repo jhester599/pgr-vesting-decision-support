@@ -61,6 +61,22 @@ CLASSIFICATION_HISTORY_COLUMNS = [
     "actual_basket_relative_return",
 ]
 
+TA_SHADOW_VARIANT_HISTORY_COLUMNS = [
+    "as_of_date",
+    "run_date",
+    "variant",
+    "feature_anchor_date",
+    "forecast_horizon_months",
+    "mature_on_date",
+    "is_horizon_mature",
+    "probability_actionable_sell",
+    "stance",
+    "confidence_tier",
+    "benchmark_count",
+    "actual_actionable_sell",
+    "actual_basket_relative_return",
+]
+
 
 @dataclass(frozen=True)
 class ClassifierHistoryEntry:
@@ -81,6 +97,29 @@ class ClassifierHistoryEntry:
     shadow_overlay_sell_pct: float | None
     shadow_overlay_would_change: bool | None
     shadow_overlay_variant: str | None
+    actual_actionable_sell: float | None = None
+    actual_basket_relative_return: float | None = None
+
+    def to_row(self) -> dict[str, Any]:
+        """Return a flat CSV-ready row."""
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class TaShadowVariantHistoryEntry:
+    """Monthly reporting-only TA shadow variant history row."""
+
+    as_of_date: str
+    run_date: str
+    variant: str
+    feature_anchor_date: str | None
+    forecast_horizon_months: int
+    mature_on_date: str | None
+    is_horizon_mature: bool
+    probability_actionable_sell: float | None
+    stance: str | None
+    confidence_tier: str | None
+    benchmark_count: int | None
     actual_actionable_sell: float | None = None
     actual_basket_relative_return: float | None = None
 
@@ -137,6 +176,13 @@ def classification_history_path(base_dir: Path | None = None) -> Path:
     return base_dir / "classification_shadow_history.csv"
 
 
+def ta_shadow_variant_history_path(base_dir: Path | None = None) -> Path:
+    """Return the append-only TA shadow variant history artifact path."""
+    if base_dir is None:
+        base_dir = Path("results") / "monthly_decisions"
+    return base_dir / "ta_shadow_variant_history.csv"
+
+
 def append_classifier_history(
     *,
     base_dir: Path,
@@ -157,6 +203,107 @@ def append_classifier_history(
         history_df = pd.concat([history_df, row_df], ignore_index=True)
     history_df = _ensure_columns(history_df, CLASSIFICATION_HISTORY_COLUMNS)
     history_df = history_df.sort_values("as_of_date").reset_index(drop=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    history_df.to_csv(path, index=False)
+    return path
+
+
+def _optional_float(value: Any) -> float | None:
+    """Convert a nullable payload value to float."""
+    if value is None or pd.isna(value):
+        return None
+    return float(value)
+
+
+def _optional_int(value: Any) -> int | None:
+    """Convert a nullable payload value to int."""
+    if value is None or pd.isna(value):
+        return None
+    return int(value)
+
+
+def _optional_str(value: Any) -> str | None:
+    """Convert a nullable payload value to string."""
+    if value is None or pd.isna(value):
+        return None
+    return str(value)
+
+
+def _is_ta_reporting_variant(payload: dict[str, Any]) -> bool:
+    """Return whether a monthly variant payload belongs in the TA ledger."""
+    variant = _optional_str(payload.get("variant"))
+    return bool(variant and variant.startswith("ta_") and payload.get("reporting_only") is True)
+
+
+def build_ta_shadow_variant_history_entries(
+    *,
+    as_of_date: date,
+    run_date: date,
+    forecast_horizon_months: int,
+    classification_shadow_variants: list[dict[str, Any]],
+) -> list[TaShadowVariantHistoryEntry]:
+    """Build monthly TA variant history rows from reporting-only payloads."""
+    entries: list[TaShadowVariantHistoryEntry] = []
+    for payload in classification_shadow_variants:
+        if not _is_ta_reporting_variant(payload):
+            continue
+        feature_anchor_date = _optional_str(payload.get("feature_anchor_date"))
+        mature_on_date = None
+        is_horizon_mature = False
+        if feature_anchor_date:
+            mature_on_ts = pd.Timestamp(feature_anchor_date) + pd.DateOffset(
+                months=forecast_horizon_months
+            )
+            mature_on_date = mature_on_ts.date().isoformat()
+            is_horizon_mature = run_date >= mature_on_ts.date()
+
+        entries.append(
+            TaShadowVariantHistoryEntry(
+                as_of_date=as_of_date.isoformat(),
+                run_date=run_date.isoformat(),
+                variant=str(payload["variant"]),
+                feature_anchor_date=feature_anchor_date,
+                forecast_horizon_months=forecast_horizon_months,
+                mature_on_date=mature_on_date,
+                is_horizon_mature=is_horizon_mature,
+                probability_actionable_sell=_optional_float(
+                    payload.get("probability_actionable_sell")
+                ),
+                stance=_optional_str(payload.get("stance")),
+                confidence_tier=_optional_str(payload.get("confidence_tier")),
+                benchmark_count=_optional_int(payload.get("benchmark_count")),
+            )
+        )
+    return entries
+
+
+def append_ta_shadow_variant_history(
+    *,
+    base_dir: Path,
+    entries: list[TaShadowVariantHistoryEntry],
+) -> Path:
+    """Append or upsert TA rows keyed by as_of_date and variant."""
+    path = ta_shadow_variant_history_path(base_dir)
+    if path.exists():
+        history_df = pd.read_csv(path)
+    else:
+        history_df = pd.DataFrame(columns=TA_SHADOW_VARIANT_HISTORY_COLUMNS)
+
+    row_df = pd.DataFrame([entry.to_row() for entry in entries])
+    if not row_df.empty:
+        existing_keys = set(zip(row_df["as_of_date"], row_df["variant"], strict=True))
+        keep_mask = [
+            (str(row["as_of_date"]), str(row["variant"])) not in existing_keys
+            for _, row in history_df.iterrows()
+        ]
+        history_df = history_df.loc[keep_mask]
+        if history_df.empty:
+            history_df = row_df
+        else:
+            history_df = pd.concat([history_df, row_df], ignore_index=True)
+
+    history_df = _ensure_columns(history_df, TA_SHADOW_VARIANT_HISTORY_COLUMNS)
+    history_df = history_df.sort_values(["as_of_date", "variant"]).reset_index(drop=True)
     path.parent.mkdir(parents=True, exist_ok=True)
     history_df.to_csv(path, index=False)
     return path
