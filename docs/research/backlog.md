@@ -128,6 +128,19 @@ missing reporting artifacts
 monthly artifacts, calendar-aware freshness, reporting-only TA variants, and
 matching TA ledger rows.
 
+### OPS-03 - Documentation Hygiene And Archive Map
+**Status:** complete
+**Priority:** medium
+**Rationale:** The docs tree had active, legacy, and archive material without a
+single navigation map, making old plans/results look current.
+**Estimated effort:** S
+**Depends on:** OPS-02
+**Expected metric impact:** operational clarity; lower onboarding and review
+cost
+**Last touched:** v170 (2026-04-19)
+**Outcome:** complete. Added `docs/README.md`, legacy directory labels,
+current archive guidance, and `docs/repo-hygiene-review-2026-04-19.md`.
+
 ### BL-01 — Black-Litterman Tau/View Tuning
 **Status:** complete
 **Priority:** medium

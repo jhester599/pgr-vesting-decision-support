@@ -66,18 +66,26 @@ PY
 
 ## Monthly Report Validation
 
-After a monthly run, verify:
+After a monthly run, use the reusable verifier:
+
+```bash
+python scripts/verify_monthly_outputs.py --summary-path workflow_summary.md
+```
+
+For a specific as-of date:
+
+```bash
+python scripts/verify_monthly_outputs.py --as-of 2026-04-19 --summary-path workflow_summary.md
+```
+
+The verifier checks:
 
 - monthly folder exists
-- `recommendation.md` exists
-- `diagnostic.md` exists
-- `signals.csv` exists
-- `benchmark_quality.csv` exists
-- `consensus_shadow.csv` exists
-- `dashboard.html` exists
-- `monthly_summary.json` exists
-- `run_manifest.json` exists
-- `decision_log.md` contains one row for the month
+- all required monthly files exist
+- `monthly_summary.json` and `run_manifest.json` are readable
+- data freshness is `OK`
+- reporting-only TA shadow variants are present in `classification_shadow.csv`
+- matching TA rows exist in `ta_shadow_variant_history.csv`
 
 Recommended spot checks:
 
@@ -85,6 +93,7 @@ Recommended spot checks:
 - `monthly_summary.json` matches the top-level recommendation shown in
   `recommendation.md`
 - `diagnostic.md` includes Clark-West and per-benchmark quality sections
+- `decision_log.md` contains one row for the month
 
 ## Recovery Guidance
 
@@ -95,3 +104,5 @@ Recommended spot checks:
   editing the DB in place.
 - If the monthly report is missing the new CSV artifacts, treat that as a
   production regression in the reporting path rather than a harmless omission.
+- If `scripts/verify_monthly_outputs.py` fails, investigate the named missing
+  artifact, stale feed, or TA ledger row before trusting the monthly package.

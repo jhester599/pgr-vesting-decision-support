@@ -62,6 +62,8 @@ Provider ingestion -> SQLite database -> Feature engineering -> WFO modeling
 
 More detail: [docs/architecture.md](docs/architecture.md)
 
+Documentation map: [docs/README.md](docs/README.md)
+
 ## Production Entry Points
 
 - `scripts/weekly_fetch.py`
@@ -107,6 +109,7 @@ Operational runbook: [docs/operations-runbook.md](docs/operations-runbook.md)
 - [docs/decision-output-guide.md](docs/decision-output-guide.md): how to read monthly outputs
 - [docs/artifact-policy.md](docs/artifact-policy.md): production vs. research artifact handling
 - [docs/data-sources.md](docs/data-sources.md): external provider inventory
+- [docs/README.md](docs/README.md): active, historical, and legacy documentation map
 
 ## Version History
 

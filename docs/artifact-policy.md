@@ -31,6 +31,15 @@ Current monthly production artifacts include:
 Shared longitudinal monitoring artifacts include:
 
 - `results/monthly_decisions/classification_shadow_history.csv`
+- `results/monthly_decisions/ta_shadow_variant_history.csv`
+
+Monthly workflow postconditions are verified by:
+
+- `scripts/verify_monthly_outputs.py`
+
+That verifier checks required monthly files, data freshness, reporting-only TA
+shadow variants, and matching TA ledger rows before the workflow commits
+monthly artifacts.
 
 ## Research Artifacts
 
