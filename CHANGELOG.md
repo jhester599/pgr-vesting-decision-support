@@ -5,6 +5,19 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v166 (2026-04-18)
+
+- TA-03 monthly shadow artifact lane: `classification_shadow.csv` now carries
+  reporting-only TA replacement variants alongside baseline and follow-on rows
+- Added monthly TA payloads to `classification_shadow_variants` in
+  `monthly_summary.json`
+- Added `variant_label`, `feature_set`, and `reporting_only` columns to the
+  classifier shadow CSV schema
+- Weekly data workflow now verifies required TA shadow price coverage for
+  `PGR` and `VWO`; no new Alpha Vantage schedule or API calls were needed
+- No production recommendation, live monthly decision, or classifier gate
+  behavior changes
+
 ## v165 (2026-04-18)
 
 - TA-02 follow-through: added a research-only classification replacement shadow

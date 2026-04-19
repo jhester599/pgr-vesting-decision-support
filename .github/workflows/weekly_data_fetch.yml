@@ -60,6 +60,23 @@ jobs:
               raise SystemExit("daily_prices is empty after weekly fetch.")
           if latest_prices is None:
               raise SystemExit("daily_prices latest date is missing after weekly fetch.")
+          required_ta_tickers = ["PGR", "VWO"]
+          missing_ta = []
+          ta_latest = {}
+          for ticker in required_ta_tickers:
+              row = conn.execute(
+                  "SELECT MAX(date) FROM daily_prices WHERE ticker = ?",
+                  (ticker,),
+              ).fetchone()
+              ticker_latest = row[0] if row else None
+              ta_latest[ticker] = ticker_latest
+              if ticker_latest is None:
+                  missing_ta.append(ticker)
+          if missing_ta:
+              raise SystemExit(
+                  "TA shadow replacement features missing required price tickers: "
+                  + ", ".join(missing_ta)
+              )
           summary = [
               "## Weekly Data Accumulation",
               "",
@@ -69,6 +86,7 @@ jobs:
               f"- monthly_relative_returns rows: `{snapshot['row_counts']['monthly_relative_returns']}`",
               f"- Latest price date: `{latest_prices}`",
               f"- Latest relative-return date: `{latest_targets}`",
+              f"- TA shadow required prices: `{ta_latest}`",
           ]
           with open("workflow_summary.md", "w", encoding="utf-8") as fh:
               fh.write("\n".join(summary) + "\n")

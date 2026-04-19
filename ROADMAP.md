@@ -95,9 +95,14 @@ classification shadow harness and produced a `shadow_monitor` outcome. The
 strongest historical variant is `ta_minimal_plus_vwo_pct_b`, with
 `ta_minimal_replacement` retained as the simpler comparison.
 
-Next empirical step: add a reporting-only monthly artifact lane for those two
-variants. Do not route either variant into production recommendations, sell
-percentages, or classifier gate overlays.
+v166 completes the reporting-only monthly artifact lane. `classification_shadow.csv`
+and `monthly_summary.json` now include `ta_minimal_replacement` and
+`ta_minimal_plus_vwo_pct_b` as monitoring variants. The classifier gate overlay,
+sell percentage, and production recommendation path remain unchanged.
+
+Next empirical step: monitor the TA variants prospectively until enough
+matured observations exist to evaluate calibration, Brier score, balanced
+accuracy, and stability.
 
 ## Prior Research Direction: v139-v152
 

@@ -16,6 +16,7 @@ from config.features import (
     PRIMARY_FORECAST_UNIVERSE,
     V128_BENCHMARK_FEATURE_MAP_PATH,
 )
+from src.database import db_client
 from src.models.v129_feature_map import (
     DualTrackFeatureMapError,
     load_v128_feature_map,
@@ -28,6 +29,7 @@ from src.processing.feature_engineering import (
 )
 from src.processing.multi_total_return import load_relative_return_matrix
 from src.research.v66_utils import benchmark_quality_weights
+from src.research.v160_ta_features import build_ta_feature_matrix
 from src.models.path_b_classifier import (
     apply_prequential_temperature_scaling,
     build_composite_return_series,
@@ -49,6 +51,25 @@ FEATURE_SET_NAME = "lean_baseline"
 MODEL_FAMILY = "separate_benchmark_logistic_balanced"
 CALIBRATION_LABEL = "oos_logistic_calibration"
 MIN_CALIBRATION_HISTORY = 24
+TA_SHADOW_VARIANT_SPECS: tuple[dict[str, object], ...] = (
+    {
+        "variant": "ta_minimal_replacement",
+        "label": "TA Minimal Replacement",
+        "feature_swaps": {
+            "mom_12m": "ta_pgr_obv_detrended",
+            "vol_63d": "ta_pgr_natr_63d",
+        },
+    },
+    {
+        "variant": "ta_minimal_plus_vwo_pct_b",
+        "label": "TA Minimal + VWO %B",
+        "feature_swaps": {
+            "mom_12m": "ta_pgr_obv_detrended",
+            "vol_63d": "ta_pgr_natr_63d",
+            "vix": "ta_ratio_bb_pct_b_6m_vwo",
+        },
+    },
+)
 
 
 @dataclass(frozen=True)
@@ -97,6 +118,22 @@ def _format_pct(value: float | None, decimals: int = 1) -> str | None:
     if value is None:
         return None
     return f"{value * 100:.{decimals}f}%"
+
+
+def _apply_ta_feature_swaps(
+    baseline_features: list[str],
+    feature_swaps: dict[str, str],
+) -> list[str]:
+    """Apply TA replacement swaps while preserving order and feature count."""
+    result: list[str] = []
+    seen: set[str] = set()
+    for feature in baseline_features:
+        replacement = feature_swaps.get(feature, feature)
+        if replacement in seen:
+            continue
+        result.append(replacement)
+        seen.add(replacement)
+    return result
 
 
 def classification_confidence_tier(probability_actionable_sell: float) -> str:
@@ -367,6 +404,184 @@ def _run_dual_track_pass(
     detail_df["benchmark_specific_features"] = bs_features
     detail_df["benchmark_specific_prob_actionable_sell"] = bs_probs
     detail_df["benchmark_specific_tier"] = bs_tiers
+
+
+def _load_ta_price_map(conn: object) -> dict[str, pd.DataFrame]:
+    """Load only the price series required by the monthly TA shadow lane."""
+    price_map: dict[str, pd.DataFrame] = {}
+    for ticker in ("PGR", "VWO"):
+        prices = db_client.get_prices(conn, ticker)
+        if not prices.empty:
+            price_map[ticker] = prices
+    return price_map
+
+
+def _build_ta_augmented_feature_frame(
+    conn: object,
+    as_of: date,
+) -> pd.DataFrame:
+    """Build the monthly feature frame plus the TA-03 replacement features."""
+    feature_df = build_feature_matrix_from_db(conn, force_refresh=True)
+    feature_df = feature_df.loc[feature_df.index <= pd.Timestamp(as_of)].sort_index()
+    if feature_df.empty:
+        return feature_df
+
+    price_map = _load_ta_price_map(conn)
+    if {"PGR", "VWO"}.issubset(price_map):
+        ta_features = build_ta_feature_matrix(price_map, benchmarks=("VWO",))
+        feature_df = feature_df.join(ta_features, how="left")
+    return feature_df
+
+
+def build_ta_replacement_variant_payloads(
+    detail_df: pd.DataFrame,
+    *,
+    feature_anchor_date: str | None,
+) -> list[dict[str, object]]:
+    """Build reporting-only monthly payloads for TA replacement variants."""
+    if detail_df.empty:
+        return []
+
+    payloads: list[dict[str, object]] = []
+    for variant, group in detail_df.groupby("variant", dropna=False):
+        probabilities = group["classifier_prob_actionable_sell"].dropna().astype(float)
+        if probabilities.empty:
+            continue
+        weight_sum = float(group["classifier_weight"].dropna().astype(float).sum())
+        if weight_sum > 0.0:
+            probability = float(group["classifier_weighted_contribution"].sum()) / weight_sum
+        else:
+            probability = float(probabilities.mean())
+        tier = classification_confidence_tier(probability)
+        stance = classification_stance(probability)
+        payloads.append(
+            {
+                "variant": str(variant),
+                "label": str(group.get("variant_label", pd.Series([variant])).iloc[0]),
+                "target_label": ACTIONABLE_TARGET,
+                "feature_set": str(group.get("feature_set", pd.Series([""])).iloc[0]),
+                "model_family": MODEL_FAMILY,
+                "calibration": CALIBRATION_LABEL,
+                "probability_actionable_sell": probability,
+                "probability_actionable_sell_label": _format_pct(probability),
+                "confidence_tier": tier,
+                "stance": stance,
+                "benchmark_count": int(group["benchmark"].nunique()),
+                "feature_anchor_date": feature_anchor_date,
+                "reporting_only": True,
+                "affects_gate_overlay": False,
+                "affects_live_recommendation": False,
+            }
+        )
+    return payloads
+
+
+def build_ta_replacement_shadow_variants(
+    conn: object,
+    as_of: date,
+    *,
+    baseline_detail_df: pd.DataFrame,
+) -> tuple[pd.DataFrame, list[dict[str, object]]]:
+    """Build TA replacement rows for classification_shadow.csv.
+
+    The returned rows are reporting-only variants. They are intentionally
+    separate from the baseline classifier summary and from the gate overlay.
+    """
+    if baseline_detail_df.empty:
+        return pd.DataFrame(), []
+
+    feature_df = _build_ta_augmented_feature_frame(conn, as_of)
+    if feature_df.empty:
+        return pd.DataFrame(), []
+
+    current_features = feature_df.iloc[[-1]].copy()
+    feature_anchor_date = str(pd.Timestamp(current_features.index[0]).date())
+    lean_baseline = feature_set_from_name(feature_df, FEATURE_SET_NAME)
+    baseline_weights = baseline_detail_df.set_index("benchmark")["classifier_weight"]
+    rows: list[dict[str, object]] = []
+
+    for spec in TA_SHADOW_VARIANT_SPECS:
+        variant = str(spec["variant"])
+        label = str(spec["label"])
+        swaps = dict(spec["feature_swaps"])
+        candidate_features = _apply_ta_feature_swaps(list(lean_baseline), swaps)
+        for benchmark in baseline_detail_df["benchmark"].astype(str).tolist():
+            rel_series = load_relative_return_matrix(conn, benchmark, 6)
+            if rel_series.empty:
+                continue
+            rel_series = truncate_relative_target_for_asof(
+                rel_series,
+                as_of=pd.Timestamp(as_of),
+                horizon_months=6,
+            )
+            x_base, _ = get_X_y_relative(feature_df, rel_series, drop_na_target=True)
+            if x_base.empty:
+                continue
+            usable_features = [
+                feature for feature in candidate_features if feature in x_base.columns
+            ]
+            if not usable_features:
+                continue
+
+            x_train = x_base[usable_features].copy()
+            target = build_target_series(rel_series, ACTIONABLE_TARGET)
+            y_train = target.reindex(x_train.index).dropna().astype(int)
+            x_train = x_train.loc[y_train.index]
+            if x_train.empty:
+                continue
+            x_current = current_features[usable_features].copy()
+            raw_probability = _fit_current_probability(x_train, y_train, x_current)
+            if raw_probability is None:
+                continue
+
+            model_factory = logistic_factory(class_weight="balanced", c_value=0.5)
+            probability_history = evaluate_binary_time_series(
+                x_train,
+                y_train,
+                model_factory,
+            )
+            calibrator = _fit_oos_calibrator(probability_history)
+            calibrated_probability = float(raw_probability)
+            if calibrator is not None:
+                calibrated_probability = float(
+                    calibrator.predict_proba(
+                        np.array(
+                            [[np.clip(raw_probability, 1e-6, 1.0 - 1e-6)]],
+                            dtype=float,
+                        )
+                    )[0, 1]
+                )
+
+            weight = float(baseline_weights.get(benchmark, 0.0))
+            rows.append(
+                {
+                    "variant": variant,
+                    "variant_label": label,
+                    "benchmark": benchmark,
+                    "classifier_raw_prob_actionable_sell": float(raw_probability),
+                    "classifier_prob_actionable_sell": calibrated_probability,
+                    "classifier_history_obs": int(len(probability_history)),
+                    "classifier_weight": weight,
+                    "classifier_weighted_contribution": calibrated_probability * weight,
+                    "classifier_shadow_tier": classification_confidence_tier(
+                        calibrated_probability
+                    ),
+                    "benchmark_specific_features": "|".join(usable_features),
+                    "benchmark_specific_prob_actionable_sell": calibrated_probability,
+                    "benchmark_specific_tier": classification_confidence_tier(
+                        calibrated_probability
+                    ),
+                    "feature_set": "|".join(usable_features),
+                    "reporting_only": True,
+                }
+            )
+
+    detail_df = pd.DataFrame(rows)
+    payloads = build_ta_replacement_variant_payloads(
+        detail_df,
+        feature_anchor_date=feature_anchor_date,
+    )
+    return detail_df, payloads
 
 
 def build_classification_shadow_summary(
