@@ -52,9 +52,12 @@ jobs:
         if: ${{ !(github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true') }}
         run: |
           python - <<'PY'
-          import sqlite3
+          from datetime import date
 
-          conn = sqlite3.connect("data/pgr_financials.db")
+          import config
+          from src.database import db_client
+
+          conn = db_client.get_connection(config.DB_PATH)
           row = conn.execute(
               """
               SELECT COUNT(*), MAX(month_end), MAX(filing_date)
@@ -64,12 +67,25 @@ jobs:
           row_count, latest_month, latest_filing = row
           if row_count == 0:
               raise SystemExit("pgr_edgar_monthly is empty after monthly 8-K fetch.")
+          freshness = db_client.check_data_freshness(conn, date.today())
+          edgar_row = next(
+              item for item in freshness["checks"]
+              if item["feed"] == "PGR monthly EDGAR"
+          )
+          if edgar_row["status"] != "OK":
+              raise SystemExit(
+                  "PGR monthly EDGAR freshness failed after monthly 8-K fetch: "
+                  + "; ".join(freshness["warnings"])
+              )
           summary = [
               "## Monthly 8-K Fetch",
               "",
               f"- pgr_edgar_monthly rows: `{row_count}`",
               f"- Latest month_end: `{latest_month}`",
               f"- Latest filing_date: `{latest_filing}`",
+              f"- Expected month_end: `{edgar_row.get('expected_month_end')}`",
+              f"- Freshness rule: `{edgar_row.get('limit_label')}`",
+              f"- Freshness status: `{edgar_row['status']}`",
           ]
           with open("workflow_summary.md", "w", encoding="utf-8") as fh:
               fh.write("\n".join(summary) + "\n")

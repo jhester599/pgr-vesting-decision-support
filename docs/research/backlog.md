@@ -100,6 +100,20 @@ outcome fields for future evaluation.
 `results/monthly_decisions/ta_shadow_variant_history.csv`; production
 recommendations and classifier gate overlays remain unchanged.
 
+### OPS-01 - Calendar-Aware PGR Monthly EDGAR Freshness
+**Status:** complete
+**Priority:** high
+**Rationale:** The monthly report warned that PGR EDGAR data was stale before
+the normal prior-month 8-K filing window and scheduled fetch fallback had
+elapsed.
+**Estimated effort:** S
+**Depends on:** none
+**Expected metric impact:** operational reliability; fewer false stale warnings
+**Last touched:** v168 (2026-04-18)
+**Outcome:** complete. `check_data_freshness` now expects the prior month only
+after a 25-day filing grace window, and the monthly 8-K workflow enforces the
+same rule after fetch attempts.
+
 ### BL-01 — Black-Litterman Tau/View Tuning
 **Status:** complete
 **Priority:** medium

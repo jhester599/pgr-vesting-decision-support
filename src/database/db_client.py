@@ -22,7 +22,8 @@ Usage:
 from __future__ import annotations
 
 import sqlite3
-from datetime import date, datetime, timezone
+from calendar import monthrange
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -276,6 +277,30 @@ def _coerce_iso_date(raw_value: str | None) -> date | None:
         return None
 
 
+def _month_end(year: int, month: int) -> date:
+    """Return the calendar month-end date for a year/month pair."""
+    return date(year, month, monthrange(year, month)[1])
+
+
+def _previous_month_end(reference_date: date) -> date:
+    """Return the month-end immediately before the reference month."""
+    if reference_date.month == 1:
+        return _month_end(reference_date.year - 1, 12)
+    return _month_end(reference_date.year, reference_date.month - 1)
+
+
+def _expected_pgr_edgar_month_end(
+    reference_date: date,
+    filing_grace_days: int = config.DATA_FRESHNESS_PGR_EDGAR_FILING_GRACE_DAYS,
+) -> date:
+    """Return the latest PGR 8-K month expected to be available."""
+    prior_month_end = _previous_month_end(reference_date)
+    due_date = prior_month_end + timedelta(days=filing_grace_days)
+    if reference_date >= due_date:
+        return prior_month_end
+    return _previous_month_end(prior_month_end)
+
+
 def check_data_freshness(
     conn: sqlite3.Connection,
     reference_date: date,
@@ -297,12 +322,14 @@ def check_data_freshness(
     for feed, table, column, max_age_days in checks:
         latest_raw = get_table_max_date(conn, table, column)
         latest_date = _coerce_iso_date(latest_raw)
+        limit_label = f"{max_age_days} days"
         if latest_date is None:
             result = {
                 "feed": feed,
                 "table": table,
                 "column": column,
                 "max_age_days": max_age_days,
+                "limit_label": limit_label,
                 "latest_date": None,
                 "age_days": None,
                 "status": "MISSING",
@@ -313,21 +340,42 @@ def check_data_freshness(
             has_problem = True
         else:
             age_days = max(0, (reference_date - latest_date).days)
-            status = "OK" if age_days <= max_age_days else "STALE"
+            expected_month_end = None
+            if table == "pgr_edgar_monthly":
+                expected_month_end = _expected_pgr_edgar_month_end(reference_date)
+                status = "OK" if latest_date >= expected_month_end else "STALE"
+                limit_label = (
+                    f"{config.DATA_FRESHNESS_PGR_EDGAR_FILING_GRACE_DAYS}-day "
+                    "filing grace"
+                )
+            else:
+                status = "OK" if age_days <= max_age_days else "STALE"
             result = {
                 "feed": feed,
                 "table": table,
                 "column": column,
                 "max_age_days": max_age_days,
+                "limit_label": limit_label,
                 "latest_date": latest_date.isoformat(),
                 "age_days": age_days,
                 "status": status,
             }
+            if expected_month_end is not None:
+                result["expected_month_end"] = expected_month_end.isoformat()
             if status != "OK":
-                warnings.append(
-                    f"{feed} is stale: latest {latest_date.isoformat()} "
-                    f"({age_days} days old, limit {max_age_days})."
-                )
+                if expected_month_end is not None:
+                    warnings.append(
+                        f"{feed} is stale: latest {latest_date.isoformat()} "
+                        f"({age_days} days old); expected at least "
+                        f"{expected_month_end.isoformat()} after the "
+                        f"{config.DATA_FRESHNESS_PGR_EDGAR_FILING_GRACE_DAYS}-day "
+                        "filing grace."
+                    )
+                else:
+                    warnings.append(
+                        f"{feed} is stale: latest {latest_date.isoformat()} "
+                        f"({age_days} days old, limit {max_age_days})."
+                    )
                 has_problem = True
         results.append(result)
 

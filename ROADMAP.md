@@ -105,6 +105,11 @@ v167 adds a durable TA shadow variant history ledger at
 upsert reporting-only TA variant probabilities by `as_of_date` and `variant`,
 with 6M maturity dates and placeholders for eventual realized outcomes.
 
+v168 fixes the PGR monthly EDGAR freshness guard so it matches the actual
+8-K filing cadence and workflow schedule. The project now treats the prior
+month as required only after a 25-day filing grace window, and the monthly
+8-K workflow enforces that same calendar-aware rule after fetch attempts.
+
 Next empirical step: monitor the TA variants prospectively until enough
 matured observations exist to evaluate calibration, Brier score, balanced
 accuracy, and stability.

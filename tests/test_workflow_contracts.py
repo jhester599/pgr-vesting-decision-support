@@ -40,3 +40,11 @@ def test_monthly_decision_workflow_verifies_manifest() -> None:
     assert "dashboard.html" in text
     assert "monthly_summary.json" in text
     assert "$GITHUB_STEP_SUMMARY" in text
+
+
+def test_monthly_8k_workflow_verifies_calendar_aware_freshness() -> None:
+    text = _read(".github/workflows/monthly_8k_fetch.yml")
+
+    assert "check_data_freshness" in text
+    assert "PGR monthly EDGAR" in text
+    assert "expected_month_end" in text
