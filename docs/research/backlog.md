@@ -114,6 +114,20 @@ elapsed.
 after a 25-day filing grace window, and the monthly 8-K workflow enforces the
 same rule after fetch attempts.
 
+### OPS-02 - Monthly Postcondition Verifier
+**Status:** complete
+**Priority:** medium
+**Rationale:** Monthly artifact, freshness, and TA shadow ledger postconditions
+should be testable Python rather than repeated inline GitHub Actions glue.
+**Estimated effort:** S
+**Depends on:** OPS-01, TA-04
+**Expected metric impact:** operational reliability; faster detection of
+missing reporting artifacts
+**Last touched:** v169 (2026-04-19)
+**Outcome:** complete. `scripts/verify_monthly_outputs.py` verifies required
+monthly artifacts, calendar-aware freshness, reporting-only TA variants, and
+matching TA ledger rows.
+
 ### BL-01 — Black-Litterman Tau/View Tuning
 **Status:** complete
 **Priority:** medium

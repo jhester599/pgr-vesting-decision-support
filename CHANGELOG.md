@@ -5,6 +5,16 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v169 (2026-04-19)
+
+- Added reusable monthly postcondition verifier:
+  `scripts/verify_monthly_outputs.py`
+- The verifier checks required monthly artifacts, data freshness, TA shadow
+  variants in `classification_shadow.csv`, and matching TA ledger rows
+- Replaced inline monthly-decision workflow verification glue with the reusable
+  script and GitHub step-summary output
+- No model, feature, recommendation, or live decision behavior changed
+
 ## v168 (2026-04-18)
 
 - Made `check_data_freshness` calendar-aware for PGR monthly EDGAR 8-K data:

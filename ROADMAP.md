@@ -110,6 +110,10 @@ v168 fixes the PGR monthly EDGAR freshness guard so it matches the actual
 month as required only after a 25-day filing grace window, and the monthly
 8-K workflow enforces that same calendar-aware rule after fetch attempts.
 
+v169 adds a reusable monthly postcondition verifier so artifact checks,
+calendar-aware freshness, and TA shadow ledger checks live in testable Python
+instead of inline workflow glue.
+
 Next empirical step: monitor the TA variants prospectively until enough
 matured observations exist to evaluate calibration, Brier score, balanced
 accuracy, and stability.
