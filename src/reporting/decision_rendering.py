@@ -307,9 +307,10 @@ def build_data_freshness_lines(freshness_report: dict[str, Any] | None) -> list[
             if row.get("age_days") is not None
             else "n/a"
         )
+        limit_text = row.get("limit_label") or f"{row['max_age_days']} days"
         lines.append(
             f"| {row['feed']} | {latest_date} | {age_text} | "
-            f"{row['max_age_days']} days | **{status_labels.get(row['status'], row['status'])}** |"
+            f"{limit_text} | **{status_labels.get(row['status'], row['status'])}** |"
         )
 
     if freshness_report.get("warnings"):

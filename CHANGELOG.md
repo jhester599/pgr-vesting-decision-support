@@ -5,6 +5,16 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v168 (2026-04-18)
+
+- Made `check_data_freshness` calendar-aware for PGR monthly EDGAR 8-K data:
+  prior-month data is required only after a 25-day filing grace window
+- Fixed false stale warnings before the monthly 8-K primary/fallback jobs have
+  had a fair chance to collect the new period
+- Updated the monthly 8-K workflow postcondition to enforce the same
+  calendar-aware freshness rule and report expected month-end/status
+- No model, feature, recommendation, or live decision behavior changed
+
 ## v167 (2026-04-18)
 
 - Added durable TA shadow variant history ledger:

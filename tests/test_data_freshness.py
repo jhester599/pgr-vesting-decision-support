@@ -54,6 +54,56 @@ def test_check_data_freshness_flags_stale_and_missing_feeds() -> None:
     assert any("Daily prices is stale" in warning for warning in report["warnings"])
 
 
+def test_check_data_freshness_accepts_pgr_edgar_during_filing_grace() -> None:
+    conn = _make_conn()
+    db_client.upsert_prices(
+        conn,
+        [{"ticker": "PGR", "date": "2026-04-17", "close": 250.0}],
+    )
+    db_client.upsert_fred_macro(
+        conn,
+        [{"series_id": "T10Y2Y", "month_end": "2026-03-31", "value": 0.5}],
+    )
+    db_client.upsert_pgr_edgar_monthly(
+        conn,
+        [{"month_end": "2026-02-28", "combined_ratio": 85.7}],
+    )
+
+    report = db_client.check_data_freshness(conn, date(2026, 4, 18))
+
+    statuses = {row["feed"]: row["status"] for row in report["checks"]}
+    pgr_edgar = next(row for row in report["checks"] if row["feed"] == "PGR monthly EDGAR")
+    assert report["overall_status"] == "OK"
+    assert statuses["PGR monthly EDGAR"] == "OK"
+    assert pgr_edgar["expected_month_end"] == "2026-02-28"
+    assert pgr_edgar["limit_label"] == "25-day filing grace"
+    assert report["warnings"] == []
+
+
+def test_check_data_freshness_flags_pgr_edgar_after_filing_grace() -> None:
+    conn = _make_conn()
+    db_client.upsert_prices(
+        conn,
+        [{"ticker": "PGR", "date": "2026-04-25", "close": 250.0}],
+    )
+    db_client.upsert_fred_macro(
+        conn,
+        [{"series_id": "T10Y2Y", "month_end": "2026-03-31", "value": 0.5}],
+    )
+    db_client.upsert_pgr_edgar_monthly(
+        conn,
+        [{"month_end": "2026-02-28", "combined_ratio": 85.7}],
+    )
+
+    report = db_client.check_data_freshness(conn, date(2026, 4, 26))
+
+    pgr_edgar = next(row for row in report["checks"] if row["feed"] == "PGR monthly EDGAR")
+    assert report["overall_status"] == "WARNING"
+    assert pgr_edgar["status"] == "STALE"
+    assert pgr_edgar["expected_month_end"] == "2026-03-31"
+    assert any("expected at least 2026-03-31" in warning for warning in report["warnings"])
+
+
 def test_build_data_freshness_lines_includes_warning_block() -> None:
     report = {
         "overall_status": "WARNING",
@@ -63,6 +113,7 @@ def test_build_data_freshness_lines_includes_warning_block() -> None:
                 "latest_date": "2026-03-01",
                 "age_days": 35,
                 "max_age_days": 10,
+                "limit_label": "10 days",
                 "status": "STALE",
             },
             {
@@ -70,7 +121,16 @@ def test_build_data_freshness_lines_includes_warning_block() -> None:
                 "latest_date": None,
                 "age_days": None,
                 "max_age_days": 45,
+                "limit_label": "45 days",
                 "status": "MISSING",
+            },
+            {
+                "feed": "PGR monthly EDGAR",
+                "latest_date": "2026-02-28",
+                "age_days": 49,
+                "max_age_days": 35,
+                "limit_label": "25-day filing grace",
+                "status": "OK",
             },
         ],
         "warnings": [
@@ -86,4 +146,6 @@ def test_build_data_freshness_lines_includes_warning_block() -> None:
     assert "Some upstream data is stale or missing" in text
     assert "**STALE**" in text
     assert "**MISSING**" in text
+    assert "10 days" in text
+    assert "25-day filing grace" in text
     assert "Warnings:" in text
