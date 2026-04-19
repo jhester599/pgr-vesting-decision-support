@@ -118,7 +118,9 @@ from src.reporting.confidence import benchmark_role_for_ticker, build_confidence
 from src.reporting.dashboard_snapshot import write_dashboard_snapshot
 from src.reporting.classification_artifacts import (
     append_classifier_history,
+    append_ta_shadow_variant_history,
     build_classifier_history_entry,
+    build_ta_shadow_variant_history_entries,
     classification_history_path,
     write_classification_shadow_csv,
     write_decision_overlays_csv,
@@ -3421,6 +3423,19 @@ def main(
         history_df = pd.read_csv(history_path)
         history_df = attach_matured_classifier_outcomes(conn, history_df, horizon_months=6)
         history_df.to_csv(history_path, index=False)
+
+    ta_history_entries = build_ta_shadow_variant_history_entries(
+        as_of_date=as_of,
+        run_date=run_date,
+        forecast_horizon_months=6,
+        classification_shadow_variants=classification_shadow_variants,
+    )
+    if ta_history_entries:
+        ta_history_path = append_ta_shadow_variant_history(
+            base_dir=history_base_dir,
+            entries=ta_history_entries,
+        )
+        print(f"  Appended TA shadow history to {ta_history_path}")
 
     classifier_monitoring_summary = summarize_matured_classifier_history(history_df).to_payload()
 
