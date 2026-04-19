@@ -5,6 +5,19 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v165 (2026-04-18)
+
+- TA-02 follow-through: added a research-only classification replacement shadow
+  harness in `results/research/v165_ta_shadow_replacement_eval.py`
+- Tested replacement-only variants that keep the lean classifier at 12 features
+- Wrote benchmark, prediction-level, regime-slice, current-shadow, and candidate
+  artifacts under `results/research/`
+- Candidate outcome: `shadow_monitor`; strongest historical variant is
+  `ta_minimal_plus_vwo_pct_b` (+0.0584 mean BA, -0.0656 mean Brier, 8/8
+  positive benchmarks)
+- No production recommendation, live monthly decision, or classifier gate
+  behavior changes
+
 ## v164 (2026-04-18)
 
 - TA-01 technical-analysis research scaffold: archived three Alpha Vantage TA

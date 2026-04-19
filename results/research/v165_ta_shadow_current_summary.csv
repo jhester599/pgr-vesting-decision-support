@@ -1,0 +1,6 @@
+as_of,feature_anchor_date,variant,benchmark_count,probability_actionable_sell,probability_actionable_sell_label,confidence_tier,stance
+2026-04-17,2026-04-30,lean_baseline,8,0.30742668614779173,30.7%,MODERATE,NEUTRAL
+2026-04-17,2026-04-30,ta_minimal_plus_vwo_pct_b,8,0.44108498312450695,44.1%,LOW,NEUTRAL
+2026-04-17,2026-04-30,ta_minimal_replacement,8,0.391997291243406,39.2%,MODERATE,NEUTRAL
+2026-04-17,2026-04-30,ta_natr_replaces_vol63,8,0.3661236638554347,36.6%,MODERATE,NEUTRAL
+2026-04-17,2026-04-30,ta_obv_replaces_mom12,8,0.3356125375387346,33.6%,MODERATE,NEUTRAL

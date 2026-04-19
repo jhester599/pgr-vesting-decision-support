@@ -90,10 +90,14 @@ Summary:
 - `v164` records a `replacement_candidate` synthesis with no production or
   shadow changes
 
-Next empirical step: create a separate shadow-only classification replacement
-plan. Start with `ta_pgr_obv_detrended` replacing `mom_12m` and
-`ta_pgr_natr_63d` replacing `vol_63d`, then compare one representative ratio
-Bollinger feature before any production discussion.
+v165 follow-through is complete. It tested the TA replacement candidates in a
+classification shadow harness and produced a `shadow_monitor` outcome. The
+strongest historical variant is `ta_minimal_plus_vwo_pct_b`, with
+`ta_minimal_replacement` retained as the simpler comparison.
+
+Next empirical step: add a reporting-only monthly artifact lane for those two
+variants. Do not route either variant into production recommendations, sell
+percentages, or classifier gate overlays.
 
 ## Prior Research Direction: v139-v152
 
