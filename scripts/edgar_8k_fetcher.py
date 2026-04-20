@@ -141,7 +141,13 @@ def _collect_8k_filings(
     cutoff_date: str,
     out: list[dict[str, Any]],
 ) -> bool:
-    """Extract 8-K / item 7.01 filings from one ``filings.recent`` block.
+    """Extract PGR operating-metrics 8-K filings from one ``filings.recent`` block.
+
+    Accepts both item 7.01 (Regulation FD monthly supplement, used for
+    non-quarter-end months) and item 2.02 (Results of Operations, used for
+    quarter-end months: March, June, September, December).  The matched item
+    code is stored in the ``"item_code"`` key of each output dict so that
+    ``_parse_html_exhibit`` can set ``filing_type`` correctly.
 
     Modifies ``out`` in-place with matching filings.
 
@@ -172,7 +178,13 @@ def _collect_8k_filings(
             continue
         # ``items`` is a comma-separated string like ``"7.01,9.01"``
         parsed_items = [i.strip() for i in str(item_str).split(",")]
-        if "7.01" not in parsed_items:
+        # Item 7.01: Regulation FD monthly supplement (non-quarter-end months).
+        # Item 2.02: Results of Operations quarterly supplement (quarter-end months).
+        if "7.01" in parsed_items:
+            item_code = "7.01"
+        elif "2.02" in parsed_items:
+            item_code = "2.02"
+        else:
             continue
         # Clean accession number: remove dashes for use in archive paths
         cleaned = accession.replace("-", "")
@@ -183,6 +195,7 @@ def _collect_8k_filings(
                 "filing_date": filing_date,
                 "form": form,
                 "items": item_str,
+                "item_code": item_code,
             }
         )
 
@@ -190,7 +203,7 @@ def _collect_8k_filings(
 
 
 def fetch_all_8k_filings(cutoff_date: str) -> list[dict[str, Any]]:
-    """Fetch all PGR 8-K (item 7.01) filings back to ``cutoff_date``.
+    """Fetch all PGR operating-metrics 8-K filings (items 7.01 and 2.02) back to ``cutoff_date``.
 
     Reads the primary submissions JSON then follows all paginated overflow
     files until ``cutoff_date`` is exceeded in the filing history.
@@ -228,7 +241,7 @@ def fetch_all_8k_filings(cutoff_date: str) -> list[dict[str, Any]]:
 
     results.sort(key=lambda r: r["filing_date"])
     log.info(
-        "Found %d 8-K (item 7.01) filings back to %s.", len(results), cutoff_date
+        "Found %d 8-K (items 7.01/2.02) filings back to %s.", len(results), cutoff_date
     )
     return results
 
@@ -452,10 +465,14 @@ def _parse_segment_metrics(
 def _parse_html_exhibit(
     html: str,
     filing_date: str,
+    item_code: str = "7.01",
 ) -> dict[str, Any] | None:
     """Parse a PGR 8-K HTML exhibit for operating metrics.
 
-    PGR's monthly Regulation FD supplement (item 7.01) contains tables with:
+    PGR files the same operating-metrics supplement each month regardless of
+    whether it is a quarter-end month.  Non-quarter-end months use item 7.01
+    (Regulation FD); quarter-end months (March, June, September, December) use
+    item 2.02 (Results of Operations).  Both formats contain the same tables:
       - Combined Ratio (loss + expense; typically 85–105 for PGR)
       - Policies in Force (total count; typically 10M–30M)
       - Net Premiums Written by segment (Agency, Direct, Commercial, Property)
@@ -472,18 +489,21 @@ def _parse_html_exhibit(
     computed in ``_compute_derived_fields`` once the full sorted time series is
     available (YoY features) or on a per-row basis for ratio/product features.
 
-    The filing date is used to derive ``month_end``: PGR files its monthly
-    supplement in the first 3 weeks of the following month, so the data
-    period is the month immediately prior to the filing date.
+    The filing date is used to derive ``month_end``: PGR files its supplement
+    in the first 3 weeks of the following month, so the data period is the
+    month immediately prior to the filing date.
 
     Args:
         html: Raw HTML text of the 8-K exhibit.
         filing_date: ISO date string (``"YYYY-MM-DD"``).
+        item_code: EDGAR item code, either ``"7.01"`` (monthly Reg FD) or
+            ``"2.02"`` (quarterly earnings).  Controls the ``filing_type``
+            field in the returned record.
 
     Returns:
         Dict with all parseable field values set, None placeholders for derived
         fields.  Returns ``None`` if neither combined_ratio nor pif_total can
-        be extracted (filing is likely not a monthly supplement).
+        be extracted (filing is likely not an operating-metrics supplement).
     """
     filed_dt = datetime.strptime(filing_date, "%Y-%m-%d")
     text = _strip_html_text(html)
@@ -507,7 +527,7 @@ def _parse_html_exhibit(
         "expense_ratio": None,
         "fees_and_other_revenues": None,
         "filing_date": filing_date,
-        "filing_type": "monthly_results",
+        "filing_type": "quarterly_earnings" if item_code == "2.02" else "monthly_results",
         "fixed_income_duration": None,
         "fte_return_common_stocks": None,
         "fte_return_fixed_income": None,
@@ -1286,7 +1306,7 @@ def fetch_and_upsert(
     Workflow:
       1. Compute cutoff date (today minus backfill_years, floored at
          BACKFILL_EARLIEST_DATE).
-      2. Fetch all 8-K (item 7.01) filings from EDGAR submissions (with
+      2. Fetch all 8-K (items 7.01/2.02) filings from EDGAR submissions (with
          pagination) back to the cutoff.
       3. For each filing, resolve the primary HTML exhibit URL, parse it for
          combined_ratio and PIF, and collect the result.  Parse failures are
@@ -1318,7 +1338,7 @@ def fetch_and_upsert(
 
     filings = fetch_all_8k_filings(cutoff_date=effective_cutoff)
     if not filings:
-        log.info("No 8-K (item 7.01) filings found in the requested date range.")
+        log.info("No 8-K (items 7.01/2.02) filings found in the requested date range.")
         return 0
 
     records: list[dict[str, Any]] = []
@@ -1328,7 +1348,8 @@ def fetch_and_upsert(
         accession = filing["accession_number"]
         accession_dashed = filing["accession_dashed"]
         filing_date = filing["filing_date"]
-        log.debug("Processing %s (filed %s) …", accession, filing_date)
+        item_code = filing.get("item_code", "7.01")
+        log.debug("Processing %s (filed %s, item %s) …", accession, filing_date, item_code)
 
         try:
             doc_url = _get_filing_doc_url(accession, accession_dashed)
@@ -1338,7 +1359,7 @@ def fetch_and_upsert(
 
             resp = _get(doc_url)
             html = resp.text
-            parsed = _parse_html_exhibit(html, filing_date)
+            parsed = _parse_html_exhibit(html, filing_date, item_code=item_code)
 
             if parsed is None:
                 log.debug(

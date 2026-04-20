@@ -90,9 +90,11 @@ def _get(session: requests.Session, url: str, host: str = "www.sec.gov") -> str:
 
 def fetch_submissions(session: requests.Session) -> list[dict[str, Any]]:
     """
-    Return all PGR 8-K filings whose ``items`` field contains "7.01".
+    Return all PGR operating-metrics 8-K filings (items 7.01 and 2.02).
 
-    These are the monthly investor-report 8-Ks (Regulation FD).
+    Item 7.01 (Regulation FD) is used for non-quarter-end months.
+    Item 2.02 (Results of Operations) is used for quarter-end months
+    (March, June, September, December).
 
     Returns:
         List of dicts with keys: ``accession``, ``filing_date``.
@@ -114,7 +116,7 @@ def fetch_submissions(session: requests.Session) -> list[dict[str, Any]]:
     for form, items, fdate, accession in zip(
         forms, items_list, filing_dates, accessions
     ):
-        if form == "8-K" and "7.01" in items:
+        if form == "8-K" and ("7.01" in items or "2.02" in items):
             results.append(
                 {
                     "accession": accession,
@@ -145,7 +147,7 @@ def fetch_submissions(session: requests.Session) -> list[dict[str, Any]]:
                 page_data.get("filingDate", []),
                 page_data.get("accessionNumber", []),
             ):
-                if form == "8-K" and "7.01" in items:
+                if form == "8-K" and ("7.01" in items or "2.02" in items):
                     results.append(
                         {
                             "accession": accession,
@@ -411,7 +413,7 @@ def fetch_monthly_8ks(
     logger.info("Fetching PGR submissions JSON from EDGAR…")
     filings = fetch_submissions(session)
     filings = filings[:lookback_months]
-    logger.info("Found %d monthly 8-K filings (7.01); processing %d", len(filings), len(filings))
+    logger.info("Found %d 8-K filings (7.01/2.02); processing %d", len(filings), len(filings))
 
     rows: list[dict[str, Any]] = []
     for filing in filings:

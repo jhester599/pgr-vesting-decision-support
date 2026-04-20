@@ -76,17 +76,33 @@ class TestFetchSubmissions:
         session.get.return_value = resp
         return session
 
-    def test_filters_7_01_8ks_only(self):
+    def test_accepts_7_01_and_2_02_8ks(self):
+        # Item 7.01 = monthly Reg FD supplement; 2.02 = quarterly earnings supplement.
+        # Both should be captured; unrelated forms/items should be excluded.
         payload = _make_submissions(
             forms=["4", "8-K", "8-K", "DEF 14A"],
             items=["", "7.01,9.01", "2.02,9.01", ""],
-            filing_dates=["2026-01-10", "2026-01-18", "2026-01-28", "2026-02-01"],
+            filing_dates=["2026-01-10", "2026-01-18", "2026-04-16", "2026-02-01"],
             accessions=["AAA", "BBB", "CCC", "DDD"],
         )
         results = fetch_submissions(self._session(payload))
+        accessions = [r["accession"] for r in results]
+        assert "BBB" in accessions   # item 7.01 — monthly supplement
+        assert "CCC" in accessions   # item 2.02 — quarterly earnings supplement
+        assert "AAA" not in accessions  # form 4, not 8-K
+        assert "DDD" not in accessions  # DEF 14A
+
+    def test_excludes_8k_with_unrelated_items(self):
+        # 8-K with only item 8.01 (Other Events) should be excluded.
+        payload = _make_submissions(
+            forms=["8-K", "8-K"],
+            items=["8.01,9.01", "7.01"],
+            filing_dates=["2026-01-05", "2026-01-18"],
+            accessions=["EEE", "FFF"],
+        )
+        results = fetch_submissions(self._session(payload))
         assert len(results) == 1
-        assert results[0]["accession"] == "BBB"
-        assert results[0]["filing_date"] == "2026-01-18"
+        assert results[0]["accession"] == "FFF"
 
     def test_sorted_descending_by_filing_date(self):
         payload = _make_submissions(
