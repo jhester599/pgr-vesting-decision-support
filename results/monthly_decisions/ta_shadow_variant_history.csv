@@ -1,3 +1,5 @@
 as_of_date,run_date,variant,feature_anchor_date,forecast_horizon_months,mature_on_date,is_horizon_mature,probability_actionable_sell,stance,confidence_tier,benchmark_count,actual_actionable_sell,actual_basket_relative_return
-2026-04-18,2026-04-18,ta_minimal_plus_vwo_pct_b,2026-03-31,6,2026-09-30,False,0.40843092597607217,NEUTRAL,LOW,10,,
+2026-04-18,2026-04-18,ta_minimal_plus_vwo_pct_b,2026-03-31,6,2026-09-30,False,0.4084309259760721,NEUTRAL,LOW,10,,
 2026-04-18,2026-04-18,ta_minimal_replacement,2026-03-31,6,2026-09-30,False,0.3960289426567018,NEUTRAL,MODERATE,10,,
+2026-04-20,2026-04-20,ta_minimal_plus_vwo_pct_b,2026-03-31,6,2026-09-30,False,0.4075705147764442,NEUTRAL,LOW,10,,
+2026-04-20,2026-04-20,ta_minimal_replacement,2026-03-31,6,2026-09-30,False,0.3952366261473678,NEUTRAL,MODERATE,10,,

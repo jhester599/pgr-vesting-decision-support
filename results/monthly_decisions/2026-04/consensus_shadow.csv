@@ -1,3 +1,3 @@
 variant,n_benchmarks,consensus,mean_predicted_return,mean_ic,mean_hit_rate,mean_prob_outperform,confidence_tier,weight_mode,score_col,lambda_mix,top_benchmark,top_benchmark_weight,recommendation_mode,recommended_sell_pct,is_live_path
-equal_weight,8,NEUTRAL,-0.02101466593488967,0.14466423801753217,0.6565582808794017,0.5,LOW,equal,,0.0,VOO,0.125,DEFER-TO-TAX-DEFAULT,0.5,False
-quality_weighted,8,NEUTRAL,-0.020646908568888657,0.155416843248605,0.6651253593698213,0.5,LOW,shrink_to_equal,nw_ic,0.25,BND,0.15021145770342673,DEFER-TO-TAX-DEFAULT,0.5,True
+equal_weight,8,NEUTRAL,-0.02278140103149871,0.1398280178089123,0.6503715106732347,0.5,LOW,equal,,0.0,VOO,0.125,DEFER-TO-TAX-DEFAULT,0.5,False
+quality_weighted,8,NEUTRAL,-0.021649748917123658,0.1509050759500422,0.6589598330766098,0.5,LOW,shrink_to_equal,nw_ic,0.25,BND,0.1537367966053566,DEFER-TO-TAX-DEFAULT,0.5,True
