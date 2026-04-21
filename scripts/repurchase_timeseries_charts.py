@@ -139,18 +139,27 @@ def style_ax(ax, title, ylabel, color):
     ax.spines["right"].set_visible(False)
 
 
-# PGR had a 4-for-1 stock split in May 2006
-SPLIT_DATE = datetime.date(2006, 5, 1)
-SPLIT_LABEL = "4-for-1 split\n(May 2006)"
+# PGR stock split history
+SPLIT_2002 = (datetime.date(2002, 4, 23), "3-for-1 split\n(Apr 2002)")
+SPLIT_2006 = (datetime.date(2006, 5, 1),  "4-for-1 split\n(May 2006)")
 
-def add_split_line(ax, ymax_frac=0.92):
-    """Draw a vertical dashed line and label at the 2006 split date."""
-    ax.axvline(SPLIT_DATE, color="#888888", linewidth=1.0, linestyle="--", alpha=0.7)
+def _add_split_annotation(ax, split_date, split_label, ymax_frac=0.92):
+    """Draw a single vertical dashed split-line with label."""
+    ax.axvline(split_date, color="#888888", linewidth=1.0, linestyle="--", alpha=0.7)
     ylim = ax.get_ylim()
     y_pos = ylim[0] + (ylim[1] - ylim[0]) * ymax_frac
-    ax.text(SPLIT_DATE, y_pos, SPLIT_LABEL,
+    ax.text(split_date, y_pos, split_label,
             ha="left", va="top", fontsize=7.5, color="#555555",
             bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="#cccccc", alpha=0.8))
+
+def add_split_line(ax, ymax_frac=0.92):
+    """Annotate the May 2006 4-for-1 split (used on charts whose data starts post-2002)."""
+    _add_split_annotation(ax, *SPLIT_2006, ymax_frac=ymax_frac)
+
+def add_both_split_lines(ax, ymax_frac=0.92):
+    """Annotate both the Apr 2002 3-for-1 and May 2006 4-for-1 splits."""
+    _add_split_annotation(ax, *SPLIT_2002, ymax_frac=ymax_frac)
+    _add_split_annotation(ax, *SPLIT_2006, ymax_frac=ymax_frac)
 
 
 # ── 5. Chart 1: Book Value Per Share ──────────────────────────────────────────
@@ -233,7 +242,7 @@ ax.plot(dates_price, price_vals, color=RED, linewidth=1.8)
 ax.fill_between(dates_price, price_vals, alpha=0.08, color=RED)
 style_ax(ax, "PGR — Share Price (Monthly, As-Reported / Not Split-Adjusted)", "$ per share", RED)
 ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("$%.0f"))
-add_split_line(ax)
+add_both_split_lines(ax)  # price data starts 1999 — both 2002 and 2006 splits visible
 fig.tight_layout()
 out4 = os.path.join(OUT_DIR, "pgr_share_price.png")
 fig.savefig(out4, dpi=150, bbox_inches="tight")
