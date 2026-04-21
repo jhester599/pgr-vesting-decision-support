@@ -190,3 +190,137 @@ def test_validate_parsed_record_accepts_pif_in_thousands():
     }
     validated = _validate_parsed_record(record, "2023-09-15", "000008066123000045")
     assert validated["pif_total"] == pytest.approx(29574.9)
+
+
+# ---------------------------------------------------------------------------
+# Quarterly format: 9-column table (adds YTD columns after the 7-column set)
+# CR must be nums[-4] = current-quarter company total when YTD columns present.
+# The cross-validation path should correct nums[-2] (YTD total) when sub-ratios
+# are available.
+# ---------------------------------------------------------------------------
+
+def _nine_column_quarterly_html() -> str:
+    """Simulates a quarterly supplement where ratio rows have different column counts.
+
+    Loss/LAE and Expense rows: 7 columns (6 segments + prior-year total).
+    Combined ratio row: 9 columns (6 segments + PY_Q_Total + YTD_Total + PY_YTD_Total).
+
+    The parser starts with nums[-2] = YTD_Total = 99.1 for combined ratio.
+    Sub-ratios from the 7-column rows: loss=73.5, expense=16.4 → sum=89.9.
+    |99.1 − 89.9| = 9.2 > 5pp → cross-validation triggers and replaces 99.1 with 89.9.
+    """
+    return """
+    <html><body>
+      <table>
+        <tr><td>Companywide Total</td><td>32000.0</td></tr>
+      </table>
+      <table>
+        <tr><td>Loss/LAE ratio</td><td>72.1</td><td>70.5</td><td>71.2</td><td>88.4</td><td>95.3</td><td>73.5</td><td>81.3</td></tr>
+        <tr><td>Expense ratio</td><td>17.2</td><td>12.5</td><td>14.6</td><td>19.8</td><td>27.4</td><td>16.4</td><td>15.9</td></tr>
+        <tr><td>Combined ratio</td><td>89.3</td><td>83.0</td><td>85.8</td><td>108.2</td><td>122.7</td><td>89.9</td><td>97.2</td><td>99.1</td><td>90.3</td></tr>
+      </table>
+      <table>
+        <tr><td>Book value per common share</td><td>$</td><td>54.82</td></tr>
+      </table>
+    </body></html>
+    """
+
+
+def test_parse_nine_column_quarterly_cross_validates_cr():
+    """Nine-column combined ratio: cross-validation corrects nums[-2]=99.1 to 89.9."""
+    parsed = _parse_html_exhibit(_nine_column_quarterly_html(), "2026-04-15", item_code="2.02")
+    assert parsed is not None
+    # loss_lae=73.5, expense=16.4 → sum=89.9; |99.1-89.9|>5 triggers cross-validate
+    assert parsed["combined_ratio"] == pytest.approx(89.9)
+    assert parsed["loss_lae_ratio"] == pytest.approx(73.5)
+    assert parsed["expense_ratio"] == pytest.approx(16.4)
+
+
+# ---------------------------------------------------------------------------
+# Cover-page 8-K: the first exhibit URL is a form cover with no operating data.
+# _parse_html_exhibit must return None for cover pages so the multi-exhibit
+# fetcher can fall through to the actual operating supplement.
+# ---------------------------------------------------------------------------
+
+def _cover_page_html() -> str:
+    """Minimal 8-K cover page: announces results, refers to Exhibit 99.1.
+    No combined_ratio or PIF data present.
+    """
+    return """
+    <html><body>
+      <p>FORM 8-K</p>
+      <p>Item 2.02 Results of Operations and Financial Condition</p>
+      <p>On April 15, 2026, The Progressive Corporation issued a press
+         release reporting its first quarter 2026 results.  A copy of the
+         press release is furnished as Exhibit 99.1 to this report.</p>
+    </body></html>
+    """
+
+
+def test_parse_cover_page_returns_none():
+    """A bare 8-K cover page with no data must return None so fallback logic triggers."""
+    parsed = _parse_html_exhibit(_cover_page_html(), "2026-04-15", item_code="2.02")
+    assert parsed is None
+
+
+# ---------------------------------------------------------------------------
+# Combined ratio extracted from narrative paragraph (no table structure).
+# Tests that the text-mode fallback can find CR when it appears in prose.
+# ---------------------------------------------------------------------------
+
+def _narrative_cr_html() -> str:
+    """8-K exhibit where CR appears only in a narrative paragraph, not a table.
+
+    The sentence structure puts 89.9 and 97.2 within 100 chars of 'combined ratio'
+    (triggering the near-window path), while the loss ratio (73.5) appears more
+    than 100 chars later.  The near-window logic picks the first value (89.9).
+
+    Also includes PIF total so the parser doesn't return None.
+    """
+    return """
+    <html><body>
+      <p>The Progressive Corporation today announced first quarter 2026 results.</p>
+      <p>The companywide combined ratio for the first quarter was 89.9%, compared
+         to 97.2% in the prior year first quarter quarter period twelve months.</p>
+      <p>The loss and LAE ratio was 73.5% and the expense ratio was 16.4%.</p>
+      <table>
+        <tr><td>Companywide Total</td><td>32000.0</td></tr>
+      </table>
+    </body></html>
+    """
+
+
+def test_parse_narrative_cr_text_fallback():
+    """Near-window path: 1–2 values within 100 chars of label → first value is CR."""
+    parsed = _parse_html_exhibit(_narrative_cr_html(), "2026-04-15", item_code="2.02")
+    assert parsed is not None
+    # Near window finds [89.9, 97.2]; picks first = 89.9 (current period)
+    assert parsed["combined_ratio"] == pytest.approx(89.9)
+
+
+# ---------------------------------------------------------------------------
+# Quarterly CR label uses alternative text: "Combined Loss and Expense Ratio"
+# ---------------------------------------------------------------------------
+
+def _alt_label_quarterly_html() -> str:
+    """Quarterly exhibit using 'Combined loss and expense ratio' as the label."""
+    return """
+    <html><body>
+      <table>
+        <tr><td>Companywide Total</td><td>31000.0</td></tr>
+      </table>
+      <table>
+        <tr><td>Combined loss and expense ratio</td><td>89.3</td><td>83.0</td><td>85.8</td><td>108.2</td><td>122.7</td><td>89.9</td><td>97.2</td></tr>
+      </table>
+      <table>
+        <tr><td>Book value per common share</td><td>$</td><td>54.82</td></tr>
+      </table>
+    </body></html>
+    """
+
+
+def test_parse_alt_label_combined_ratio():
+    """Alternative label 'combined loss and expense ratio' is matched correctly."""
+    parsed = _parse_html_exhibit(_alt_label_quarterly_html(), "2026-04-15", item_code="2.02")
+    assert parsed is not None
+    assert parsed["combined_ratio"] == pytest.approx(89.9)
