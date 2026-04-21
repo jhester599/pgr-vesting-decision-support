@@ -151,6 +151,30 @@ def test_parse_quarterly_exhibit_extracts_current_quarter_ratios():
     assert parsed["filing_type"] == "quarterly_earnings"
 
 
+def test_parse_quarterly_exhibit_text_mode_cr_fallback():
+    """CR label and values in separate rows — table scanner misses it, text-mode finds it."""
+    html = """
+    <html><body>
+      <table>
+        <tr><td>Companywide Total</td><td>32000.0</td></tr>
+      </table>
+      <table>
+        <tr><td>Combined ratio</td></tr>
+        <tr><td>Agency</td><td>Direct</td><td>PLTotal</td><td>Commercial</td><td>Property</td><td>Total</td><td>PY Total</td></tr>
+        <tr><td></td><td>89.3</td><td>83.0</td><td>85.8</td><td>108.2</td><td>122.7</td><td>90.9</td><td>97.2</td></tr>
+      </table>
+      <table>
+        <tr><td>Book value per common share</td><td>$</td><td>54.82</td></tr>
+      </table>
+    </body></html>
+    """
+    parsed = _parse_html_exhibit(html, "2026-04-15", item_code="2.02")
+    assert parsed is not None
+    # Table scanner sees no nums in the "combined ratio" row; text-mode fallback
+    # finds 7 valid values in vicinity and picks vals[-2] = 90.9
+    assert parsed["combined_ratio"] == pytest.approx(90.9)
+
+
 def test_validate_parsed_record_accepts_pif_in_thousands():
     record = {
         "combined_ratio": 97.2,

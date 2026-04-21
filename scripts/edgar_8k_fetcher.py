@@ -772,6 +772,31 @@ def _parse_html_exhibit(
         lo=60.0, hi=140.0,
     )
 
+    # Text-mode CR fallback: strips all HTML tags first so label/value pairs
+    # that span separate table rows (a common quarterly-earnings layout) are
+    # visible as plain text.  Finds "combined ratio" then collects all
+    # decimals in [60, 140] within the next 300 characters and applies the
+    # same column-position logic used by the table scanner.
+    # Runs whenever the table scanner found nothing; overrides the raw-HTML
+    # regex (which may grab the first/agency segment value rather than the
+    # company total when the label and values are in different rows).
+    if table_metrics["combined_ratio"] is None:
+        idx = text.lower().find("combined ratio")
+        if idx >= 0:
+            vicinity = text[idx : idx + 300]
+            _cr_vals = [
+                float(v)
+                for v in re.findall(r"\b(\d{2,3}\.\d{1,2})\b", vicinity)
+                if 60.0 <= float(v) <= 140.0
+            ]
+            if _cr_vals:
+                if len(_cr_vals) >= 7:
+                    combined_ratio = _cr_vals[-2]
+                elif len(_cr_vals) >= 6:
+                    combined_ratio = _cr_vals[-1]
+                else:
+                    combined_ratio = _cr_vals[-1]
+
     # -----------------------------------------------------------------------
     # Policies in Force — total (always present in PGR supplements)
     # -----------------------------------------------------------------------
