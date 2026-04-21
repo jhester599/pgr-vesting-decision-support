@@ -1,14 +1,14 @@
 {
   "artifact_classification": "production",
-  "as_of_date": "2026-04-20",
-  "git_sha": "84ef68a6a0f7f9df15721e5bfa7859f8ef2befcf",
+  "as_of_date": "2026-04-21",
+  "git_sha": "87b770263cf49f068f883f55a3e9514d13101c5e",
   "latest_dates": {
     "daily_dividends.ex_date": "2026-06-10",
     "daily_prices.date": "2026-04-17",
     "fred_macro_monthly.month_end": "2026-04-30",
     "model_performance_log.month_end": "2026-04-30",
     "monthly_relative_returns.date": "2025-09-30",
-    "pgr_edgar_monthly.month_end": "2026-02-28",
+    "pgr_edgar_monthly.month_end": "2026-03-31",
     "pgr_fundamentals_quarterly.period_end": "2025-12-31"
   },
   "outputs": [
@@ -28,14 +28,14 @@
     "fred_macro_monthly": 8034,
     "model_performance_log": 3,
     "monthly_relative_returns": 9448,
-    "pgr_edgar_monthly": 257,
+    "pgr_edgar_monthly": 258,
     "pgr_fundamentals_quarterly": 72
   },
-  "run_timestamp_utc": "2026-04-20T16:17:13.059894+00:00",
+  "run_timestamp_utc": "2026-04-21T16:13:37.673726+00:00",
   "schema_version": "003_model_retrain_log",
   "script_name": "scripts/monthly_decision.py",
   "warnings": [
-    "Aggregate OOS R^2 below threshold: -5.02% < 2.00%.",
+    "Aggregate OOS R^2 below threshold: -2.29% < 2.00%.",
     "Representative CPCV verdict is FAIL.",
     "Trailing conformal coverage deviates materially from nominal: 56.2% vs 80%."
   ],

@@ -1,6 +1,6 @@
 # PGR Diagnostic Report — April 2026
 
-**As-of Date:** 2026-04-20  
+**As-of Date:** 2026-04-21  
 **Horizon:** 6M  
 **OOS observations (aggregate):** 1188  
 **Newey-West lags:** 5 (accounts for 5-month return-window overlap)  
@@ -11,15 +11,15 @@
 
 | Metric | Value | Status | Threshold (Good) |
 |--------|-------|--------|-----------------|
-| OOS R² (Campbell-Thompson) | -0.0502 (-5.02%) | ❌ | ≥ 2.00% |
-| IC (Newey-West HAC) | 0.1645 | ✅ | ≥ 0.07 |
-| IC significance | 0.0002 | ✅ p < 0.05 | p < 0.05 |
-| Clark-West t-stat | 3.0703 | ✅ p < 0.05 | p < 0.05 |
-| Clark-West p-value | 0.0011 | ✅ p < 0.05 | p < 0.05 |
+| OOS R² (Campbell-Thompson) | -0.0229 (-2.29%) | ❌ | ≥ 2.00% |
+| IC (Newey-West HAC) | 0.1609 | ✅ | ≥ 0.07 |
+| IC significance | 0.0003 | ✅ p < 0.05 | p < 0.05 |
+| Clark-West t-stat | 3.4697 | ✅ p < 0.05 | p < 0.05 |
+| Clark-West p-value | 0.0003 | ✅ p < 0.05 | p < 0.05 |
 | Hit Rate | 66.8% | ✅ | ≥ 55.0% |
 | CPCV Positive Paths | 1/7 (12.5%) | ❌ | ≥ 5/7 |
 
-> **Representative CPCV:** benchmark=VOO, model=ridge, paths=7, mean IC=-0.0478, IC std=0.1024.
+> **Representative CPCV:** benchmark=VOO, model=ridge, paths=7, mean IC=-0.0443, IC std=0.1030.
 > Stability verdict: FAIL. Scaled monthly threshold: ≥ 5/7 (maps from the full C(8,2) standard of ≥ 19/28 positive paths).
 
 ---
@@ -29,12 +29,12 @@
 
 | Metric | Value | Status | Threshold (Good) |
 |--------|-------|--------|-----------------|
-| Full obs/feature ratio | 18.75 | ✅ | ≥ 4.0 |
+| Full obs/feature ratio | 18.42 | ✅ | ≥ 4.0 |
 | Per-fold obs/feature ratio | 5.00 | ✅ | ≥ 4.0 |
 | Features in monthly run | 12 | — | — |
-| Fully populated observations | 225 | — | — |
+| Fully populated observations | 221 | — | — |
 
-> obs/feature ratio: 18.8 (full matrix), 5.0 (per WFO fold, 60M window).  n_obs=225, n_features=12.  Verdict: OK.
+> obs/feature ratio: 18.4 (full matrix), 5.0 (per WFO fold, 60M window).  n_obs=221, n_features=12.  Verdict: OK.
 
 ### Feature Importance Stability
 
@@ -67,7 +67,7 @@
 | Phase | Description | Status |
 |-------|-------------|--------|
 | Phase 1 | Raw BayesianRidge posterior (uncalibrated) | ⬛ Superseded |
-| Phase 2 | Platt scaling (logistic regression on OOS scores → binary) | ✅ Active (n=1,188  ECE=2.3% [1.7%–7.1%]) |
+| Phase 2 | Platt scaling (logistic regression on OOS scores → binary) | ✅ Active (n=1,188  ECE=3.3% [1.9%–7.4%]) |
 | Phase 3 | Platt → Isotonic (non-parametric; monotone reliability) | ⏳ Activates at n ≥ 500 |
 
 ---
@@ -77,20 +77,20 @@
 **Method:** ACI (Adaptive Conformal Inference — adjusts α_t for distribution shift)  
 **Nominal Coverage:** 80%  
 
-**Mean empirical coverage:** 90.8% (target ≥ 80%) ✅  
+**Mean empirical coverage:** 90.2% (target ≥ 80%) ✅  
 
 **Mean trailing 12-point empirical coverage:** 56.2% (gap -23.8% vs nominal) ❌  
 
 | Benchmark | Description | Predicted Return | CI Lower | CI Upper | CI Width | Emp. Coverage | Trailing 12 Coverage | N Cal |
 |-----------|-------------|----------------|----------|----------|----------|---------------|----------------------|-------|
-| VOO | S&P 500 | +0.67% | -27.13% | +28.47% | 55.60% | 94.4% ✅ | 58.3% | 108 |
-| VXUS | Total International Stock | +2.13% | -34.80% | +39.05% | 73.85% | 98.1% ✅ | 50.0% | 108 |
-| VWO | Emerging Markets | -0.08% | -36.01% | +35.84% | 71.85% | 97.7% ✅ | 50.0% | 174 |
-| VMBS | Mortgage-Backed Securities | +3.29% | -18.15% | +24.73% | 42.88% | 83.3% ✅ | 75.0% | 120 |
-| BND | Total Bond Market | +3.64% | -17.81% | +25.08% | 42.89% | 86.7% ✅ | 75.0% | 150 |
-| GLD | Gold Shares | -7.67% | -42.84% | +27.50% | 70.34% | 91.7% ✅ | 33.3% | 180 |
-| DBC | DB Commodity Index | -9.05% | -37.26% | +19.17% | 56.43% | 88.7% ✅ | 58.3% | 168 |
-| VDE | Energy | -11.15% | -42.12% | +19.82% | 61.94% | 85.6% ✅ | 50.0% | 180 |
+| VOO | S&P 500 | -1.71% | -29.73% | +26.32% | 56.05% | 94.4% ✅ | 58.3% | 108 |
+| VXUS | Total International Stock | +0.72% | -35.46% | +36.90% | 72.36% | 98.1% ✅ | 50.0% | 108 |
+| VWO | Emerging Markets | -2.49% | -37.79% | +32.82% | 70.61% | 97.7% ✅ | 50.0% | 174 |
+| VMBS | Mortgage-Backed Securities | -0.13% | -21.48% | +21.22% | 42.70% | 83.3% ✅ | 66.7% | 120 |
+| BND | Total Bond Market | +0.08% | -21.40% | +21.57% | 42.97% | 86.7% ✅ | 75.0% | 150 |
+| GLD | Gold Shares | -12.13% | -37.80% | +13.54% | 51.33% | 86.7% ✅ | 41.7% | 180 |
+| DBC | DB Commodity Index | -9.69% | -37.98% | +18.60% | 56.58% | 88.7% ✅ | 58.3% | 168 |
+| VDE | Energy | -10.69% | -40.99% | +19.62% | 60.60% | 85.6% ✅ | 50.0% | 180 |
 
 > **Interpretation:** The CI width reflects model uncertainty — wider intervals indicate
 > larger historical prediction errors.  ACI dynamically adjusts coverage when errors
@@ -102,18 +102,18 @@
 
 | Benchmark | Description | N OOS | OOS R² | NW IC | Hit Rate | CW t | CW p |
 |-----------|-------------|-------|--------|-------|----------|------|------|
-| DBC | DB Commodity Index | 168 | -1.74% | 0.2270 | 72.6% | 2.1982 | 0.0147 |
-| VOO | S&P 500 | 108 | -9.12% | -0.0044 | 53.7% | 1.8668 | 0.0323 |
-| VDE | Energy | 180 | -3.98% | 0.1045 | 65.6% | 1.5538 | 0.0610 |
-| VXUS | Total International Stock | 108 | -6.57% | 0.1084 | 73.1% | 1.4043 | 0.0816 |
-| VMBS | Mortgage-Backed Securities | 120 | -11.87% | 0.2289 | 80.8% | 1.2340 | 0.1098 |
-| VWO | Emerging Markets | 174 | -9.55% | 0.1257 | 62.6% | 0.9013 | 0.1844 |
-| BND | Total Bond Market | 150 | -12.57% | 0.2949 | 74.7% | 0.8387 | 0.2015 |
-| GLD | Gold Shares | 180 | -14.16% | 0.1397 | 55.0% | 0.7433 | 0.2291 |
+| DBC | DB Commodity Index | 168 | 1.54% | 0.2205 | 72.0% | 2.1384 | 0.0170 |
+| VOO | S&P 500 | 108 | -9.19% | -0.0057 | 51.9% | 1.9178 | 0.0289 |
+| VDE | Energy | 180 | -0.66% | 0.0753 | 65.6% | 1.7877 | 0.0378 |
+| VXUS | Total International Stock | 108 | -5.29% | 0.1450 | 71.3% | 1.4578 | 0.0739 |
+| VMBS | Mortgage-Backed Securities | 120 | -12.58% | 0.2379 | 80.8% | 1.2330 | 0.1100 |
+| GLD | Gold Shares | 180 | -8.79% | 0.1300 | 55.6% | 1.0462 | 0.1484 |
+| VWO | Emerging Markets | 174 | -5.67% | 0.1323 | 64.4% | 0.9463 | 0.1727 |
+| BND | Total Bond Market | 150 | -12.54% | 0.2961 | 74.7% | 0.7960 | 0.2137 |
 
 **IC summary:** 7 ✅  0 ⚠️  1 ❌  (of 8 benchmarks)  
 **Hit rate ✅:** 7/8 benchmarks above 55% threshold  
-**Clark-West ✅:** 2/8 benchmarks with p < 0.05  
+**Clark-West ✅:** 3/8 benchmarks with p < 0.05  
 
 ---
 
@@ -126,7 +126,7 @@
 | Recommended Sell % | 50% |
 | Would Change Live Output | No |
 | Reason | no regression sell to veto |
-| P(Actionable Sell) | 35.9% |
+| P(Actionable Sell) | 38.5% |
 
 ---
 
