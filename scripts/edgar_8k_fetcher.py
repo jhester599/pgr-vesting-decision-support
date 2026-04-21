@@ -250,14 +250,17 @@ def fetch_all_8k_filings(cutoff_date: str) -> list[dict[str, Any]]:
 # Filing document URL resolution
 # ---------------------------------------------------------------------------
 
-def _get_filing_doc_url(
+def _get_all_filing_doc_urls(
     accession_number: str,
     accession_dashed: str,
-) -> str | None:
-    """Resolve the primary HTML exhibit URL for an 8-K filing.
+) -> list[str]:
+    """Return all candidate HTML exhibit URLs for an 8-K filing, sorted by preference.
 
-    Fetches the filing index page and returns the first suitable ``.htm``
-    document, preferring files whose name contains ``"8k"`` or ``"pgr"``.
+    Fetches the filing index page and returns every suitable ``.htm`` document
+    in preference order: PGR-named files first, then 8-K-named files, then
+    everything else.  This allows callers to try multiple exhibits (important
+    for quarterly earnings 8-Ks where the main 8-K form cover is listed before
+    the Exhibit 99.1 operating supplement that contains the actual data).
 
     Args:
         accession_number: Cleaned accession (no dashes), e.g.
@@ -266,7 +269,8 @@ def _get_filing_doc_url(
             ``"0000080661-24-000001"``.
 
     Returns:
-        Full URL to the primary HTML exhibit, or ``None`` if none found.
+        Ordered list of full exhibit URLs; empty list if the index cannot be
+        fetched or no suitable ``.htm`` files are found.
     """
     index_url = (
         f"{EDGAR_ARCHIVES_URL}/{accession_number}"
@@ -277,7 +281,7 @@ def _get_filing_doc_url(
         html = resp.text
     except Exception as exc:
         log.debug("Cannot fetch index for %s: %s", accession_number, exc, exc_info=True)
-        return None
+        return []
 
     # Extract all .htm hrefs from the filing index
     pattern = re.compile(
@@ -286,6 +290,10 @@ def _get_filing_doc_url(
     )
     candidates = pattern.findall(html)
 
+    pgr_named: list[str] = []
+    k8_named: list[str] = []
+    other: list[str] = []
+
     for href in candidates:
         fname = href.split("/")[-1].lower()
         # Skip XBRL viewer and inline XBRL files
@@ -293,16 +301,32 @@ def _get_filing_doc_url(
             continue
         if fname.startswith("r") and fname[1:].isdigit():
             continue
-        # Prefer PGR/8-K named files
-        if "8k" in fname or "8-k" in fname or "pgr" in fname:
-            return f"https://www.sec.gov{href}"
+        url = f"https://www.sec.gov{href}"
+        if "pgr" in fname:
+            pgr_named.append(url)
+        elif "8k" in fname or "8-k" in fname:
+            k8_named.append(url)
+        else:
+            other.append(url)
 
-    # Fall back to first candidate that isn't a viewer redirect
-    for href in candidates:
-        if "ix?doc=" not in href:
-            return f"https://www.sec.gov{href}"
+    return pgr_named + k8_named + other
 
-    return None
+
+def _get_filing_doc_url(
+    accession_number: str,
+    accession_dashed: str,
+) -> str | None:
+    """Return the top-priority HTML exhibit URL for an 8-K filing.
+
+    Thin wrapper around ``_get_all_filing_doc_urls`` that returns only the
+    first (highest-priority) candidate.  For quarterly 8-Ks you should call
+    ``_get_all_filing_doc_urls`` directly so all exhibits can be tried.
+
+    Returns:
+        Full URL to the primary HTML exhibit, or ``None`` if none found.
+    """
+    urls = _get_all_filing_doc_urls(accession_number, accession_dashed)
+    return urls[0] if urls else None
 
 
 # ---------------------------------------------------------------------------
@@ -645,24 +669,51 @@ def _parse_html_exhibit(
                     table_metrics["eps_diluted"] = value
                 elif value != table_metrics["eps_diluted"]:
                     table_metrics["comprehensive_eps_diluted"] = value
-            elif "combined ratio" in label and nums and table_metrics["combined_ratio"] is None:
+            elif (
+                ("combined ratio" in label or "combined loss" in label)
+                and nums
+                and table_metrics["combined_ratio"] is None
+            ):
                 # Quarterly earnings (item 2.02) appends a prior-year company total as the
                 # 7th column; current-quarter company total is at nums[-2], prior year at
                 # nums[-1].  Monthly supplements have exactly 6 columns (nums[-1] = total).
+                # For 8+ values (quarterly with YTD columns), cross-validate against
+                # sub-ratios when available to pick the correct column.
                 if len(nums) >= 7:
-                    table_metrics["combined_ratio"] = nums[-2]
+                    candidate = nums[-2]
+                    lr = table_metrics.get("loss_lae_ratio")
+                    er = table_metrics.get("expense_ratio")
+                    if lr is not None and er is not None and abs(candidate - (lr + er)) > 5.0:
+                        expected = lr + er
+                        # Try tight match (±0.5pp) before falling back to ±5pp.
+                        # Tight match avoids picking a segment value (e.g. agency=89.3)
+                        # when the actual company total (89.9) is also in the list.
+                        found = False
+                        for tol in (0.5, 5.0):
+                            for v in nums:
+                                if 60.0 <= v <= 140.0 and abs(v - expected) <= tol:
+                                    candidate = v
+                                    found = True
+                                    break
+                            if found:
+                                break
+                    table_metrics["combined_ratio"] = candidate
                 elif len(nums) >= 6:
                     table_metrics["combined_ratio"] = nums[-1]
                 else:
                     table_metrics["combined_ratio"] = nums[0]
-            elif "loss/lae ratio" in label and nums:
+            elif ("loss/lae ratio" in label or "loss ratio" in label) and nums:
                 if len(nums) >= 7:
                     table_metrics["loss_lae_ratio"] = nums[-2]
                 elif len(nums) >= 6:
                     table_metrics["loss_lae_ratio"] = nums[-1]
                 else:
                     table_metrics["loss_lae_ratio"] = nums[0]
-            elif "expense ratio" in label and "net catastrophe" not in label and nums:
+            elif (
+                "expense ratio" in label
+                and "net catastrophe" not in label
+                and nums
+            ):
                 if len(nums) >= 7:
                     table_metrics["expense_ratio"] = nums[-2]
                 elif len(nums) >= 6:
@@ -774,28 +825,86 @@ def _parse_html_exhibit(
 
     # Text-mode CR fallback: strips all HTML tags first so label/value pairs
     # that span separate table rows (a common quarterly-earnings layout) are
-    # visible as plain text.  Finds "combined ratio" then collects all
-    # decimals in [60, 140] within the next 300 characters and applies the
-    # same column-position logic used by the table scanner.
-    # Runs whenever the table scanner found nothing; overrides the raw-HTML
-    # regex (which may grab the first/agency segment value rather than the
-    # company total when the label and values are in different rows).
+    # visible as plain text.
+    #
+    # Strategy:
+    #   1. Find ALL occurrences of "combined ratio" in the stripped text.
+    #   2. For each occurrence, try a "near window" (first 100 chars after the
+    #      label): if exactly 1–2 values appear there, the first is the answer
+    #      (handles narrative prose: "combined ratio was 89.9%, vs 97.2% PY").
+    #   3. If the near window is inconclusive (0 or 3+ values), use a wide
+    #      window (−200 / +600 chars) to capture tabular layouts where values
+    #      may be several rows below the label.  Apply column-position logic:
+    #      ≥7 values → nums[-2] (quarterly tables append a prior-year company
+    #      total as the last column); fewer → nums[-1].
+    #   4. Cross-validate the candidate against loss_lae+expense if both are
+    #      available; if the delta >5 pp, search the value list for a better
+    #      match (handles 9-column tables where nums[-2] is a YTD total).
+    #
+    # Runs whenever the table scanner found nothing.
     if table_metrics["combined_ratio"] is None:
-        idx = text.lower().find("combined ratio")
-        if idx >= 0:
-            vicinity = text[idx : idx + 300]
-            _cr_vals = [
+        text_lower = text.lower()
+        cr_offsets = [
+            m.start() for m in re.finditer(r"combined\s+ratio", text_lower)
+        ]
+        best_cr_candidate: float | None = None
+        best_cr_vals: list[float] = []
+
+        for idx in cr_offsets:
+            # --- Near window: narrative or single-value inline layout ---
+            near = text[idx : min(len(text), idx + 100)]
+            near_vals = [
                 float(v)
-                for v in re.findall(r"\b(\d{2,3}\.\d{1,2})\b", vicinity)
+                for v in re.findall(r"\b(\d{2,3}\.\d{1,2})\b", near)
                 if 60.0 <= float(v) <= 140.0
             ]
-            if _cr_vals:
-                if len(_cr_vals) >= 7:
-                    combined_ratio = _cr_vals[-2]
-                elif len(_cr_vals) >= 6:
-                    combined_ratio = _cr_vals[-1]
-                else:
-                    combined_ratio = _cr_vals[-1]
+            if 1 <= len(near_vals) <= 2:
+                # Unambiguous: first value is the current-period CR
+                best_cr_candidate = near_vals[0]
+                best_cr_vals = near_vals
+                break  # Clean near match; stop examining further occurrences
+
+            # --- Wide window: tabular layout, values may be far from label ---
+            start = max(0, idx - 200)
+            end = min(len(text), idx + 600)
+            wide_vals = [
+                float(v)
+                for v in re.findall(r"\b(\d{2,3}\.\d{1,2})\b", text[start:end])
+                if 60.0 <= float(v) <= 140.0
+            ]
+            if len(wide_vals) > len(best_cr_vals):
+                best_cr_vals = wide_vals
+
+        # Apply column-position logic if no near match was found
+        if best_cr_candidate is None and best_cr_vals:
+            if len(best_cr_vals) >= 7:
+                best_cr_candidate = best_cr_vals[-2]
+            else:
+                best_cr_candidate = best_cr_vals[-1]
+
+        # Cross-validate against sub-ratios when both are available
+        if best_cr_candidate is not None:
+            lr = table_metrics.get("loss_lae_ratio")
+            er = table_metrics.get("expense_ratio")
+            if (
+                lr is not None
+                and er is not None
+                and abs(best_cr_candidate - (lr + er)) > 5.0
+            ):
+                expected = lr + er
+                # Tight match first (±0.5pp) to avoid picking segment values that
+                # happen to fall within the loose 5pp window.
+                found = False
+                for tol in (0.5, 5.0):
+                    for v in best_cr_vals:
+                        if abs(v - expected) <= tol:
+                            best_cr_candidate = v
+                            found = True
+                            break
+                    if found:
+                        break
+
+            combined_ratio = best_cr_candidate
 
     # -----------------------------------------------------------------------
     # Policies in Force — total (always present in PGR supplements)
@@ -1387,6 +1496,14 @@ def fetch_and_upsert(
     records: list[dict[str, Any]] = []
     parse_errors = 0
 
+    def _completeness_score(rec: dict[str, Any]) -> int:
+        """Count non-None fields; combined_ratio presence adds a large bonus."""
+        base = sum(1 for k, v in rec.items() if v is not None and k != "month_end")
+        # Heavily weight having a combined_ratio — it's the most critical field.
+        if rec.get("combined_ratio") is not None:
+            base += 100
+        return base
+
     for filing in filings:
         accession = filing["accession_number"]
         accession_dashed = filing["accession_dashed"]
@@ -1395,20 +1512,82 @@ def fetch_and_upsert(
         log.debug("Processing %s (filed %s, item %s) …", accession, filing_date, item_code)
 
         try:
-            doc_url = _get_filing_doc_url(accession, accession_dashed)
-            if doc_url is None:
+            doc_urls = _get_all_filing_doc_urls(accession, accession_dashed)
+            if not doc_urls:
                 log.debug("No HTML exhibit found for %s — skipping.", accession)
                 continue
 
-            resp = _get(doc_url)
-            html = resp.text
-            parsed = _parse_html_exhibit(html, filing_date, item_code=item_code)
+            # For quarterly earnings (item 2.02) the 8-K often has two exhibits:
+            #   (1) the form cover page (no data), (2) the operating supplement.
+            # Try all exhibit URLs and keep the one with the best parsed coverage,
+            # prioritising any exhibit that yields a non-null combined_ratio.
+            # For monthly supplements (item 7.01) only the first URL is tried
+            # (current behaviour, which works reliably).
+            max_exhibits_to_try = len(doc_urls) if item_code == "2.02" else 1
+
+            parsed: dict[str, Any] | None = None
+            used_url: str = doc_urls[0]
+
+            for url_idx, doc_url in enumerate(doc_urls[:max_exhibits_to_try]):
+                try:
+                    resp = _get(doc_url)
+                    html = resp.text
+                    candidate = _parse_html_exhibit(html, filing_date, item_code=item_code)
+                except Exception as exc:
+                    log.warning(
+                        "Failed to fetch/parse exhibit %d for %s (%s): %r",
+                        url_idx + 1, accession, doc_url, exc,
+                    )
+                    continue
+
+                if candidate is None:
+                    log.debug(
+                        "Exhibit %d for %s yielded no parseable data (%s).",
+                        url_idx + 1, accession, doc_url,
+                    )
+                    continue
+
+                if parsed is None or _completeness_score(candidate) > _completeness_score(parsed):
+                    parsed = candidate
+                    used_url = doc_url
+
+                # Stop as soon as we have a combined_ratio — core field satisfied.
+                if parsed.get("combined_ratio") is not None:
+                    if url_idx > 0:
+                        log.info(
+                            "Quarterly CR found in exhibit %d for %s (%s).",
+                            url_idx + 1, accession, doc_url,
+                        )
+                    break
 
             if parsed is None:
                 log.debug(
                     "No parseable data in %s (filed %s).", accession, filing_date
                 )
                 continue
+
+            # Diagnostic: log surrounding text when quarterly CR is still None.
+            if item_code == "2.02" and parsed.get("combined_ratio") is None:
+                try:
+                    resp_diag = _get(used_url)
+                    text_diag = _strip_html_text(resp_diag.text)
+                    idx = text_diag.lower().find("combined ratio")
+                    if idx >= 0:
+                        log.warning(
+                            "DIAG %s: 'combined ratio' found at char %d in %s. "
+                            "Vicinity (300 chars): %r",
+                            accession, idx, used_url,
+                            text_diag[idx : idx + 300],
+                        )
+                    else:
+                        log.warning(
+                            "DIAG %s: 'combined ratio' NOT found in stripped text of %s. "
+                            "First 600 chars: %r",
+                            accession, used_url,
+                            text_diag[:600],
+                        )
+                except Exception:
+                    pass
 
             # v7.2: cross-validate parsed fields; nullify inconsistent ones.
             parsed = _validate_parsed_record(parsed, filing_date, accession)
@@ -1422,11 +1601,12 @@ def fetch_and_upsert(
                 continue
 
             log.info(
-                "Parsed %s  month_end=%-12s  CR=%-6s  PIF=%s",
+                "Parsed %s  month_end=%-12s  CR=%-6s  PIF=%s  item=%s",
                 accession,
                 parsed["month_end"],
                 f"{parsed['combined_ratio']:.1f}" if parsed["combined_ratio"] else "n/a",
                 f"{parsed['pif_total']:,.0f}" if parsed["pif_total"] else "n/a",
+                item_code,
             )
             records.append(parsed)
 
@@ -1451,15 +1631,11 @@ def fetch_and_upsert(
     records.sort(key=lambda r: r["month_end"])
     records = _compute_derived_fields(records)
 
-    # v7.2: prefer the filing with the most non-null fields when deduplicating.
-    def _completeness(rec: dict[str, Any]) -> int:
-        """Count non-None fields (excluding month_end)."""
-        return sum(1 for k, v in rec.items() if v is not None and k != "month_end")
-
+    # Prefer the filing with the most non-null fields when deduplicating.
     seen: dict[str, dict[str, Any]] = {}
     for rec in records:
         me = rec["month_end"]
-        if me not in seen or _completeness(rec) >= _completeness(seen[me]):
+        if me not in seen or _completeness_score(rec) >= _completeness_score(seen[me]):
             seen[me] = rec
     deduped = sorted(seen.values(), key=lambda r: r["month_end"])
 
