@@ -646,11 +646,29 @@ def _parse_html_exhibit(
                 elif value != table_metrics["eps_diluted"]:
                     table_metrics["comprehensive_eps_diluted"] = value
             elif "combined ratio" in label and nums and table_metrics["combined_ratio"] is None:
-                table_metrics["combined_ratio"] = nums[-1] if len(nums) >= 6 else nums[0]
+                # Quarterly earnings (item 2.02) appends a prior-year company total as the
+                # 7th column; current-quarter company total is at nums[-2], prior year at
+                # nums[-1].  Monthly supplements have exactly 6 columns (nums[-1] = total).
+                if len(nums) >= 7:
+                    table_metrics["combined_ratio"] = nums[-2]
+                elif len(nums) >= 6:
+                    table_metrics["combined_ratio"] = nums[-1]
+                else:
+                    table_metrics["combined_ratio"] = nums[0]
             elif "loss/lae ratio" in label and nums:
-                table_metrics["loss_lae_ratio"] = nums[-1] if len(nums) >= 6 else nums[0]
+                if len(nums) >= 7:
+                    table_metrics["loss_lae_ratio"] = nums[-2]
+                elif len(nums) >= 6:
+                    table_metrics["loss_lae_ratio"] = nums[-1]
+                else:
+                    table_metrics["loss_lae_ratio"] = nums[0]
             elif "expense ratio" in label and "net catastrophe" not in label and nums:
-                table_metrics["expense_ratio"] = nums[-1] if len(nums) >= 6 else nums[0]
+                if len(nums) >= 7:
+                    table_metrics["expense_ratio"] = nums[-2]
+                elif len(nums) >= 6:
+                    table_metrics["expense_ratio"] = nums[-1]
+                else:
+                    table_metrics["expense_ratio"] = nums[0]
             elif "agency" in label and "auto" in label and nums and table_metrics["pif_agency_auto"] is None:
                 table_metrics["pif_agency_auto"] = nums[0]
             elif "direct" in label and "auto" in label and nums and table_metrics["pif_direct_auto"] is None:
