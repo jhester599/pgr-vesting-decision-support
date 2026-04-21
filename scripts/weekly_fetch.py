@@ -47,6 +47,37 @@ from src.processing.multi_total_return import build_relative_return_targets
 
 logger = logging.getLogger(__name__)
 
+# Known stock splits for every ticker stored in daily_prices.
+# build_relative_return_targets() reads split_history from the DB; an empty
+# table causes split-date price discontinuities to appear as real returns.
+# These records are idempotent (INSERT OR REPLACE) so re-seeding on every
+# run is safe and cheap.
+_KNOWN_SPLITS: list[dict] = [
+    # PGR — Progressive Corporation
+    {"ticker": "PGR",   "split_date": "1992-12-09", "split_ratio": 3.0, "numerator": 3.0, "denominator": 1.0},
+    {"ticker": "PGR",   "split_date": "2002-04-23", "split_ratio": 3.0, "numerator": 3.0, "denominator": 1.0},
+    {"ticker": "PGR",   "split_date": "2006-05-19", "split_ratio": 4.0, "numerator": 4.0, "denominator": 1.0},
+    # VTI — Vanguard Total Stock Market ETF (benchmark)
+    {"ticker": "VTI",   "split_date": "2008-06-20", "split_ratio": 2.0, "numerator": 2.0, "denominator": 1.0},
+    # VWO — Vanguard FTSE Emerging Markets ETF (benchmark)
+    {"ticker": "VWO",   "split_date": "2008-06-20", "split_ratio": 2.0, "numerator": 2.0, "denominator": 1.0},
+    # SCHD — Schwab US Dividend Equity ETF (benchmark)
+    {"ticker": "SCHD",  "split_date": "2024-10-11", "split_ratio": 3.0, "numerator": 3.0, "denominator": 1.0},
+    # KIE — SPDR S&P Insurance ETF (benchmark)
+    {"ticker": "KIE",   "split_date": "2017-12-01", "split_ratio": 3.0, "numerator": 3.0, "denominator": 1.0},
+    # CB — Chubb Ltd (peer; in daily_prices but not a model benchmark)
+    {"ticker": "CB",    "split_date": "2006-04-21", "split_ratio": 2.0, "numerator": 2.0, "denominator": 1.0},
+    # FZROX — Fidelity ZERO Total Market (pre-2018 rows are VTI proxy; split matches VTI)
+    {"ticker": "FZROX", "split_date": "2008-06-20", "split_ratio": 2.0, "numerator": 2.0, "denominator": 1.0},
+]
+
+
+def _seed_known_splits(conn) -> None:
+    """Idempotently upsert all known stock splits into split_history."""
+    n = db_client.upsert_splits(conn, _KNOWN_SPLITS)
+    if n:
+        logger.info("Split history seeded: %s records upserted.", n)
+
 
 def _refresh_pgr_fundamentals(conn, dry_run: bool = False) -> int:
     """Fetch PGR quarterly fundamentals from SEC EDGAR XBRL and upsert into DB."""
@@ -157,6 +188,10 @@ def main(dry_run: bool = False, skip_fred: bool = False) -> None:
         _fetch_fred_step(conn, dry_run=dry_run)
     else:
         logger.info("Skipping FRED fetch (--skip-fred).")
+
+    # Ensure split_history is populated before computing returns; safe to run
+    # every time because upsert_splits uses INSERT OR REPLACE.
+    _seed_known_splits(conn)
 
     logger.info("Refreshing relative return targets (6M and 12M)...")
     if dry_run:

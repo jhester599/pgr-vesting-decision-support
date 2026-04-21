@@ -1,6 +1,6 @@
 """
 PGR Monthly Time Series: Book Value Per Share, Share Repurchases, Share Price
-Produces four line charts saved to results/research/.
+Produces five charts saved to results/research/.
 
 Data quality note
 ─────────────────
@@ -71,6 +71,7 @@ dates_bvps, bvps_vals = [], []
 dates_repvol, repvol_vals = [], []
 dates_repdol, repdol_vals = [], []
 dates_price, price_vals = [], []
+dates_pb,    pb_vals    = [], []
 
 for month_end, bvps, shares_repurch, avg_cost in edgar_rows:
     d = parse_date(month_end)
@@ -106,6 +107,12 @@ for month_end, bvps, shares_repurch, avg_cost in edgar_rows:
         dates_price.append(d)
         price_vals.append(price_by_month[ym][1])
 
+    # P/B: both price and BVPS are on the same as-reported per-share basis at
+    # each point in time, so the ratio is consistent across the 2006 split.
+    if bvps is not None and bvps > 0 and ym in price_by_month:
+        dates_pb.append(d)
+        pb_vals.append(price_by_month[ym][1] / bvps)
+
 # Also add price points for months before edgar coverage (pre-2004)
 edgar_ym_set = {r[0][:7] for r in edgar_rows}
 for ym, (date_str, close) in sorted(price_by_month.items()):
@@ -125,6 +132,7 @@ BLUE   = "#1f77b4"
 ORANGE = "#ff7f0e"
 GREEN  = "#2ca02c"
 RED    = "#d62728"
+PURPLE = "#9467bd"
 
 def style_ax(ax, title, ylabel, color):
     ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
@@ -250,7 +258,26 @@ plt.close(fig)
 print(f"Saved: {out4}")
 
 
-# ── 9. Console summary ────────────────────────────────────────────────────────
+# ── 9. Chart 5: Price / Book Value Multiple ───────────────────────────────────
+pb_mean = sum(pb_vals) / len(pb_vals)
+
+fig, ax = plt.subplots(figsize=(12, 5))
+ax.plot(dates_pb, pb_vals, color=PURPLE, linewidth=1.8)
+ax.fill_between(dates_pb, pb_vals, alpha=0.10, color=PURPLE)
+ax.axhline(pb_mean, color=PURPLE, linewidth=1.0, linestyle="--", alpha=0.6,
+           label=f"Period mean  {pb_mean:.2f}×")
+ax.legend(fontsize=9, frameon=False)
+style_ax(ax, "PGR — Price / Book Value Multiple (Monthly)", "P/B multiple", PURPLE)
+ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:.1f}×"))
+add_split_line(ax)
+fig.tight_layout()
+out5 = os.path.join(OUT_DIR, "pgr_price_to_book.png")
+fig.savefig(out5, dpi=150, bbox_inches="tight")
+plt.close(fig)
+print(f"Saved: {out5}")
+
+
+# ── 10. Console summary ───────────────────────────────────────────────────────
 print()
 print("─" * 60)
 print(f"Book value per share : {len(bvps_vals):>4} obs  "
@@ -261,10 +288,14 @@ print(f"Repurchase $ amount  : {len(repdol_vals):>4} obs  "
       f"{dates_repdol[0]} → {dates_repdol[-1]}")
 print(f"Share price          : {len(price_vals):>4} obs  "
       f"{dates_price[0]} → {dates_price[-1]}")
+print(f"Price / Book         : {len(pb_vals):>4} obs  "
+      f"{dates_pb[0]} → {dates_pb[-1]}")
 print()
 print(f"Latest BVPS          : ${bvps_vals[-1]:.2f}")
 print(f"Latest repurchase vol: {repvol_vals[-1]:.3f}M shares")
 print(f"Latest repurchase $  : ${repdol_vals[-1]:.1f}M  "
       f"(avg cost ${edgar_rows[-1][3]:.2f})")
 print(f"Latest share price   : ${price_vals[-1]:.2f}")
+print(f"Latest P/B           : {pb_vals[-1]:.2f}×  "
+      f"(mean {pb_mean:.2f}×, min {min(pb_vals):.2f}×, max {max(pb_vals):.2f}×)")
 print("─" * 60)

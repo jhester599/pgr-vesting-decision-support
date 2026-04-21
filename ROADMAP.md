@@ -27,6 +27,47 @@ reporting-only in shadow artifacts.
 - v128 benchmark-specific selection switched 4 of 10 benchmarks away from the
   shared `lean_baseline` map: `BND`, `DBC`, `VGT`, and `VIG`
 
+## Deferred: Quarterly 8-K Combined Ratio Parser Root Cause (opened 2026-04-21)
+
+**Status:** mitigated but not fully resolved.
+
+**Symptom:** `combined_ratio` is `NULL` in `pgr_edgar_monthly` for all
+`quarterly_earnings` rows (item 2.02 filings: March, June, September, December)
+even after multiple parser fixes across PRs #91–#94.
+
+**Mitigations in place (as of PR #94):**
+- Multi-exhibit fetching: `fetch_and_upsert` now tries all `.htm` exhibit URLs
+  for item 2.02 filings and keeps the result with the highest completeness score.
+- Sub-ratio fallback (two layers): if `combined_ratio` is still `None` after all
+  direct extraction and text-mode paths, it is computed as
+  `round(loss_lae_ratio + expense_ratio, 1)` — both inside `_parse_html_exhibit`
+  and after `_validate_parsed_record` in `fetch_and_upsert`.  This guarantees a
+  non-NULL value whenever both sub-ratios are successfully parsed.
+- DB patched 2026-04-21: 7 rows backfilled using the sub-ratio formula.
+- Diagnostic `WARNING` logs: when `combined_ratio` is `None` after all attempts,
+  the workflow logs the vicinity text around "combined ratio" in the fetched HTML
+  so the true root cause can be read from GitHub Actions logs.
+
+**What is still unknown:**
+- Whether the primary issue is a wrong exhibit being fetched (cover-page 8-K
+  form vs. Exhibit 99.1 operating supplement) or a label/structure mismatch in
+  the actual quarterly HTML.
+- The exact exhibit filename pattern for PGR quarterly 8-Ks — EDGAR returns 403
+  from this environment so we have never seen the raw filing index or HTML.
+
+**To investigate next session:**
+1. After the next monthly workflow run, open GitHub Actions and inspect the
+   `DIAG` WARNING log lines for any quarterly filing.  They show the exact
+   vicinity text around "combined ratio" — this will identify whether the parser
+   is receiving the right HTML and what the label/structure actually looks like.
+2. If the DIAG lines show "NOT found", the wrong exhibit is still being fetched;
+   check the `_get_all_filing_doc_urls` log output to see which URLs were tried.
+3. If the DIAG lines show the vicinity but the values are wrong, the column
+   position or label-matching logic needs further adjustment.
+4. Consider adding a `--debug-accession` CLI flag that prints the raw HTML for
+   a specific filing accession number, then trigger a `workflow_dispatch` to
+   capture the output.
+
 ## Active Research Direction: v153-v158
 
 The active plan is documented in:

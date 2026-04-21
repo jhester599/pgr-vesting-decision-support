@@ -906,6 +906,19 @@ def _parse_html_exhibit(
 
             combined_ratio = best_cr_candidate
 
+    # Sub-ratio fallback: combined_ratio = loss/LAE + expense by definition.
+    # When all direct extraction paths fail but both sub-ratios were parsed
+    # from the same exhibit, compute the combined ratio rather than leave it NULL.
+    if table_metrics["combined_ratio"] is None and combined_ratio is None:
+        _lr = table_metrics.get("loss_lae_ratio")
+        _er = table_metrics.get("expense_ratio")
+        if _lr is not None and _er is not None and 60.0 <= _lr + _er <= 140.0:
+            combined_ratio = round(_lr + _er, 1)
+            log.debug(
+                "CR derived from sub-ratios: %.1f + %.1f = %.1f (filing %s)",
+                _lr, _er, combined_ratio, filing_date,
+            )
+
     # -----------------------------------------------------------------------
     # Policies in Force — total (always present in PGR supplements)
     # -----------------------------------------------------------------------
@@ -1592,6 +1605,19 @@ def fetch_and_upsert(
             # v7.2: cross-validate parsed fields; nullify inconsistent ones.
             parsed = _validate_parsed_record(parsed, filing_date, accession)
             parsed["accession_number"] = accession
+
+            # If validation nullified combined_ratio but sub-ratios survived,
+            # recover it from loss/LAE + expense (combined ratio = their sum by definition).
+            if parsed.get("combined_ratio") is None:
+                _lr = parsed.get("loss_lae_ratio")
+                _er = parsed.get("expense_ratio")
+                if _lr is not None and _er is not None and 60.0 <= _lr + _er <= 140.0:
+                    parsed["combined_ratio"] = round(_lr + _er, 1)
+                    log.info(
+                        "CR recovered from sub-ratios for %s: %.1f + %.1f = %.1f",
+                        accession, _lr, _er, _lr + _er,
+                    )
+
             # If validation nullified both core fields, skip this filing.
             if parsed["combined_ratio"] is None and parsed["pif_total"] is None:
                 log.debug(
