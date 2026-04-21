@@ -47,13 +47,21 @@ logger = logging.getLogger(__name__)
 
 KNOWN_SPLITS: list[dict] = [
     # PGR — Progressive Corporation
-    {"ticker": "PGR", "split_date": "1992-12-09", "split_ratio": 3.0, "numerator": 3.0, "denominator": 1.0},
-    {"ticker": "PGR", "split_date": "2002-04-23", "split_ratio": 3.0, "numerator": 3.0, "denominator": 1.0},
-    {"ticker": "PGR", "split_date": "2006-05-19", "split_ratio": 4.0, "numerator": 4.0, "denominator": 1.0},
+    {"ticker": "PGR",   "split_date": "1992-12-09", "split_ratio": 3.0, "numerator": 3.0, "denominator": 1.0},
+    {"ticker": "PGR",   "split_date": "2002-04-23", "split_ratio": 3.0, "numerator": 3.0, "denominator": 1.0},
+    {"ticker": "PGR",   "split_date": "2006-05-19", "split_ratio": 4.0, "numerator": 4.0, "denominator": 1.0},
+    # VTI — Vanguard Total Stock Market ETF (benchmark)
+    {"ticker": "VTI",   "split_date": "2008-06-20", "split_ratio": 2.0, "numerator": 2.0, "denominator": 1.0},
+    # VWO — Vanguard FTSE Emerging Markets ETF (benchmark)
+    {"ticker": "VWO",   "split_date": "2008-06-20", "split_ratio": 2.0, "numerator": 2.0, "denominator": 1.0},
+    # SCHD — Schwab US Dividend Equity ETF (benchmark)
+    {"ticker": "SCHD",  "split_date": "2024-10-11", "split_ratio": 3.0, "numerator": 3.0, "denominator": 1.0},
     # KIE — SPDR S&P Insurance ETF (benchmark)
-    {"ticker": "KIE", "split_date": "2017-12-01", "split_ratio": 3.0, "numerator": 3.0, "denominator": 1.0},
-    # CB — Chubb Ltd (peer, stored in daily_prices but not a model benchmark)
-    {"ticker": "CB",  "split_date": "2006-04-21", "split_ratio": 2.0, "numerator": 2.0, "denominator": 1.0},
+    {"ticker": "KIE",   "split_date": "2017-12-01", "split_ratio": 3.0, "numerator": 3.0, "denominator": 1.0},
+    # CB — Chubb Ltd (peer; in daily_prices but not a model benchmark)
+    {"ticker": "CB",    "split_date": "2006-04-21", "split_ratio": 2.0, "numerator": 2.0, "denominator": 1.0},
+    # FZROX — Fidelity ZERO Total Market (pre-2018 rows are VTI proxy; split matches VTI)
+    {"ticker": "FZROX", "split_date": "2008-06-20", "split_ratio": 2.0, "numerator": 2.0, "denominator": 1.0},
 ]
 
 
