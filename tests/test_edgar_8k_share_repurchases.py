@@ -214,3 +214,24 @@ class TestCsvDataIntegrity:
             f"Rows with shares_repurchased > 25M:\n"
             f"{bad[['report_period','shares_repurchased']].to_string()}"
         )
+
+    def test_all_nonzero_repurchases_have_plausible_dollar_amount(self, df: pd.DataFrame):
+        """
+        Every active (non-zero) repurchase row must imply a dollar amount in [$1K, $2B].
+
+        Floor $1K: below this is almost certainly a scale error (thousands stored as units).
+        Ceiling $2B: matches _MAX_REPURCHASE_DOLLARS_M; the Oct-2004 ASR (~$1.49B) is the
+        only historical outlier above $750M and is a confirmed legitimate transaction.
+        Values above $2B would indicate a parser mis-classification.
+        """
+        active = df[
+            df["shares_repurchased"].notna()
+            & (df["shares_repurchased"] > 0)
+            & df["avg_cost_per_share"].notna()
+        ].copy()
+        active["implied_M"] = active["shares_repurchased"] * active["avg_cost_per_share"]
+        bad = active[(active["implied_M"] < 0.001) | (active["implied_M"] > 2_000)]
+        assert bad.empty, (
+            f"Rows with implied buyback outside [$1K, $2B]:\n"
+            f"{bad[['report_period','shares_repurchased','avg_cost_per_share','implied_M']].to_string()}"
+        )

@@ -459,6 +459,71 @@ def _normalise_pif_value(value: float | None) -> float | None:
     return value
 
 
+# Maximum plausible single-month repurchase for PGR in $M.
+# Set to $2B to accommodate the Oct-2004 ASR (~$1.49B), which is the
+# largest single event in PGR's buyback history.
+_MAX_REPURCHASE_DOLLARS_M: float = 2_000.0
+
+
+def _resolve_share_count(
+    raw: float,
+    avg_cost: float | None,
+    month_end: str,
+) -> float:
+    """Normalize a raw shares-repurchased figure to millions of shares.
+
+    PGR's filings use three formats across their history:
+      pre-2023-08 : decimal millions  (e.g. "0.21"    → 0.21M shares)
+      post-2023-08 large : whole-share count ≥ 1,000
+                           (e.g. "46,822"  → 0.046822M)
+      post-2023-08 small : plain integer in *thousands* of shares
+                           (e.g. "51"      → 0.051M)
+
+    Resolution strategy (in priority order):
+      1. raw ≥ 1,000  →  always a whole-share count; divide by 1,000,000.
+      2. When avg_cost is available, test two interpretations and select the
+         one whose implied repurchase dollar amount falls within the plausible
+         range [0, _MAX_REPURCHASE_DOLLARS_M]:
+           thousands : (raw / 1,000) × avg_cost   [$M]
+           millions  :  raw          × avg_cost   [$M]
+         If exactly one interpretation is in-range, use it.
+      3. Date + integer fallback (used when both or neither are in-range):
+         post-2023-08 plain integers are in thousands of shares; pre-2023-08
+         decimal values (e.g. "0.21", "16.9") are not integers and are
+         returned unchanged (already in millions).
+
+    Args:
+        raw:       Parsed numeric value from the filing.
+        avg_cost:  Average cost per share ($), or None if not yet parsed.
+        month_end: ISO date string for the reporting period ("YYYY-MM-DD").
+
+    Returns:
+        shares_repurchased in millions of shares.
+    """
+    if raw >= 1_000:
+        return raw / 1_000_000.0
+
+    if avg_cost is not None and avg_cost > 0.0:
+        implied_thousands = (raw / 1_000.0) * avg_cost
+        implied_millions  = raw * avg_cost
+
+        thousands_ok = 0.0 <= implied_thousands <= _MAX_REPURCHASE_DOLLARS_M
+        millions_ok  = 0.0 <= implied_millions  <= _MAX_REPURCHASE_DOLLARS_M
+
+        if thousands_ok and not millions_ok:
+            return raw / 1_000.0
+        if millions_ok and not thousands_ok:
+            return raw
+        # Both or neither in-range: fall through to the date heuristic.
+
+    # Date + integer heuristic: post-2023-08 small integers are in thousands.
+    # Pre-2023-08 decimal values (e.g. "0.21", "16.9") fail is_integer() and
+    # correctly fall through to return raw unchanged.
+    if float(raw).is_integer() and raw >= 1 and month_end >= "2023-08-01":
+        return raw / 1_000.0
+    return raw
+
+
 def _parse_segment_metrics(
     nums: list[float],
 ) -> tuple[float, float, float | None, float | None, float]:
@@ -780,17 +845,9 @@ def _parse_html_exhibit(
             elif "common shares outstanding" in label and nums and table_metrics["common_shares_outstanding"] is None:
                 table_metrics["common_shares_outstanding"] = nums[0]
             elif "common shares repurchased" in label and nums and table_metrics["shares_repurchased"] is None:
-                raw = nums[0]
-                if raw >= 1_000:
-                    # Large whole-share count (e.g., "46,822" or "149,112"): post-2023-08 format.
-                    table_metrics["shares_repurchased"] = raw / 1_000_000.0
-                elif float(raw).is_integer() and raw >= 1 and month_end >= "2023-08-01":
-                    # Post-2023-08 small buyback: filing shows an integer in *thousands* of shares
-                    # (e.g., "195" = 195K shares = 0.195M).  Divide by 1,000 to reach millions.
-                    table_metrics["shares_repurchased"] = raw / 1_000.0
-                else:
-                    # Pre-2023-08 decimal-millions format (e.g., "0.21", "16.9") or zero.
-                    table_metrics["shares_repurchased"] = raw
+                # Store raw for now; normalised to millions after the table loop once
+                # avg_cost_per_share is also available for dollar-plausibility cross-check.
+                table_metrics["shares_repurchased"] = nums[0]
             elif "average cost per common share" in label and nums and table_metrics["avg_cost_per_share"] is None:
                 table_metrics["avg_cost_per_share"] = nums[0]
             elif "book value per common share" in label and nums and table_metrics["book_value_per_share"] is None:
@@ -817,6 +874,19 @@ def _parse_html_exhibit(
                 table_metrics["fte_return_total_portfolio"] = nums[0]
             elif "pretax annualized investment income book yield" in label and nums and table_metrics["investment_book_yield"] is None:
                 table_metrics["investment_book_yield"] = nums[0] / 100.0
+
+    # -----------------------------------------------------------------------
+    # Normalise shares_repurchased now that both it and avg_cost_per_share
+    # have been extracted from the tables.  Passing avg_cost enables the
+    # implied-dollar cross-validation in _resolve_share_count, which is more
+    # reliable than the date+integer heuristic alone.
+    # -----------------------------------------------------------------------
+    if table_metrics["shares_repurchased"] is not None:
+        table_metrics["shares_repurchased"] = _resolve_share_count(
+            table_metrics["shares_repurchased"],
+            table_metrics.get("avg_cost_per_share"),
+            month_end,
+        )
 
     # -----------------------------------------------------------------------
     # Combined Ratio (always present; required for usability check)
@@ -1069,72 +1139,46 @@ def _parse_html_exhibit(
     )
 
     # -----------------------------------------------------------------------
-    # Shares Repurchased (stored as millions of shares) and Average Cost per
-    # Share ($).
-    #
-    # Format history:
-    #   Pre-2023-08:  decimal millions in the table (e.g. "0.21" = 0.21M shares).
-    #   Post-2023-08: two sub-formats appear depending on buyback size —
-    #     Large:  comma-formatted whole-share count ≥ 1,000 (e.g. "46,822")
-    #             → divide by 1,000,000 to convert to millions.
-    #     Small:  plain integer < 1,000 representing *thousands* of shares
-    #             (e.g. "195" = 195K shares = 0.195M shares)
-    #             → divide by 1,000 to convert thousands to millions.
-    #
-    # Note: the table-mode parser (above) is the primary extraction path and
-    # uses the same three-way logic keyed on month_end.  This text-mode path
-    # serves as a fallback when no "common shares repurchased" table row fires.
+    # Shares Repurchased (text-mode fallback — table-mode above is primary).
+    # Extract the raw value using progressively less specific patterns, then
+    # delegate unit resolution to _resolve_share_count, which applies the same
+    # implied-dollar cross-validation used in the post-table-loop step.
     # -----------------------------------------------------------------------
-    _REPURCHASE_PATTERNS_LARGE = [
+    _REPURCHASE_PATS_LARGE = [          # ≥ 4 digit/comma chars → whole-share count
         r"(?i)common\s+shares\s+repurchased(?:\s*-\s*[a-z0-9 ]+)?\s+([\d,]{4,})",
         r"(?i)shares\s+repurchased(?:\s*-\s*[a-z0-9 ]+)?\s+([\d,]{4,})",
     ]
-    _REPURCHASE_PATTERNS_SMALL = [
+    _REPURCHASE_PATS_SMALL = [          # 1–3 digits, no trailing digit → thousands
         r"(?i)common\s+shares\s+repurchased(?:\s*-\s*[a-z0-9 ]+)?\s+(\d{1,3})(?!\d)",
         r"(?i)shares\s+repurchased(?:\s*-\s*[a-z0-9 ]+)?\s+(\d{1,3})(?!\d)",
     ]
-    _REPURCHASE_PATTERNS_DECIMAL = [
+    _REPURCHASE_PATS_DECIMAL = [        # decimal fallback (pre-2023-08 format)
         r"(?i)common\s+shares\s+repurchased(?:\s*-\s*[a-z0-9 ]+)?\s+([\d,]+(?:\.\d+)?)",
         r"(?i)shares\s+repurchased(?:\s*-\s*[a-z0-9 ]+)?\s+([\d,]+(?:\.\d+)?)",
     ]
 
-    whole_share_count = _try_parse_last_text_match(
-        text,
-        patterns=_REPURCHASE_PATTERNS_LARGE,
-        lo=1_000.0,
-        hi=50_000_000.0,
-        scale=1.0,
+    _shares_raw: float | None = _try_parse_last_text_match(
+        text, patterns=_REPURCHASE_PATS_LARGE, lo=1_000.0, hi=50_000_000.0, scale=1.0,
     )
-    if whole_share_count is not None:
-        shares_repurchased = whole_share_count / 1_000_000.0
-    elif month_end >= "2023-08-01":
-        # Post-2023-08: try the small-integer path (< 4 digits, no comma).
-        # These represent thousands of shares; divide by 1,000 to reach millions.
-        small_thousands = _try_parse_last_text_match(
-            text,
-            patterns=_REPURCHASE_PATTERNS_SMALL,
-            lo=1.0,
-            hi=999.0,
-            scale=1.0,
+    if _shares_raw is None:
+        _small = _try_parse_last_text_match(
+            text, patterns=_REPURCHASE_PATS_SMALL, lo=1.0, hi=999.0, scale=1.0,
         )
-        if small_thousands is not None and float(small_thousands).is_integer():
-            shares_repurchased = small_thousands / 1_000.0
-        else:
-            shares_repurchased = _try_parse_last_text_match(
-                text,
-                patterns=_REPURCHASE_PATTERNS_DECIMAL,
-                lo=0.0,
-                hi=50.0,
-                scale=1.0,
-            )
+        # Accept only genuine integers from the small-integer path.
+        _shares_raw = _small if (_small is not None and float(_small).is_integer()) else None
+    if _shares_raw is None:
+        _shares_raw = _try_parse_last_text_match(
+            text, patterns=_REPURCHASE_PATS_DECIMAL, lo=0.0, hi=50.0, scale=1.0,
+        )
+
+    if _shares_raw is not None:
+        # avg_cost_per_share from the table-mode is available here and enables
+        # the implied-dollar cross-validation inside _resolve_share_count.
+        shares_repurchased = _resolve_share_count(
+            _shares_raw, table_metrics.get("avg_cost_per_share"), month_end,
+        )
     else:
-        shares_repurchased = _try_parse_last_text_match(
-            text,
-            patterns=_REPURCHASE_PATTERNS_DECIMAL,
-            lo=0.0,
-            hi=50.0,
-            scale=1.0,
-        )
+        shares_repurchased = None
     if shares_repurchased is None:
         shares_repurchased = _try_parse_dollar(
             html,
@@ -1517,13 +1561,20 @@ def _validate_parsed_record(
         record["shares_repurchased"] = None
     elif sr is not None and sr > 0.0 and acp is not None and acp > 0.0:
         implied_dollars = sr * 1_000_000.0 * acp
-        if implied_dollars < 10_000.0:
+        if implied_dollars < 1_000.0:
             log.warning(
                 "VALIDATION: shares_repurchased=%.6f × avg_cost=%.2f implies "
                 "$%.0f repurchase — likely 1000x under-scale in %s. Setting None.",
                 sr, acp, implied_dollars, accession,
             )
             record["shares_repurchased"] = None
+        elif implied_dollars > 750_000_000.0:
+            log.warning(
+                "VALIDATION: shares_repurchased=%.4f × avg_cost=%.2f implies "
+                "$%.0fM repurchase — unusually large for a single month in %s. "
+                "Retaining value but flagging for review.",
+                sr, acp, implied_dollars / 1_000_000.0, accession,
+            )
 
     return record
 
