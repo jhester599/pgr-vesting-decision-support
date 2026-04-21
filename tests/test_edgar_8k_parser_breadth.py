@@ -115,6 +115,42 @@ def test_parse_html_exhibit_extracts_broader_current_fields():
     assert parsed["weighted_avg_credit_quality"] == "AA-"
 
 
+def _quarterly_exhibit_html() -> str:
+    """8-K exhibit in item 2.02 (quarterly earnings) format.
+
+    The ratio rows have 7 columns: Agency, Direct, PLTotal, Commercial, Property,
+    CompanyTotal_CurrentQuarter, CompanyTotal_PriorYear.  The parser must return
+    the 6th value (index -2), not the 7th (index -1, prior year).
+    """
+    return """
+    <html><body>
+      <table>
+        <tr><td>Companywide Total</td><td>31500.0</td></tr>
+      </table>
+      <table>
+        <tr><td>Net premiums written</td><td>1800.0</td><td>2200.0</td><td>4000.0</td><td>720.0</td><td>260.0</td><td>4980.0</td></tr>
+        <tr><td>Loss/LAE ratio</td><td>72.1</td><td>70.5</td><td>71.2</td><td>88.4</td><td>95.3</td><td>73.5</td><td>81.3</td></tr>
+        <tr><td>Expense ratio</td><td>17.2</td><td>12.5</td><td>14.6</td><td>19.8</td><td>27.4</td><td>16.4</td><td>15.9</td></tr>
+        <tr><td>Combined ratio</td><td>89.3</td><td>83.0</td><td>85.8</td><td>108.2</td><td>122.7</td><td>89.9</td><td>97.2</td></tr>
+      </table>
+      <table>
+        <tr><td>Book value per common share</td><td>$</td><td>54.82</td></tr>
+      </table>
+    </body></html>
+    """
+
+
+def test_parse_quarterly_exhibit_extracts_current_quarter_ratios():
+    parsed = _parse_html_exhibit(_quarterly_exhibit_html(), "2026-04-15", item_code="2.02")
+    assert parsed is not None
+    # 7-value rows: nums[-2] = current-quarter total, nums[-1] = prior-year total
+    assert parsed["combined_ratio"] == pytest.approx(89.9)
+    assert parsed["loss_lae_ratio"] == pytest.approx(73.5)
+    assert parsed["expense_ratio"] == pytest.approx(16.4)
+    assert parsed["book_value_per_share"] == pytest.approx(54.82)
+    assert parsed["filing_type"] == "quarterly_earnings"
+
+
 def test_validate_parsed_record_accepts_pif_in_thousands():
     record = {
         "combined_ratio": 97.2,
