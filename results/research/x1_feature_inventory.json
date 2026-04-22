@@ -1,0 +1,467 @@
+{
+  "artifact_classification": "research",
+  "data_frames": {
+    "feature_matrix": {
+      "columns": 77,
+      "end": "2026-04-30",
+      "rows": 316,
+      "start": "2000-01-31"
+    },
+    "pgr_dividends": {
+      "columns": 2,
+      "end": "2026-04-02",
+      "rows": 76,
+      "start": "1999-03-10"
+    },
+    "pgr_monthly_close": {
+      "end": "2026-04-30",
+      "missing": 0,
+      "non_null": 318,
+      "start": "1999-11-30"
+    },
+    "pgr_monthly_edgar": {
+      "columns": 71,
+      "end": "2026-03-31",
+      "rows": 258,
+      "start": "2004-08-31"
+    }
+  },
+  "feature_group_mode": "exclusive_first_match",
+  "feature_groups": {
+    "book_value_related": {
+      "feature_count": 2,
+      "features": [
+        "book_value_per_share_growth_yoy",
+        "pb_ratio"
+      ]
+    },
+    "buyback_capital_return": {
+      "feature_count": 2,
+      "features": [
+        "buyback_acceleration",
+        "buyback_yield"
+      ]
+    },
+    "capital_balance_sheet": {
+      "feature_count": 2,
+      "features": [
+        "equity_risk_premium",
+        "unrealized_gain_pct_equity"
+      ]
+    },
+    "gainshare": {
+      "feature_count": 1,
+      "features": [
+        "gainshare_est"
+      ]
+    },
+    "growth_pif_premium": {
+      "feature_count": 10,
+      "features": [
+        "channel_mix_agency_pct",
+        "channel_mix_direct_pct_yoy",
+        "direct_channel_pif_share_ttm",
+        "npw_growth_yoy",
+        "npw_per_pif_yoy",
+        "npw_vs_npe_spread_pct",
+        "pif_growth_acceleration",
+        "pif_growth_yoy",
+        "unearned_premium_growth_yoy",
+        "unearned_premium_to_npw_ratio"
+      ]
+    },
+    "macro_rates_spreads": {
+      "feature_count": 19,
+      "features": [
+        "auto_pricing_power_spread",
+        "baa10y_spread",
+        "credit_spread_hy",
+        "credit_spread_ratio",
+        "duration_rate_shock_3m",
+        "investment_book_yield",
+        "medical_cpi_yoy",
+        "mortgage_spread_30y_10y",
+        "motor_vehicle_ins_cpi_yoy",
+        "nfci",
+        "rate_adequacy_gap_yoy",
+        "real_rate_10y",
+        "real_yield_change_6m",
+        "term_premium_10y",
+        "used_car_cpi_yoy",
+        "vix",
+        "vmt_yoy",
+        "yield_curvature",
+        "yield_slope"
+      ]
+    },
+    "peer_market_relative": {
+      "feature_count": 6,
+      "features": [
+        "commodity_equity_momentum",
+        "gold_vs_treasury_6m",
+        "pgr_vs_kie_6m",
+        "pgr_vs_peers_6m",
+        "pgr_vs_vfh_6m",
+        "vwo_vxus_spread_6m"
+      ]
+    },
+    "price_momentum_volatility": {
+      "feature_count": 5,
+      "features": [
+        "high_52w",
+        "mom_12m",
+        "mom_3m",
+        "mom_6m",
+        "vol_63d"
+      ]
+    },
+    "technical_indicators_existing": {
+      "feature_count": 0,
+      "features": []
+    },
+    "uncategorized": {
+      "feature_count": 15,
+      "features": [
+        "breakeven_inflation_10y",
+        "breakeven_momentum_3m",
+        "excess_bond_premium_proxy",
+        "gasoline_retail_sales_delta",
+        "investment_income_growth_yoy",
+        "legal_services_ppi_relative",
+        "pgr_pe_vs_market_pe",
+        "pgr_premium_to_surplus",
+        "pgr_price_to_book_relative",
+        "ppi_auto_ins_yoy",
+        "realized_gain_to_net_income_ratio",
+        "severity_index_yoy",
+        "usd_broad_return_3m",
+        "usd_momentum_6m",
+        "wti_return_3m"
+      ]
+    },
+    "underwriting_profitability": {
+      "feature_count": 9,
+      "features": [
+        "combined_ratio_ttm",
+        "cr_acceleration",
+        "expense_ratio_ttm",
+        "loss_ratio_ttm",
+        "monthly_combined_ratio_delta",
+        "underwriting_income",
+        "underwriting_income_3m",
+        "underwriting_income_growth_yoy",
+        "underwriting_margin_ttm"
+      ]
+    },
+    "valuation": {
+      "feature_count": 5,
+      "features": [
+        "pe_ratio",
+        "reserve_to_npe_ratio",
+        "roe",
+        "roe_net_income_ttm",
+        "roe_trend"
+      ]
+    }
+  },
+  "feature_matrix_source": "read_existing_processed_cache",
+  "methodology_notes": [
+    "Use strict TimeSeriesSplit-based WFO with horizon-specific purge/embargo.",
+    "Fit preprocessing inside fold pipelines only.",
+    "Keep x-series artifacts separate from v-series production and shadow lanes.",
+    "Treat annual special-dividend models as small-sample capital-allocation research."
+  ],
+  "production_changes": false,
+  "recommended_next_order": [
+    "x2",
+    "x3",
+    "x4",
+    "x5",
+    "x6",
+    "x7",
+    "x8"
+  ],
+  "source_reports": [
+    "docs/archive/history/x1-pgr-model-reports/20260421-pgrmodels-chatgpt.md",
+    "docs/archive/history/x1-pgr-model-reports/20260421-pgrmodels-gemini.md"
+  ],
+  "target_summaries": {
+    "decomposition": {
+      "target_12m_bvps": {
+        "end": "2025-03-31",
+        "missing": 13,
+        "non_null": 245,
+        "start": "2004-08-31"
+      },
+      "target_12m_bvps_growth": {
+        "end": "2025-03-31",
+        "missing": 16,
+        "non_null": 242,
+        "start": "2004-08-31"
+      },
+      "target_12m_log_bvps_growth": {
+        "end": "2025-03-31",
+        "missing": 16,
+        "non_null": 242,
+        "start": "2004-08-31"
+      },
+      "target_12m_log_pb": {
+        "end": "2025-03-31",
+        "missing": 13,
+        "non_null": 245,
+        "start": "2004-08-31"
+      },
+      "target_12m_pb": {
+        "end": "2025-03-31",
+        "missing": 13,
+        "non_null": 245,
+        "start": "2004-08-31"
+      },
+      "target_1m_bvps": {
+        "end": "2026-02-28",
+        "missing": 4,
+        "non_null": 254,
+        "start": "2004-08-31"
+      },
+      "target_1m_bvps_growth": {
+        "end": "2026-02-28",
+        "missing": 6,
+        "non_null": 252,
+        "start": "2004-08-31"
+      },
+      "target_1m_log_bvps_growth": {
+        "end": "2026-02-28",
+        "missing": 6,
+        "non_null": 252,
+        "start": "2004-08-31"
+      },
+      "target_1m_log_pb": {
+        "end": "2026-02-28",
+        "missing": 4,
+        "non_null": 254,
+        "start": "2004-08-31"
+      },
+      "target_1m_pb": {
+        "end": "2026-02-28",
+        "missing": 4,
+        "non_null": 254,
+        "start": "2004-08-31"
+      },
+      "target_3m_bvps": {
+        "end": "2025-12-31",
+        "missing": 6,
+        "non_null": 252,
+        "start": "2004-08-31"
+      },
+      "target_3m_bvps_growth": {
+        "end": "2025-12-31",
+        "missing": 9,
+        "non_null": 249,
+        "start": "2004-08-31"
+      },
+      "target_3m_log_bvps_growth": {
+        "end": "2025-12-31",
+        "missing": 9,
+        "non_null": 249,
+        "start": "2004-08-31"
+      },
+      "target_3m_log_pb": {
+        "end": "2025-12-31",
+        "missing": 6,
+        "non_null": 252,
+        "start": "2004-08-31"
+      },
+      "target_3m_pb": {
+        "end": "2025-12-31",
+        "missing": 6,
+        "non_null": 252,
+        "start": "2004-08-31"
+      },
+      "target_6m_bvps": {
+        "end": "2025-09-30",
+        "missing": 9,
+        "non_null": 249,
+        "start": "2004-10-31"
+      },
+      "target_6m_bvps_growth": {
+        "end": "2025-09-30",
+        "missing": 12,
+        "non_null": 246,
+        "start": "2004-10-31"
+      },
+      "target_6m_log_bvps_growth": {
+        "end": "2025-09-30",
+        "missing": 12,
+        "non_null": 246,
+        "start": "2004-10-31"
+      },
+      "target_6m_log_pb": {
+        "end": "2025-09-30",
+        "missing": 9,
+        "non_null": 249,
+        "start": "2004-10-31"
+      },
+      "target_6m_pb": {
+        "end": "2025-09-30",
+        "missing": 9,
+        "non_null": 249,
+        "start": "2004-10-31"
+      }
+    },
+    "forward_returns": {
+      "target_12m_log_return": {
+        "end": "2025-04-30",
+        "missing": 12,
+        "non_null": 306,
+        "start": "1999-11-30"
+      },
+      "target_12m_return": {
+        "end": "2025-04-30",
+        "missing": 12,
+        "non_null": 306,
+        "start": "1999-11-30"
+      },
+      "target_12m_up": {
+        "end": "2025-04-30",
+        "missing": 12,
+        "non_null": 306,
+        "start": "1999-11-30"
+      },
+      "target_1m_log_return": {
+        "end": "2026-03-31",
+        "missing": 1,
+        "non_null": 317,
+        "start": "1999-11-30"
+      },
+      "target_1m_return": {
+        "end": "2026-03-31",
+        "missing": 1,
+        "non_null": 317,
+        "start": "1999-11-30"
+      },
+      "target_1m_up": {
+        "end": "2026-03-31",
+        "missing": 1,
+        "non_null": 317,
+        "start": "1999-11-30"
+      },
+      "target_3m_log_return": {
+        "end": "2026-01-31",
+        "missing": 3,
+        "non_null": 315,
+        "start": "1999-11-30"
+      },
+      "target_3m_return": {
+        "end": "2026-01-31",
+        "missing": 3,
+        "non_null": 315,
+        "start": "1999-11-30"
+      },
+      "target_3m_up": {
+        "end": "2026-01-31",
+        "missing": 3,
+        "non_null": 315,
+        "start": "1999-11-30"
+      },
+      "target_6m_log_return": {
+        "end": "2025-10-31",
+        "missing": 6,
+        "non_null": 312,
+        "start": "1999-11-30"
+      },
+      "target_6m_return": {
+        "end": "2025-10-31",
+        "missing": 6,
+        "non_null": 312,
+        "start": "1999-11-30"
+      },
+      "target_6m_up": {
+        "end": "2025-10-31",
+        "missing": 6,
+        "non_null": 312,
+        "start": "1999-11-30"
+      }
+    },
+    "special_dividend": {
+      "q1_dividend_total": {
+        "end": "2025-11-30",
+        "missing": 0,
+        "non_null": 22,
+        "start": "2004-11-30"
+      },
+      "regular_baseline_dividend": {
+        "end": "2025-11-30",
+        "missing": 0,
+        "non_null": 22,
+        "start": "2004-11-30"
+      },
+      "snapshot_bvps": {
+        "end": "2025-11-30",
+        "missing": 0,
+        "non_null": 22,
+        "start": "2004-11-30"
+      },
+      "snapshot_month": {
+        "end": "2025-11-30",
+        "missing": 0,
+        "non_null": 22,
+        "start": "2004-11-30"
+      },
+      "snapshot_net_income_ttm_per_share": {
+        "end": "2025-11-30",
+        "missing": 1,
+        "non_null": 21,
+        "start": "2005-11-30"
+      },
+      "snapshot_price": {
+        "end": "2025-11-30",
+        "missing": 0,
+        "non_null": 22,
+        "start": "2004-11-30"
+      },
+      "snapshot_year": {
+        "end": "2025-11-30",
+        "missing": 0,
+        "non_null": 22,
+        "start": "2004-11-30"
+      },
+      "special_dividend_excess": {
+        "end": "2025-11-30",
+        "missing": 0,
+        "non_null": 22,
+        "start": "2004-11-30"
+      },
+      "special_dividend_excess_to_bvps": {
+        "end": "2025-11-30",
+        "missing": 0,
+        "non_null": 22,
+        "start": "2004-11-30"
+      },
+      "special_dividend_excess_to_net_income": {
+        "end": "2025-11-30",
+        "missing": 1,
+        "non_null": 21,
+        "start": "2005-11-30"
+      },
+      "special_dividend_excess_to_price": {
+        "end": "2025-11-30",
+        "missing": 0,
+        "non_null": 22,
+        "start": "2004-11-30"
+      },
+      "special_dividend_occurred": {
+        "end": "2025-11-30",
+        "missing": 0,
+        "non_null": 22,
+        "start": "2004-11-30"
+      },
+      "target_year": {
+        "end": "2025-11-30",
+        "missing": 0,
+        "non_null": 22,
+        "start": "2004-11-30"
+      }
+    }
+  },
+  "version": "x1"
+}

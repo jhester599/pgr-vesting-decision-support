@@ -34,7 +34,10 @@ def test_candidate_feature_columns_excludes_target_column() -> None:
     feature_df, _ = MODULE.load_v128_inputs(benchmarks=["VOO"])
     features = MODULE.candidate_feature_columns(feature_df)
     assert "target_6m_return" not in features
-    assert len(features) == 72
+    assert features == [
+        column for column in feature_df.columns if column != "target_6m_return"
+    ]
+    assert len(features) > 0
 
 
 def test_build_consensus_subset_is_capped_and_deterministic() -> None:
