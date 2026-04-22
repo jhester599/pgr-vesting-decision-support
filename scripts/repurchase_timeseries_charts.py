@@ -1,15 +1,6 @@
 """
 PGR Monthly Time Series: Book Value Per Share, Share Repurchases, Share Price
 Produces five charts saved to results/research/.
-
-Data quality note
-─────────────────
-Three months in pgr_edgar_monthly have a known unit error in shares_repurchased:
-2024-10-31 (195.0), 2024-11-30 (51.0), and 2025-08-31 (87.0) appear to store
-the dollar amount in $M rather than the share count in millions. The ingestion
-parser hit a code path that treated a "$195M" text token as a raw share count.
-These rows are corrected below by dividing by avg_cost_per_share to recover the
-implied share count, so the dollar series remains internally consistent.
 """
 
 import sqlite3
@@ -21,8 +12,11 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import matplotlib.dates as mdates
 
-# Threshold above which shares_repurchased is almost certainly a dollar amount
-# (max plausible monthly buyback for PGR is ~20M shares; 25 gives headroom)
+# Defensive guard: flag rows where shares_repurchased exceeds the maximum plausible
+# monthly buyback for PGR (~20M shares).  Values this large almost certainly reflect
+# a raw dollar-amount ($M) stored instead of a share count (millions).  This guard
+# should never fire when the upstream parser is correct, but it protects the chart
+# against future regressions in the ingestion pipeline.
 _SHARE_UNIT_ERROR_THRESHOLD = 25.0
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "pgr_financials.db")
