@@ -1,7 +1,7 @@
 {
   "artifact_classification": "production",
-  "as_of_date": "2026-04-21",
-  "git_sha": "87b770263cf49f068f883f55a3e9514d13101c5e",
+  "as_of_date": "2026-04-22",
+  "git_sha": "26d11288a8e25d2cea966fc0b067517bf4599837",
   "latest_dates": {
     "daily_dividends.ex_date": "2026-06-10",
     "daily_prices.date": "2026-04-17",
@@ -31,13 +31,13 @@
     "pgr_edgar_monthly": 258,
     "pgr_fundamentals_quarterly": 72
   },
-  "run_timestamp_utc": "2026-04-21T16:13:37.673726+00:00",
+  "run_timestamp_utc": "2026-04-22T16:06:32.738267+00:00",
   "schema_version": "003_model_retrain_log",
   "script_name": "scripts/monthly_decision.py",
   "warnings": [
-    "Aggregate OOS R^2 below threshold: -2.29% < 2.00%.",
+    "Aggregate OOS R^2 below threshold: -2.63% < 2.00%.",
     "Representative CPCV verdict is FAIL.",
-    "Trailing conformal coverage deviates materially from nominal: 56.2% vs 80%."
+    "Trailing conformal coverage deviates materially from nominal: 54.2% vs 80%."
   ],
   "workflow_name": "monthly_decision"
 }
