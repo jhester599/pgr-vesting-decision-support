@@ -1,0 +1,25 @@
+{
+  "caveats": [
+    "research_only",
+    "no_shadow_wiring",
+    "pb_anchor_is_no_change",
+    "x15_overlay_did_not_improve_anchor"
+  ],
+  "display_fields": [
+    "forecast_horizon_months",
+    "future_price_estimate",
+    "implied_upside_pct",
+    "current_pb_anchor",
+    "bvps_path_model",
+    "research_confidence",
+    "caveat_text"
+  ],
+  "horizon_months": 6,
+  "indicator_name": "adjusted_structural_bvps_pb_6m",
+  "model_name": "ridge_bridge__no_change_pb",
+  "pb_anchor_policy": "retain_no_change_pb",
+  "production_changes": false,
+  "shadow_changes": false,
+  "signal_family": "adjusted_structural_bvps_pb",
+  "status": "research_indicator_candidate"
+}
