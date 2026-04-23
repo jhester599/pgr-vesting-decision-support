@@ -1,0 +1,153 @@
+{
+  "artifact_classification": "research",
+  "metrics": [
+    {
+      "actual_positive_rate": 0.6666666666666666,
+      "expected_value_mae": 1.5141092811713923,
+      "expected_value_rmse": 3.404641389906672,
+      "mean_actual_excess": 1.5743416666666665,
+      "mean_expected_value_prediction": 0.1795085119382757,
+      "model_name": "historical_rate__historical_positive_mean",
+      "n_features": 20,
+      "n_obs": 18,
+      "stage1_balanced_accuracy": 0.5,
+      "stage1_brier": 0.26538445777208336,
+      "stage1_model_name": "historical_rate",
+      "stage2_model_name": "historical_positive_mean",
+      "stage2_positive_mae": 2.0628715403462277
+    },
+    {
+      "actual_positive_rate": 0.6666666666666666,
+      "expected_value_mae": 1.4970716447796062,
+      "expected_value_rmse": 3.367390385613463,
+      "mean_actual_excess": 1.5743416666666665,
+      "mean_expected_value_prediction": 0.18998945367934117,
+      "model_name": "historical_rate__ridge_positive_excess",
+      "n_features": 20,
+      "n_obs": 18,
+      "stage1_balanced_accuracy": 0.5,
+      "stage1_brier": 0.26538445777208336,
+      "stage1_model_name": "historical_rate",
+      "stage2_model_name": "ridge_positive_excess",
+      "stage2_positive_mae": 2.021589433657486
+    },
+    {
+      "actual_positive_rate": 0.6666666666666666,
+      "expected_value_mae": 1.5549020786122016,
+      "expected_value_rmse": 3.428456806762456,
+      "mean_actual_excess": 1.5743416666666665,
+      "mean_expected_value_prediction": 0.19638273342705928,
+      "model_name": "logistic_l2_balanced__historical_positive_mean",
+      "n_features": 20,
+      "n_obs": 18,
+      "stage1_balanced_accuracy": 0.2916666666666667,
+      "stage1_brier": 0.4531994080180981,
+      "stage1_model_name": "logistic_l2_balanced",
+      "stage2_model_name": "historical_positive_mean",
+      "stage2_positive_mae": 2.0628715403462277
+    },
+    {
+      "actual_positive_rate": 0.6666666666666666,
+      "expected_value_mae": 1.5374694950150218,
+      "expected_value_rmse": 3.396140687931126,
+      "mean_actual_excess": 1.5743416666666665,
+      "mean_expected_value_prediction": 0.20843200506610204,
+      "model_name": "logistic_l2_balanced__ridge_positive_excess",
+      "n_features": 20,
+      "n_obs": 18,
+      "stage1_balanced_accuracy": 0.2916666666666667,
+      "stage1_brier": 0.4531994080180981,
+      "stage1_model_name": "logistic_l2_balanced",
+      "stage2_model_name": "ridge_positive_excess",
+      "stage2_positive_mae": 2.021589433657486
+    }
+  ],
+  "model_specs": [
+    {
+      "stage1": "historical_rate",
+      "stage2": "historical_positive_mean"
+    },
+    {
+      "stage1": "historical_rate",
+      "stage2": "ridge_positive_excess"
+    },
+    {
+      "stage1": "logistic_l2_balanced",
+      "stage2": "historical_positive_mean"
+    },
+    {
+      "stage1": "logistic_l2_balanced",
+      "stage2": "ridge_positive_excess"
+    }
+  ],
+  "prediction_timestamp": "November business month-end",
+  "production_changes": false,
+  "ranked_rows": [
+    {
+      "actual_positive_rate": 0.6666666666666666,
+      "expected_value_mae": 1.4970716447796062,
+      "expected_value_rmse": 3.367390385613463,
+      "mean_actual_excess": 1.5743416666666665,
+      "mean_expected_value_prediction": 0.18998945367934117,
+      "model_name": "historical_rate__ridge_positive_excess",
+      "n_features": 20,
+      "n_obs": 18,
+      "rank": 1,
+      "stage1_balanced_accuracy": 0.5,
+      "stage1_brier": 0.26538445777208336,
+      "stage1_model_name": "historical_rate",
+      "stage2_model_name": "ridge_positive_excess",
+      "stage2_positive_mae": 2.021589433657486
+    },
+    {
+      "actual_positive_rate": 0.6666666666666666,
+      "expected_value_mae": 1.5141092811713923,
+      "expected_value_rmse": 3.404641389906672,
+      "mean_actual_excess": 1.5743416666666665,
+      "mean_expected_value_prediction": 0.1795085119382757,
+      "model_name": "historical_rate__historical_positive_mean",
+      "n_features": 20,
+      "n_obs": 18,
+      "rank": 2,
+      "stage1_balanced_accuracy": 0.5,
+      "stage1_brier": 0.26538445777208336,
+      "stage1_model_name": "historical_rate",
+      "stage2_model_name": "historical_positive_mean",
+      "stage2_positive_mae": 2.0628715403462277
+    },
+    {
+      "actual_positive_rate": 0.6666666666666666,
+      "expected_value_mae": 1.5374694950150218,
+      "expected_value_rmse": 3.396140687931126,
+      "mean_actual_excess": 1.5743416666666665,
+      "mean_expected_value_prediction": 0.20843200506610204,
+      "model_name": "logistic_l2_balanced__ridge_positive_excess",
+      "n_features": 20,
+      "n_obs": 18,
+      "rank": 3,
+      "stage1_balanced_accuracy": 0.2916666666666667,
+      "stage1_brier": 0.4531994080180981,
+      "stage1_model_name": "logistic_l2_balanced",
+      "stage2_model_name": "ridge_positive_excess",
+      "stage2_positive_mae": 2.021589433657486
+    },
+    {
+      "actual_positive_rate": 0.6666666666666666,
+      "expected_value_mae": 1.5549020786122016,
+      "expected_value_rmse": 3.428456806762456,
+      "mean_actual_excess": 1.5743416666666665,
+      "mean_expected_value_prediction": 0.19638273342705928,
+      "model_name": "logistic_l2_balanced__historical_positive_mean",
+      "n_features": 20,
+      "n_obs": 18,
+      "rank": 4,
+      "stage1_balanced_accuracy": 0.2916666666666667,
+      "stage1_brier": 0.4531994080180981,
+      "stage1_model_name": "logistic_l2_balanced",
+      "stage2_model_name": "historical_positive_mean",
+      "stage2_positive_mae": 2.0628715403462277
+    }
+  ],
+  "ranking_basis": "expected_value_mae ascending, then stage1_brier",
+  "version": "x6"
+}
