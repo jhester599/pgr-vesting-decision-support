@@ -149,8 +149,13 @@ def _impute_fold(
 ) -> tuple[np.ndarray, np.ndarray]:
     train = x_train.copy()
     test = x_test.copy()
-    medians = np.nanmedian(train, axis=0)
-    medians = np.where(np.isnan(medians), 0.0, medians)
+    train[~np.isfinite(train)] = np.nan
+    test[~np.isfinite(test)] = np.nan
+    medians = np.zeros(train.shape[1], dtype=float)
+    for col_idx in range(train.shape[1]):
+        observed = train[:, col_idx][~np.isnan(train[:, col_idx])]
+        if observed.size:
+            medians[col_idx] = float(np.median(observed))
     for col_idx in range(train.shape[1]):
         train[np.isnan(train[:, col_idx]), col_idx] = medians[col_idx]
         test[np.isnan(test[:, col_idx]), col_idx] = medians[col_idx]
