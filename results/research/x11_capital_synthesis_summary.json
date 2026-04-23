@@ -1,0 +1,82 @@
+{
+  "artifact_classification": "research",
+  "bvps_comparison": [
+    {
+      "future_bvps_mae_delta": -0.048176024805,
+      "horizon_months": 1,
+      "x4_future_bvps_mae": 0.6285026509771566,
+      "x4_model_name": "ridge_bvps_growth",
+      "x9_beats_x4": true,
+      "x9_feature_block": "logical_interactions",
+      "x9_future_bvps_mae": 0.5803266261725712,
+      "x9_model_name": "elastic_net_bridge"
+    },
+    {
+      "future_bvps_mae_delta": -0.009561810445,
+      "horizon_months": 3,
+      "x4_future_bvps_mae": 1.309216244070035,
+      "x4_model_name": "drift_bvps_growth",
+      "x9_beats_x4": true,
+      "x9_feature_block": "bvps_lags",
+      "x9_future_bvps_mae": 1.299654433624618,
+      "x9_model_name": "ridge_bridge"
+    },
+    {
+      "future_bvps_mae_delta": 0.0,
+      "horizon_months": 6,
+      "x4_future_bvps_mae": 2.0103656562385113,
+      "x4_model_name": "drift_bvps_growth",
+      "x9_beats_x4": false,
+      "x9_feature_block": "baseline",
+      "x9_future_bvps_mae": 2.0103656562385113,
+      "x9_model_name": "drift_bvps_growth"
+    },
+    {
+      "future_bvps_mae_delta": 0.185045848107,
+      "horizon_months": 12,
+      "x4_future_bvps_mae": 3.0166907964264427,
+      "x4_model_name": "hist_gbt_bvps_growth",
+      "x9_beats_x4": false,
+      "x9_feature_block": "baseline",
+      "x9_future_bvps_mae": 3.2017366445333213,
+      "x9_model_name": "drift_bvps_growth"
+    }
+  ],
+  "decision_questions": [
+    {
+      "answer": "x9 beat x4 in 2 horizons.",
+      "criterion": "x9 must beat x4 on future BVPS MAE in most horizons.",
+      "question": "Did x9 improve BVPS enough to supersede x4?"
+    },
+    {
+      "answer": "yes",
+      "criterion": "x10 must beat x6 on expected-value MAE.",
+      "question": "Did x9 capital features help special dividends?"
+    },
+    {
+      "answer": "continue_research",
+      "criterion": "Monthly and annual evidence must both be robust.",
+      "question": "Is this ready for shadow wiring?"
+    }
+  ],
+  "dividend_comparison": {
+    "confidence": "low",
+    "expected_value_mae_delta": -0.057611564768,
+    "n_obs": 18,
+    "x10_beats_x6": true,
+    "x10_expected_value_mae": 1.439460080011204,
+    "x10_feature_set": "x9_capital_generation",
+    "x10_model_name": "logistic_l2_balanced__ridge_positive_excess",
+    "x6_expected_value_mae": 1.4970716447796062,
+    "x6_model_name": "historical_rate__ridge_positive_excess"
+  },
+  "production_changes": false,
+  "recommendation": {
+    "production_changes": false,
+    "rationale": "BVPS bridge evidence is horizon-specific and annual dividend confidence remains constrained",
+    "shadow_changes": false,
+    "status": "continue_research"
+  },
+  "shadow_changes": false,
+  "version": "x11"
+}
