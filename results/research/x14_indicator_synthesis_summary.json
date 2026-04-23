@@ -1,0 +1,85 @@
+{
+  "artifact_classification": "research",
+  "evidence_artifacts": [
+    "x3_direct_return_summary.json",
+    "x5_decomposition_summary.json",
+    "x8_synthesis_summary.json",
+    "x11_capital_synthesis_summary.json",
+    "x12_bvps_target_audit_summary.json",
+    "x13_adjusted_decomposition_summary.json"
+  ],
+  "horizon_evidence": [
+    {
+      "horizon_months": 3,
+      "x12_adjusted_beats_raw": true,
+      "x12_adjusted_best_model_name": "elastic_net_bridge",
+      "x12_raw_best_model_name": "ridge_bridge",
+      "x12_supports_adjusted_target_family": true,
+      "x13_adjusted_beats_raw": false,
+      "x13_adjusted_model_name": "elastic_net_bridge__no_change_pb",
+      "x13_mae_delta": 0.8207219011598035,
+      "x13_raw_model_name": "drift_bvps_growth__no_change_pb",
+      "x3_log_return_leader_beats_no_change": false,
+      "x3_log_return_leader_model_name": "no_change",
+      "x3_return_leader_beats_no_change": false,
+      "x3_return_leader_model_name": "no_change",
+      "x5_leader_model_name": "drift_bvps_growth__no_change_pb",
+      "x5_uses_no_change_pb": true
+    },
+    {
+      "horizon_months": 6,
+      "x12_adjusted_beats_raw": true,
+      "x12_adjusted_best_model_name": "ridge_bridge",
+      "x12_raw_best_model_name": "drift_bvps_growth",
+      "x12_supports_adjusted_target_family": true,
+      "x13_adjusted_beats_raw": true,
+      "x13_adjusted_model_name": "ridge_bridge__no_change_pb",
+      "x13_mae_delta": -0.4676784918970842,
+      "x13_raw_model_name": "drift_bvps_growth__no_change_pb",
+      "x3_log_return_leader_beats_no_change": false,
+      "x3_log_return_leader_model_name": "ridge_log_return",
+      "x3_return_leader_beats_no_change": false,
+      "x3_return_leader_model_name": "drift",
+      "x5_leader_model_name": "drift_bvps_growth__no_change_pb",
+      "x5_uses_no_change_pb": true
+    }
+  ],
+  "indicator_candidate": {
+    "horizon_months": 6,
+    "model_name": "ridge_bridge__no_change_pb",
+    "rationale": "Adjusted decomposition improved the raw path at this horizon, with x12 providing supportive but non-independent target-audit context while the broader x-series remained research-only.",
+    "signal_family": "adjusted_structural_bvps_pb",
+    "status": "candidate",
+    "x11_status": "continue_research"
+  },
+  "production_changes": false,
+  "recommendation": {
+    "production_changes": false,
+    "rationale": "One bounded indicator candidate is worth carrying into a later monthly-report/dashboard discussion, but not into production yet.",
+    "shadow_changes": false,
+    "status": "research_indicator_candidate",
+    "x11_status": "continue_research"
+  },
+  "shadow_changes": false,
+  "version": "x14",
+  "x13_comparison": [
+    {
+      "adjusted_beats_raw": false,
+      "adjusted_mae": 9.016798202092973,
+      "adjusted_model_name": "elastic_net_bridge__no_change_pb",
+      "horizon_months": 3,
+      "mae_delta": 0.8207219011598035,
+      "raw_mae": 8.19607630093317,
+      "raw_model_name": "drift_bvps_growth__no_change_pb"
+    },
+    {
+      "adjusted_beats_raw": true,
+      "adjusted_mae": 11.675297318354957,
+      "adjusted_model_name": "ridge_bridge__no_change_pb",
+      "horizon_months": 6,
+      "mae_delta": -0.4676784918970842,
+      "raw_mae": 12.142975810252041,
+      "raw_model_name": "drift_bvps_growth__no_change_pb"
+    }
+  ]
+}
