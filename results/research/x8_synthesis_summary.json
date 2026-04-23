@@ -1,0 +1,269 @@
+{
+  "artifact_classification": "research",
+  "gate_counts": {
+    "x2": {
+      "gate_column": "beats_base_rate",
+      "observed_horizon_count": 4,
+      "observed_row_count": 16,
+      "true_count": 0,
+      "true_horizon_count": 0
+    },
+    "x3": {
+      "gate_column": "beats_no_change",
+      "observed_horizon_count": 4,
+      "observed_row_count": 32,
+      "true_count": 3,
+      "true_horizon_count": 1
+    },
+    "x4": {
+      "gate_column": "beats_no_change_bvps",
+      "observed_horizon_count": 4,
+      "observed_row_count": 32,
+      "true_count": 14,
+      "true_horizon_count": 4
+    },
+    "x7_best_cleared_horizon_count": 2
+  },
+  "horizon_leaders": [
+    {
+      "balanced_accuracy": 0.5069103194103194,
+      "beats_base_rate": false,
+      "brier_score": 0.2553395061728395,
+      "horizon_months": 1,
+      "lane": "x2_absolute_classification",
+      "model_name": "base_rate",
+      "n_obs": 162,
+      "primary_metric": "balanced_accuracy",
+      "primary_metric_value": 0.5069103194103194,
+      "rank": 1
+    },
+    {
+      "balanced_accuracy": 0.5950791531565898,
+      "beats_base_rate": false,
+      "brier_score": 0.38193721785108775,
+      "horizon_months": 3,
+      "lane": "x2_absolute_classification",
+      "model_name": "logistic_l2_balanced",
+      "n_obs": 156,
+      "primary_metric": "balanced_accuracy",
+      "primary_metric_value": 0.5950791531565898,
+      "rank": 1
+    },
+    {
+      "balanced_accuracy": 0.5011363636363637,
+      "beats_base_rate": false,
+      "brier_score": 0.2984361169138524,
+      "horizon_months": 6,
+      "lane": "x2_absolute_classification",
+      "model_name": "hist_gbt_depth2",
+      "n_obs": 150,
+      "primary_metric": "balanced_accuracy",
+      "primary_metric_value": 0.5011363636363637,
+      "rank": 1
+    },
+    {
+      "balanced_accuracy": 0.6229508196721312,
+      "beats_base_rate": false,
+      "brier_score": 0.18453703703703703,
+      "horizon_months": 12,
+      "lane": "x2_absolute_classification",
+      "model_name": "base_rate",
+      "n_obs": 144,
+      "primary_metric": "balanced_accuracy",
+      "primary_metric_value": 0.6229508196721312,
+      "rank": 1
+    },
+    {
+      "beats_no_change": false,
+      "directional_hit_rate": 0.46825396825396826,
+      "horizon_months": 1,
+      "implied_price_mae": 4.116230158730159,
+      "lane": "x3_direct_return",
+      "model_name": "no_change",
+      "n_obs": 252,
+      "primary_metric": "implied_price_mae",
+      "primary_metric_value": 4.116230158730159,
+      "rank": 1
+    },
+    {
+      "beats_no_change": false,
+      "directional_hit_rate": 0.3902439024390244,
+      "horizon_months": 3,
+      "implied_price_mae": 6.956626016260162,
+      "lane": "x3_direct_return",
+      "model_name": "no_change",
+      "n_obs": 246,
+      "primary_metric": "implied_price_mae",
+      "primary_metric_value": 6.956626016260162,
+      "rank": 1
+    },
+    {
+      "beats_no_change": false,
+      "directional_hit_rate": 0.5791666666666667,
+      "horizon_months": 6,
+      "implied_price_mae": 11.004130969466077,
+      "lane": "x3_direct_return",
+      "model_name": "ridge_log_return",
+      "n_obs": 240,
+      "primary_metric": "implied_price_mae",
+      "primary_metric_value": 11.004130969466077,
+      "rank": 1
+    },
+    {
+      "beats_no_change": true,
+      "directional_hit_rate": 0.6535087719298246,
+      "horizon_months": 12,
+      "implied_price_mae": 12.445950835552841,
+      "lane": "x3_direct_return",
+      "model_name": "drift",
+      "n_obs": 228,
+      "primary_metric": "implied_price_mae",
+      "primary_metric_value": 12.445950835552841,
+      "rank": 1
+    },
+    {
+      "beats_no_change_bvps": true,
+      "directional_hit_rate": 0.7365591397849462,
+      "future_bvps_mae": 0.6285026509771566,
+      "horizon_months": 1,
+      "lane": "x4_bvps_forecasting",
+      "model_name": "ridge_bvps_growth",
+      "n_obs": 186,
+      "primary_metric": "future_bvps_mae",
+      "primary_metric_value": 0.6285026509771566,
+      "rank": 1
+    },
+    {
+      "beats_no_change_bvps": true,
+      "directional_hit_rate": 0.6944444444444444,
+      "future_bvps_mae": 1.309216244070035,
+      "horizon_months": 3,
+      "lane": "x4_bvps_forecasting",
+      "model_name": "drift_bvps_growth",
+      "n_obs": 180,
+      "primary_metric": "future_bvps_mae",
+      "primary_metric_value": 1.309216244070035,
+      "rank": 1
+    },
+    {
+      "beats_no_change_bvps": true,
+      "directional_hit_rate": 0.7471264367816092,
+      "future_bvps_mae": 2.0103656562385113,
+      "horizon_months": 6,
+      "lane": "x4_bvps_forecasting",
+      "model_name": "drift_bvps_growth",
+      "n_obs": 174,
+      "primary_metric": "future_bvps_mae",
+      "primary_metric_value": 2.0103656562385113,
+      "rank": 1
+    },
+    {
+      "beats_no_change_bvps": true,
+      "directional_hit_rate": 0.9074074074074074,
+      "future_bvps_mae": 3.0166907964264427,
+      "horizon_months": 12,
+      "lane": "x4_bvps_forecasting",
+      "model_name": "hist_gbt_bvps_growth",
+      "n_obs": 162,
+      "primary_metric": "future_bvps_mae",
+      "primary_metric_value": 3.0166907964264427,
+      "rank": 1
+    },
+    {
+      "directional_hit_rate": 0.43010752688172044,
+      "horizon_months": 1,
+      "implied_price_mae": 4.515053763440858,
+      "lane": "x5_bvps_pb_decomposition",
+      "model_name": "no_change_bvps__no_change_pb",
+      "n_obs": 186,
+      "primary_metric": "implied_price_mae",
+      "primary_metric_value": 4.515053763440858,
+      "rank": 1
+    },
+    {
+      "directional_hit_rate": 0.6722222222222223,
+      "horizon_months": 3,
+      "implied_price_mae": 7.096900352214223,
+      "lane": "x5_bvps_pb_decomposition",
+      "model_name": "drift_bvps_growth__no_change_pb",
+      "n_obs": 180,
+      "primary_metric": "implied_price_mae",
+      "primary_metric_value": 7.096900352214223,
+      "rank": 1
+    },
+    {
+      "directional_hit_rate": 0.7471264367816092,
+      "horizon_months": 6,
+      "implied_price_mae": 10.782487799445713,
+      "lane": "x5_bvps_pb_decomposition",
+      "model_name": "drift_bvps_growth__no_change_pb",
+      "n_obs": 174,
+      "primary_metric": "implied_price_mae",
+      "primary_metric_value": 10.782487799445713,
+      "rank": 1
+    },
+    {
+      "directional_hit_rate": 0.7777777777777778,
+      "horizon_months": 12,
+      "implied_price_mae": 16.052971184698123,
+      "lane": "x5_bvps_pb_decomposition",
+      "model_name": "ridge_bvps_growth__no_change_pb",
+      "n_obs": 162,
+      "primary_metric": "implied_price_mae",
+      "primary_metric_value": 16.052971184698123,
+      "rank": 1
+    }
+  ],
+  "production_changes": false,
+  "recommendations": [
+    {
+      "lane": "absolute_direction",
+      "recommendation": "continue targeted x7-style replacement experiments for 3m and 6m; do not promote broad TA feature expansion"
+    },
+    {
+      "lane": "direct_return",
+      "recommendation": "keep as benchmark; only the 12m drift path clearly clears the current no-change gate"
+    },
+    {
+      "lane": "bvps_pb_decomposition",
+      "recommendation": "advance BVPS modeling, but treat P/B no-change as the current structural anchor until P/B models improve"
+    },
+    {
+      "lane": "special_dividend",
+      "recommendation": "retain annual sidecar status; historical occurrence rate plus ridge size is best but sample confidence is low"
+    }
+  ],
+  "shadow_changes": false,
+  "shadow_readiness": {
+    "production_changes": false,
+    "rationale": "classification evidence is mixed and horizon-specific; direct-return benchmarks remain baseline-heavy; decomposition still depends on no-change P/B; special-dividend sample is very small",
+    "shadow_changes": false,
+    "status": "not_ready"
+  },
+  "special_dividend_leader": {
+    "actual_positive_rate": 0.6666666666666666,
+    "expected_value_mae": 1.4970716447796062,
+    "expected_value_rmse": 3.367390385613463,
+    "mean_actual_excess": 1.5743416666666665,
+    "mean_expected_value_prediction": 0.18998945367934117,
+    "model_name": "historical_rate__ridge_positive_excess",
+    "n_features": 20,
+    "n_obs": 18,
+    "rank": 1,
+    "stage1_balanced_accuracy": 0.5,
+    "stage1_brier": 0.26538445777208336,
+    "stage1_model_name": "historical_rate",
+    "stage2_model_name": "ridge_positive_excess",
+    "stage2_positive_mae": 2.021589433657486
+  },
+  "ta_leader": {
+    "cleared_horizon_count": 2,
+    "mean_balanced_accuracy": 0.49952326066743485,
+    "mean_brier_score": 0.3988447287323408,
+    "mean_delta_balanced_accuracy": 0.00561161840425,
+    "mean_delta_brier_score": -0.0072127595752499996,
+    "tested_horizon_count": 4,
+    "variant": "ta_minimal_plus_vwo_pct_b"
+  },
+  "version": "x8"
+}
