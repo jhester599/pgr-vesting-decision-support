@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -50,6 +51,31 @@ def test_evaluate_absolute_classifier_returns_chronological_probabilities() -> N
     assert metrics["n_obs"] == len(predictions)
     assert metrics["balanced_accuracy"] >= 0.5
     assert metrics["fold_count"] > 0
+
+
+def test_evaluate_absolute_classifier_handles_all_missing_feature() -> None:
+    from src.research.x2_absolute_classification import evaluate_absolute_classifier
+
+    X = _feature_frame()
+    X["empty_feature"] = np.nan
+    y = _binary_target(X)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        predictions, metrics = evaluate_absolute_classifier(
+            X,
+            y,
+            model_name="logistic_l2_balanced",
+            feature_columns=["signal", "empty_feature"],
+            target_horizon_months=1,
+            purge_buffer=0,
+            train_window_months=36,
+            test_window_months=6,
+        )
+
+    assert not predictions.empty
+    assert predictions["y_prob"].between(0.0, 1.0).all()
+    assert metrics["n_features"] == 2
 
 
 def test_evaluate_absolute_baseline_uses_fold_local_history() -> None:

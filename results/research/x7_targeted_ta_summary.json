@@ -1,0 +1,45 @@
+{
+  "artifact_classification": "research",
+  "production_changes": false,
+  "ranked_rows": [
+    {
+      "cleared_horizon_count": 2,
+      "mean_balanced_accuracy": 0.49952326066743485,
+      "mean_brier_score": 0.3988447287323408,
+      "mean_delta_balanced_accuracy": 0.00561161840425,
+      "mean_delta_brier_score": -0.0072127595752499996,
+      "tested_horizon_count": 4,
+      "variant": "ta_minimal_plus_vwo_pct_b"
+    },
+    {
+      "cleared_horizon_count": 2,
+      "mean_balanced_accuracy": 0.49808874798993064,
+      "mean_brier_score": 0.3894820216654146,
+      "mean_delta_balanced_accuracy": 0.00417710572725,
+      "mean_delta_brier_score": -0.016575466642000002,
+      "tested_horizon_count": 4,
+      "variant": "ta_minimal_replacement"
+    },
+    {
+      "cleared_horizon_count": 2,
+      "mean_balanced_accuracy": 0.4980479067935072,
+      "mean_brier_score": 0.3905379613726667,
+      "mean_delta_balanced_accuracy": 0.004136264530249999,
+      "mean_delta_brier_score": -0.015519526935,
+      "tested_horizon_count": 4,
+      "variant": "ta_bollinger_width_probe"
+    },
+    {
+      "cleared_horizon_count": 0,
+      "mean_balanced_accuracy": 0.49391164226295836,
+      "mean_brier_score": 0.4060574883077146,
+      "mean_delta_balanced_accuracy": 0.0,
+      "mean_delta_brier_score": 0.0,
+      "tested_horizon_count": 4,
+      "variant": "x2_core_baseline"
+    }
+  ],
+  "recommendation_rule": "A TA variant must improve balanced accuracy and Brier score versus the x2 core baseline for a horizon to clear the x7 gate.",
+  "shadow_changes": false,
+  "version": "x7"
+}
