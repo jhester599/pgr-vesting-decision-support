@@ -1,0 +1,50 @@
+{
+  "artifact_classification": "research",
+  "bundle_name": "x_series_research_indicator_bundle",
+  "caveats": [
+    "research_only",
+    "no_production_wiring",
+    "no_shadow_wiring",
+    "shadow_not_ready"
+  ],
+  "decision_context": {
+    "dividend_source": "x23",
+    "shadow_readiness_status": "not_ready",
+    "structural_source": "x16"
+  },
+  "dividend_signal": {
+    "feature_set": "x10_capital_generation",
+    "indicator_name": "special_dividend_size_watch",
+    "model_name": "ridge_scaled",
+    "occurrence_status": "underidentified_post_policy",
+    "policy_change_date": "2018-12-01",
+    "status": "research_size_indicator_candidate",
+    "target_scale": "to_current_bvps",
+    "timing": "November month-end annual snapshot"
+  },
+  "production_changes": false,
+  "report_surface": {
+    "display_fields": [
+      "structural_indicator_name",
+      "structural_horizon_months",
+      "structural_model_name",
+      "dividend_indicator_name",
+      "dividend_target_scale",
+      "dividend_timing",
+      "bundle_status",
+      "caveat_text"
+    ],
+    "section_name": "x_series_research_watch"
+  },
+  "shadow_changes": false,
+  "status": "research_indicator_bundle_candidate",
+  "structural_signal": {
+    "horizon_months": 6,
+    "indicator_name": "adjusted_structural_bvps_pb_6m",
+    "model_name": "ridge_bridge__no_change_pb",
+    "pb_anchor_policy": "retain_no_change_pb",
+    "signal_family": "adjusted_structural_bvps_pb",
+    "status": "research_indicator_candidate"
+  },
+  "version": "x24"
+}
