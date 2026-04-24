@@ -1,0 +1,108 @@
+{
+  "artifact_classification": "research",
+  "confidence_threshold": 0.55,
+  "horizons": [
+    3,
+    6
+  ],
+  "hurdle": 0.05,
+  "models": [
+    "logistic_l2_balanced",
+    "hist_gbt_depth2"
+  ],
+  "production_changes": false,
+  "ranked_rows": [
+    {
+      "beats_no_change_pb": false,
+      "fold_count": 30,
+      "horizon_months": 3,
+      "mean_predicted_pb": 3.316480642786865,
+      "mean_realized_pb": 3.345329187528053,
+      "model_name": "no_change_pb_overlay",
+      "n_features": 0,
+      "n_obs": 180,
+      "overlay_action_rate": 0.0,
+      "pb_mae": 0.2874573167194403,
+      "pb_rmse": 0.38554113830012354,
+      "rank": 1,
+      "regime_hit_rate": 0.37222222222222223
+    },
+    {
+      "beats_no_change_pb": false,
+      "fold_count": 30,
+      "horizon_months": 3,
+      "mean_predicted_pb": 3.342484726572213,
+      "mean_realized_pb": 3.345329187528053,
+      "model_name": "hist_gbt_depth2",
+      "n_features": 14,
+      "n_obs": 180,
+      "overlay_action_rate": 0.38333333333333336,
+      "pb_mae": 0.32745830676924215,
+      "pb_rmse": 0.4435538944243916,
+      "rank": 2,
+      "regime_hit_rate": 0.32222222222222224
+    },
+    {
+      "beats_no_change_pb": false,
+      "fold_count": 30,
+      "horizon_months": 3,
+      "mean_predicted_pb": 3.3201265881904267,
+      "mean_realized_pb": 3.345329187528053,
+      "model_name": "logistic_l2_balanced",
+      "n_features": 14,
+      "n_obs": 180,
+      "overlay_action_rate": 0.7166666666666667,
+      "pb_mae": 0.3296824011025216,
+      "pb_rmse": 0.4324498907762953,
+      "rank": 3,
+      "regime_hit_rate": 0.31666666666666665
+    },
+    {
+      "beats_no_change_pb": false,
+      "fold_count": 29,
+      "horizon_months": 6,
+      "mean_predicted_pb": 3.337893604008928,
+      "mean_realized_pb": 3.388677117334051,
+      "model_name": "no_change_pb_overlay",
+      "n_features": 0,
+      "n_obs": 174,
+      "overlay_action_rate": 0.0,
+      "pb_mae": 0.39250836464879596,
+      "pb_rmse": 0.5570526373392389,
+      "rank": 1,
+      "regime_hit_rate": 0.28735632183908044
+    },
+    {
+      "beats_no_change_pb": false,
+      "fold_count": 29,
+      "horizon_months": 6,
+      "mean_predicted_pb": 3.2056453199550674,
+      "mean_realized_pb": 3.388677117334051,
+      "model_name": "logistic_l2_balanced",
+      "n_features": 14,
+      "n_obs": 174,
+      "overlay_action_rate": 0.7126436781609196,
+      "pb_mae": 0.4348667797227773,
+      "pb_rmse": 0.5606927382561514,
+      "rank": 2,
+      "regime_hit_rate": 0.41379310344827586
+    },
+    {
+      "beats_no_change_pb": false,
+      "fold_count": 29,
+      "horizon_months": 6,
+      "mean_predicted_pb": 3.3913355141278245,
+      "mean_realized_pb": 3.388677117334051,
+      "model_name": "hist_gbt_depth2",
+      "n_features": 14,
+      "n_obs": 174,
+      "overlay_action_rate": 0.632183908045977,
+      "pb_mae": 0.44738121075986725,
+      "pb_rmse": 0.6070576423289538,
+      "rank": 3,
+      "regime_hit_rate": 0.3390804597701149
+    }
+  ],
+  "shadow_changes": false,
+  "version": "x15"
+}
