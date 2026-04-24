@@ -1,0 +1,48 @@
+{
+  "artifact_classification": "research",
+  "decision_questions": [
+    {
+      "answer": "yes",
+      "criterion": "x19 must lower overlap expected-value MAE.",
+      "question": "Did the post-policy rebuild beat x10 on overlapping years?"
+    },
+    {
+      "answer": "no",
+      "criterion": "Overlap years must contain both positive and zero outcomes.",
+      "question": "Is occurrence currently identifiable post-policy?"
+    },
+    {
+      "answer": "continue_research_size_only",
+      "criterion": "If occurrence is one-class, move to size-target scaling.",
+      "question": "What should x21 prioritize?"
+    }
+  ],
+  "overlap_comparison": {
+    "ev_mae_delta": -1.021824602011,
+    "overlap_n_obs": 3,
+    "overlap_positive_rate": 1.0,
+    "x10_feature_set": "x9_capital_generation",
+    "x10_model_name": "logistic_l2_balanced__ridge_positive_excess",
+    "x10_overlap_ev_mae": 5.427793446696577,
+    "x19_beats_x10_overlap": true,
+    "x19_feature_set": "persistent_capital_generation",
+    "x19_model_name": "logistic_l2_balanced__ridge_positive_excess",
+    "x19_overlap_ev_mae": 4.405968844685907
+  },
+  "policy_change_date": "2018-12-01",
+  "production_changes": false,
+  "recommendation": {
+    "production_changes": false,
+    "rationale": "Post-policy overlap is one-class on occurrence, so only size-target experiments are currently identifiable.",
+    "shadow_changes": false,
+    "status": "continue_research_size_only"
+  },
+  "sample_scope": {
+    "confidence": "low",
+    "post_policy_snapshot_count": 8,
+    "x10_oos_n_obs": 18,
+    "x19_oos_n_obs": 3
+  },
+  "shadow_changes": false,
+  "version": "x20"
+}
