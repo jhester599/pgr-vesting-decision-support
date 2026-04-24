@@ -1,0 +1,13 @@
+horizon_months,model_name,bvps_model_name,pb_model_name,target_variant,n_obs,implied_price_mae,implied_price_rmse,directional_hit_rate,feature_block
+3,drift_bvps_growth__no_change_pb,drift_bvps_growth,no_change_pb,raw,124,8.19607630093317,13.382686261618758,0.6935483870967742,baseline
+3,ridge_bridge__no_change_pb,ridge_bridge,no_change_pb,raw,124,8.4178310988605,13.793546929523634,0.6935483870967742,bvps_lags
+3,elastic_net_bridge__no_change_pb,elastic_net_bridge,no_change_pb,raw,124,190.6886168958424,911.5467949974241,0.5806451612903226,logical_interactions
+3,drift_bvps_growth__no_change_pb,drift_bvps_growth,no_change_pb,adjusted,124,9.110699005450735,14.804177312464223,0.7419354838709677,baseline
+3,ridge_bridge__no_change_pb,ridge_bridge,no_change_pb,adjusted,124,9.050080906675976,14.757073256306562,0.7419354838709677,bvps_lags
+3,elastic_net_bridge__no_change_pb,elastic_net_bridge,no_change_pb,adjusted,124,9.016798202092973,15.183544195848699,0.7096774193548387,logical_interactions
+6,drift_bvps_growth__no_change_pb,drift_bvps_growth,no_change_pb,raw,121,12.142975810252041,20.396668207835933,0.7603305785123967,baseline
+6,ridge_bridge__no_change_pb,ridge_bridge,no_change_pb,raw,121,12.288249422886848,20.63924378360483,0.7603305785123967,bvps_lags
+6,elastic_net_bridge__no_change_pb,elastic_net_bridge,no_change_pb,raw,121,2000.9657899620192,9888.61320904041,0.6611570247933884,logical_interactions
+6,drift_bvps_growth__no_change_pb,drift_bvps_growth,no_change_pb,adjusted,121,11.735017751634205,19.894601745489155,0.8760330578512396,baseline
+6,ridge_bridge__no_change_pb,ridge_bridge,no_change_pb,adjusted,121,11.675297318354957,19.74480655304808,0.8842975206611571,bvps_lags
+6,elastic_net_bridge__no_change_pb,elastic_net_bridge,no_change_pb,adjusted,121,2686.569164602015,13313.942742836029,0.8347107438016529,logical_interactions

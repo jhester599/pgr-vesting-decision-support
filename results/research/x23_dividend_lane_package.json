@@ -1,0 +1,38 @@
+{
+  "artifact_classification": "research",
+  "decision_questions": [
+    {
+      "answer": "underidentified_post_policy",
+      "criterion": "Overlap years must not be one-class.",
+      "question": "Is occurrence ready for practical use post-policy?"
+    },
+    {
+      "answer": "to_current_bvps",
+      "criterion": "Must beat raw dollars and baseline challengers on dollar MAE.",
+      "question": "What dividend target scale survived x22?"
+    },
+    {
+      "answer": "research_size_indicator_candidate",
+      "criterion": "Only package a research-size signal unless occurrence becomes identifiable.",
+      "question": "How should the broader x-series use this lane next?"
+    }
+  ],
+  "dividend_lane_shape": {
+    "best_size_feature_set": "x10_capital_generation",
+    "best_size_model_name": "ridge_scaled",
+    "best_size_target_scale": "to_current_bvps",
+    "occurrence_status": "underidentified_post_policy",
+    "policy_change_date": "2018-12-01",
+    "x21_best_target_scale": "to_current_bvps"
+  },
+  "production_changes": false,
+  "recommendation": {
+    "occurrence_status": "underidentified_post_policy",
+    "production_changes": false,
+    "rationale": "Occurrence remains underidentified, but current-BVPS-normalized size has beaten raw-dollar and baseline challengers.",
+    "shadow_changes": false,
+    "status": "research_size_indicator_candidate"
+  },
+  "shadow_changes": false,
+  "version": "x23"
+}
