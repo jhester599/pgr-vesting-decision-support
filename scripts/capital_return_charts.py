@@ -344,43 +344,19 @@ def _reg_line(xs, ys):
 fig3, (axL, axR) = plt.subplots(1, 2, figsize=(18, 7))
 fig3.subplots_adjust(wspace=0.10)
 
-MARKER_SIZE = 90
-
-# Label nudge table: (dx_cr, dy) in data units to avoid overlap
-# Computed manually for legibility
-_nudge_B = {
-    "2007": (+0.3, +0.10), "2020": (+0.3, +0.05), "2025": (+0.3, +0.12),
-    "2022": (-0.5, -0.12), "2005": (+0.3, +0.05),
-}
-_nudge_pct = {
-    "2007": (-0.6, +0.5),  "2020": (+0.3, +0.2), "2025": (+0.3, +0.3),
-    "2022": (-0.5, -0.3),  "2021": (+0.3, -0.2),
-}
-
-for ax_s, y_vals, y_label, y_fmt, nudge_map in [
+for ax_s, y_vals, y_label, y_fmt in [
     (axL, sc_tot_B, "Total Capital Returned ($B)",
-     lambda x, _: f"${x:.1f}B", _nudge_B),
+     lambda x, _: f"${x:.1f}B"),
     (axR, sc_pct,  "Total Capital Returned (% of Year-End Mkt Cap)",
-     lambda x, _: f"{x:.1f}%", _nudge_pct),
+     lambda x, _: f"{x:.1f}%"),
 ]:
-    # Scatter points, colored by time
+    # Year labels directly at each data point (no separate dot marker)
     for i, (y, cr, val, c) in enumerate(zip(scatter_years, sc_cr, y_vals, colors)):
-        ax_s.scatter(cr, val, s=MARKER_SIZE, color=c, zorder=3,
-                     edgecolors="white", linewidths=0.6)
-
-        # Label placement with optional nudge
-        dx, dy = nudge_map.get(y, (0.18, 0.0))
-        ax_s.annotate(
-            y[2:],   # last two digits: '05', '07' etc.
-            xy=(cr, val),
-            xytext=(cr + dx, val + dy),
-            fontsize=7.5, color="#333333", va="center",
-            arrowprops=dict(arrowstyle="-", color="#cccccc", lw=0.5)
-            if (dx**2 + dy**2) > 0.1 else None,
-        )
+        ax_s.text(cr, val, y, fontsize=8.5, color=c, fontweight="bold",
+                  ha="center", va="center", zorder=3)
 
     # Regression line
-    x_fit, y_fit, coef = _reg_line(sc_cr, y_vals)
+    x_fit, y_fit, _ = _reg_line(sc_cr, y_vals)
     ax_s.plot(x_fit, y_fit, color="#888888", linewidth=1.2,
               linestyle="--", alpha=0.7, zorder=1)
 
