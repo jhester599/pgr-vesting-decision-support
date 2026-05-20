@@ -1,0 +1,255 @@
+{
+  "artifacts": {
+    "benchmark_quality_csv": "benchmark_quality.csv",
+    "classification_shadow_csv": "classification_shadow.csv",
+    "consensus_shadow_csv": "consensus_shadow.csv",
+    "dashboard_html": "dashboard.html",
+    "decision_overlays_csv": "decision_overlays.csv",
+    "diagnostic_md": "diagnostic.md",
+    "monthly_summary_json": "monthly_summary.json",
+    "recommendation_md": "recommendation.md",
+    "run_manifest_json": "run_manifest.json",
+    "signals_csv": "signals.csv"
+  },
+  "as_of_date": "2026-05-20",
+  "classification_shadow": {
+    "agreement_label": "Aligned",
+    "agreement_with_live": true,
+    "benchmark_count": 10,
+    "calibration": "oos_logistic_calibration",
+    "confidence_tier": "LOW",
+    "confidence_tier_investable_pool": "LOW",
+    "confidence_tier_path_b": "LOW",
+    "dual_track_delta": {
+      "BND": 0.7085850624752145,
+      "VGT": 0.0,
+      "VIG": 0.27120416186573515,
+      "VOO": 0.0,
+      "VWO": 0.0,
+      "VXUS": 0.0
+    },
+    "enabled": true,
+    "feature_anchor_date": "2026-04-30",
+    "feature_set": "lean_baseline",
+    "interpretation": "Shadow classifier is near its neutral band (40.9%); use it as a low-confidence interpretation layer rather than a decision override.",
+    "investable_benchmark_count": 6,
+    "model_family": "separate_benchmark_logistic_balanced",
+    "probability_actionable_sell": 0.4094863884479665,
+    "probability_actionable_sell_label": "40.9%",
+    "probability_investable_pool": 0.4848473034102738,
+    "probability_investable_pool_label": "48.5%",
+    "probability_non_actionable": 0.5905136115520335,
+    "probability_non_actionable_label": "59.1%",
+    "probability_path_b_temp_scaled": 0.5269317647949013,
+    "probability_path_b_temp_scaled_label": "52.7%",
+    "stance": "NEUTRAL",
+    "stance_investable_pool": "NEUTRAL",
+    "stance_path_b": "NEUTRAL",
+    "target_label": "actionable_sell_3pct",
+    "top_supporting_benchmark": "VXUS",
+    "top_supporting_contribution": 0.07166645923743145,
+    "top_supporting_contribution_label": "7.2%"
+  },
+  "classification_shadow_variants": [
+    {
+      "agreement_label": "Aligned",
+      "agreement_with_live": true,
+      "benchmark_count": 10,
+      "calibration": "oos_logistic_calibration",
+      "confidence_tier": "LOW",
+      "confidence_tier_investable_pool": "LOW",
+      "confidence_tier_path_b": "LOW",
+      "dual_track_delta": {
+        "BND": 0.7085850624752145,
+        "VGT": 0.0,
+        "VIG": 0.27120416186573515,
+        "VOO": 0.0,
+        "VWO": 0.0,
+        "VXUS": 0.0
+      },
+      "enabled": true,
+      "feature_anchor_date": "2026-04-30",
+      "feature_set": "lean_baseline",
+      "interpretation": "Shadow classifier is near its neutral band (40.9%); use it as a low-confidence interpretation layer rather than a decision override.",
+      "investable_benchmark_count": 6,
+      "label": "Current Shadow",
+      "model_family": "separate_benchmark_logistic_balanced",
+      "probability_actionable_sell": 0.4094863884479665,
+      "probability_actionable_sell_label": "40.9%",
+      "probability_investable_pool": 0.4848473034102738,
+      "probability_investable_pool_label": "48.5%",
+      "probability_non_actionable": 0.5905136115520335,
+      "probability_non_actionable_label": "59.1%",
+      "probability_path_b_temp_scaled": 0.5269317647949013,
+      "probability_path_b_temp_scaled_label": "52.7%",
+      "stance": "NEUTRAL",
+      "stance_investable_pool": "NEUTRAL",
+      "stance_path_b": "NEUTRAL",
+      "target_label": "actionable_sell_3pct",
+      "top_supporting_benchmark": "VXUS",
+      "top_supporting_contribution": 0.07166645923743145,
+      "top_supporting_contribution_label": "7.2%",
+      "variant": "baseline_shadow"
+    },
+    {
+      "candidate_sources": {
+        "v141_blend_weight": 0.6,
+        "v143_corr_prune": 0.8,
+        "v144_conformal": {
+          "aci_gamma": 0.03,
+          "coverage": 0.75
+        },
+        "v149_kelly": {
+          "cap": 0.25,
+          "fraction": 0.5
+        },
+        "v150_neutral_band": 0.015
+      },
+      "confidence_tier": "LOW",
+      "label": "Autoresearch Follow-On",
+      "probability_actionable_sell": 0.4094863884479665,
+      "probability_actionable_sell_label": "40.9%",
+      "probability_investable_pool_label": "48.5%",
+      "probability_path_b_temp_scaled_label": "52.7%",
+      "reporting_only": true,
+      "stance": "NEUTRAL",
+      "variant": "autoresearch_followon_v150"
+    },
+    {
+      "affects_gate_overlay": false,
+      "affects_live_recommendation": false,
+      "benchmark_count": 10,
+      "calibration": "oos_logistic_calibration",
+      "confidence_tier": "LOW",
+      "feature_anchor_date": "2026-04-30",
+      "feature_set": "ta_pgr_obv_detrended|ta_pgr_natr_63d|yield_slope|real_yield_change_6m|real_rate_10y|credit_spread_hy|nfci|ta_ratio_bb_pct_b_6m_vwo|combined_ratio_ttm|investment_income_growth_yoy|book_value_per_share_growth_yoy|npw_growth_yoy",
+      "label": "TA Minimal + VWO %B",
+      "model_family": "separate_benchmark_logistic_balanced",
+      "probability_actionable_sell": 0.46014435524139474,
+      "probability_actionable_sell_label": "46.0%",
+      "reporting_only": true,
+      "stance": "NEUTRAL",
+      "target_label": "actionable_sell_3pct",
+      "variant": "ta_minimal_plus_vwo_pct_b"
+    },
+    {
+      "affects_gate_overlay": false,
+      "affects_live_recommendation": false,
+      "benchmark_count": 10,
+      "calibration": "oos_logistic_calibration",
+      "confidence_tier": "LOW",
+      "feature_anchor_date": "2026-04-30",
+      "feature_set": "ta_pgr_obv_detrended|ta_pgr_natr_63d|yield_slope|real_yield_change_6m|real_rate_10y|credit_spread_hy|nfci|vix|combined_ratio_ttm|investment_income_growth_yoy|book_value_per_share_growth_yoy|npw_growth_yoy",
+      "label": "TA Minimal Replacement",
+      "model_family": "separate_benchmark_logistic_balanced",
+      "probability_actionable_sell": 0.44362594821463625,
+      "probability_actionable_sell_label": "44.4%",
+      "reporting_only": true,
+      "stance": "NEUTRAL",
+      "target_label": "actionable_sell_3pct",
+      "variant": "ta_minimal_replacement"
+    }
+  ],
+  "coverage": {
+    "benchmark_count": 8,
+    "benchmark_quality_count": 8
+  },
+  "cross_check": {
+    "artifact_retained": true,
+    "consensus_agreement": true,
+    "live_recommendation_mode": "DEFER-TO-TAX-DEFAULT",
+    "live_sell_pct": 0.5,
+    "live_variant": "quality_weighted",
+    "mode_agreement": true,
+    "retired_reason": "Equal-weight consensus remained stable during the post-promotion stabilization window, so the comparison now stays diagnostic-only.",
+    "sell_pct_agreement": true,
+    "shadow_recommendation_mode": "DEFER-TO-TAX-DEFAULT",
+    "shadow_sell_pct": 0.5,
+    "shadow_variant": "equal_weight",
+    "visible_in_primary_surfaces": false
+  },
+  "decision_overlay_variants": [
+    {
+      "classifier_prob_actionable_sell": 0.4094863884479665,
+      "gate_style": "veto_regression_sell",
+      "label": "Current Shadow",
+      "reason": "no regression sell to veto",
+      "recommendation_mode": "DEFER-TO-TAX-DEFAULT",
+      "recommended_sell_pct": 0.5,
+      "threshold": 0.5,
+      "variant": "gemini_veto_0.50",
+      "would_change": false
+    },
+    {
+      "candidate_sources": {
+        "v141_blend_weight": 0.6,
+        "v143_corr_prune": 0.8,
+        "v144_conformal": {
+          "aci_gamma": 0.03,
+          "coverage": 0.75
+        },
+        "v149_kelly": {
+          "cap": 0.25,
+          "fraction": 0.5
+        },
+        "v150_neutral_band": 0.015
+      },
+      "classifier_prob_actionable_sell": 0.4094863884479665,
+      "gate_style": "veto_regression_sell",
+      "label": "Autoresearch Follow-On",
+      "reason": "no regression sell to veto",
+      "recommendation_mode": "DEFER-TO-TAX-DEFAULT",
+      "recommended_sell_pct": 0.5,
+      "reporting_only": true,
+      "threshold": 0.5,
+      "variant": "autoresearch_followon_v150",
+      "would_change": false
+    }
+  ],
+  "recommendation": {
+    "actionability_label": "No \u2014 follow the default tax/diversification rule.",
+    "aggregate_nw_ic": 0.09791871383244016,
+    "aggregate_nw_ic_label": "0.0979",
+    "aggregate_oos_r2": -0.0351358401382138,
+    "aggregate_oos_r2_label": "-3.51%",
+    "confidence_tier": "LOW",
+    "decision_headline": "Hold 50% / Sell 50% of the next vest tranche. No \u2014 follow the default tax/diversification rule.",
+    "hold_vs_sell_label": "Hold 50% / Sell 50% of the next vest tranche",
+    "mean_hit_rate": 0.6394899265202745,
+    "mean_hit_rate_label": "63.9%",
+    "mean_ic": 0.10259542670912744,
+    "mean_ic_label": "0.1026",
+    "predicted_6m_relative_return": -0.026866031730508173,
+    "predicted_6m_relative_return_label": "-2.69%",
+    "prob_outperform_calibrated": 0.6334476361183319,
+    "prob_outperform_calibrated_label": "63.3%",
+    "prob_outperform_raw": 0.5,
+    "prob_outperform_raw_label": "50.0%",
+    "recommendation_mode": "DEFER-TO-TAX-DEFAULT",
+    "recommended_sell_pct": 0.5,
+    "recommended_sell_pct_label": "50%",
+    "signal": "NEUTRAL",
+    "signal_label": "NEUTRAL (LOW CONFIDENCE)"
+  },
+  "recommendation_layer": {
+    "label": "Live production recommendation layer (quality-weighted consensus)",
+    "visible_cross_check": false
+  },
+  "run_date": "2026-05-20",
+  "schema_version": 3,
+  "shadow_gate_overlay": {
+    "classifier_prob_actionable_sell": 0.4094863884479665,
+    "gate_style": "veto_regression_sell",
+    "reason": "no regression sell to veto",
+    "recommendation_mode": "DEFER-TO-TAX-DEFAULT",
+    "recommended_sell_pct": 0.5,
+    "threshold": 0.5,
+    "variant": "gemini_veto_0.50",
+    "would_change": false
+  },
+  "warnings": [
+    "Aggregate OOS R^2 below threshold: -3.51% < 2.00%.",
+    "Representative CPCV verdict is FAIL.",
+    "Trailing conformal coverage deviates materially from nominal: 55.2% vs 80%."
+  ]
+}
