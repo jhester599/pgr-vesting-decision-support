@@ -81,7 +81,14 @@ conn.close()
 annual_dividend = defaultdict(float)  # year -> $M
 
 for ex_date, amount in div_rows:
-    year = ex_date[:4]
+    # Q1 dividends (Jan–Mar) are distributions of the prior year's earnings;
+    # attribute them to the prior calendar year so the chart aligns with the
+    # performance period rather than the payment date.
+    year_int = int(ex_date[:4])
+    month    = int(ex_date[5:7])
+    if month <= 3:
+        year_int -= 1
+    year = str(year_int)
     ym = ex_date[:7]
     shares = shares_at(ym)
     if shares is None:
@@ -97,7 +104,7 @@ div_vals  = [annual_dividend.get(y, 0.0)   / 1000 for y in years]  # convert to 
 year_ints = [int(y) for y in years]
 
 # Identify partial years: 2004 (data starts Aug) and 2026 (ongoing)
-PARTIAL_YEARS = {"2004": "Aug–Dec 2004", "2026": "Jan–Apr 2026"}
+PARTIAL_YEARS = {"2004": "Aug–Dec 2004", "2026": "Jan–Apr 2026 (repurchases only)"}
 
 # ── 5. Build chart ────────────────────────────────────────────────────────────
 GREEN  = "#2ca02c"   # repurchases — matches existing chart style
