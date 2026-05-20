@@ -341,8 +341,7 @@ def _reg_line(xs, ys):
     return x_fit, np.polyval(coef, x_fit), coef
 
 # ── 19. Build chart ───────────────────────────────────────────────────────────
-fig3, (axL, axR) = plt.subplots(1, 2, figsize=(18, 7))
-fig3.subplots_adjust(wspace=0.10)
+fig3, (axL, axR) = plt.subplots(1, 2, figsize=(16, 6))
 
 for ax_s, y_vals, y_label, y_fmt in [
     (axL, sc_tot_B, "Total Capital Returned ($B)",
@@ -382,20 +381,20 @@ axL.set_title("Combined Ratio vs. Capital Returned ($B)", fontsize=12,
 axR.set_title("Combined Ratio vs. Capital Returned (% of Mkt Cap)", fontsize=12,
               fontweight="bold", pad=10)
 
-# Colorbar (year gradient legend)
+# Colorbar — attach to right axes only to avoid layout explosion
 sm = plt.cm.ScalarMappable(cmap=cmap,
                             norm=plt.Normalize(int(scatter_years[0]),
                                                int(scatter_years[-1])))
 sm.set_array([])
-cbar = fig3.colorbar(sm, ax=[axL, axR], orientation="vertical",
-                     fraction=0.015, pad=0.02)
+cbar = fig3.colorbar(sm, ax=axR, orientation="vertical",
+                     fraction=0.04, pad=0.03, shrink=0.85)
 cbar.set_label("Year", fontsize=9)
 cbar.set_ticks([int(scatter_years[0]), 2010, 2015, 2020, int(scatter_years[-1])])
 
-fig3.tight_layout(rect=[0, 0, 0.97, 1])
+fig3.tight_layout()
 
 # ── 20. Save ──────────────────────────────────────────────────────────────────
 out3_path = os.path.join(OUT_DIR, "pgr_cr_vs_capital_return.png")
-fig3.savefig(out3_path, dpi=150, bbox_inches="tight")
+fig3.savefig(out3_path, dpi=150)
 plt.close(fig3)
 print(f"Saved: {out3_path}")
