@@ -1,6 +1,7 @@
 """
 PGR Annual Capital Return: Share Repurchases vs. Dividends
-Stacked bar chart comparing total dollars returned to shareholders per calendar year.
+Chart 1 — total dollars returned ($B), stacked bar.
+Chart 2 — same dollars as % of year-end market cap, stacked bar.
 Saves to results/research/.
 """
 
@@ -76,7 +77,35 @@ cur.execute("""
     ORDER BY ex_date
 """)
 div_rows = cur.fetchall()
+
+# Year-end (December) prices for market-cap denominator.
+# For years with no December record (e.g. partial 2026), the last available
+# month is used instead — handled below after grouping.
+cur.execute("""
+    SELECT strftime('%Y', date) AS yr,
+           date,
+           close
+    FROM daily_prices
+    WHERE ticker = 'PGR'
+    ORDER BY date
+""")
+all_price_rows = cur.fetchall()
 conn.close()
+
+# Collapse to the last trading date of December for each year.
+# Fall back to the last available date in any month for years without December.
+from collections import defaultdict as _dd
+_by_year_all   = _dd(list)   # year -> all (date, close)
+_by_year_dec   = _dd(list)   # year -> December (date, close) only
+for yr, date_str, close in all_price_rows:
+    _by_year_all[yr].append((date_str, close))
+    if date_str[5:7] == "12":
+        _by_year_dec[yr].append((date_str, close))
+
+yearend_price = {}   # year -> close price
+for yr in sorted(set(_by_year_all.keys())):
+    bucket = _by_year_dec[yr] if _by_year_dec[yr] else _by_year_all[yr]
+    yearend_price[yr] = sorted(bucket)[-1][1]  # last date in bucket
 
 annual_dividend = defaultdict(float)  # year -> $M
 
@@ -153,7 +182,7 @@ fig.savefig(out_path, dpi=150, bbox_inches="tight")
 plt.close(fig)
 print(f"Saved: {out_path}")
 
-# ── 9. Console summary ────────────────────────────────────────────────────────
+# ── 9. Console summary (Chart 1) ─────────────────────────────────────────────
 print()
 print("─" * 60)
 print(f"{'Year':<6}  {'Repurchases ($B)':>17}  {'Dividends ($B)':>15}  {'Total ($B)':>11}")
@@ -162,3 +191,93 @@ for y, r, d in zip(years, rep_vals, div_vals):
     marker = " ★" if y in PARTIAL_YEARS else ""
     print(f"{y:<6}  {r:>17.2f}  {d:>15.2f}  {r+d:>11.2f}{marker}")
 print("─" * 60)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Chart 2: Capital Return as % of Year-End Market Cap
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── 10. Compute year-end market caps ─────────────────────────────────────────
+# market_cap_M = year-end close price × shares outstanding (M)
+# For the partial year 2026 use the latest available price & EDGAR month.
+mktcap_M = {}   # year -> $M
+
+for y in years:
+    price = yearend_price.get(y)
+    # shares_at expects YYYY-MM; use December for full years, latest for 2026
+    ym_key = f"{y}-12" if y != "2026" else shares_timeline[-1][0]
+    shares = shares_at(ym_key)
+    if price is None or shares is None:
+        continue
+    mktcap_M[y] = price * shares  # $M
+
+# ── 11. Express returns as % of year-end market cap ──────────────────────────
+rep_pct = []
+div_pct = []
+years_mktcap = []   # only years where market cap is available
+
+for y in years:
+    mc = mktcap_M.get(y)
+    if mc is None or mc == 0:
+        continue
+    rep_pct.append(annual_repurchase.get(y, 0.0) / mc * 100)
+    div_pct.append(annual_dividend.get(y, 0.0)   / mc * 100)
+    years_mktcap.append(y)
+
+year_ints_mc = [int(y) for y in years_mktcap]
+
+# ── 12. Build chart ───────────────────────────────────────────────────────────
+BLUE2   = "#1f77b4"   # repurchases
+ORANGE2 = "#ff7f0e"   # dividends
+
+fig2, ax2 = plt.subplots(figsize=(14, 6))
+
+ax2.bar(year_ints_mc, rep_pct, width=BAR_WIDTH, color=BLUE2,   alpha=0.85, label="Share Repurchases")
+ax2.bar(year_ints_mc, div_pct, width=BAR_WIDTH, color=ORANGE2, alpha=0.85, label="Dividends",
+        bottom=rep_pct)
+
+# Partial-year annotations
+for y, label in PARTIAL_YEARS.items():
+    if y in years_mktcap:
+        xi = int(y)
+        mc = mktcap_M.get(y, 1)
+        total_pct = (annual_repurchase.get(y, 0.0) + annual_dividend.get(y, 0.0)) / mc * 100
+        ax2.annotate(
+            f"★ {label}",
+            xy=(xi, total_pct),
+            xytext=(xi, total_pct + 0.3),
+            ha="center", va="bottom", fontsize=7.5, color="#555555",
+            arrowprops=dict(arrowstyle="-", color="#aaaaaa", lw=0.6),
+        )
+
+ax2.set_title("PGR — Annual Capital Returned as % of Year-End Market Cap",
+              fontsize=13, fontweight="bold", pad=12)
+ax2.set_ylabel("% of Market Cap", fontsize=11)
+ax2.set_xlabel("")
+ax2.set_xticks(year_ints_mc)
+ax2.set_xticklabels(years_mktcap, fontsize=9, rotation=45, ha="right")
+ax2.tick_params(axis="y", labelsize=9)
+ax2.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:.1f}%"))
+ax2.grid(axis="y", linestyle="--", alpha=0.4)
+ax2.spines["top"].set_visible(False)
+ax2.spines["right"].set_visible(False)
+ax2.legend(fontsize=10, frameon=False, loc="upper left")
+
+fig2.tight_layout()
+
+# ── 13. Save ──────────────────────────────────────────────────────────────────
+out2_path = os.path.join(OUT_DIR, "pgr_capital_return_pct_marketcap.png")
+fig2.savefig(out2_path, dpi=150, bbox_inches="tight")
+plt.close(fig2)
+print(f"Saved: {out2_path}")
+
+# ── 14. Console summary (Chart 2) ────────────────────────────────────────────
+print()
+print("─" * 72)
+print(f"{'Year':<6}  {'Mkt Cap ($B)':>12}  {'Repurch %':>10}  {'Div %':>8}  {'Total %':>8}")
+print("─" * 72)
+for y, rp, dp in zip(years_mktcap, rep_pct, div_pct):
+    mc_b = mktcap_M[y] / 1000
+    marker = " ★" if y in PARTIAL_YEARS else ""
+    print(f"{y:<6}  {mc_b:>12.1f}  {rp:>10.2f}  {dp:>8.2f}  {rp+dp:>8.2f}{marker}")
+print("─" * 72)
