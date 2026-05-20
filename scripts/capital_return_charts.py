@@ -281,3 +281,145 @@ for y, rp, dp in zip(years_mktcap, rep_pct, div_pct):
     marker = " ★" if y in PARTIAL_YEARS else ""
     print(f"{y:<6}  {mc_b:>12.1f}  {rp:>10.2f}  {dp:>8.2f}  {rp+dp:>8.2f}{marker}")
 print("─" * 72)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Chart 3: Combined Ratio vs. Capital Returned — XY Scatter (two panels)
+#
+# Left panel  — raw dollars ($B): shows the absolute scale of returns; the
+#               time-color gradient reveals that recent years cluster high on Y
+#               primarily because the company is much larger, not just because
+#               CR improved.
+# Right panel — % of year-end market cap: size-normalized, cleaner signal on
+#               the CR→return relationship independent of company growth.
+# ══════════════════════════════════════════════════════════════════════════════
+
+import numpy as np  # for regression line
+
+# ── 15. Build annual combined ratio (NPE-weighted average of monthly CRs) ────
+conn = sqlite3.connect(DB_PATH)
+cur = conn.cursor()
+cur.execute("""
+    SELECT
+        strftime('%Y', month_end) AS yr,
+        COUNT(*) AS months,
+        SUM(combined_ratio * net_premiums_earned) / SUM(net_premiums_earned) AS cr_wtd
+    FROM pgr_edgar_monthly
+    WHERE combined_ratio IS NOT NULL AND net_premiums_earned IS NOT NULL
+    GROUP BY yr
+    ORDER BY yr
+""")
+annual_cr = {r[0]: (r[1], r[2]) for r in cur.fetchall()}  # year -> (months, cr)
+conn.close()
+
+# ── 16. Align scatter data (full years only: 2005–2025) ──────────────────────
+scatter_years = [y for y in years if y >= "2005" and y <= "2025"
+                 and annual_cr.get(y, (0, None))[0] == 12]
+
+sc_cr    = [annual_cr[y][1]                                           for y in scatter_years]
+sc_tot_B = [(annual_repurchase.get(y, 0) + annual_dividend.get(y, 0)) / 1000
+             for y in scatter_years]
+sc_pct   = [(annual_repurchase.get(y, 0) + annual_dividend.get(y, 0)) / mktcap_M[y] * 100
+             if mktcap_M.get(y) else None for y in scatter_years]
+
+# Remove any year where % is unavailable
+valid = [(y, cr, tb, pct) for y, cr, tb, pct in
+         zip(scatter_years, sc_cr, sc_tot_B, sc_pct) if pct is not None]
+scatter_years, sc_cr, sc_tot_B, sc_pct = map(list, zip(*valid))
+
+year_ints_sc = [int(y) for y in scatter_years]
+
+# ── 17. Color gradient (dark blue → orange, older → newer) ───────────────────
+cmap = plt.get_cmap("plasma")
+n = len(scatter_years)
+colors = [cmap(0.15 + 0.70 * i / (n - 1)) for i in range(n)]
+
+# ── 18. Regression helpers ────────────────────────────────────────────────────
+def _reg_line(xs, ys):
+    coef = np.polyfit(xs, ys, 1)
+    x_fit = np.linspace(min(xs), max(xs), 200)
+    return x_fit, np.polyval(coef, x_fit), coef
+
+# ── 19. Build chart ───────────────────────────────────────────────────────────
+fig3, (axL, axR) = plt.subplots(1, 2, figsize=(18, 7))
+fig3.subplots_adjust(wspace=0.10)
+
+MARKER_SIZE = 90
+
+# Label nudge table: (dx_cr, dy) in data units to avoid overlap
+# Computed manually for legibility
+_nudge_B = {
+    "2007": (+0.3, +0.10), "2020": (+0.3, +0.05), "2025": (+0.3, +0.12),
+    "2022": (-0.5, -0.12), "2005": (+0.3, +0.05),
+}
+_nudge_pct = {
+    "2007": (-0.6, +0.5),  "2020": (+0.3, +0.2), "2025": (+0.3, +0.3),
+    "2022": (-0.5, -0.3),  "2021": (+0.3, -0.2),
+}
+
+for ax_s, y_vals, y_label, y_fmt, nudge_map in [
+    (axL, sc_tot_B, "Total Capital Returned ($B)",
+     lambda x, _: f"${x:.1f}B", _nudge_B),
+    (axR, sc_pct,  "Total Capital Returned (% of Year-End Mkt Cap)",
+     lambda x, _: f"{x:.1f}%", _nudge_pct),
+]:
+    # Scatter points, colored by time
+    for i, (y, cr, val, c) in enumerate(zip(scatter_years, sc_cr, y_vals, colors)):
+        ax_s.scatter(cr, val, s=MARKER_SIZE, color=c, zorder=3,
+                     edgecolors="white", linewidths=0.6)
+
+        # Label placement with optional nudge
+        dx, dy = nudge_map.get(y, (0.18, 0.0))
+        ax_s.annotate(
+            y[2:],   # last two digits: '05', '07' etc.
+            xy=(cr, val),
+            xytext=(cr + dx, val + dy),
+            fontsize=7.5, color="#333333", va="center",
+            arrowprops=dict(arrowstyle="-", color="#cccccc", lw=0.5)
+            if (dx**2 + dy**2) > 0.1 else None,
+        )
+
+    # Regression line
+    x_fit, y_fit, coef = _reg_line(sc_cr, y_vals)
+    ax_s.plot(x_fit, y_fit, color="#888888", linewidth=1.2,
+              linestyle="--", alpha=0.7, zorder=1)
+
+    # Axes + style
+    ax_s.invert_xaxis()
+    ax_s.set_xlabel("Combined Ratio  ← Better underwriting", fontsize=11)
+    ax_s.set_ylabel(y_label, fontsize=10)
+    ax_s.yaxis.set_major_formatter(mticker.FuncFormatter(y_fmt))
+    ax_s.grid(linestyle="--", alpha=0.35)
+    ax_s.spines["top"].set_visible(False)
+    ax_s.spines["right"].set_visible(False)
+    ax_s.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:.0f}%"))
+
+    # Reference line at 96% CR
+    ax_s.axvline(96, color="#cc4444", linewidth=0.9, linestyle=":", alpha=0.6,
+                 zorder=0)
+    ylim = ax_s.get_ylim()
+    ax_s.text(96.1, ylim[0] + (ylim[1]-ylim[0])*0.97,
+              "96%", fontsize=7, color="#cc4444", va="top")
+
+axL.set_title("Combined Ratio vs. Capital Returned ($B)", fontsize=12,
+              fontweight="bold", pad=10)
+axR.set_title("Combined Ratio vs. Capital Returned (% of Mkt Cap)", fontsize=12,
+              fontweight="bold", pad=10)
+
+# Colorbar (year gradient legend)
+sm = plt.cm.ScalarMappable(cmap=cmap,
+                            norm=plt.Normalize(int(scatter_years[0]),
+                                               int(scatter_years[-1])))
+sm.set_array([])
+cbar = fig3.colorbar(sm, ax=[axL, axR], orientation="vertical",
+                     fraction=0.015, pad=0.02)
+cbar.set_label("Year", fontsize=9)
+cbar.set_ticks([int(scatter_years[0]), 2010, 2015, 2020, int(scatter_years[-1])])
+
+fig3.tight_layout(rect=[0, 0, 0.97, 1])
+
+# ── 20. Save ──────────────────────────────────────────────────────────────────
+out3_path = os.path.join(OUT_DIR, "pgr_cr_vs_capital_return.png")
+fig3.savefig(out3_path, dpi=150, bbox_inches="tight")
+plt.close(fig3)
+print(f"Saved: {out3_path}")
