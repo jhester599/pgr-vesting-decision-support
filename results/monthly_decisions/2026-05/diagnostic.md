@@ -1,6 +1,6 @@
 # PGR Diagnostic Report — May 2026
 
-**As-of Date:** 2026-05-20  
+**As-of Date:** 2026-05-21  
 **Horizon:** 6M  
 **OOS observations (aggregate):** 1200  
 **Newey-West lags:** 5 (accounts for 5-month return-window overlap)  

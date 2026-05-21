@@ -1,7 +1,7 @@
 {
   "artifact_classification": "production",
-  "as_of_date": "2026-05-20",
-  "git_sha": "eaf540cb2b73388f12e5f8d9e6664678b3669be2",
+  "as_of_date": "2026-05-21",
+  "git_sha": "f78c3b20c1d8f1f182a8d67ed4236764a7580ae7",
   "latest_dates": {
     "daily_dividends.ex_date": "2026-06-10",
     "daily_prices.date": "2026-05-15",
@@ -31,7 +31,7 @@
     "pgr_edgar_monthly": 259,
     "pgr_fundamentals_quarterly": 73
   },
-  "run_timestamp_utc": "2026-05-20T17:57:17.203831+00:00",
+  "run_timestamp_utc": "2026-05-21T17:32:42.900122+00:00",
   "schema_version": "003_model_retrain_log",
   "script_name": "scripts/monthly_decision.py",
   "warnings": [
