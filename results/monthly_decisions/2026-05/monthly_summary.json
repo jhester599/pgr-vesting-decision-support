@@ -11,7 +11,7 @@
     "run_manifest_json": "run_manifest.json",
     "signals_csv": "signals.csv"
   },
-  "as_of_date": "2026-05-21",
+  "as_of_date": "2026-05-22",
   "classification_shadow": {
     "agreement_label": "Aligned",
     "agreement_with_live": true,
@@ -235,7 +235,7 @@
     "label": "Live production recommendation layer (quality-weighted consensus)",
     "visible_cross_check": false
   },
-  "run_date": "2026-05-21",
+  "run_date": "2026-05-22",
   "schema_version": 3,
   "shadow_gate_overlay": {
     "classifier_prob_actionable_sell": 0.4094863884479665,

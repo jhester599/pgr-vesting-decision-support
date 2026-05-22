@@ -1,7 +1,7 @@
 # PGR Monthly Decision Report — May 2026
 
-**As-of Date:** 2026-05-21  
-**Run Date:** 2026-05-21  
+**As-of Date:** 2026-05-22  
+**Run Date:** 2026-05-22  
 **Model Version:** v11.1 (lean 2-model ensemble: Ridge + GBT, v18 feature sets, 8-benchmark PRIMARY_FORECAST_UNIVERSE, inverse-variance weighting, v38 post-ensemble shrinkage alpha=0.50, C(8,2)=28 CPCV paths; ElasticNet+BayesianRidge retired after v18/v20 research showed Ridge+GBT outperforms on IC, hit rate, and obs/feature ratio)  
 **Recommendation Layer:** Live production recommendation layer (quality-weighted consensus)  
 
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-- What changed since last month: Previous logged month (2026-05-20) was NEUTRAL at -2.69% with mean IC 0.1026.
+- What changed since last month: Previous logged month (2026-05-21) was NEUTRAL at -2.69% with mean IC 0.1026.
 - Current model view: Consensus signal is NEUTRAL, but the average relative-return forecast is -2.69% across benchmarks over the next 6 months. Recommendation mode remains DEFER-TO-TAX-DEFAULT.
 - How trustworthy it is: Model quality is too weak to justify a prediction-led vesting action. Aggregate health: OOS R^2 -3.51%, IC 0.0979, hit rate 64.2%.
 - What to do at the next vest: Next vest guidance unavailable because the lot file or latest PGR price is missing.
@@ -23,9 +23,9 @@
 
 | Feed | Latest Date | Age | Limit | Status |
 |------|-------------|-----|-------|--------|
-| Daily prices | 2026-05-15 | 6 days | 10 days | **OK** |
+| Daily prices | 2026-05-15 | 7 days | 10 days | **OK** |
 | FRED macro | 2026-05-29 | 0 days | 45 days | **OK** |
-| PGR monthly EDGAR | 2026-04-30 | 21 days | 25-day filing grace | **OK** |
+| PGR monthly EDGAR | 2026-04-30 | 22 days | 25-day filing grace | **OK** |
 
 ---
 
@@ -176,11 +176,11 @@ Recommended action at next vesting event: **DEFAULT 50% SALE** for diversificati
 
 | Fund | Allocation | Sleeve | Why it is included | PGR Correlation | Relative Signal | P(Benchmark Beats PGR) |
 |------|------------|--------|--------------------|-----------------|-----------------|------------------------|
-| VOO | 28% | Broad US equity core | Core US beta sleeve that keeps the portfolio equity-heavy without recreating single-stock PGR risk. | 0.14 | Keep near base (+1.4%) | 32.3% |
-| VGT | 22% | Technology tilt | Growth engine and explicit tech tilt when the relative signal supports owning more innovation exposure than a pure core index. | 0.29 | Base-weight only (n/a) | n/a |
+| VOO | 36% | Broad US equity core | Core US beta sleeve that keeps the portfolio equity-heavy without recreating single-stock PGR risk. | 0.14 | Keep near base (+1.4%) | 32.3% |
+| VGT | 18% | Technology tilt | Growth engine and explicit tech tilt when the relative signal supports owning more innovation exposure than a pure core index. | 0.29 | Base-weight only (n/a) | n/a |
 | VXUS | 18% | International core | Primary geographic diversifier away from a US employer-stock concentration. | 0.28 | Supportive (-1.5%) | n/a |
-| SCHD | 16% | Value / dividend tilt | Closest current project proxy for a value sleeve; adds a cheaper, income-oriented counterweight to the tech allocation. | 0.39 | Base-weight only (n/a) | n/a |
-| VWO | 11% | Emerging-markets satellite | Higher-growth international sleeve kept modest because it is more volatile than the core international allocation. | 0.34 | Keep near base (+0.8%) | 28.0% |
+| SCHD | 14% | Value / dividend tilt | Closest current project proxy for a value sleeve; adds a cheaper, income-oriented counterweight to the tech allocation. | 0.39 | Base-weight only (n/a) | n/a |
+| VWO | 9% | Emerging-markets satellite | Higher-growth international sleeve kept modest because it is more volatile than the core international allocation. | 0.34 | Keep near base (+0.8%) | 28.0% |
 | BND | 5% | Bond ballast | Small stabilizer sleeve kept intentionally light so the redeploy portfolio stays above 90% equities in normal months. | 0.04 | Keep near base (+2.0%) | 27.9% |
 
 ## Per-Benchmark Signals
