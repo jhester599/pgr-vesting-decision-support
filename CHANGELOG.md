@@ -5,6 +5,25 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v172 (2026-06-20)
+
+- Added `results/research/v172_vgt_selector_agreement.py`: completes the VGT
+  governance review opened in v128/v129 by adding the missing L1 and elastic-net
+  regularized selector-agreement gate (ROADMAP item "VGT selector-agreement gate")
+- Fits a StandardScaler + LogisticRegression (L1 and elastic-net, C × l1_ratio
+  grid) on the full pre-holdout VGT feature matrix at each of the three v129
+  audit dates; checks whether `rate_adequacy_gap_yoy` and/or `severity_index_yoy`
+  survive regularized selection at each date
+- Verdict rule: CONDITIONAL_SHADOW if BA advantage ≥ 5pp at all 3 dates AND
+  regularized gate passes at ≥ 2/3 dates; REJECT otherwise
+- Outputs `results/research/v172_vgt_selector_agreement_results.csv` and
+  `results/research/v172_vgt_selector_agreement_summary.md`
+- Added `tests/test_research_v172_vgt_selector_agreement.py` with 40 tests
+  covering constants, pipeline builders, gate logic, verdict paths and boundaries,
+  NaN/empty-input robustness, and artifact checks (skipped if script not run)
+- Updated ROADMAP.md: closed "VGT selector-agreement gate" backlog item; updated
+  master baseline to v172; updated VGT backlog items with v172 status
+
 ## v171 (2026-06-20)
 
 - Added monthly research chart regeneration to `monthly_decision.yml`:

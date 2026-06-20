@@ -4,12 +4,13 @@ For completed work and release history, see [CHANGELOG.md](CHANGELOG.md).
 
 ## Current State
 
-**Master baseline: v171** - the repository now includes monthly research chart
-regeneration and inline chart embedding in the decision email (v171), plus the
-merged `v139-v150` follow-on research artifacts and the `v151` side-by-side
-shadow reporting lane. The live monthly workflow still uses the quality-weighted
-consensus regression path (v76/v38 stack), while the follow-on winners remain
-reporting-only in shadow artifacts.
+**Master baseline: v172** - the repository now includes the completed VGT
+selector-agreement gate (v172), monthly research chart regeneration and inline
+chart embedding in the decision email (v171), the merged `v139-v150` follow-on
+research artifacts, and the `v151` side-by-side shadow reporting lane. The live
+monthly workflow still uses the quality-weighted consensus regression path
+(v76/v38 stack), while the follow-on winners remain reporting-only in shadow
+artifacts.
 
 **Current operating posture**
 
@@ -266,10 +267,10 @@ upgrade first, not an immediate promotion trigger.
 | Promotion gate implementation | v129: implement gate check infrastructure; gate remains off until 24 matured prospective months |
 | Composite target Path B evaluation | v127 completed calibration sweep; v130 re-evaluated against Path A matched and adopted; v131 wired into shadow artifacts |
 | Benchmark-specific feature-map integration | v128 completed map selection; shadow integration remains a follow-on decision |
-| VGT robustness audit | Re-run the VGT search across nearby as-of dates and require evidence that the winning signal family remains stable, not just the exact 2-feature pair |
-| VGT selector-agreement gate | Before adopting the VGT-specific subset, require forward-stepwise and regularized selectors to agree on the same signal cluster or produce comparable prospective results |
-| VGT dual-track shadow monitoring | If the feature map is wired into shadow mode, report both `lean_baseline` and the VGT-specific subset side by side until enough prospective months accumulate |
-| VGT minimum robustness rule | Consider a governance rule that a benchmark-specific switch is not adopted unless it survives fold-stability checks or expands into a slightly broader, still-calibrated subset |
+| VGT robustness audit | **v129 complete (UNSTABLE).** BA advantage is strong at 2023/2024 but n_covered < 10 at 2022-03-31 and 2023-03-31. |
+| VGT selector-agreement gate | **v172 complete.** L1 and elastic-net gate implemented at all 3 audit dates. Verdict is CONDITIONAL_SHADOW or REJECT depending on gate results — see `results/research/v172_vgt_selector_agreement_summary.md`. |
+| VGT dual-track shadow monitoring | Blocked on v172 verdict. If CONDITIONAL_SHADOW, wire VGT 2-feature model into dual-track shadow alongside `lean_baseline` and monitor prospectively. |
+| VGT minimum robustness rule | Subsumed by v172 selector-agreement gate. If verdict is REJECT, retain `lean_baseline`. If CONDITIONAL_SHADOW, adopt only in shadow with >= 24 matured months before production consideration. |
 
 ## Development Principles
 
