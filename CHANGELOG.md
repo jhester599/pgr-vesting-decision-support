@@ -5,6 +5,33 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v171 (2026-06-20)
+
+- Added monthly research chart regeneration to `monthly_decision.yml`:
+  `scripts/repurchase_timeseries_charts.py` and
+  `scripts/capital_return_charts.py` now run after the decision script (so the
+  DB is fully current) and before the git commit step; the resulting PNGs are
+  staged and committed alongside the monthly artifacts
+- The chart regen step uses `continue-on-error: true` so a chart generation
+  failure never blocks the DB commit or the email send
+- Upgraded the monthly decision email from a flat `multipart/alternative`
+  (plain + html) to a `multipart/mixed > multipart/alternative > (plain |
+  multipart/related > (html + inline images))` structure when research chart
+  PNGs are present on disk; CID references follow the `pgrchart{i}@pgr` scheme
+- Four charts are embedded inline in the HTML, in this order: PGR Share Price,
+  PGR Book Value Per Share, PGR Price/Book Ratio, PGR Share Repurchase Dollar
+  Amount (capped); the four PNGs are the named files in `results/research/`
+- `send_monthly_email` auto-discovers the chart files and passes them to
+  `build_email_message`; missing files are silently skipped
+- Graceful degradation: if none of the four chart files exist (e.g. first run
+  after a fresh checkout, or if chart regen fails) the email falls back to the
+  original flat `multipart/alternative` structure without error
+- `_CHART_LABEL_MAP` maps each filename to a human-readable caption used as
+  both the `alt` attribute and the bold label above each chart image
+- Added `tests/test_email_sender_research_charts.py` with 18 tests covering
+  the new MIME structure, CID assignment, graceful degradation, partial-file
+  scenarios, label mapping, and HTML output
+
 ## v170 (2026-04-19)
 
 - Added `docs/README.md` as the active documentation map
