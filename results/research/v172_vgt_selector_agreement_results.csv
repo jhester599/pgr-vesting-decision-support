@@ -1,0 +1,4 @@
+as_of_date,n_obs,n_covered_v129,ba_2feat_v129,ba_baseline_v129,delta_ba_v129,rate_adequacy_l1,rate_adequacy_en,severity_l1,severity_en,gate_passed,l1_total_selected,en_total_selected
+2022-03-31,218,5,0.6667,0.5789,0.08779999999999999,False,False,False,True,False,48,68
+2023-03-31,230,9,0.8571,0.5789,0.2782,False,False,False,False,False,49,65
+2024-03-31,242,21,0.9474,0.5789,0.36850000000000005,False,False,False,False,False,48,68

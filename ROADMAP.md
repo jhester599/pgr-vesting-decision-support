@@ -268,9 +268,9 @@ upgrade first, not an immediate promotion trigger.
 | Composite target Path B evaluation | v127 completed calibration sweep; v130 re-evaluated against Path A matched and adopted; v131 wired into shadow artifacts |
 | Benchmark-specific feature-map integration | v128 completed map selection; shadow integration remains a follow-on decision |
 | VGT robustness audit | **v129 complete (UNSTABLE).** BA advantage is strong at 2023/2024 but n_covered < 10 at 2022-03-31 and 2023-03-31. |
-| VGT selector-agreement gate | **v172 complete.** L1 and elastic-net gate implemented at all 3 audit dates. Verdict is CONDITIONAL_SHADOW or REJECT depending on gate results — see `results/research/v172_vgt_selector_agreement_summary.md`. |
-| VGT dual-track shadow monitoring | Blocked on v172 verdict. If CONDITIONAL_SHADOW, wire VGT 2-feature model into dual-track shadow alongside `lean_baseline` and monitor prospectively. |
-| VGT minimum robustness rule | Subsumed by v172 selector-agreement gate. If verdict is REJECT, retain `lean_baseline`. If CONDITIONAL_SHADOW, adopt only in shadow with >= 24 matured months before production consideration. |
+| VGT selector-agreement gate | **v172 complete — REJECT.** Neither candidate feature survives L1 at any audit date; only `severity_index_yoy` survives EN at 2022-03-31. Gate passed 0/3 dates. VGT stays on `lean_baseline`. |
+| VGT dual-track shadow monitoring | **Closed — not adopted.** v172 REJECT verdict means no dual-track wiring. Revisit if additional pre-holdout data becomes available or a broader feature set is tested. |
+| VGT minimum robustness rule | **Closed — not adopted.** v172 REJECT verdict satisfies governance: the feature map did not pass the selector-agreement gate, so `lean_baseline` is retained. |
 
 ## Development Principles
 

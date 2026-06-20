@@ -45,7 +45,6 @@ from sklearn.preprocessing import StandardScaler
 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
-warnings.filterwarnings("ignore", category=ConvergenceWarning := type("CW", (), {}))
 try:
     from sklearn.exceptions import ConvergenceWarning
     warnings.filterwarnings("ignore", category=ConvergenceWarning)
@@ -174,7 +173,7 @@ def run_regularized_gate(
             "gate_passed": False,
         }
 
-    x_vals = aligned[present].to_numpy(dtype=float)
+    x_vals = aligned[present].to_numpy(dtype=float).copy()
     y_vals = aligned[y_series.name].to_numpy(dtype=int)
     col_medians = np.nanmedian(x_vals, axis=0)
     col_medians = np.where(np.isnan(col_medians), 0.0, col_medians)
