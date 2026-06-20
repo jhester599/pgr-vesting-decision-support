@@ -18,6 +18,7 @@ import re
 import smtplib
 import ssl
 from datetime import date, datetime, timezone
+from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from html import escape
@@ -26,6 +27,20 @@ from pathlib import Path
 from src.tax.capital_gains import load_position_lots
 
 _DEFAULT_LOTS_PATH = Path("data/processed/position_lots.csv")
+
+_RESEARCH_DIR = Path("results/research")
+_RESEARCH_CHART_NAMES: list[str] = [
+    "pgr_share_price.png",
+    "pgr_book_value_per_share.png",
+    "pgr_price_to_book.png",
+    "pgr_repurchase_dollar_amount_capped.png",
+]
+_CHART_LABEL_MAP: dict[str, str] = {
+    "pgr_share_price.png":                    "PGR Share Price",
+    "pgr_book_value_per_share.png":            "PGR Book Value Per Share",
+    "pgr_price_to_book.png":                   "PGR Price / Book Ratio",
+    "pgr_repurchase_dollar_amount_capped.png": "PGR Share Repurchase Dollar Amount",
+}
 
 
 def _clean_markdown_cell(value: str) -> str:
@@ -489,6 +504,30 @@ def build_email_summary(
     return "\n".join(lines)
 
 
+def _build_research_charts_html(chart_cids: list[tuple[str, str]]) -> str:
+    if not chart_cids:
+        return ""
+    items = "".join(
+        f"<div style='margin-bottom:24px;'>"
+        f"<p style='margin:0 0 8px 0;font-size:13px;font-weight:700;color:#475569;"
+        f"text-transform:uppercase;letter-spacing:0.05em;'>{escape(label)}</p>"
+        f"<img src='cid:{cid}' alt='{escape(label)}' "
+        f"style='max-width:100%;height:auto;border-radius:8px;border:1px solid #e2e8f0;'>"
+        f"</div>"
+        for cid, label in chart_cids
+    )
+    return (
+        "<div style='margin-top:20px;padding:20px;border:1px solid #e2e8f0;"
+        "border-radius:16px;background:#ffffff;'>"
+        "<h2 style='margin:0 0 12px 0;font-size:20px;color:#0f172a;'>PGR Research Charts</h2>"
+        "<p style='margin:0 0 16px 0;color:#475569;line-height:1.5;'>"
+        "Regenerated this month from the financial database."
+        "</p>"
+        f"{items}"
+        "</div>"
+    )
+
+
 def _html_badge(text: str, background: str, color: str = "#ffffff") -> str:
     return (
         f'<span style="display:inline-block;padding:4px 10px;border-radius:999px;'
@@ -614,6 +653,7 @@ def build_email_html(
     dashboard_snapshot_label: str | None = None,
     dashboard_snapshot_url: str | None = None,
     summary_payload: dict[str, object] | None = None,
+    chart_cids: list[tuple[str, str]] | None = None,
 ) -> str:
     """Build the HTML decision memo."""
     signal = (
@@ -938,6 +978,7 @@ def build_email_html(
         "<p style='margin:0 0 12px 0;color:#475569;line-height:1.5;'>Detailed benchmark signal detail is kept below the main decision memo so the recommendation stays readable on desktop and mobile. Predicted return is always from the perspective of PGR versus each fund, and the role column shows whether a fund is a buy candidate, optional substitute, or forecast-only context.</p>"
         f"{benchmark_table}"
         "</div>"
+        + _build_research_charts_html(chart_cids or []) +
         "</div></div></body></html>"
     )
 
@@ -951,8 +992,19 @@ def build_email_message(
     dashboard_snapshot_label: str | None = None,
     dashboard_snapshot_url: str | None = None,
     summary_payload: dict[str, object] | None = None,
+    chart_paths: list[Path] | None = None,
 ) -> MIMEMultipart:
-    """Construct a multipart monthly decision email."""
+    """Construct a multipart monthly decision email.
+
+    When chart_paths is provided the MIME structure is:
+      multipart/mixed
+        multipart/alternative
+          text/plain
+          multipart/related
+            text/html  (inline <img src="cid:..."> references)
+            image/png  \u00d7 N
+    Without charts the structure degrades to a flat alternative with plain+html.
+    """
     if month_label is None:
         month_label = datetime.now(timezone.utc).strftime("%B %Y")
 
@@ -966,37 +1018,64 @@ def build_email_message(
             signal = match.group(1)
 
     subject = f"PGR Monthly Decision \u2014 {month_label}: {signal}"
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = from_addr
-    msg["To"] = to_addr
-    msg.attach(
-        MIMEText(
-            build_email_summary(
-                body,
-                lots_csv_path=lots_csv_path,
-                dashboard_snapshot_label=dashboard_snapshot_label,
-                dashboard_snapshot_url=dashboard_snapshot_url,
-                summary_payload=summary_payload,
-            ),
-            "plain",
-            "utf-8",
-        )
+
+    # Build (cid, label) pairs for any charts that exist on disk.
+    chart_cids: list[tuple[str, str]] = []
+    loadable: list[tuple[str, Path]] = []
+    if chart_paths:
+        for i, path in enumerate(chart_paths):
+            if path.exists():
+                cid = f"pgrchart{i}@pgr"
+                label = _CHART_LABEL_MAP.get(path.name, path.stem.replace("_", " ").title())
+                chart_cids.append((cid, label))
+                loadable.append((cid, path))
+
+    plain_text = build_email_summary(
+        body,
+        lots_csv_path=lots_csv_path,
+        dashboard_snapshot_label=dashboard_snapshot_label,
+        dashboard_snapshot_url=dashboard_snapshot_url,
+        summary_payload=summary_payload,
     )
-    msg.attach(
-        MIMEText(
-            build_email_html(
-                body,
-                lots_csv_path=lots_csv_path,
-                dashboard_snapshot_label=dashboard_snapshot_label,
-                dashboard_snapshot_url=dashboard_snapshot_url,
-                summary_payload=summary_payload,
-            ),
-            "html",
-            "utf-8",
-        )
+    html_text = build_email_html(
+        body,
+        lots_csv_path=lots_csv_path,
+        dashboard_snapshot_label=dashboard_snapshot_label,
+        dashboard_snapshot_url=dashboard_snapshot_url,
+        summary_payload=summary_payload,
+        chart_cids=chart_cids if chart_cids else None,
     )
-    return msg
+
+    if loadable:
+        # multipart/mixed > multipart/alternative > (plain | multipart/related > (html | images))
+        outer = MIMEMultipart("mixed")
+        outer["Subject"] = subject
+        outer["From"] = from_addr
+        outer["To"] = to_addr
+
+        alt = MIMEMultipart("alternative")
+        alt.attach(MIMEText(plain_text, "plain", "utf-8"))
+
+        related = MIMEMultipart("related")
+        related.attach(MIMEText(html_text, "html", "utf-8"))
+        for cid, path in loadable:
+            img = MIMEImage(path.read_bytes(), _subtype="png")
+            img.add_header("Content-ID", f"<{cid}>")
+            img.add_header("Content-Disposition", "inline", filename=path.name)
+            related.attach(img)
+
+        alt.attach(related)
+        outer.attach(alt)
+        return outer
+    else:
+        # Fallback: flat alternative (no charts)
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = from_addr
+        msg["To"] = to_addr
+        msg.attach(MIMEText(plain_text, "plain", "utf-8"))
+        msg.attach(MIMEText(html_text, "html", "utf-8"))
+        return msg
 
 
 def send_monthly_email(
@@ -1059,6 +1138,12 @@ def send_monthly_email(
     if not dashboard_snapshot_path.exists():
         dashboard_snapshot_label = None
 
+    chart_paths = [
+        _RESEARCH_DIR / name
+        for name in _RESEARCH_CHART_NAMES
+        if (_RESEARCH_DIR / name).exists()
+    ]
+
     body = report_path.read_text(encoding="utf-8")
     msg = build_email_message(
         body,
@@ -1069,6 +1154,7 @@ def send_monthly_email(
         dashboard_snapshot_label=dashboard_snapshot_label,
         dashboard_snapshot_url=dashboard_snapshot_url,
         summary_payload=summary_payload,
+        chart_paths=chart_paths or None,
     )
     subject: str = msg["Subject"]
 
