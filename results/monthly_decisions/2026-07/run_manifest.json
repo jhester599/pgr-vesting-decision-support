@@ -1,0 +1,43 @@
+{
+  "artifact_classification": "production",
+  "as_of_date": "2026-07-20",
+  "git_sha": "e65f099bf70ead0da6e07978acf5554d973db281",
+  "latest_dates": {
+    "daily_dividends.ex_date": "2026-09-10",
+    "daily_prices.date": "2026-07-17",
+    "fred_macro_monthly.month_end": "2026-07-31",
+    "model_performance_log.month_end": "2026-07-31",
+    "monthly_relative_returns.date": "2025-12-31",
+    "pgr_edgar_monthly.month_end": "2026-06-30",
+    "pgr_fundamentals_quarterly.period_end": "2026-03-31"
+  },
+  "outputs": [
+    "results/monthly_decisions/2026-07/recommendation.md",
+    "results/monthly_decisions/2026-07/diagnostic.md",
+    "results/monthly_decisions/2026-07/signals.csv",
+    "results/monthly_decisions/2026-07/benchmark_quality.csv",
+    "results/monthly_decisions/2026-07/consensus_shadow.csv",
+    "results/monthly_decisions/2026-07/classification_shadow.csv",
+    "results/monthly_decisions/2026-07/decision_overlays.csv",
+    "results/monthly_decisions/2026-07/dashboard.html",
+    "results/monthly_decisions/2026-07/monthly_summary.json"
+  ],
+  "row_counts": {
+    "daily_dividends": 2388,
+    "daily_prices": 29562,
+    "fred_macro_monthly": 8061,
+    "model_performance_log": 6,
+    "monthly_relative_returns": 9574,
+    "pgr_edgar_monthly": 261,
+    "pgr_fundamentals_quarterly": 73
+  },
+  "run_timestamp_utc": "2026-07-20T16:28:58.467697+00:00",
+  "schema_version": "003_model_retrain_log",
+  "script_name": "scripts/monthly_decision.py",
+  "warnings": [
+    "Aggregate OOS R^2 below threshold: -2.80% < 2.00%.",
+    "Representative CPCV verdict is FAIL.",
+    "Trailing conformal coverage deviates materially from nominal: 56.2% vs 80%."
+  ],
+  "workflow_name": "monthly_decision"
+}
