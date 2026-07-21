@@ -1,7 +1,7 @@
 # PGR Monthly Decision Report — July 2026
 
-**As-of Date:** 2026-07-20  
-**Run Date:** 2026-07-20  
+**As-of Date:** 2026-07-21  
+**Run Date:** 2026-07-21  
 **Model Version:** v11.1 (lean 2-model ensemble: Ridge + GBT, v18 feature sets, 8-benchmark PRIMARY_FORECAST_UNIVERSE, inverse-variance weighting, v38 post-ensemble shrinkage alpha=0.50, C(8,2)=28 CPCV paths; ElasticNet+BayesianRidge retired after v18/v20 research showed Ridge+GBT outperforms on IC, hit rate, and obs/feature ratio)  
 **Recommendation Layer:** Live production recommendation layer (quality-weighted consensus)  
 
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-- What changed since last month: Previous logged month (2026-06-22) was NEUTRAL at -3.95% with mean IC 0.0984.
+- What changed since last month: Previous logged month (2026-07-20) was NEUTRAL at -4.66% with mean IC 0.0980.
 - Current model view: Consensus signal is NEUTRAL, but the average relative-return forecast is -4.66% across benchmarks over the next 6 months. Recommendation mode remains DEFER-TO-TAX-DEFAULT.
 - How trustworthy it is: Model quality is too weak to justify a prediction-led vesting action. Aggregate health: OOS R^2 -2.80%, IC 0.1187, hit rate 64.2%.
 - What to do at the next vest: Next vest guidance unavailable because the lot file or latest PGR price is missing.
@@ -23,9 +23,9 @@
 
 | Feed | Latest Date | Age | Limit | Status |
 |------|-------------|-----|-------|--------|
-| Daily prices | 2026-07-17 | 3 days | 10 days | **OK** |
+| Daily prices | 2026-07-17 | 4 days | 10 days | **OK** |
 | FRED macro | 2026-07-31 | 0 days | 45 days | **OK** |
-| PGR monthly EDGAR | 2026-06-30 | 20 days | 25-day filing grace | **OK** |
+| PGR monthly EDGAR | 2026-06-30 | 21 days | 25-day filing grace | **OK** |
 
 ---
 
