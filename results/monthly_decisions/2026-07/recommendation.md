@@ -1,7 +1,7 @@
 # PGR Monthly Decision Report — July 2026
 
-**As-of Date:** 2026-07-21  
-**Run Date:** 2026-07-21  
+**As-of Date:** 2026-07-22  
+**Run Date:** 2026-07-22  
 **Model Version:** v11.1 (lean 2-model ensemble: Ridge + GBT, v18 feature sets, 8-benchmark PRIMARY_FORECAST_UNIVERSE, inverse-variance weighting, v38 post-ensemble shrinkage alpha=0.50, C(8,2)=28 CPCV paths; ElasticNet+BayesianRidge retired after v18/v20 research showed Ridge+GBT outperforms on IC, hit rate, and obs/feature ratio)  
 **Recommendation Layer:** Live production recommendation layer (quality-weighted consensus)  
 
@@ -9,9 +9,9 @@
 
 ## Executive Summary
 
-- What changed since last month: Previous logged month (2026-07-20) was NEUTRAL at -4.66% with mean IC 0.0980.
+- What changed since last month: Previous logged month (2026-07-21) was NEUTRAL at -4.66% with mean IC 0.0980.
 - Current model view: Consensus signal is NEUTRAL, but the average relative-return forecast is -4.66% across benchmarks over the next 6 months. Recommendation mode remains DEFER-TO-TAX-DEFAULT.
-- How trustworthy it is: Model quality is too weak to justify a prediction-led vesting action. Aggregate health: OOS R^2 -2.80%, IC 0.1187, hit rate 64.2%.
+- How trustworthy it is: Model quality is too weak to justify a prediction-led vesting action. Aggregate health: OOS R^2 -2.78%, IC 0.1195, hit rate 64.2%.
 - What to do at the next vest: Next vest guidance unavailable because the lot file or latest PGR price is missing.
 - What would change the recommendation: A more aggressive recommendation would require aggregate OOS R^2 >= 2%, mean IC >= 0.07, hit rate >= 55%, and a non-failing representative CPCV check.
 
@@ -23,9 +23,9 @@
 
 | Feed | Latest Date | Age | Limit | Status |
 |------|-------------|-----|-------|--------|
-| Daily prices | 2026-07-17 | 4 days | 10 days | **OK** |
+| Daily prices | 2026-07-17 | 5 days | 10 days | **OK** |
 | FRED macro | 2026-07-31 | 0 days | 45 days | **OK** |
-| PGR monthly EDGAR | 2026-06-30 | 21 days | 25-day filing grace | **OK** |
+| PGR monthly EDGAR | 2026-06-30 | 22 days | 25-day filing grace | **OK** |
 
 ---
 
@@ -57,15 +57,15 @@
 | Predicted 6M Relative Return | -4.66% |
 | P(Outperform, raw) | 50.0% |
 | P(Outperform, calibrated) | 61.5% |
-| 80% Prediction Interval (median) | -33.40% to +24.09% |
-| Mean IC (across benchmarks) | 0.0980 |
+| 80% Prediction Interval (median) | -32.53% to +24.08% |
+| Mean IC (across benchmarks) | 0.0993 |
 | Mean Hit Rate | 64.9% |
-| Aggregate OOS R^2 | -2.80% |
+| Aggregate OOS R^2 | -2.78% |
 
 > **Note:** The sell % recommendation is used only at actual vesting events
 > (January and July).  Monthly reports are monitoring tools, not trade signals.
 >
-> **Calibration:** Phase 2 — Platt scaling active (n=1,218 OOS obs).  ECE = 3.2% [95% CI: 2.3%–7.8%].
+> **Calibration:** Phase 2 — Platt scaling active (n=1,218 OOS obs).  ECE = 3.0% [95% CI: 2.1%–7.6%].
 
 ---
 
@@ -96,9 +96,9 @@
 
 | Check | Current | Threshold | Status | Meaning |
 |-------|---------|-----------|--------|---------|
-| Mean IC | 0.0980 | >= 0.0700 | **PASS** | Cross-benchmark ranking signal. |
+| Mean IC | 0.0993 | >= 0.0700 | **PASS** | Cross-benchmark ranking signal. |
 | Mean hit rate | 64.9% | >= 55.0% | **PASS** | Directional accuracy versus zero. |
-| Aggregate OOS R^2 | -2.80% | >= 2.00% | **FAIL** | Calibration / fit versus a naive benchmark. |
+| Aggregate OOS R^2 | -2.78% | >= 2.00% | **FAIL** | Calibration / fit versus a naive benchmark. |
 | Representative CPCV | FAIL | not FAIL | **FAIL** | Stability across purged cross-validation paths. |
 
 ---
@@ -106,7 +106,7 @@
 ## Model Health
 
 - Latest tracked month: **2026-07-31**
-- Rolling 12M IC: **0.1445**
+- Rolling 12M IC: **0.1446**
 - Rolling 12M Hit Rate: **65.5%**
 - Rolling 12M ECE: **2.0%**
 - IC breach streak: **0** month(s)
@@ -131,9 +131,9 @@
 | Policy | N | Mean Return | Cumul. Return | Uplift vs Sell-All | Uplift vs Hold-All | Uplift vs 50% | Capture |
 |--------|---|-------------|---------------|--------------------|--------------------|---------------|---------|
 | Model: sign (hold if pred > 0) | 1218 | +7.15% | +8703.41% | +7.15% | -0.39% | +3.38% | 60.6% |
-| Model: tiered 25/50/100 | 1218 | +1.89% | +2298.84% | +1.89% | -5.65% | -1.88% | 16.0% |
-| Model: neutral band ±2% | 1218 | +7.07% | +8614.03% | +7.07% | -0.46% | +3.31% | 60.0% |
-| Model: neutral band ±3% | 1218 | +6.63% | +8079.03% | +6.63% | -0.90% | +2.87% | 56.3% |
+| Model: tiered 25/50/100 | 1218 | +1.91% | +2328.20% | +1.91% | -5.62% | -1.86% | 16.2% |
+| Model: neutral band ±2% | 1218 | +7.07% | +8607.29% | +7.07% | -0.47% | +3.30% | 59.9% |
+| Model: neutral band ±3% | 1218 | +6.64% | +8084.45% | +6.64% | -0.90% | +2.87% | 56.3% |
 
 
 ---
@@ -180,7 +180,7 @@ Recommended action at next vesting event: **DEFAULT 50% SALE** for diversificati
 | VGT | 17% | Technology tilt | Growth engine and explicit tech tilt when the relative signal supports owning more innovation exposure than a pure core index. | 0.27 | Base-weight only (n/a) | n/a |
 | VWO | 16% | Emerging-markets satellite | Higher-growth international sleeve kept modest because it is more volatile than the core international allocation. | 0.33 | Preferred this month (-5.1%) | n/a |
 | SCHD | 13% | Value / dividend tilt | Closest current project proxy for a value sleeve; adds a cheaper, income-oriented counterweight to the tech allocation. | 0.37 | Base-weight only (n/a) | n/a |
-| VXUS | 9% | International core | Primary geographic diversifier away from a US employer-stock concentration. | 0.26 | Only keep at floor weight (+3.3%) | 30.3% |
+| VXUS | 9% | International core | Primary geographic diversifier away from a US employer-stock concentration. | 0.26 | Only keep at floor weight (+3.3%) | 30.5% |
 | BND | 4% | Bond ballast | Small stabilizer sleeve kept intentionally light so the redeploy portfolio stays above 90% equities in normal months. | 0.04 | Keep near base (+2.0%) | 28.6% |
 
 ## Per-Benchmark Signals
@@ -190,14 +190,14 @@ Recommended action at next vesting event: **DEFAULT 50% SALE** for diversificati
 
 | Benchmark | Benchmark Role | Description | Predicted Return | CI Lower | CI Upper | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |
 |-----------|----------------|-------------|----------------|----------|----------|----|----------|--------|--------|------------|--------|
-| VOO | Buy candidate | S&P 500 | -1.14% | -26.39% | +24.12% | -0.0954 | 54.4% | 50.0% | 67.7% | LOW | NEUTRAL |
-| VXUS | Buy candidate | Total International Stock | +3.32% | -32.55% | +39.19% | -0.1483 | 60.6% | 50.0% | 69.7% | LOW | NEUTRAL |
-| VWO | Buy candidate | Emerging Markets | -5.09% | -34.25% | +24.07% | -0.0661 | 62.2% | 50.0% | 89.1% | LOW | NEUTRAL |
-| VMBS | Forecast only | Mortgage-Backed Securities | +0.13% | -21.86% | +22.12% | 0.1891 | 77.1% | 50.0% | 58.8% | LOW | NEUTRAL |
-| BND | Buy candidate | Total Bond Market | +1.96% | -19.04% | +22.96% | 0.2911 | 67.6% | 50.0% | 71.4% | LOW | OUTPERFORM |
-| GLD | Forecast only | Gold Shares | -7.47% | -44.27% | +29.32% | 0.1711 | 60.2% | 50.0% | 49.9% | LOW | UNDERPERFORM |
-| DBC | Forecast only | DB Commodity Index | -14.19% | -58.22% | +29.84% | 0.1437 | 69.6% | 50.0% | 36.9% | LOW | UNDERPERFORM |
-| VDE | Forecast only | Energy | -13.47% | -46.23% | +19.29% | 0.0514 | 60.2% | 50.0% | 48.0% | LOW | UNDERPERFORM |
+| VOO | Buy candidate | S&P 500 | -1.14% | -26.39% | +24.12% | -0.0956 | 54.4% | 50.0% | 67.7% | LOW | NEUTRAL |
+| VXUS | Buy candidate | Total International Stock | +3.33% | -30.79% | +37.45% | -0.1362 | 60.6% | 50.0% | 69.5% | LOW | NEUTRAL |
+| VWO | Buy candidate | Emerging Markets | -5.11% | -34.27% | +24.05% | -0.0684 | 62.2% | 50.0% | 89.3% | LOW | NEUTRAL |
+| VMBS | Forecast only | Mortgage-Backed Securities | +0.13% | -21.84% | +22.10% | 0.1916 | 77.1% | 50.0% | 58.9% | LOW | NEUTRAL |
+| BND | Buy candidate | Total Bond Market | +1.96% | -19.04% | +22.96% | 0.2918 | 67.6% | 50.0% | 71.4% | LOW | OUTPERFORM |
+| GLD | Forecast only | Gold Shares | -7.47% | -44.27% | +29.32% | 0.1709 | 60.2% | 50.0% | 49.9% | LOW | UNDERPERFORM |
+| DBC | Forecast only | DB Commodity Index | -14.19% | -58.22% | +29.84% | 0.1438 | 69.6% | 50.0% | 37.0% | LOW | UNDERPERFORM |
+| VDE | Forecast only | Energy | -13.47% | -46.24% | +19.29% | 0.0513 | 60.2% | 50.0% | 48.0% | LOW | UNDERPERFORM |
 
 ---
 

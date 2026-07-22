@@ -1,6 +1,6 @@
 # PGR Diagnostic Report — July 2026
 
-**As-of Date:** 2026-07-21  
+**As-of Date:** 2026-07-22  
 **Horizon:** 6M  
 **OOS observations (aggregate):** 1218  
 **Newey-West lags:** 5 (accounts for 5-month return-window overlap)  
@@ -11,10 +11,10 @@
 
 | Metric | Value | Status | Threshold (Good) |
 |--------|-------|--------|-----------------|
-| OOS R² (Campbell-Thompson) | -0.0280 (-2.80%) | ❌ | ≥ 2.00% |
-| IC (Newey-West HAC) | 0.1187 | ✅ | ≥ 0.07 |
-| IC significance | 0.0046 | ✅ p < 0.05 | p < 0.05 |
-| Clark-West t-stat | 3.2402 | ✅ p < 0.05 | p < 0.05 |
+| OOS R² (Campbell-Thompson) | -0.0278 (-2.78%) | ❌ | ≥ 2.00% |
+| IC (Newey-West HAC) | 0.1195 | ✅ | ≥ 0.07 |
+| IC significance | 0.0043 | ✅ p < 0.05 | p < 0.05 |
+| Clark-West t-stat | 3.2467 | ✅ p < 0.05 | p < 0.05 |
 | Clark-West p-value | 0.0006 | ✅ p < 0.05 | p < 0.05 |
 | Hit Rate | 64.2% | ✅ | ≥ 55.0% |
 | CPCV Positive Paths | 1/7 (12.5%) | ❌ | ≥ 5/7 |
@@ -67,7 +67,7 @@
 | Phase | Description | Status |
 |-------|-------------|--------|
 | Phase 1 | Raw BayesianRidge posterior (uncalibrated) | ⬛ Superseded |
-| Phase 2 | Platt scaling (logistic regression on OOS scores → binary) | ✅ Active (n=1,218  ECE=3.2% [2.3%–7.8%]) |
+| Phase 2 | Platt scaling (logistic regression on OOS scores → binary) | ✅ Active (n=1,218  ECE=3.0% [2.1%–7.6%]) |
 | Phase 3 | Platt → Isotonic (non-parametric; monotone reliability) | ⏳ Activates at n ≥ 500 |
 
 ---
@@ -77,20 +77,20 @@
 **Method:** ACI (Adaptive Conformal Inference — adjusts α_t for distribution shift)  
 **Nominal Coverage:** 80%  
 
-**Mean empirical coverage:** 90.9% (target ≥ 80%) ✅  
+**Mean empirical coverage:** 90.7% (target ≥ 80%) ✅  
 
-**Mean trailing 12-point empirical coverage:** 56.2% (gap -23.8% vs nominal) ❌  
+**Mean trailing 12-point empirical coverage:** 57.3% (gap -22.7% vs nominal) ❌  
 
 | Benchmark | Description | Predicted Return | CI Lower | CI Upper | CI Width | Emp. Coverage | Trailing 12 Coverage | N Cal |
 |-----------|-------------|----------------|----------|----------|----------|---------------|----------------------|-------|
 | VOO | S&P 500 | -1.14% | -26.39% | +24.12% | 50.51% | 88.6% ✅ | 66.7% | 114 |
-| VXUS | Total International Stock | +3.32% | -32.55% | +39.19% | 71.74% | 96.3% ✅ | 50.0% | 108 |
-| VWO | Emerging Markets | -5.09% | -34.25% | +24.07% | 58.33% | 91.7% ✅ | 58.3% | 180 |
-| VMBS | Mortgage-Backed Securities | +0.13% | -21.86% | +22.12% | 43.98% | 82.5% ✅ | 66.7% | 120 |
+| VXUS | Total International Stock | +3.33% | -30.79% | +37.45% | 68.24% | 94.4% ✅ | 58.3% | 108 |
+| VWO | Emerging Markets | -5.11% | -34.27% | +24.05% | 58.32% | 91.7% ✅ | 58.3% | 180 |
+| VMBS | Mortgage-Backed Securities | +0.13% | -21.84% | +22.10% | 43.94% | 82.5% ✅ | 66.7% | 120 |
 | BND | Total Bond Market | +1.96% | -19.04% | +22.96% | 42.00% | 85.9% ✅ | 75.0% | 156 |
 | GLD | Gold Shares | -7.47% | -44.27% | +29.32% | 73.59% | 95.7% ✅ | 41.7% | 186 |
 | DBC | DB Commodity Index | -14.19% | -58.22% | +29.84% | 88.06% | 98.8% ✅ | 50.0% | 168 |
-| VDE | Energy | -13.47% | -46.23% | +19.29% | 65.52% | 87.6% ✅ | 41.7% | 186 |
+| VDE | Energy | -13.47% | -46.24% | +19.29% | 65.53% | 87.6% ✅ | 41.7% | 186 |
 
 > **Interpretation:** The CI width reflects model uncertainty — wider intervals indicate
 > larger historical prediction errors.  ACI dynamically adjusts coverage when errors
@@ -102,14 +102,14 @@
 
 | Benchmark | Description | N OOS | OOS R² | NW IC | Hit Rate | CW t | CW p |
 |-----------|-------------|-------|--------|-------|----------|------|------|
-| VDE | Energy | 186 | -3.37% | 0.1364 | 59.7% | 2.0843 | 0.0193 |
-| DBC | DB Commodity Index | 168 | 0.73% | 0.1932 | 69.6% | 1.7246 | 0.0432 |
-| GLD | Gold Shares | 186 | 1.46% | 0.2030 | 55.4% | 1.3840 | 0.0840 |
-| VMBS | Mortgage-Backed Securities | 120 | -11.27% | 0.2019 | 76.7% | 1.3401 | 0.0914 |
-| VOO | S&P 500 | 114 | -12.02% | -0.0364 | 60.5% | 1.3112 | 0.0962 |
-| BND | Total Bond Market | 156 | -9.79% | 0.3228 | 70.5% | 0.9270 | 0.1777 |
-| VXUS | Total International Stock | 108 | -16.68% | -0.1784 | 58.3% | 0.6061 | 0.2729 |
-| VWO | Emerging Markets | 180 | -12.07% | -0.0976 | 65.0% | 0.0609 | 0.4758 |
+| VDE | Energy | 186 | -3.38% | 0.1363 | 59.7% | 2.0841 | 0.0193 |
+| DBC | DB Commodity Index | 168 | 0.73% | 0.1932 | 69.6% | 1.7244 | 0.0432 |
+| GLD | Gold Shares | 186 | 1.45% | 0.2031 | 55.4% | 1.3839 | 0.0840 |
+| VMBS | Mortgage-Backed Securities | 120 | -11.26% | 0.2036 | 76.7% | 1.3447 | 0.0906 |
+| VOO | S&P 500 | 114 | -12.02% | -0.0364 | 60.5% | 1.3110 | 0.0962 |
+| BND | Total Bond Market | 156 | -9.75% | 0.3227 | 70.5% | 0.9293 | 0.1771 |
+| VXUS | Total International Stock | 108 | -16.28% | -0.1650 | 58.3% | 0.6300 | 0.2650 |
+| VWO | Emerging Markets | 180 | -12.22% | -0.1004 | 65.0% | 0.0474 | 0.4811 |
 
 **IC summary:** 5 ✅  0 ⚠️  3 ❌  (of 8 benchmarks)  
 **Hit rate ✅:** 8/8 benchmarks above 55% threshold  

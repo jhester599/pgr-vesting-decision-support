@@ -1,5 +1,5 @@
 variant,recommendation_mode,recommended_sell_pct,would_change,reason,classifier_prob_actionable_sell
-baseline_shadow,DEFER-TO-TAX-DEFAULT,0.5,False,live production path,0.41180622518573906
-baseline_shadow,DEFER-TO-TAX-DEFAULT,0.5,False,no regression sell to veto,0.41180622518573906
-autoresearch_followon_v150,DEFER-TO-TAX-DEFAULT,0.5,False,live production path,0.41180622518573906
-autoresearch_followon_v150,DEFER-TO-TAX-DEFAULT,0.5,False,no regression sell to veto,0.41180622518573906
+baseline_shadow,DEFER-TO-TAX-DEFAULT,0.5,False,live production path,0.4117099867994327
+baseline_shadow,DEFER-TO-TAX-DEFAULT,0.5,False,no regression sell to veto,0.4117099867994327
+autoresearch_followon_v150,DEFER-TO-TAX-DEFAULT,0.5,False,live production path,0.4117099867994327
+autoresearch_followon_v150,DEFER-TO-TAX-DEFAULT,0.5,False,no regression sell to veto,0.4117099867994327
