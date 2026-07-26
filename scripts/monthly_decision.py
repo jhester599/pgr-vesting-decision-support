@@ -238,12 +238,29 @@ def _resolve_as_of_date(as_of_arg: str | None) -> date:
     """
     Determine the as-of date for this run.
 
-    If ``as_of_arg`` is provided, parse it.  Otherwise use today.
-    If the result falls on a weekend, advance to Monday.
+    If ``as_of_arg`` is provided, parse it.  Otherwise resolve it from
+    today's date.
+
+    On or after the 20th of the month, the target is anchored to the 20th
+    of *this* month (advanced to the next business day if the 20th falls
+    on a weekend) rather than to today's actual date. The monthly workflow
+    schedules fallback runs on the 21st and 22nd in case the 20th is a
+    weekend; anchoring to the 20th makes those fallback runs resolve to
+    the *same* as-of date as the 20th's run (when the 20th was already a
+    business day), so ``_already_ran`` correctly treats them as no-ops
+    instead of regenerating the report — and re-sending the email — on
+    each fallback day.
+
+    Before the 20th (e.g. a manual/testing run), there is no monthly
+    target yet to anchor to, so this just resolves to today.
     """
     if as_of_arg:
         return date.fromisoformat(as_of_arg)
-    return _first_business_day_on_or_after(date.today())
+    today = date.today()
+    if today.day < 20:
+        return today
+    target = date(today.year, today.month, 20)
+    return _first_business_day_on_or_after(target)
 
 
 def _output_dir(as_of: date) -> Path:
