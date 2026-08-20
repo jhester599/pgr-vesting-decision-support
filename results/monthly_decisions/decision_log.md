@@ -38,6 +38,7 @@ Each run produces a dated subfolder under `results/monthly_decisions/YYYY-MM/` c
 | 2026-07-20 | 2026-07-20 | NEUTRAL | 50% | -4.66% | 0.0980 | 64.9% |  |
 | 2026-07-21 | 2026-07-21 | NEUTRAL | 50% | -4.66% | 0.0980 | 64.9% |  |
 | 2026-07-22 | 2026-07-22 | NEUTRAL | 50% | -4.66% | 0.0993 | 64.9% |  |
+| 2026-08-20 | 2026-08-20 | UNDERPERFORM | 50% | -4.57% | 0.1213 | 65.4% |  |
 
 ---
 
