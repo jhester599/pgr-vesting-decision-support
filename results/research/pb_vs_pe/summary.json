@@ -1,0 +1,18 @@
+{
+  "market_benchmark": "VTI",
+  "first_signal_month": "2004-09-30",
+  "last_signal_month": "2026-09-30",
+  "horizons_months": [
+    6,
+    12,
+    24,
+    36
+  ],
+  "signals": [
+    "bp",
+    "ep",
+    "bp_z60",
+    "ep_z60",
+    "pb_roe_adj"
+  ]
+}
