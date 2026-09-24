@@ -8,7 +8,11 @@ import pytest
 
 from src.processing.valuation_multiples import (
     OUTPUT_COLUMNS,
+    SOURCE_INTERPOLATED,
+    SOURCE_QUARTERLY_RESIDUAL,
+    SOURCE_REPORTED,
     build_monthly_valuation_multiples,
+    fill_eps_and_bvps_gaps,
     share_basis_factor,
 )
 
@@ -130,3 +134,112 @@ def test_negative_or_zero_ttm_eps_gives_nan_pe() -> None:
     assert np.isnan(out.loc[11, "pe_ratio"])
     assert out.loc[12, "eps_basic_ttm"] == pytest.approx(-0.6)
     assert np.isnan(out.loc[12, "pe_ratio"])
+
+
+def _quarterly(rows: dict[str, float]) -> pd.DataFrame:
+    return pd.DataFrame(
+        {"eps": list(rows.values())},
+        index=pd.DatetimeIndex(pd.to_datetime(list(rows)), name="period_end"),
+    )
+
+
+def test_missing_month_eps_is_quarter_less_reported_months() -> None:
+    months = pd.date_range("2015-01-31", "2015-12-31", freq="ME")
+    eps = [0.30, 0.10, 0.20, 0.32, 0.99, 0.16, 0.2, 0.2, 0.2, 0.1, 0.1, 0.1]
+    bvps = [12.0 + 0.1 * i for i in range(12)]
+    edgar = _edgar(months, eps=eps, bvps=bvps).drop(pd.Timestamp("2015-05-31"))
+    quarterly = _quarterly(
+        {"2015-03-31": 0.60, "2015-06-30": 0.62, "2015-09-30": 0.60, "2015-12-31": 2.00}
+    )
+
+    filled = fill_eps_and_bvps_gaps(edgar, quarterly, NO_SPLITS)
+
+    may = filled.loc["2015-05-31"]
+    assert may["eps_basic"] == pytest.approx(0.14)
+    assert may["eps_basic_source"] == SOURCE_QUARTERLY_RESIDUAL
+    # Public only once the Q2 10-Q is presumed filed (quarter-end + 45 days).
+    assert may["eps_available_date"] == pd.Timestamp("2015-08-14")
+    assert filled.loc["2015-04-30", "eps_basic_source"] == SOURCE_REPORTED
+
+
+def test_q4_gap_uses_full_year_less_first_three_quarters() -> None:
+    months = pd.date_range("2018-01-31", "2018-12-31", freq="ME")
+    eps = [0.1] * 12
+    edgar = _edgar(months, eps=eps, bvps=[10.0] * 12).drop(pd.Timestamp("2018-11-30"))
+    quarterly = _quarterly(
+        {"2018-03-31": 0.3, "2018-06-30": 0.3, "2018-09-30": 0.3, "2018-12-31": 1.5}
+    )
+
+    filled = fill_eps_and_bvps_gaps(edgar, quarterly, NO_SPLITS)
+
+    # Q4 = 1.5 - 0.9 = 0.6; November = 0.6 - 0.1 - 0.1.
+    assert filled.loc["2018-11-30", "eps_basic"] == pytest.approx(0.4)
+    assert filled.loc["2018-11-30", "eps_available_date"] == pd.Timestamp("2019-03-01")
+
+
+def test_eps_not_filled_when_two_months_of_quarter_missing() -> None:
+    months = pd.date_range("2019-01-31", "2019-06-30", freq="ME")
+    edgar = _edgar(months, eps=[0.1] * 6, bvps=[10.0] * 6).drop(
+        [pd.Timestamp("2019-04-30"), pd.Timestamp("2019-05-31")]
+    )
+    quarterly = _quarterly({"2019-06-30": 0.5})
+
+    filled = fill_eps_and_bvps_gaps(edgar, quarterly, NO_SPLITS)
+
+    assert filled.loc["2019-04-30":"2019-05-31", "eps_basic"].isna().all()
+    assert filled.loc["2019-04-30":"2019-05-31", "eps_basic_source"].isna().all()
+
+
+def test_book_value_run_is_rolled_forward_with_eps_and_even_residual() -> None:
+    months = pd.date_range("2005-01-31", "2005-04-30", freq="ME")
+    edgar = _edgar(
+        months,
+        eps=[0.75, 0.64, 0.68, 0.75],
+        bvps=[26.18, np.nan, np.nan, 27.19],
+    )
+
+    filled = fill_eps_and_bvps_gaps(edgar, None, NO_SPLITS)
+
+    # residual = (27.19 - 26.18) - (0.64 + 0.68 + 0.75) = -1.06, spread over 3.
+    residual = -1.06
+    assert filled.loc["2005-02-28", "book_value_per_share"] == pytest.approx(
+        round(26.18 + 0.64 + residual / 3, 2)
+    )
+    assert filled.loc["2005-03-31", "book_value_per_share"] == pytest.approx(
+        round(26.18 + 0.64 + 0.68 + 2 * residual / 3, 2)
+    )
+    assert (filled.loc["2005-02-28":"2005-03-31", "book_value_source"] == SOURCE_INTERPOLATED).all()
+    # Needs the April filing, so it is public on April's filing date.
+    april_filing = pd.Timestamp(edgar.loc["2005-04-30", "filing_date"])
+    assert (filled.loc["2005-02-28":"2005-03-31", "bvps_available_date"] == april_filing).all()
+
+
+def test_book_value_not_interpolated_across_split() -> None:
+    split_date = pd.Timestamp("2006-05-19")
+    months = pd.date_range("2006-03-31", "2006-06-30", freq="ME")
+    edgar = _edgar(months, eps=[0.8, 0.8, 0.2, 0.2], bvps=[32.0, np.nan, np.nan, 8.0])
+    splits = pd.DataFrame({"split_ratio": [4.0]}, index=pd.DatetimeIndex([split_date]))
+
+    filled = fill_eps_and_bvps_gaps(edgar, None, splits)
+
+    assert filled.loc["2006-04-30":"2006-05-31", "book_value_per_share"].isna().all()
+
+
+def test_availability_date_covers_fills_in_ttm_window() -> None:
+    months = pd.date_range("2015-01-31", "2016-06-30", freq="ME")
+    edgar = _edgar(months, eps=[0.2] * len(months), bvps=[10.0] * len(months)).drop(
+        pd.Timestamp("2015-05-31")
+    )
+    quarterly = _quarterly({"2015-06-30": 0.6})
+    prices = _weekly_prices("2015-01-01", "2016-06-30", lambda d: 24.0)
+
+    out = build_monthly_valuation_multiples(prices, edgar, NO_SPLITS, quarterly).set_index(
+        "month_end"
+    )
+
+    assert out.loc["2015-05-31", "eps_basic"] == pytest.approx(0.2)
+    assert out["pe_ratio"].dropna().tolist() == pytest.approx([10.0] * 7)
+    # Every TTM window containing May 2015 waits for the Q2 10-Q.
+    window = out.loc["2015-12-31":"2016-04-30", "data_available_date"]
+    assert (pd.to_datetime(window) >= pd.Timestamp("2015-08-14")).all()
+    assert out.loc["2016-05-31", "data_available_date"] == out.loc["2016-05-31", "filing_date"]

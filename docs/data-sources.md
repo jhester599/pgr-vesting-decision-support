@@ -49,6 +49,11 @@ Operational notes:
   - derived monthly P/B and trailing P/E (split-consistent TTM EPS), one row
     per calendar month; regenerate with
     `python scripts/export_pgr_valuation_multiples.py`
+  - missing EPS (2015-05, 2019-04) is filled as quarterly XBRL EPS less the
+    other two reported months; missing book value (2005-02, 2005-03,
+    2007-08, 2015-05, 2019-04) is interpolated by rolling forward monthly
+    EPS; `*_source` columns flag every fill and `data_available_date` gives
+    the first date all inputs behind a row were public
 - `data/processed/position_lots.csv`
   - lot-level position input for tax-aware reporting
 

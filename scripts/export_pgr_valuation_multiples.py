@@ -1,8 +1,9 @@
 """
 Export PGR's monthly price-to-book and trailing price-to-earnings history.
 
-Reads unadjusted PGR prices, the monthly 8-K EDGAR data, and the split
-history from the SQLite database, then writes one row per calendar month to
+Reads unadjusted PGR prices, the monthly 8-K EDGAR data, quarterly XBRL
+EPS (used to fill missing months), and the split history from the SQLite
+database, then writes one row per calendar month to
 ``data/processed/pgr_valuation_monthly.csv``.  See
 ``src/processing/valuation_multiples.py`` for the calculation rules.
 
@@ -44,10 +45,11 @@ def main() -> None:
         prices = db_client.get_prices(conn, "PGR", exclude_proxy=True)
         edgar = db_client.get_pgr_edgar_monthly(conn)
         splits = db_client.get_splits(conn, "PGR")
+        quarterly = db_client.get_pgr_fundamentals(conn)
     finally:
         conn.close()
 
-    table = build_monthly_valuation_multiples(prices, edgar, splits)
+    table = build_monthly_valuation_multiples(prices, edgar, splits, quarterly)
     table.to_csv(args.output, index=False, float_format="%.6f")
 
     logger.info(
