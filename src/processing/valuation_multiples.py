@@ -174,7 +174,9 @@ def fill_eps_and_bvps_gaps(
 
     out = pd.DataFrame(index=months)
     out["eps_basic"] = eps
-    out["eps_basic_source"] = np.where(eps.notna(), SOURCE_REPORTED, None)
+    out["eps_basic_source"] = pd.Series(SOURCE_REPORTED, index=months, dtype=object).where(
+        eps.notna()
+    )
     out["eps_available_date"] = filing.where(eps.notna())
 
     if quarterly_fundamentals is not None and not quarterly_fundamentals.empty:
@@ -203,7 +205,9 @@ def fill_eps_and_bvps_gaps(
             out.loc[month, "eps_available_date"] = available
 
     out["book_value_per_share"] = bvps
-    out["book_value_source"] = np.where(bvps.notna(), SOURCE_REPORTED, None)
+    out["book_value_source"] = pd.Series(SOURCE_REPORTED, index=months, dtype=object).where(
+        bvps.notna()
+    )
     out["bvps_available_date"] = filing.where(bvps.notna())
 
     known = np.flatnonzero(bvps.notna().to_numpy())
