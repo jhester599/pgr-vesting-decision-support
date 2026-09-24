@@ -17,6 +17,16 @@ Signals:
     ``ep_z60``      ``ep`` relative to its own trailing 60-month history
     ``pb_roe_adj``  negated residual of log P/B on trailing ROE, fitted on an
                     expanding window (cheap relative to profitability)
+    ``ep_6m``       earnings yield on the last 6 months of EPS, annualized
+    ``ep_3m``       earnings yield on the last 3 months of EPS, annualized
+    ``ep_norm``     earnings yield on normalized EPS: trailing 60-month
+                    average ROE times current book value per share
+    ``roe_gap``     trailing ROE minus its own trailing 60-month average (not
+                    a valuation signal: where profitability sits in its cycle)
+
+Because P/E = P/B / ROE, ``ep`` = ROE x book-to-price: the earnings yield
+mixes a price-level component (``bp``) with a profitability component.
+``ep_norm`` removes the cyclical part of ROE; ``roe_gap`` isolates it.
 
 Validation follows the project rules: in-sample statistics use
 Newey-West (HAC) errors for overlapping returns, and out-of-sample tests use
@@ -39,15 +49,29 @@ from src.processing.valuation_multiples import (
     share_basis_factor,
 )
 
-SIGNALS: list[str] = ["bp", "ep", "bp_z60", "ep_z60", "pb_roe_adj"]
+SIGNALS: list[str] = [
+    "bp",
+    "ep",
+    "bp_z60",
+    "ep_z60",
+    "pb_roe_adj",
+    "ep_6m",
+    "ep_3m",
+    "ep_norm",
+    "roe_gap",
+]
 SIGNAL_LABELS: dict[str, str] = {
     "bp": "Book-to-price (1 / P/B)",
     "ep": "Earnings yield (1 / P/E)",
     "bp_z60": "Book-to-price vs own 5y history",
     "ep_z60": "Earnings yield vs own 5y history",
     "pb_roe_adj": "P/B cheapness given ROE",
+    "ep_6m": "Earnings yield, last 6 months annualized",
+    "ep_3m": "Earnings yield, last 3 months annualized",
+    "ep_norm": "Earnings yield on normalized earnings",
+    "roe_gap": "ROE minus its 5-year average",
 }
-HORIZONS: list[int] = [6, 12, 24, 36]
+HORIZONS: list[int] = [1, 3, 6, 12, 24, 36]
 ZSCORE_WINDOW = 60
 ZSCORE_MIN_PERIODS = 36
 ROE_ADJ_MIN_OBS = 60
@@ -84,6 +108,9 @@ def build_asof_signals(
     period_factor = share_basis_factor(pd.DatetimeIndex(val.index), split_history)
     bvps_latest = val["book_value_per_share"] * period_factor / latest
     ttm_latest = val["eps_basic_ttm"] * period_factor / latest
+    eps_month_latest = val["eps_basic"] * period_factor / latest
+    eps_6m_latest = eps_month_latest.rolling(6, min_periods=6).sum() * 2
+    eps_3m_latest = eps_month_latest.rolling(3, min_periods=3).sum() * 4
     # ROE: TTM earnings over average of opening and closing book value.
     avg_book = (bvps_latest + bvps_latest.shift(12)) / 2
     roe = ttm_latest / avg_book
@@ -106,11 +133,13 @@ def build_asof_signals(
                 "period": period,
                 "bvps": bvps_latest[period],
                 "ttm_eps": ttm_latest[period],
+                "eps_6m": eps_6m_latest[period],
+                "eps_3m": eps_3m_latest[period],
                 "roe": roe[period],
                 "price": price,
             }
         )
-    cols = ["period", "bvps", "ttm_eps", "roe", "price"]
+    cols = ["period", "bvps", "ttm_eps", "eps_6m", "eps_3m", "roe", "price"]
     frame = pd.DataFrame(records).set_index("date").reindex(columns=cols)
 
     out = pd.DataFrame(index=pd.DatetimeIndex(month_ends, name="date"))
@@ -124,6 +153,11 @@ def build_asof_signals(
         rolling = out[col].rolling(ZSCORE_WINDOW, min_periods=ZSCORE_MIN_PERIODS)
         out[f"{col}_z60"] = (out[col] - rolling.mean()) / rolling.std()
     out["pb_roe_adj"] = expanding_residual(-out["bp"], out["roe"], ROE_ADJ_MIN_OBS) * -1
+    out["ep_6m"] = frame["eps_6m"] / frame["price"]
+    out["ep_3m"] = frame["eps_3m"] / frame["price"]
+    out["roe_avg60"] = out["roe"].rolling(ZSCORE_WINDOW, min_periods=ZSCORE_MIN_PERIODS).mean()
+    out["ep_norm"] = out["roe_avg60"] * frame["bvps"] / frame["price"]
+    out["roe_gap"] = out["roe"] - out["roe_avg60"]
     return out
 
 
@@ -462,3 +496,85 @@ def window_ic(
                     }
                 )
     return pd.DataFrame(records)
+
+
+def annual_sample_ic(
+    frame: pd.DataFrame,
+    signal_names: list[str],
+    target: str,
+) -> pd.DataFrame:
+    """Spearman IC using one observation per year, for each calendar month.
+
+    With a 12-month target this removes overlap between return windows
+    entirely; repeating it for all 12 starting months shows how much the
+    answer depends on which month is sampled.
+    """
+    records = []
+    for signal in signal_names:
+        for month in range(1, 13):
+            sub = frame[frame.index.month == month]
+            pair = sub[[signal, target]].dropna()
+            if len(pair) < 8:
+                continue
+            records.append(
+                {
+                    "signal": signal,
+                    "target": target,
+                    "month": month,
+                    "n_obs": len(pair),
+                    "ic": stats.spearmanr(pair[signal], pair[target])[0],
+                }
+            )
+    return pd.DataFrame(records)
+
+
+def return_decomposition(
+    total_return_index: pd.Series,
+    price: pd.Series,
+    bvps: pd.Series,
+    periods: list[tuple[str, str]],
+) -> pd.DataFrame:
+    """Split annualized total return into book growth, re-rating and dividends.
+
+    In logs, total return = change in book value per share + change in P/B +
+    the dividend contribution (total return less price return).  All three
+    inputs must share a per-share basis (e.g. restated across splits).
+
+    Args:
+        total_return_index: Dividend-reinvested value index by month-end.
+        price: Share price by month-end (same basis as ``bvps``).
+        bvps: Book value per share by month-end.
+        periods: (start, end) month-end pairs.
+
+    Returns:
+        One row per period with annualized log contributions and their sum.
+    """
+    records = []
+    for start, end in periods:
+        s, e = pd.Timestamp(start), pd.Timestamp(end)
+        years = (e - s).days / 365.25
+        tr = float(np.log(total_return_index.asof(e) / total_return_index.asof(s)))
+        pr = float(np.log(price.asof(e) / price.asof(s)))
+        book = float(np.log(bvps.asof(e) / bvps.asof(s)))
+        records.append(
+            {
+                "start": start,
+                "end": end,
+                "years": years,
+                "total": tr / years,
+                "book_growth": book / years,
+                "rerating": (pr - book) / years,
+                "dividends": (tr - pr) / years,
+                "pb_start": float(price.asof(s) / bvps.asof(s)),
+                "pb_end": float(price.asof(e) / bvps.asof(e)),
+            }
+        )
+    return pd.DataFrame(records)
+
+
+def implied_roe(pb: float, cost_of_equity: float, growth: float) -> float:
+    """Long-run ROE implied by a P/B under the Gordon growth model.
+
+    Justified P/B = (ROE - g) / (r - g), so ROE = g + P/B x (r - g).
+    """
+    return growth + pb * (cost_of_equity - growth)

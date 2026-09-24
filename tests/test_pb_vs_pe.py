@@ -11,24 +11,34 @@ from src.research.pb_vs_pe import (
     block_bootstrap_ic,
     build_asof_signals,
     expanding_residual,
+    annual_sample_ic,
     forward_log_returns,
+    implied_roe,
     noise_diagnostics,
     one_way_stats,
     oos_predictions,
     oos_r2,
+    return_decomposition,
     window_ic,
 )
 
 NO_SPLITS = pd.DataFrame(columns=["split_ratio"], index=pd.DatetimeIndex([]))
 
 
-def _valuation(periods: list[str], bvps: list[float], ttm: list[float], avail: list[str]) -> pd.DataFrame:
+def _valuation(
+    periods: list[str],
+    bvps: list[float],
+    ttm: list[float],
+    avail: list[str],
+    eps: list[float] | None = None,
+) -> pd.DataFrame:
     return pd.DataFrame(
         {
             "month_end": periods,
             "data_available_date": avail,
             "book_value_per_share": bvps,
             "eps_basic_ttm": ttm,
+            "eps_basic": eps if eps is not None else [t / 12 for t in ttm],
         }
     )
 
@@ -168,3 +178,84 @@ def test_window_ic_selects_by_signal_date() -> None:
 
     assert table["ic"].iloc[0] > 0.9
     assert table["ic"].iloc[1] < -0.9
+
+
+def test_short_window_earnings_yields_are_annualized_from_monthly_eps() -> None:
+    months = pd.date_range("2020-01-31", periods=12, freq="ME")
+    eps = [1.0] * 6 + [2.0] * 3 + [3.0] * 3
+    valuation = _valuation(
+        [m.strftime("%Y-%m-%d") for m in months],
+        bvps=[10.0] * 12,
+        ttm=[np.nan] * 11 + [sum(eps)],
+        avail=[(m + pd.Timedelta(days=10)).strftime("%Y-%m-%d") for m in months],
+        eps=eps,
+    )
+    prices = pd.DataFrame({"close": [50.0]}, index=pd.to_datetime(["2021-01-15"]))
+
+    out = build_asof_signals(valuation, prices, NO_SPLITS, pd.DatetimeIndex(["2021-01-15"]))
+
+    assert out["ep"].iloc[0] == pytest.approx(21.0 / 50.0)
+    assert out["ep_6m"].iloc[0] == pytest.approx((3 * 2.0 + 3 * 3.0) * 2 / 50.0)
+    assert out["ep_3m"].iloc[0] == pytest.approx(3 * 3.0 * 4 / 50.0)
+
+
+def test_roe_gap_and_normalized_yield_use_only_trailing_roe() -> None:
+    months = pd.date_range("2010-01-31", periods=120, freq="ME")
+    bvps = [10.0] * 120
+    ttm = [2.0] * 100 + [4.0] * 20
+    valuation = _valuation(
+        [m.strftime("%Y-%m-%d") for m in months],
+        bvps=bvps,
+        ttm=ttm,
+        avail=[(m + pd.Timedelta(days=10)).strftime("%Y-%m-%d") for m in months],
+    )
+    obs = pd.DatetimeIndex([m + pd.Timedelta(days=20) for m in months])
+    prices = pd.DataFrame({"close": 40.0}, index=obs)
+
+    out = build_asof_signals(valuation, prices, NO_SPLITS, obs)
+
+    # Before the jump ROE is a flat 20%, so the gap is zero.
+    assert out["roe_gap"].iloc[60:100].abs().max() == pytest.approx(0.0, abs=1e-12)
+    # The first month on 40% ROE sits far above its trailing average...
+    first_high = out["roe"].gt(0.3).idxmax()
+    assert out.loc[first_high, "roe_gap"] > 0.15
+    # ...while normalized earnings (avg ROE x book) barely move.
+    assert out.loc[first_high, "ep_norm"] < out.loc[first_high, "ep"]
+    assert out["ep_norm"].iloc[90] == pytest.approx(0.2 * 10.0 / 40.0)
+
+
+def test_annual_sample_takes_one_observation_per_year() -> None:
+    idx = pd.date_range("2005-01-31", periods=120, freq="ME")
+    rng = np.random.default_rng(3)
+    x = rng.normal(size=120)
+    frame = pd.DataFrame({"sig": x, "abs_12m": -x + rng.normal(scale=0.1, size=120)}, index=idx)
+
+    table = annual_sample_ic(frame, ["sig"], "abs_12m")
+
+    assert sorted(table["month"]) == list(range(1, 13))
+    assert (table["n_obs"] == 10).all()
+    assert (table["ic"] < -0.8).all()
+
+
+def test_return_decomposition_components_sum_to_total() -> None:
+    idx = pd.to_datetime(["2010-12-31", "2012-12-31"])
+    price = pd.Series([20.0, 40.0], index=idx)
+    bvps = pd.Series([10.0, 15.0], index=idx)
+    tri = pd.Series([100.0, 220.0], index=idx)
+
+    row = return_decomposition(tri, price, bvps, [("2010-12-31", "2012-12-31")]).iloc[0]
+
+    years = row["years"]
+    assert row["book_growth"] == pytest.approx(np.log(1.5) / years)
+    assert row["rerating"] == pytest.approx(np.log((40 / 15) / (20 / 10)) / years)
+    assert row["dividends"] == pytest.approx(np.log(2.2 / 2.0) / years)
+    assert row["book_growth"] + row["rerating"] + row["dividends"] == pytest.approx(row["total"])
+    assert row["pb_start"] == pytest.approx(2.0)
+    assert row["pb_end"] == pytest.approx(40 / 15)
+
+
+def test_implied_roe_inverts_gordon_growth_pb() -> None:
+    roe = implied_roe(pb=3.5, cost_of_equity=0.09, growth=0.04)
+
+    assert roe == pytest.approx(0.215)
+    assert (roe - 0.04) / (0.09 - 0.04) == pytest.approx(3.5)
