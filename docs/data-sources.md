@@ -45,6 +45,10 @@ Operational notes:
 
 - `data/processed/pgr_edgar_cache.csv`
   - historical PGR monthly operating metrics
+- `data/processed/pgr_valuation_monthly.csv`
+  - derived monthly P/B and trailing P/E (split-consistent TTM EPS), one row
+    per calendar month; regenerate with
+    `python scripts/export_pgr_valuation_multiples.py`
 - `data/processed/position_lots.csv`
   - lot-level position input for tax-aware reporting
 
