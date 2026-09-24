@@ -604,3 +604,51 @@ def test_build_feature_matrix_from_db_logs_optional_synthetic_feature_failure(
     assert isinstance(df, pd.DataFrame)
     assert "Could not build synthetic feature pgr_vs_kie_6m" in caplog.text
     assert "synthetic KIE price failure" in caplog.text
+
+
+def test_build_feature_matrix_from_db_pe_ratio_is_split_consistent(monkeypatch) -> None:
+    """TTM EPS spanning the 2006 4-for-1 split must not collapse pe_ratio."""
+    from src.database import db_client
+
+    split_date = pd.Timestamp("2006-05-19")
+    days = pd.bdate_range("2004-01-01", "2008-12-31")
+    close = np.where(days >= split_date, 24.0, 96.0)
+    prices = pd.DataFrame(
+        {"open": close, "high": close, "low": close, "close": close, "volume": 1e6},
+        index=pd.DatetimeIndex(days, name="date"),
+    )
+    months = pd.date_range("2004-01-31", "2008-12-31", freq="ME")
+    post = months >= split_date
+    edgar = pd.DataFrame(
+        {
+            "eps_basic": np.where(post, 0.2, 0.8),
+            "book_value_per_share": np.where(post, 8.0, 32.0),
+        },
+        index=pd.DatetimeIndex(months, name="month_end"),
+    ).drop(pd.Timestamp("2007-08-31"))
+    splits = pd.DataFrame(
+        {"split_ratio": [4.0], "numerator": [4.0], "denominator": [1.0]},
+        index=pd.DatetimeIndex([split_date], name="split_date"),
+    )
+    empty_dividends = pd.DataFrame(
+        columns=["amount", "source"],
+        index=pd.DatetimeIndex([], name="ex_date"),
+    )
+
+    monkeypatch.setattr(db_client, "get_prices", lambda conn, ticker, *a, **k: prices.copy())
+    monkeypatch.setattr(db_client, "get_dividends", lambda conn, ticker: empty_dividends)
+    monkeypatch.setattr(db_client, "get_splits", lambda conn, ticker: splits)
+    monkeypatch.setattr(db_client, "get_pgr_fundamentals", lambda conn: pd.DataFrame())
+    monkeypatch.setattr(db_client, "get_pgr_edgar_monthly", lambda conn: edgar.copy())
+    monkeypatch.setattr(db_client, "get_fred_macro", lambda conn, series: pd.DataFrame())
+
+    df = build_feature_matrix_from_db(conn=None, force_refresh=True)
+    pe = df["pe_ratio"]
+
+    # Constant economics: every available P/E is 10x, straight through the split.
+    assert pe.loc["2006-01":"2007-06"].notna().all()
+    assert np.allclose(pe.dropna(), 10.0)
+    # The missing 2007-08 filing blanks the TTM (after the 2-month filing lag)
+    # instead of letting the window stretch to 13 calendar months.
+    assert pe.loc["2007-10":"2008-09"].isna().all()
+    assert pe.loc["2008-10":].notna().all()

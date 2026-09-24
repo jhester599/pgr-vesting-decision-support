@@ -59,6 +59,46 @@ def share_basis_factor(
     return factors
 
 
+def trailing_eps_latest_basis(
+    eps_monthly: pd.Series,
+    split_history: pd.DataFrame,
+) -> pd.Series:
+    """Return trailing-12-month EPS restated onto the latest share basis.
+
+    Each month's EPS is converted to the share basis in effect after the
+    last split, then summed over 12 consecutive calendar months.  A TTM value
+    is only produced when all 12 months are present, so a missing filing
+    never lets the window silently span 13 months.
+
+    Args:
+        eps_monthly: Single-month EPS indexed by period month-end, each value
+            on the share basis in effect at that month-end.
+        split_history: Splits indexed by split date with ``split_ratio``.
+
+    Returns:
+        Series indexed by every calendar month-end from the first to the last
+        period, rounded to 6 decimals to clear float residue (e.g. 4e-16
+        instead of 0.0) that would otherwise explode a P/E ratio.
+    """
+    eps = pd.to_numeric(eps_monthly, errors="coerce")
+    eps.index = pd.DatetimeIndex(eps.index) + pd.offsets.MonthEnd(0)
+    eps = eps[~eps.index.duplicated(keep="last")].sort_index()
+    months = pd.date_range(eps.index.min(), eps.index.max(), freq="ME")
+    months.name = eps.index.name
+    eps = eps.reindex(months)
+    factor = share_basis_factor(months, split_history)
+    latest_factor = latest_share_basis_factor(split_history)
+    eps_latest = eps * factor / latest_factor
+    return eps_latest.rolling(12, min_periods=12).sum().round(6)
+
+
+def latest_share_basis_factor(split_history: pd.DataFrame) -> float:
+    """Return the cumulative multiplier of every split in ``split_history``."""
+    if split_history is None or split_history.empty:
+        return 1.0
+    return float(split_history["split_ratio"].astype(float).prod())
+
+
 def _month_end_close(prices: pd.DataFrame) -> pd.DataFrame:
     """Return the last available close in each calendar month.
 
@@ -122,13 +162,11 @@ def build_monthly_valuation_multiples(
         month_close["close"].to_numpy() * price_factor / month_factor.to_numpy()
     )
 
-    # TTM EPS on the basis of the valuation month: restate every month to the
-    # latest basis, sum 12 consecutive months, then convert back.
-    latest_factor = float(month_factor.iloc[-1]) if len(month_factor) else 1.0
-    eps_latest_basis = out["eps_basic"] * month_factor / latest_factor
-    ttm_latest_basis = eps_latest_basis.rolling(12, min_periods=12).sum()
-    # Rounding clears float residue (e.g. 4e-16 instead of 0.0) that would
-    # otherwise turn a flat TTM into an astronomically large P/E.
+    # TTM EPS on the basis of the valuation month.
+    latest_factor = latest_share_basis_factor(split_history)
+    ttm_latest_basis = trailing_eps_latest_basis(
+        edgar["eps_basic"], split_history
+    ).reindex(months)
     out["eps_basic_ttm"] = (ttm_latest_basis * latest_factor / month_factor).round(6)
 
     bvps = out["book_value_per_share"].where(out["book_value_per_share"] > 0)
