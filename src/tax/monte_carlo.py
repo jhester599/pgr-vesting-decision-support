@@ -25,8 +25,18 @@ import math
 from dataclasses import dataclass
 
 import numpy as np
+import pandas as pd
 
 import config
+from src.processing.price_adjustment import (
+    WEEKS_PER_YEAR,
+    split_adjusted_close,
+    weekly_bars,
+)
+
+# Trailing window for the GBM volatility: one year of weekly returns, the
+# same span as the 366-day hold-to-LTCG horizon being simulated.
+MONTE_CARLO_VOL_LOOKBACK_WEEKS: int = 52
 
 
 # ---------------------------------------------------------------------------
@@ -126,9 +136,13 @@ def estimate_annual_vol(prices: "np.ndarray | list[float]", trading_days_per_yea
     """
     Estimate annualised volatility from a price series using log-returns.
 
+    The prices must be split-adjusted and evenly spaced, and
+    ``trading_days_per_year`` must match their spacing (252 for daily bars,
+    52 for weekly). For ``daily_prices`` use ``estimate_annual_vol_weekly``.
+
     Args:
         prices:                 Sequence of prices (at least 2 observations).
-        trading_days_per_year:  Annualisation factor.
+        trading_days_per_year:  Annualisation factor (bars per year).
 
     Returns:
         Annualised volatility as a decimal (e.g. 0.22 for 22%).
@@ -142,6 +156,35 @@ def estimate_annual_vol(prices: "np.ndarray | list[float]", trading_days_per_yea
     log_rets = np.diff(np.log(arr))
     daily_vol = float(np.std(log_rets, ddof=1))
     return daily_vol * math.sqrt(trading_days_per_year)
+
+
+def estimate_annual_vol_weekly(
+    close: pd.Series,
+    split_history: pd.DataFrame | None,
+    lookback_weeks: int = MONTE_CARLO_VOL_LOOKBACK_WEEKS,
+) -> float:
+    """Annualised volatility of recent split-adjusted weekly log returns.
+
+    ``daily_prices`` holds one unadjusted bar per week, so the returns are
+    weekly (annualised by √52) and restated across splits; otherwise the
+    split week reads as a −75 % return (review F19: 0.948 instead of ≈0.26
+    for PGR). Only the last ``lookback_weeks`` returns are used.
+
+    Args:
+        close: Unadjusted closes indexed by bar date (weekly or daily bars).
+        split_history: Splits indexed by split date with ``split_ratio``.
+        lookback_weeks: Number of trailing weekly returns.
+
+    Returns:
+        Annualised volatility as a decimal.
+
+    Raises:
+        ValueError: If fewer than 2 weekly bars are available, or the bars
+            are coarser than weekly.
+    """
+    weekly = weekly_bars(split_adjusted_close(close, split_history).dropna())
+    recent = weekly.iloc[-(lookback_weeks + 1):]
+    return estimate_annual_vol(recent.to_numpy(), trading_days_per_year=WEEKS_PER_YEAR)
 
 
 # ---------------------------------------------------------------------------

@@ -26,6 +26,35 @@ Relative-return targets (`monthly_relative_returns`) are DRIP total returns
 on unadjusted prices from the last bar on or before business month-end `t` to
 the last bar on or before `BMonthEnd(t + h)`.
 
+Price-derived features never use raw closes across dates. Every price feature
+goes through `src/processing/price_adjustment.split_adjusted_close`
+(`close × share_basis_factor(date) / latest factor`, from `split_history`),
+and windows are calendar-based on weekly bars:
+
+- `mom_3m`, `mom_6m`, `mom_12m`: calendar-month returns between month-end
+  closes (last bar on or before each business month-end);
+- `vol_63d` (and the dropped `vol_21d`): standard deviation of the last 13
+  (4) weekly log returns × √52. The names keep the old trading-day labels:
+  13 weeks span the same quarter that 63 trading days did;
+- `high_52w`: month-end close over the highest close of the last 52 weekly
+  bars;
+- the synthetic spreads (`pgr_vs_kie_6m`, `pgr_vs_peers_6m`, `pgr_vs_vfh_6m`,
+  `vwo_vxus_spread_6m`, `gold_vs_treasury_6m`,
+  `commodity_equity_momentum`): 6-month calendar returns on each ticker's
+  split-adjusted closes;
+- P/B, P/E, BVPS growth and buyback yield: EDGAR per-share values are
+  restated to the latest share basis on their report period, before the
+  filing lag, and divided by the split-adjusted price;
+- TA shadow features (`src/research/v160_ta_features.py`): split-adjusted
+  OHLCV (volume scaled inversely) on weekly bars, with 13/26/52-bar windows;
+- Monte Carlo tax volatility: the last 52 split-adjusted weekly log returns
+  × √52.
+
+`build_feature_matrix` and `build_ta_feature_matrix` collapse daily input to
+weekly bars and raise `ValueError` for anything coarser than weekly. Raw
+closes are used only for DRIP total returns, which apply splits to the share
+count.
+
 ## FRED
 
 Used for:

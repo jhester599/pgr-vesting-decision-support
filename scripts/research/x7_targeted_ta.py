@@ -104,6 +104,7 @@ def run_x7_experiments() -> tuple[pd.DataFrame, pd.DataFrame]:
             _price_map(conn),
             benchmarks=("VWO", "VOO"),
             peer_tickers=[],
+            split_map={ticker: db_client.get_splits(conn, ticker) for ticker in TA_TICKERS},
         )
     finally:
         conn.close()

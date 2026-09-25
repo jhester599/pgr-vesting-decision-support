@@ -51,7 +51,8 @@ Feature groups:
     All dropped silently if fewer than WFO_MIN_GAINSHARE_OBS non-NaN rows.
 
   Price-derived (v6.0):
-    - high_52w              (current price / 52-week high; George & Hwang 2004)
+    - high_52w              (current price / 52-week high over 52 weekly bars;
+                             George & Hwang 2004)
 
   FRED macro features (v3.0+, from fred_macro_monthly table):
     - yield_slope           (T10Y2Y — 10Y-2Y spread)
@@ -83,10 +84,15 @@ import numpy as np
 import pandas as pd
 
 import config
-from src.processing.valuation_multiples import (
-    latest_share_basis_factor,
-    share_basis_factor,
-    trailing_eps_latest_basis,
+from src.processing.valuation_multiples import trailing_eps_latest_basis
+from src.processing.price_adjustment import (
+    calendar_momentum,
+    restate_to_latest_share_basis,
+    return_spread_6m,
+    split_adjusted_close,
+    trailing_52w_high,
+    weekly_bars,
+    weekly_realized_vol,
 )
 from src.processing.total_return import forward_window_end
 
@@ -195,16 +201,18 @@ def _apply_edgar_lag(edgar_df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
-# Nominal trading days for each momentum lookback
-_MOMENTUM_WINDOWS: dict[str, int] = {
-    "mom_3m": 63,
-    "mom_6m": 126,
-    "mom_12m": 252,
+# Momentum lookbacks in calendar months (month-end closes).
+_MOMENTUM_MONTHS: dict[str, int] = {
+    "mom_3m": 3,
+    "mom_6m": 6,
+    "mom_12m": 12,
 }
 
-_VOL_WINDOWS: dict[str, int] = {
-    "vol_21d": 21,
-    "vol_63d": 63,
+# Volatility windows in weekly bars. The names keep their historical
+# trading-day labels: 4 weeks ~ 21 trading days, 13 weeks ~ 63.
+_VOL_WEEKS: dict[str, int] = {
+    "vol_21d": 4,
+    "vol_63d": 13,
 }
 
 
@@ -253,13 +261,26 @@ def build_feature_matrix(
     """
     Build the full monthly feature matrix for ML training.
 
+    Price features are computed from split-adjusted closes on weekly bars
+    (``daily_prices`` is weekly; review F01): momentum over calendar months of
+    month-end closes, volatility from 13 (``vol_63d``) or 4 (``vol_21d``)
+    weekly log returns × √52, and the 52-week high over 52 weekly bars. Daily
+    input is collapsed to weekly bars; anything coarser raises ``ValueError``.
+
     Args:
-        price_history:       DataFrame from price_loader.load().
+        price_history:       Unadjusted OHLCV bars (weekly or daily) indexed
+                             by date. Split-adjusted internally with
+                             ``split_history``; raw closes feed only the
+                             DRIP target.
         dividend_history:    DataFrame from dividend_loader.load().
-        split_history:       DataFrame from split_loader.load().
+        split_history:       Splits indexed by split date with ``split_ratio``.
         technical_indicators: DataFrame from technical_loader.load() (optional).
         fundamentals:        DataFrame from fundamentals_loader.load() (optional).
-        pgr_monthly:         DataFrame from pgr_monthly_loader.load() (optional).
+        pgr_monthly:         Monthly EDGAR 8-K data, already filing-lagged,
+                             with per-share columns restated onto the latest
+                             share basis (``restate_to_latest_share_basis``
+                             before the lag, as ``build_feature_matrix_from_db``
+                             does). Optional.
         fred_macro:          Wide DataFrame with DatetimeIndex (business
                              month-end) and one column per FRED series_id,
                              already publication-lagged: row M holds what may
@@ -273,51 +294,46 @@ def build_feature_matrix(
         DataFrame indexed by month-end date with feature columns and
         ``target_6m_return`` as the final column.
     """
-    # Resample daily prices to month-end (last business day)
-    monthly_close = _resample_last_business_month_end(price_history["close"])
+    # Every price feature uses split-adjusted closes (latest share basis) on
+    # one bar per week (review F01). Raw closes are used only for the DRIP
+    # target below. ``weekly_bars`` raises unless the bars are weekly (daily
+    # input is collapsed to weekly bars first).
+    adjusted_close = split_adjusted_close(price_history["close"], split_history).dropna()
+    weekly_close = weekly_bars(adjusted_close)
+    monthly_close = _resample_last_business_month_end(adjusted_close)
     monthly_dates = monthly_close.index
 
     df = pd.DataFrame(index=monthly_dates)
     df.index.name = "date"
 
     # ------------------------------------------------------------------
-    # Price momentum features (no-leakage: only data up to t used at t)
+    # Price momentum: calendar months on month-end closes
     # ------------------------------------------------------------------
-    # shift(n) on the daily series moves each value n trading days into the
-    # future, so daily_close.shift(n)[t] == close[t - n trading days].
-    # Reindexing to month-end dates with ffill aligns the lagged price to
-    # the last available trading day on or before each month-end.
-    daily_close = price_history["close"]
-
-    for col, n_days in _MOMENTUM_WINDOWS.items():
-        lagged_daily = daily_close.shift(n_days)
-        lagged_monthly = lagged_daily.reindex(monthly_dates, method="ffill")
-        df[col] = (monthly_close / lagged_monthly) - 1.0
+    # mom_Nm[t] = close(t) / close(t - N months) - 1, where each close is the
+    # last bar on or before its business month-end. Only data up to t is used.
+    for col, n_months in _MOMENTUM_MONTHS.items():
+        df[col] = calendar_momentum(adjusted_close, n_months).reindex(monthly_dates)
 
     # ------------------------------------------------------------------
-    # Realized volatility
+    # Realized volatility: weekly log returns x sqrt(52)
     # ------------------------------------------------------------------
-    daily_log_ret = np.log(daily_close / daily_close.shift(1))
-
-    for col, n_days in _VOL_WINDOWS.items():
-        rolling_vol = (
-            daily_log_ret.rolling(window=n_days, min_periods=n_days // 2)
-            .std()
-            * np.sqrt(252)
-        )
+    # vol_63d keeps its name: 13 weekly returns span the same quarter that
+    # 63 trading days did.
+    for col, n_weeks in _VOL_WEEKS.items():
+        rolling_vol = weekly_realized_vol(weekly_close, n_weeks)
         df[col] = rolling_vol.reindex(monthly_dates, method="ffill")
 
     # ------------------------------------------------------------------
     # v6.0 — 52-week high ratio (George & Hwang 2004)
     # ------------------------------------------------------------------
-    # Ratio of the current month-end close to the rolling 252-trading-day
-    # high (inclusive of the current day).  A value near 1.0 means the
-    # stock is trading at the top of its 52-week range; anchoring theory
-    # predicts that investors are more reluctant to push prices through
-    # round-number / 52-week-high ceilings, creating a predictable
-    # momentum signal.  min_periods=126 requires at least 6 months of
-    # daily history before publishing a non-NaN value.
-    rolling_52w_high = daily_close.rolling(window=252, min_periods=126).max()
+    # Ratio of the month-end close to the highest close of the trailing 364
+    # days, i.e. the last 52 weekly bars (inclusive of the current bar). A
+    # value near 1.0 means the stock is trading at the top of its 52-week
+    # range; anchoring theory predicts that investors are more reluctant to
+    # push prices through 52-week-high ceilings, creating a predictable
+    # momentum signal. At least 26 weekly
+    # bars (25 weeks of history) are required before a value is published.
+    rolling_52w_high = trailing_52w_high(adjusted_close)
     df["high_52w"] = (
         monthly_close / rolling_52w_high.reindex(monthly_dates, method="ffill")
     )
@@ -778,6 +794,8 @@ def build_feature_matrix(
             # Market cap estimated as: shares_outstanding × monthly_price, where
             # shares_outstanding ≈ shareholders_equity / book_value_per_share.
             # This avoids requiring a separate shares-outstanding data feed.
+            # BVPS must be on the latest share basis (as supplied by
+            # build_feature_matrix_from_db) to match the split-adjusted price.
             if (
                 "shareholders_equity" in pgr_monthly.columns
                 and "book_value_per_share" in pgr_monthly.columns
@@ -1076,7 +1094,7 @@ def build_feature_matrix(
     # Final cleanup
     # ------------------------------------------------------------------
     # Drop rows where ALL price-derived features are NaN (burn-in period)
-    price_feature_cols = list(_MOMENTUM_WINDOWS.keys()) + list(_VOL_WINDOWS.keys())
+    price_feature_cols = list(_MOMENTUM_MONTHS.keys()) + list(_VOL_WEEKS.keys())
     df = df.dropna(subset=price_feature_cols, how="all")
 
     # v4.3: drop redundant features to improve obs/feature ratio (~3.5:1 → ~4:1)
@@ -1172,6 +1190,10 @@ def build_feature_matrix_from_db(
     # share basis of each month's EPS is known.
     edgar_by_period = edgar_raw.copy()
     if not edgar_raw.empty:
+        # Per-share values (BVPS, EPS, buyback cost/shares) onto the latest
+        # share basis while rows are still on report periods, so the factor
+        # is the one in effect when each value was measured (review F15).
+        edgar_raw = restate_to_latest_share_basis(edgar_raw, splits)
         # Apply filing lag to prevent EDGAR period-end vs filing date look-ahead bias (v4.1)
         edgar_raw = _apply_edgar_lag(edgar_raw)
     pgr_monthly = edgar_raw if not edgar_raw.empty else None
@@ -1192,8 +1214,12 @@ def build_feature_matrix_from_db(
     #   this in a future sprint once that column is added to the DB schema.
     fundamentals = None
     if not prices.empty:
-        monthly_close_vals = _resample_last_business_month_end(prices["close"].copy())
-        monthly_fundamentals = pd.DataFrame(index=monthly_close_vals.index)
+        # Price on the latest share basis, matching the restated per-share
+        # EDGAR values (pe_ratio, pb_ratio).
+        close_latest_basis = _resample_last_business_month_end(
+            split_adjusted_close(prices["close"], splits).dropna()
+        )
+        monthly_fundamentals = pd.DataFrame(index=close_latest_basis.index)
 
         # pe_ratio from monthly EPS (8-K supplements, lag already applied)
         if (
@@ -1204,11 +1230,6 @@ def build_feature_matrix_from_db(
             eps_ttm = trailing_eps_latest_basis(edgar_by_period["eps_basic"], splits)
             eps_ttm = _apply_edgar_lag(eps_ttm)
             eps_aligned = eps_ttm.reindex(monthly_fundamentals.index, method="ffill")
-            close_latest_basis = (
-                monthly_close_vals
-                * share_basis_factor(monthly_close_vals.index, splits)
-                / latest_share_basis_factor(splits)
-            )
             # Avoid division by zero or negative TTM EPS
             valid_eps = eps_aligned.where(eps_aligned > 0)
             monthly_fundamentals["pe_ratio"] = close_latest_basis / valid_eps
@@ -1232,8 +1253,8 @@ def build_feature_matrix_from_db(
         ):
             bvps = edgar_raw["book_value_per_share"].copy()
             bvps.index = pd.to_datetime(bvps.index)
-            # Align monthly prices to BVPS index, then compute ratio
-            price_aligned = monthly_close_vals.reindex(bvps.index, method="ffill")
+            # Both sides on the latest share basis (BVPS restated above).
+            price_aligned = close_latest_basis.reindex(bvps.index, method="ffill")
             valid_bvps = bvps.where(bvps > 0)
             pb_series = (price_aligned / valid_bvps).rename("pb_ratio")
             monthly_fundamentals["pb_ratio"] = pb_series.reindex(
@@ -1258,147 +1279,67 @@ def build_feature_matrix_from_db(
         # publication lags are applied (by calendar month; review F06).
         fred_raw = _apply_fred_lags(fred_raw)
 
-    # v4.5: pgr_vs_kie_6m — PGR trailing 6M return minus KIE trailing 6M return.
-    # Computed from DB prices and injected as a synthetic column so it passes through
-    # the same lag-guarded FRED pipeline in build_feature_matrix().
-    try:
-        pgr_prices_raw = db_client.get_prices(conn, "PGR")
-        kie_prices_raw = db_client.get_prices(conn, "KIE")
-        if not pgr_prices_raw.empty and not kie_prices_raw.empty:
-            def _monthly_close(price_df: pd.DataFrame) -> pd.Series:
-                """Resample daily prices to month-end close."""
-                close = price_df["close"].copy()
-                close.index = pd.to_datetime(close.index)
-                return _resample_last_business_month_end(close)
+    # Synthetic price spreads (v4.5, v6.0, v18.0): 6-month calendar returns
+    # on split-adjusted month-end closes (review F01/F15), injected as extra
+    # columns alongside FRED so they flow through the same alignment.
+    #   pgr_vs_kie_6m:     PGR minus KIE (insurance ETF).
+    #   pgr_vs_peers_6m:   PGR minus the equal-weight mean of ALL, TRV, CB, HIG
+    #                      (peer prices from scripts/peer_fetch.py; absent if
+    #                      the peers are not bootstrapped).
+    #   pgr_vs_vfh_6m:     PGR minus VFH (broad financials ETF).
+    #   vwo_vxus_spread_6m, gold_vs_treasury_6m, commodity_equity_momentum:
+    #                      benchmark-side spreads (VWO-VXUS, GLD-BND, DBC-VOO).
+    def _adjusted_close(ticker: str) -> pd.Series:
+        """Split-adjusted closes for one ticker (empty if no prices)."""
+        price_df = prices if ticker == "PGR" else db_client.get_prices(conn, ticker)
+        if price_df.empty:
+            return pd.Series(dtype=float)
+        ticker_splits = splits if ticker == "PGR" else db_client.get_splits(conn, ticker)
+        return split_adjusted_close(price_df["close"], ticker_splits).dropna()
 
-            pgr_m = _monthly_close(pgr_prices_raw)
-            kie_m = _monthly_close(kie_prices_raw)
-            pgr_6m = pgr_m.pct_change(6, fill_method=None)
-            kie_6m = kie_m.pct_change(6, fill_method=None)
-            pgr_vs_kie = (pgr_6m - kie_6m).rename("pgr_vs_kie_6m")
-            if fred_raw.empty:
-                fred_raw = pgr_vs_kie.to_frame()
-            else:
-                fred_raw = fred_raw.join(pgr_vs_kie, how="left")
-    except Exception as exc:  # noqa: BLE001
-        logger.exception(
-            "Could not build synthetic feature pgr_vs_kie_6m; continuing without it. Error=%r",
-            exc,
-        )
+    def _add_synthetic(series: pd.Series) -> None:
+        nonlocal fred_raw
+        if fred_raw.empty:
+            fred_raw = series.to_frame()
+        else:
+            fred_raw = fred_raw.join(series, how="left")
 
-    # v6.0: pgr_vs_peers_6m — PGR trailing 6M return minus equal-weight composite
-    # of the four direct P&C insurance peers (ALL, TRV, CB, HIG).
-    # Requires peer prices bootstrapped via scripts/peer_fetch.py; silently absent
-    # if the peer tables are not yet populated.
-    try:
-        peer_price_frames = [
-            db_client.get_prices(conn, t) for t in config.PEER_TICKER_UNIVERSE
-        ]
-        available_peer_frames = [df for df in peer_price_frames if not df.empty]
-        if available_peer_frames and not prices.empty:
-            def _m_close(price_df: pd.DataFrame) -> pd.Series:
-                """Resample daily prices to month-end close."""
-                c = price_df["close"].copy()
-                c.index = pd.to_datetime(c.index)
-                return _resample_last_business_month_end(c)
-
-            pgr_m_v60 = _m_close(prices)
-            peer_monthly_df = pd.concat(
-                [_m_close(df) for df in available_peer_frames], axis=1
+    pgr_adjusted = _adjusted_close("PGR") if not prices.empty else pd.Series(dtype=float)
+    pair_spreads: list[tuple[str, str, str]] = [
+        ("pgr_vs_kie_6m", "PGR", "KIE"),
+        ("pgr_vs_vfh_6m", "PGR", "VFH"),
+        ("vwo_vxus_spread_6m", "VWO", "VXUS"),
+        ("gold_vs_treasury_6m", "GLD", "BND"),
+        ("commodity_equity_momentum", "DBC", "VOO"),
+    ]
+    for name, left_ticker, right_ticker in pair_spreads:
+        try:
+            left = pgr_adjusted if left_ticker == "PGR" else _adjusted_close(left_ticker)
+            right = _adjusted_close(right_ticker)
+            if left.empty or right.empty:
+                continue
+            _add_synthetic(return_spread_6m(left, right).rename(name))
+        except Exception as exc:  # noqa: BLE001
+            logger.exception(
+                "Could not build synthetic feature %s; continuing without it. Error=%r",
+                name,
+                exc,
             )
-            peer_composite_6m = peer_monthly_df.pct_change(6, fill_method=None).mean(axis=1)
-            pgr_6m_v60 = pgr_m_v60.pct_change(6, fill_method=None)
-            pgr_vs_peers = (pgr_6m_v60 - peer_composite_6m).rename("pgr_vs_peers_6m")
-            if fred_raw.empty:
-                fred_raw = pgr_vs_peers.to_frame()
-            else:
-                fred_raw = fred_raw.join(pgr_vs_peers, how="left")
+
+    try:
+        peer_closes = [_adjusted_close(t) for t in config.PEER_TICKER_UNIVERSE]
+        peer_closes = [c for c in peer_closes if not c.empty]
+        if peer_closes and not pgr_adjusted.empty:
+            peer_composite_6m = pd.concat(
+                [calendar_momentum(c, 6) for c in peer_closes], axis=1
+            ).mean(axis=1)
+            pgr_vs_peers = (calendar_momentum(pgr_adjusted, 6) - peer_composite_6m).rename(
+                "pgr_vs_peers_6m"
+            )
+            _add_synthetic(pgr_vs_peers)
     except Exception as exc:  # noqa: BLE001
         logger.exception(
             "Could not build synthetic feature pgr_vs_peers_6m; continuing without it. Error=%r",
-            exc,
-        )
-
-    # v6.0: pgr_vs_vfh_6m — PGR trailing 6M return minus VFH (Vanguard Financials ETF)
-    # 6M return.  VFH is fetched weekly as part of the standard ETF benchmark universe,
-    # so no separate bootstrap is needed — data is always current.
-    try:
-        vfh_prices_raw = db_client.get_prices(conn, "VFH")
-        if not vfh_prices_raw.empty and not prices.empty:
-            def _mc_vfh(price_df: pd.DataFrame) -> pd.Series:
-                """Resample daily prices to month-end close."""
-                c = price_df["close"].copy()
-                c.index = pd.to_datetime(c.index)
-                return _resample_last_business_month_end(c)
-
-            pgr_m_vfh = _mc_vfh(prices)
-            vfh_m = _mc_vfh(vfh_prices_raw)
-            pgr_6m_vfh = pgr_m_vfh.pct_change(6, fill_method=None)
-            vfh_6m = vfh_m.pct_change(6, fill_method=None)
-            pgr_vs_vfh = (pgr_6m_vfh - vfh_6m).rename("pgr_vs_vfh_6m")
-            if fred_raw.empty:
-                fred_raw = pgr_vs_vfh.to_frame()
-            else:
-                fred_raw = fred_raw.join(pgr_vs_vfh, how="left")
-    except Exception as exc:  # noqa: BLE001
-        logger.exception(
-            "Could not build synthetic feature pgr_vs_vfh_6m; continuing without it. Error=%r",
-            exc,
-        )
-
-    # v18.0: benchmark-side relative features from existing benchmark prices.
-    # These are meant to help explain reduced-universe directional bias without
-    # requiring new paid data or expanding model complexity.
-    try:
-        vwo_prices_raw = db_client.get_prices(conn, "VWO")
-        vxus_prices_raw = db_client.get_prices(conn, "VXUS")
-        gld_prices_raw = db_client.get_prices(conn, "GLD")
-        bnd_prices_raw = db_client.get_prices(conn, "BND")
-        dbc_prices_raw = db_client.get_prices(conn, "DBC")
-        voo_prices_raw = db_client.get_prices(conn, "VOO")
-
-        def _monthly_close_generic(price_df: pd.DataFrame) -> pd.Series:
-            close = price_df["close"].copy()
-            close.index = pd.to_datetime(close.index)
-            return _resample_last_business_month_end(close)
-
-        synthetic_frames: list[pd.Series] = []
-
-        if not vwo_prices_raw.empty and not vxus_prices_raw.empty:
-            vwo_m = _monthly_close_generic(vwo_prices_raw)
-            vxus_m = _monthly_close_generic(vxus_prices_raw)
-            vwo_vxus_spread = (
-                vwo_m.pct_change(6, fill_method=None)
-                - vxus_m.pct_change(6, fill_method=None)
-            ).rename("vwo_vxus_spread_6m")
-            synthetic_frames.append(vwo_vxus_spread)
-
-        if not gld_prices_raw.empty and not bnd_prices_raw.empty:
-            gld_m = _monthly_close_generic(gld_prices_raw)
-            bnd_m = _monthly_close_generic(bnd_prices_raw)
-            gold_vs_treasury = (
-                gld_m.pct_change(6, fill_method=None)
-                - bnd_m.pct_change(6, fill_method=None)
-            ).rename("gold_vs_treasury_6m")
-            synthetic_frames.append(gold_vs_treasury)
-
-        if not dbc_prices_raw.empty and not voo_prices_raw.empty:
-            dbc_m = _monthly_close_generic(dbc_prices_raw)
-            voo_m = _monthly_close_generic(voo_prices_raw)
-            commodity_equity = (
-                dbc_m.pct_change(6, fill_method=None)
-                - voo_m.pct_change(6, fill_method=None)
-            ).rename("commodity_equity_momentum")
-            synthetic_frames.append(commodity_equity)
-
-        for synthetic_series in synthetic_frames:
-            if fred_raw.empty:
-                fred_raw = synthetic_series.to_frame()
-            else:
-                fred_raw = fred_raw.join(synthetic_series, how="left")
-    except Exception as exc:  # noqa: BLE001
-        logger.exception(
-            "Could not build optional benchmark-side relative features; continuing without them. Error=%r",
             exc,
         )
 

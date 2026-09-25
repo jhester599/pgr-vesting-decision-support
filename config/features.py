@@ -286,6 +286,9 @@ EDGAR_FILING_LAG_MONTHS: int = 2
 # Redundant features dropped from the final feature matrix to improve the
 # obs/feature ratio from ~3.5:1 to ~4:1.
 #   vol_21d:          highly correlated with vol_63d (same signal, shorter window)
+#                     vol_21d / vol_63d are 4- / 13-week realized volatility of
+#                     split-adjusted weekly returns × √52 (daily_prices is
+#                     weekly; the names keep their old trading-day labels).
 #   credit_spread_ig: subset of credit_spread_hy (HY spread contains the IG
 #                     signal plus the distress premium; IG is redundant)
 FEATURES_TO_DROP: list[str] = ["vol_21d", "credit_spread_ig"]

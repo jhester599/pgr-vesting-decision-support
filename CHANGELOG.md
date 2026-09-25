@@ -5,6 +5,60 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v175 (2026-09-25) — Review 2026-09-25, step 4: price-feature rewrite
+
+WP2 from `docs/reviews/REPO_REVIEW_2026-09-25.md` (F01, F15, the Monte Carlo
+part of F19, and the TA part of F24). The before/after replay of the
+September 2026 decision is in `docs/reviews/2026-09-25_step4_price_features.md`.
+
+- **One split-adjusted price helper** (`src/processing/price_adjustment.py`):
+  `split_adjusted_close` = `close × share_basis_factor(date) / latest factor`.
+  Every price feature uses it; raw closes are kept only for DRIP targets.
+  `split_adjusted_ohlcv` also restates high/low/open (and volume inversely),
+  including Alpha Vantage's split-week bars, whose open/high and low/close
+  come from different share bases.
+- **Calendar windows on weekly bars (F01)** in `build_feature_matrix`:
+  - `mom_3m/6m/12m`: calendar-month returns between month-end closes (were
+    63/126/252-row shifts, i.e. 14.5/29/58 months on weekly data).
+  - `vol_63d`: 13 weekly log returns × √52 (was 63 weekly returns × √252).
+    The name is kept: 13 weeks span the same quarter as 63 trading days, and
+    renaming would break the feature lists, shadow ledgers and research
+    artifacts that key on it. `vol_21d` (dropped from the matrix) is 4 weeks.
+  - `high_52w`: highest close of the trailing 364 days = 52 weekly bars.
+  - The builder collapses daily input to weekly bars and raises
+    `ValueError` for bars coarser than weekly (`assert_weekly_bar_frequency`).
+- **Per-share basis (F15)** in `build_feature_matrix_from_db`: EDGAR
+  per-share columns (BVPS, EPS, buyback cost) and share counts are restated to
+  the latest basis on their report period, before the filing lag
+  (`restate_to_latest_share_basis`). `book_value_per_share_growth_yoy`,
+  `pb_ratio` and `buyback_yield` are continuous across the 2006 split.
+  `pgr_vs_kie_6m`, `pgr_vs_peers_6m`, `pgr_vs_vfh_6m`,
+  `vwo_vxus_spread_6m`, `gold_vs_treasury_6m` and
+  `commodity_equity_momentum` use split-adjusted closes for every ticker.
+- **TA shadow features (F24)**: `build_ta_feature_matrix` takes `split_map`,
+  split-adjusts OHLCV, works on weekly bars, and counts windows in weeks
+  (26 for "6m", 52 for "12m", 13 for `_63d`; MACD 12/26/9 on weekly bars).
+  `classification_shadow` and `scripts/research/x7_targeted_ta.py` pass the
+  splits. `ta_pgr_natr_63d` at 2006-05 is 0.033 (was 0.195).
+- **Monte Carlo volatility (F19)**: `estimate_annual_vol_weekly` uses the last
+  52 split-adjusted weekly log returns × √52. PGR as of 2026-09-21: 0.265
+  (was 0.949 from the whole history × √252).
+- **Live inputs change, so live and backtest outputs move.** On the
+  2026-08-31 decision row: `mom_12m` +1.304 → −0.115, `mom_3m` −0.184 →
+  +0.148, `mom_6m` 0.057 → 0.023, `vol_63d` 0.556 → 0.346, `high_52w`
+  0.764 → 0.881. The September recommendation stays DEFER-TO-TAX-DEFAULT /
+  sell 50 %. Model selection is unchanged; the v18/v20 feature research is
+  re-run in step 8a.
+- **Tests:** new `tests/test_price_features_wp2.py` (weekly synthetic series
+  with a 4:1 split: `mom_12m` equals the true 12-month return; every feature
+  is identical with or without the split; 13-week vol and 52-week high by
+  hand; |Δlog P/B| < 0.3 and |BVPS YoY| < 0.5 across 2006-05; spreads ignore
+  splits; TA split invariance and mixed split-week bars; Monte Carlo vol;
+  coarser-than-weekly bars rejected). `test_feature_engineering.py`'s
+  momentum test asserted the 252-row definition and now asserts calendar
+  months plus no look-ahead; two `test_fred_pipeline_wp3.py` fixtures used
+  monthly price bars and now use weekly bars.
+
 ## v174 (2026-09-25) — Review 2026-09-25, step 3b: EDGAR parser and table repair
 
 WP5 + WP6 from `docs/reviews/REPO_REVIEW_2026-09-25.md` (F09, F11, F12, F16,
