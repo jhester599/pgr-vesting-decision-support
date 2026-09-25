@@ -813,8 +813,9 @@ def _extract_investment_returns(tbl) -> dict:
         ("pretax recurring",),
         ("pretax annualized",),
     ])
-    # Stored as decimal fraction (e.g. 3.3% → 0.033) to match CSV convention
-    d["investment_book_yield"] = _yield_raw / 100.0 if _yield_raw is not None else None
+    # Stored in percent (e.g. "3.3%" -> 3.3), matching the historical CSV.
+    # Migration 004 rescales rows written by the old /100 conversion (F10).
+    d["investment_book_yield"] = _yield_raw
 
     return {k: v for k, v in d.items() if v is not None}
 

@@ -153,7 +153,7 @@ Snapshot at month-end, in millions USD.
 | Column | Non-null | Min | Median | Max | Notes |
 |---|---|---|---|---|---|
 | `fixed_income_duration` | 248/256 | 1.6 | 2.8 | 3.5 | Interest rate sensitivity (years) |
-| `investment_book_yield` | 126/256 | 2.4% | 3.9% | 5.6% | Portfolio book yield; available from ~2015 |
+| `investment_book_yield` | 126/256 | 2.4% | 3.9% | 5.6% | Portfolio book yield, stored in percent (3.9 = 3.9 %) in the CSV and the DB; available from ~2015 |
 | `fte_return_fixed_income` | 135/256 | -4.2% | 0.5% | 3.0% | Fully taxable equiv return on fixed income |
 | `fte_return_common_stocks` | 134/256 | -17.0% | 2.3% | 11.3% | Fully taxable equiv return on equities |
 | `fte_return_total_portfolio` | 135/256 | -5.0% | 0.7% | 2.9% | Fully taxable equiv return, total portfolio |

@@ -25,6 +25,14 @@ python scripts/edgar_8k_fetcher.py --dry-run
 python scripts/monthly_decision.py --as-of 2026-04-11 --dry-run --skip-fred
 ```
 
+`weekly_fetch.py --dry-run` and `monthly_decision.py --dry-run` are read-only:
+they open the DB with `mode=ro`, skip migrations, API-log rows, split seeding,
+the model-health snapshot, the retrain log, `decision_log.md` and the shadow
+ledgers, and write monthly artifacts to the gitignored
+`results/dry_run/monthly_decisions/YYYY-MM/` (manifest `dry_run: true`).
+`peer_fetch.py` and `edgar_8k_fetcher.py` dry runs are not yet read-only, and
+`edgar_8k_fetcher.py --dry-run` calls SEC EDGAR; run them against a DB copy.
+
 Optional local dashboard check:
 
 ```bash
@@ -33,6 +41,20 @@ streamlit run dashboard/app.py
 ```
 
 ## Rebuilding / Validating the Database
+
+Changes to the committed DB go through ordered migration files (`.sql`, or
+`.py` with an `upgrade(conn)` function) in `src/database/migrations/`. Apply them to a copy first, check the diff, then
+commit the file the script produced:
+
+```bash
+cp data/pgr_financials.db /tmp/pgr_copy.db
+python scripts/apply_db_migrations.py --db /tmp/pgr_copy.db   # applies pending, then finalizes
+```
+
+Before `git add data/pgr_financials.db`, every workflow runs
+`python scripts/finalize_db.py`, which checkpoints the WAL
+(`PRAGMA wal_checkpoint(TRUNCATE)`) and sets `journal_mode=DELETE` so the
+committed file is self-contained. `*.db-wal` / `*.db-shm` are gitignored.
 
 Fresh schema init:
 

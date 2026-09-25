@@ -5,6 +5,57 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v171 (2026-09-25) — Review 2026-09-25, step 1
+
+Contained fixes from `docs/reviews/REPO_REVIEW_2026-09-25.md`.
+
+- **F14: `--dry-run` is read-only.** `weekly_fetch.py` and
+  `monthly_decision.py` open the DB with `get_connection(read_only=True)`
+  (`mode=ro`) and skip `initialize_schema`. The monthly dry run no longer
+  writes `model_performance_log` (the drift summary is built in memory) or
+  `model_retrain_log`, and doesn't append to `decision_log.md` or the
+  classifier/TA shadow ledgers. Its artifacts go to the gitignored
+  `results/dry_run/monthly_decisions/YYYY-MM/`, and its manifest has
+  `dry_run: true` and `artifact_classification: dry_run`. The weekly dry run
+  no longer logs EDGAR API requests or seeds `split_history`.
+- **F35:** `upsert_pgr_edgar_monthly` maps the parser key
+  `roe_net_income_trailing_12m` to `roe_net_income_ttm`, so the live 8-K
+  fetch writes it again. The stored 2026-02..2026-08 NULLs will be refilled
+  by the next monthly 8-K run, not by this PR.
+- **F10:** the 8-K parser stores `investment_book_yield` in percent (no
+  `/100`). Migration `004_investment_book_yield_percent` (a Python
+  migration; a no-op on legacy tables without the column) rescales the 33
+  stored fractions (2023-04..2026-08). It was applied to the committed DB
+  with `scripts/apply_db_migrations.py`; no other cell changed. **The live
+  GBT input `investment_book_yield` changes units for those rows, so live
+  predictions move.** The review estimated up to 1.25 pp, with no signal flips.
+- **F07:** the weekly and monthly jobs now fetch `FRED_SERIES_PGR` as well as
+  `FRED_SERIES_MACRO` (`fred_loader.production_fred_series()`).
+  `monthly_decision` logs a `[Live features]` WARNING when any live-model
+  feature is NaN in the decision row. It adds a manifest warning and a
+  `nan_live_features` list to `run_manifest.json`. Imputation itself is
+  unchanged. `rate_adequacy_gap_yoy` is NaN in every decision row from
+  2026-05, so current runs will carry this warning until the PGR series are
+  refreshed. No FRED history was backfilled here (step 3a).
+- **F29:**
+  - `.gitignore` now uses `data/processed/*`, so the reference-CSV negations
+    work. It ignores `*.db-wal`, `*.db-shm`, `*.db-journal` and
+    `results/dry_run/`.
+  - `pytest.ini` no longer adds `-q`, so CI's `pytest -q` prints the summary
+    line again.
+  - Every workflow that commits the DB runs `scripts/finalize_db.py`
+    (`PRAGMA wal_checkpoint(TRUNCATE)` plus `journal_mode=DELETE`) before
+    `git add`. The committed DB is now in DELETE mode.
+- `migration_runner` now also applies `.py` migrations that define
+  `upgrade(conn)`.
+- New scripts: `scripts/apply_db_migrations.py` and `scripts/finalize_db.py`.
+- Tests: `tests/test_dry_run_read_only.py` (the full monthly dry run is marked
+  `slow`), `tests/test_edgar_monthly_units_and_keys.py`,
+  `tests/test_fred_pgr_refresh_and_nan_live_features.py` and
+  `tests/test_repo_hygiene.py`. Two parser tests that asserted the old
+  fraction unit, and two e2e tests that relied on dry runs writing to a fresh
+  DB, were updated. `tests/test_migration_runner.py` expects migration 004.
+
 ## v170 (2026-04-19)
 
 - Added `docs/README.md` as the active documentation map

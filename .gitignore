@@ -13,7 +13,9 @@ __pycache__/
 
 # Data cache (regenerated from API; never commit raw API responses)
 data/raw/
-data/processed/
+# Ignore the directory's contents (not the directory itself) so that the
+# negations below can re-include specific files.
+data/processed/*
 
 # Exception: user-maintained reference data committed intentionally
 !data/processed/pgr_edgar_cache.csv
@@ -31,9 +33,16 @@ fred-api-key.txt
 # v2 SQLite database — committed to repo so GitHub Actions can accumulate data
 # over time and push daily updates back to the branch.
 !data/pgr_financials.db
+# SQLite WAL sidecars created by read-write connections; never commit them.
+*.db-wal
+*.db-shm
+*.db-journal
 
 # Plot output
 plots/
+
+# Output of `--dry-run` production entry points (never committed)
+results/dry_run/
 
 # IDE
 .vscode/

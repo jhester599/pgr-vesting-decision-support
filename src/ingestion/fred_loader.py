@@ -22,6 +22,9 @@ Series added in v3.1 / v4.5 (FRED_SERIES_PGR from config.py):
   TRFVOLUSM227NFWA   — Vehicle miles traveled NSA (monthly)
   CUSR0000SETA02     — Used car & truck CPI (auto total-loss severity; v4.5)
   CUSR0000SAM2       — Medical care CPI (bodily injury / PIP severity; v4.5)
+  PCU5241265241261   — PPI: private passenger auto insurance (v4.5)
+  Both lists are refreshed by the weekly and monthly jobs via
+  ``production_fred_series()``.
   NOTE: CUSR0000SETC01 (motor vehicle insurance CPI) removed 2026-03-24 —
         series does not exist in FRED (400 Bad Request). Re-add when valid ID found.
 
@@ -123,6 +126,21 @@ def fetch_fred_series(
 # ---------------------------------------------------------------------------
 # Multi-series fetch + monthly resampling
 # ---------------------------------------------------------------------------
+
+def production_fred_series() -> list[str]:
+    """Return every FRED series the production jobs must keep fresh.
+
+    This is ``FRED_SERIES_MACRO`` followed by ``FRED_SERIES_PGR``, without
+    duplicates. The PGR-specific series feed live model features (for example
+    ``rate_adequacy_gap_yoy`` in the GBT), so the weekly and monthly jobs must
+    refresh them too, not only the yearly bootstrap.
+    """
+    series: list[str] = []
+    for sid in [*config.FRED_SERIES_MACRO, *config.FRED_SERIES_PGR]:
+        if sid not in series:
+            series.append(sid)
+    return series
+
 
 def fetch_all_fred_macro(
     series_ids: list[str],

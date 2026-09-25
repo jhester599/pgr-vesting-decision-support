@@ -26,6 +26,10 @@ python scripts/peer_fetch.py --dry-run
 python scripts/monthly_decision.py --as-of 2026-04-02 --dry-run --skip-fred
 ```
 
+The weekly and monthly dry runs are read-only (DB opened with `mode=ro`;
+monthly artifacts go to the gitignored `results/dry_run/`). They leave the
+committed DB and `results/monthly_decisions/` untouched.
+
 ## Generated Files
 
 Do not edit these manually unless the change is specifically about generated

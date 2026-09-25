@@ -10,6 +10,7 @@ import pandas as pd
 
 import config
 from scripts import monthly_decision
+from src.database import db_client
 from src.models.calibration import CalibrationResult
 from src.research.v12 import SnapshotSummary
 
@@ -65,6 +66,11 @@ def test_main_logs_cross_check_fallback_and_completes(
     monkeypatch.setattr(config, "DB_PATH", str(db_path))
     monkeypatch.setattr(config, "RECOMMENDATION_LAYER_MODE", "live_with_shadow")
     monkeypatch.setattr(monthly_decision, "_output_dir", lambda as_of: out_dir)
+    monkeypatch.setattr(monthly_decision, "_dry_run_output_dir", lambda as_of: out_dir)
+    # Dry runs open the DB read-only, so it must already exist.
+    seed_conn = db_client.get_connection(str(db_path))
+    db_client.initialize_schema(seed_conn)
+    seed_conn.close()
     monkeypatch.setattr(monthly_decision, "_already_ran", lambda as_of: False)
     monkeypatch.setattr(monthly_decision, "_fetch_fred_step", lambda *args, **kwargs: None)
     monkeypatch.setattr(

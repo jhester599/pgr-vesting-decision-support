@@ -99,6 +99,9 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Fold the WAL into the DB file and leave it in DELETE journal
+          # mode so the committed file is self-contained (review F29).
+          python scripts/finalize_db.py
           git add data/pgr_financials.db
           git diff --staged --quiet || git commit -m "chore: weekly data update $(date -u +%Y-%m-%d) [skip ci]"
           git push
