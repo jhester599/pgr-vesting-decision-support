@@ -13,7 +13,7 @@ P2.6 — edgar_8k_fetcher.py HTML parser extension:
   9.  _parse_html_exhibit extracts book_value_per_share
  10.  _parse_html_exhibit extracts eps_basic
  11.  _parse_html_exhibit extracts shares_repurchased and avg_cost_per_share
- 12.  _parse_html_exhibit extracts investment_book_yield (percent → decimal)
+ 12.  _parse_html_exhibit extracts investment_book_yield (stored in percent)
  13.  _parse_html_exhibit sets derived fields to None (set by _compute_derived_fields)
  14.  _compute_derived_fields sets npw_growth_yoy for 12-month prior found
  15.  _compute_derived_fields sets channel_mix_agency_pct = agency / (agency + direct)
@@ -203,13 +203,13 @@ class TestParseHtmlExhibit:
         assert result["shares_repurchased"] == pytest.approx(0.75, abs=0.01)
         assert result["avg_cost_per_share"] == pytest.approx(175.00, abs=0.01)
 
-    def test_extracts_investment_book_yield_as_decimal(self):
-        """Book yield given as "3.50%" → stored as 0.035."""
+    def test_extracts_investment_book_yield_as_percent(self):
+        """Book yield given as "3.50%" → stored as 3.5 (percent, like the CSV; F10)."""
         html = self._minimal_html(cr=91.0, pif=15_000_000, book_yield_pct=3.50)
         result = _parse_html_exhibit(html, "2024-02-15")
         assert result is not None
         if result["investment_book_yield"] is not None:
-            assert result["investment_book_yield"] == pytest.approx(0.035, abs=1e-4)
+            assert result["investment_book_yield"] == pytest.approx(3.5, abs=1e-4)
 
     def test_derived_fields_set_to_none(self):
         """Derived fields must be None at parse time (set later by _compute_derived_fields)."""

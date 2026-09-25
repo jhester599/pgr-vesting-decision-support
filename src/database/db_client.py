@@ -7,9 +7,12 @@ Responsibilities:
   - API rate-limit tracking (replaces the v1 JSON counter file)
   - Typed query helpers returning pandas DataFrames
 
-All connections use WAL journal mode for concurrent-write safety (GitHub Actions
-commits happen while local reads may be in progress) and enable foreign key
-enforcement.
+Read-write connections use WAL journal mode for concurrent-write safety
+(GitHub Actions commits happen while local reads may be in progress) and enable
+foreign key enforcement. Workflows checkpoint the WAL and switch the file back
+to ``journal_mode=DELETE`` before committing it (``scripts/finalize_db.py``).
+Read-only connections (``get_connection(read_only=True)``) never change the
+file.
 
 Usage:
     import config
@@ -38,24 +41,85 @@ from src.ingestion.provider_registry import get_provider_limit
 # Connection management
 # ---------------------------------------------------------------------------
 
-def get_connection(db_path: str | None = None) -> sqlite3.Connection:
+def get_connection(
+    db_path: str | None = None,
+    read_only: bool = False,
+) -> sqlite3.Connection:
     """Return a sqlite3 connection with WAL mode and FK enforcement enabled.
 
     Args:
         db_path: Path to the SQLite file. Defaults to ``config.DB_PATH``.
             Parent directories are created automatically if missing.
+        read_only: When True, open the existing file with ``mode=ro`` so
+            that any write raises ``sqlite3.OperationalError``. The journal
+            mode is left untouched, because switching it rewrites the file
+            header. Used by ``--dry-run`` entry points.
 
     Returns:
         An open ``sqlite3.Connection`` with row_factory set to
         ``sqlite3.Row`` for dict-like column access.
+
+    Raises:
+        FileNotFoundError: If ``read_only`` is True and the file is missing.
     """
     path = db_path or config.DB_PATH
+    if read_only:
+        resolved = Path(path).resolve()
+        if not resolved.exists():
+            raise FileNotFoundError(
+                f"Read-only connection requested but database does not exist: {resolved}"
+            )
+        conn = sqlite3.connect(
+            f"{resolved.as_uri()}?mode=ro",
+            uri=True,
+            check_same_thread=False,
+        )
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys=ON;")
+        return conn
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
     return conn
+
+
+def finalize_for_commit(db_path: str | None = None) -> str:
+    """Fold the WAL into the main file and switch it to DELETE journal mode.
+
+    Run this before ``git add`` of the database. Afterwards the file on disk
+    is self-contained (no ``-wal``/``-shm`` sidecars hold committed pages)
+    and its header no longer says WAL, so read-only opens do not need to
+    create sidecar files.
+
+    Args:
+        db_path: Path to the SQLite file. Defaults to ``config.DB_PATH``.
+
+    Returns:
+        The resulting journal mode (always ``"delete"``).
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        RuntimeError: If the checkpoint could not complete or the journal
+            mode could not be changed (another connection is open).
+    """
+    path = Path(db_path or config.DB_PATH)
+    if not path.exists():
+        raise FileNotFoundError(f"Database does not exist: {path}")
+    conn = sqlite3.connect(str(path))
+    try:
+        busy, _log_frames, _checkpointed = conn.execute(
+            "PRAGMA wal_checkpoint(TRUNCATE);"
+        ).fetchone()
+        if busy:
+            raise RuntimeError(f"WAL checkpoint of {path} was blocked by another connection.")
+        mode = str(conn.execute("PRAGMA journal_mode=DELETE;").fetchone()[0]).lower()
+    finally:
+        conn.close()
+    if mode != "delete":
+        raise RuntimeError(f"Could not switch {path} to journal_mode=DELETE (got {mode!r}).")
+    return mode
 
 
 def _add_column_if_missing(
@@ -828,7 +892,13 @@ def upsert_pgr_edgar_monthly(
             "total_revenues":              r.get("total_revenues"),
             "total_expenses":              r.get("total_expenses"),
             "income_before_income_taxes":  r.get("income_before_income_taxes"),
-            "roe_net_income_ttm":          r.get("roe_net_income_ttm"),
+            # The live 8-K parser emits the CSV-era key
+            # ``roe_net_income_trailing_12m``; accept either name.
+            "roe_net_income_ttm":          (
+                r.get("roe_net_income_ttm")
+                if r.get("roe_net_income_ttm") is not None
+                else r.get("roe_net_income_trailing_12m")
+            ),
             "roe_comprehensive_trailing_12m": r.get("roe_comprehensive_trailing_12m"),
             "shareholders_equity":         r.get("shareholders_equity"),
             "total_assets":                r.get("total_assets"),

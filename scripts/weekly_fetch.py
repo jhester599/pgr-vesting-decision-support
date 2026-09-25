@@ -11,7 +11,8 @@ Budget per run:
    1 AV call  - PGR dividends
   24 AV total (free-tier limit: 25/day)
    1 EDGAR call - PGR companyfacts JSON (7-day cache; most runs cost 0 calls)
-  N FRED calls - one per series in FRED_SERIES_MACRO (no daily limit)
+  N FRED calls - one per series in FRED_SERIES_MACRO + FRED_SERIES_PGR
+                 (no daily limit)
 
 ETF dividends are NOT fetched here; use scripts/initial_fetch.py for the
 one-time bootstrap and for quarterly ETF dividend refreshes.
@@ -21,6 +22,8 @@ Usage (local or CI):
 
 Options:
     --dry-run    Log which tickers would be fetched but make no HTTP calls.
+                 The database is opened read-only: no schema migrations,
+                 API-log rows, split seeding or target rebuilds are written.
                  Useful for verifying budget projection before a real run.
     --skip-fred  Skip the FRED macro fetch step. Useful if FRED_API_KEY
                  is not set or during budget-constrained testing.
@@ -83,10 +86,10 @@ def _refresh_pgr_fundamentals(conn, dry_run: bool = False) -> int:
     """Fetch PGR quarterly fundamentals from SEC EDGAR XBRL and upsert into DB."""
     from src.ingestion import edgar_client
 
-    db_client.log_api_request(conn, "edgar", endpoint="companyfacts")
-
     if dry_run:
         return 0
+
+    db_client.log_api_request(conn, "edgar", endpoint="companyfacts")
 
     records = edgar_client.fetch_pgr_fundamentals_quarterly()
     if not records:
@@ -99,11 +102,15 @@ def _refresh_pgr_fundamentals(conn, dry_run: bool = False) -> int:
 
 
 def _fetch_fred_step(conn, dry_run: bool = False) -> None:
-    """Fetch FRED macro series and upsert into fred_macro_monthly."""
-    from src.ingestion.fred_loader import fetch_all_fred_macro, upsert_fred_to_db
+    """Fetch FRED macro and PGR-specific series into fred_macro_monthly."""
+    from src.ingestion.fred_loader import (
+        fetch_all_fred_macro,
+        production_fred_series,
+        upsert_fred_to_db,
+    )
 
-    series_list = config.FRED_SERIES_MACRO
-    logger.info("Fetching %s FRED macro series...", len(series_list))
+    series_list = production_fred_series()
+    logger.info("Fetching %s FRED series...", len(series_list))
     if dry_run:
         logger.info("[DRY RUN] Would fetch: %s", series_list)
         return
@@ -131,8 +138,12 @@ def main(dry_run: bool = False, skip_fred: bool = False) -> None:
     logger.info("%sPGR v2 Weekly Fetch - %s", "[DRY RUN] " if dry_run else "", today)
     logger.info("Database: %s", config.DB_PATH)
 
-    conn = db_client.get_connection(config.DB_PATH)
-    db_client.initialize_schema(conn)
+    if dry_run:
+        # Read-only: any accidental write raises instead of mutating the DB.
+        conn = db_client.get_connection(config.DB_PATH, read_only=True)
+    else:
+        conn = db_client.get_connection(config.DB_PATH)
+        db_client.initialize_schema(conn)
 
     all_tickers = get_all_price_tickers()
     pgr_only = ["PGR"]
@@ -191,7 +202,10 @@ def main(dry_run: bool = False, skip_fred: bool = False) -> None:
 
     # Ensure split_history is populated before computing returns; safe to run
     # every time because upsert_splits uses INSERT OR REPLACE.
-    _seed_known_splits(conn)
+    if dry_run:
+        logger.info("[DRY RUN] Skipping split-history seeding.")
+    else:
+        _seed_known_splits(conn)
 
     logger.info("Refreshing relative return targets (6M and 12M)...")
     if dry_run:
@@ -232,7 +246,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Log actions without making HTTP calls.",
+        help="Log actions without making HTTP calls or writing to the DB.",
     )
     parser.add_argument(
         "--skip-fred",

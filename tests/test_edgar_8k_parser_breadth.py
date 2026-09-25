@@ -111,7 +111,7 @@ def test_parse_html_exhibit_extracts_broader_current_fields():
     assert parsed["roe_net_income_trailing_12m"] == pytest.approx(10.4)
     assert parsed["debt_to_total_capital"] == pytest.approx(28.3)
     assert parsed["fte_return_common_stocks"] == pytest.approx(-1.5)
-    assert parsed["investment_book_yield"] == pytest.approx(0.033)
+    assert parsed["investment_book_yield"] == pytest.approx(3.3)
     assert parsed["weighted_avg_credit_quality"] == "AA-"
 
 

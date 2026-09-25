@@ -60,6 +60,7 @@ from src.processing.feature_engineering import (
     compute_obs_feature_ratio,
     compute_vif,
     get_feature_columns,
+    get_model_feature_columns,
     get_X_y_relative,
     truncate_relative_target_for_asof,
 )
@@ -269,6 +270,16 @@ def _output_dir(as_of: date) -> Path:
     return Path("results") / "monthly_decisions" / month_str
 
 
+def _dry_run_output_dir(as_of: date) -> Path:
+    """Return the gitignored output directory used by ``--dry-run``.
+
+    Dry runs must never overwrite the committed production artifacts under
+    ``results/monthly_decisions/``.
+    """
+    month_str = as_of.strftime("%Y-%m")
+    return Path("results") / "dry_run" / "monthly_decisions" / month_str
+
+
 def _already_ran(as_of: date) -> bool:
     """Return True if a report already exists for this exact as-of date.
 
@@ -302,11 +313,16 @@ def _fetch_fred_step(conn, dry_run: bool = False, skip_fred: bool = False) -> No
             logger.info("[FRED] Dry run - skipping FRED HTTP calls.")
         return
 
-    from src.ingestion.fred_loader import fetch_all_fred_macro, upsert_fred_to_db
+    from src.ingestion.fred_loader import (
+        fetch_all_fred_macro,
+        production_fred_series,
+        upsert_fred_to_db,
+    )
 
-    logger.info("[FRED] Fetching %s macro series...", len(config.FRED_SERIES_MACRO))
+    series_list = production_fred_series()
+    logger.info("[FRED] Fetching %s FRED series...", len(series_list))
     try:
-        df = fetch_all_fred_macro(config.FRED_SERIES_MACRO)
+        df = fetch_all_fred_macro(series_list)
         n = upsert_fred_to_db(conn, df)
         logger.info("[FRED] %s rows upserted.", n)
     except Exception as exc:  # noqa: BLE001
@@ -350,6 +366,15 @@ def _generate_signals(
         return pd.DataFrame(), {}, {}
 
     X_current = X_event.iloc[[-1]]
+    nan_live_features = _find_nan_live_features(X_current)
+    if nan_live_features:
+        logger.warning(
+            "[Live features] %s live-model feature(s) are NaN in the decision row "
+            "(%s) and will be median-imputed from the training window: %s",
+            len(nan_live_features),
+            X_current.index[-1].date(),
+            ", ".join(nan_live_features),
+        )
 
     # v32.1 — compute VIF for the feature matrix (safe; falls back to empty Series)
     vif_series: pd.Series
@@ -368,6 +393,7 @@ def _generate_signals(
         "obs_feature_report": compute_obs_feature_ratio(X_primary_for_ratio, warn=False),
         "representative_cpcv": None,
         "vif_series": vif_series,
+        "nan_live_features": nan_live_features,
     }
 
     # Load relative return matrix for the primary forecast universe only.
@@ -728,55 +754,90 @@ def _summarize_conformal_coverage(signals: pd.DataFrame | None) -> ConformalCove
     )
 
 
+def _find_nan_live_features(X_current: pd.DataFrame) -> list[str]:
+    """Return live-model features that are NaN in the decision row.
+
+    The live ensemble median-imputes NaN inputs from its training window, so a
+    stale upstream series (e.g. an unrefreshed FRED series) would otherwise
+    silently turn a feature into a constant. Callers log and flag these.
+    Features are the columns each ``config.ENSEMBLE_MODELS`` model is fed.
+    """
+    if X_current.empty:
+        return []
+    row = X_current.iloc[-1]
+    missing: list[str] = []
+    for model_type in config.ENSEMBLE_MODELS:
+        for col in get_model_feature_columns(X_current, model_type=model_type):
+            if col not in missing and pd.isna(row[col]):
+                missing.append(col)
+    return missing
+
+
 def _record_model_health_snapshot(
     conn,
     as_of: date,
     aggregate_health: dict | None,
     cal_result: CalibrationResult | None,
     conformal_coverage_summary: ConformalCoverageBacktest | None,
+    dry_run: bool = False,
 ) -> ModelDriftSummary | None:
-    """Persist the monthly model-health snapshot and return the latest drift summary."""
+    """Persist the monthly model-health snapshot and return the latest drift summary.
+
+    With ``dry_run`` the snapshot is merged into the stored history in memory
+    only, so the drift summary matches a real run without writing to the DB.
+    """
     if aggregate_health is None or cal_result is None:
         return None
 
     month_end = (
         pd.Timestamp(as_of).to_period("M").to_timestamp("M").date().isoformat()
     )
-    db_client.upsert_model_performance_log(
-        conn,
-        [
-            {
-                "month_end": month_end,
-                "aggregate_oos_r2": float(aggregate_health["oos_r2"]),
-                "aggregate_nw_ic": float(aggregate_health["nw_ic"]),
-                "aggregate_hit_rate": float(aggregate_health["agg_hit"]),
-                "ece": float(cal_result.ece),
-                "ece_ci_lower": float(cal_result.ece_ci_lower),
-                "ece_ci_upper": float(cal_result.ece_ci_upper),
-                "conformal_target_coverage": (
-                    float(conformal_coverage_summary.target_coverage)
-                    if conformal_coverage_summary is not None
-                    else None
-                ),
-                "conformal_empirical_coverage": (
-                    float(conformal_coverage_summary.empirical_coverage)
-                    if conformal_coverage_summary is not None
-                    else None
-                ),
-                "conformal_trailing_empirical_coverage": (
-                    float(conformal_coverage_summary.trailing_empirical_coverage)
-                    if conformal_coverage_summary is not None
-                    else None
-                ),
-                "conformal_trailing_coverage_gap": (
-                    float(conformal_coverage_summary.trailing_coverage_gap)
-                    if conformal_coverage_summary is not None
-                    else None
-                ),
-            }
-        ],
-    )
-    history = db_client.get_model_performance_log(conn)
+    records = [
+        {
+            "month_end": month_end,
+            "aggregate_oos_r2": float(aggregate_health["oos_r2"]),
+            "aggregate_nw_ic": float(aggregate_health["nw_ic"]),
+            "aggregate_hit_rate": float(aggregate_health["agg_hit"]),
+            "ece": float(cal_result.ece),
+            "ece_ci_lower": float(cal_result.ece_ci_lower),
+            "ece_ci_upper": float(cal_result.ece_ci_upper),
+            "conformal_target_coverage": (
+                float(conformal_coverage_summary.target_coverage)
+                if conformal_coverage_summary is not None
+                else None
+            ),
+            "conformal_empirical_coverage": (
+                float(conformal_coverage_summary.empirical_coverage)
+                if conformal_coverage_summary is not None
+                else None
+            ),
+            "conformal_trailing_empirical_coverage": (
+                float(conformal_coverage_summary.trailing_empirical_coverage)
+                if conformal_coverage_summary is not None
+                else None
+            ),
+            "conformal_trailing_coverage_gap": (
+                float(conformal_coverage_summary.trailing_coverage_gap)
+                if conformal_coverage_summary is not None
+                else None
+            ),
+        }
+    ]
+    if dry_run:
+        logger.info("[DRY RUN] Not writing the model-health snapshot to the DB.")
+        history = db_client.get_model_performance_log(conn)
+        snapshot_df = pd.DataFrame(records)
+        snapshot_df["month_end"] = pd.to_datetime(snapshot_df["month_end"])
+        snapshot_df = snapshot_df.set_index("month_end")
+        if not history.empty:
+            history = history.loc[history.index != snapshot_df.index[0]]
+            history = pd.concat([history, snapshot_df]).sort_index()
+        else:
+            history = snapshot_df
+        history.index.name = "month_end"
+    else:
+        db_client.upsert_model_performance_log(conn, records)
+        history = db_client.get_model_performance_log(conn)
     if history.empty:
         return None
     return summarize_latest_model_drift(history.reset_index())
@@ -785,10 +846,11 @@ def _record_model_health_snapshot(
 def _evaluate_and_record_retrain_trigger(
     conn,
     drift_summary: ModelDriftSummary | None,
+    dry_run: bool = False,
 ) -> RetainTriggerResult | None:
     """
     Evaluate the retrain trigger against the current drift state and persist
-    the result to model_retrain_log for governance/audit.
+    the result to model_retrain_log for governance/audit (skipped in dry runs).
 
     Returns the RetainTriggerResult, or None if the DB table is unavailable.
     """
@@ -798,15 +860,18 @@ def _evaluate_and_record_retrain_trigger(
             drift_summary=drift_summary,
             last_trigger_date=last_date,
         )
-        db_client.record_retrain_event(
-            conn,
-            triggered_at=result.evaluated_at,
-            breach_streak=result.breach_streak,
-            triggered=result.triggered,
-            cooldown_active=result.cooldown_active,
-            last_trigger_date=result.last_trigger_date,
-            notes=result.notes,
-        )
+        if dry_run:
+            logger.info("[DRY RUN] Not recording the retrain-trigger evaluation.")
+        else:
+            db_client.record_retrain_event(
+                conn,
+                triggered_at=result.evaluated_at,
+                breach_streak=result.breach_streak,
+                triggered=result.triggered,
+                cooldown_active=result.cooldown_active,
+                last_trigger_date=result.last_trigger_date,
+                notes=result.notes,
+            )
         if result.triggered:
             logger.warning(
                 "Retrain trigger fired: %s (streak=%d, last=%s)",
@@ -3040,8 +3105,12 @@ def main(
         logger.info("Report for %s already exists. Skipping.", as_of.strftime("%Y-%m"))
         return
 
-    conn = db_client.get_connection(config.DB_PATH)
-    db_client.initialize_schema(conn)
+    if dry_run:
+        # Read-only: no migrations and no writes. Any write attempt raises.
+        conn = db_client.get_connection(config.DB_PATH, read_only=True)
+    else:
+        conn = db_client.get_connection(config.DB_PATH)
+        db_client.initialize_schema(conn)
     db_client.warn_if_db_behind(conn, context="monthly_decision")
     freshness_report = db_client.check_data_freshness(conn, run_date)
     for message in freshness_report["warnings"]:
@@ -3183,6 +3252,7 @@ def main(
         aggregate_health,
         cal_result,
         conformal_coverage_summary,
+        dry_run=dry_run,
     )
     existing_holdings = _build_existing_holdings_guidance(conn, as_of)
     redeploy_buckets = _build_redeploy_guidance(conn)
@@ -3399,7 +3469,9 @@ def main(
     except Exception:
         logger.warning("BL diagnostic shadow run failed; Portfolio Optimizer section will show 'not run'", exc_info=True)
 
-    out_dir = _output_dir(as_of)
+    out_dir = _dry_run_output_dir(as_of) if dry_run else _output_dir(as_of)
+    if dry_run:
+        logger.info("[DRY RUN] Writing artifacts to %s (production files untouched).", out_dir)
     classification_shadow_path = write_classification_shadow_csv(
         out_dir,
         classification_shadow_artifact_df,
@@ -3408,17 +3480,21 @@ def main(
     decision_overlay_path = write_decision_overlays_csv(out_dir, overlay_df)
     print(f"  Wrote {decision_overlay_path}")
 
-    history_base_dir = out_dir.parent
+    # Shadow ledgers live next to the production month folders. Dry runs read
+    # them for monitoring but never append to or rewrite them.
+    history_base_dir = _output_dir(as_of).parent
     history_path = classification_history_path(history_base_dir)
     if history_path.exists():
         history_df = pd.read_csv(history_path)
     else:
         history_df = pd.DataFrame()
     history_df = attach_matured_classifier_outcomes(conn, history_df, horizon_months=6)
-    if not history_df.empty:
+    if not history_df.empty and not dry_run:
         history_df.to_csv(history_path, index=False)
 
-    if isinstance(classification_shadow_summary, dict) and classification_shadow_summary.get("enabled"):
+    if dry_run:
+        logger.info("[DRY RUN] Not appending to the classifier or TA shadow ledgers.")
+    elif isinstance(classification_shadow_summary, dict) and classification_shadow_summary.get("enabled"):
         history_entry = build_classifier_history_entry(
             as_of_date=as_of,
             run_date=run_date,
@@ -3447,7 +3523,7 @@ def main(
         forecast_horizon_months=6,
         classification_shadow_variants=classification_shadow_variants,
     )
-    if ta_history_entries:
+    if ta_history_entries and not dry_run:
         ta_history_path = append_ta_shadow_variant_history(
             base_dir=history_base_dir,
             entries=ta_history_entries,
@@ -3481,9 +3557,12 @@ def main(
         shadow_gate_overlay=shadow_gate_overlay,
     )
     _write_signals_csv(out_dir, signals)
-    _append_decision_log(
-        as_of, run_date, consensus, sell_pct, mean_pred, mean_ic, mean_hr, dry_run,
-    )
+    if dry_run:
+        logger.info("[DRY RUN] Not appending to decision_log.md.")
+    else:
+        _append_decision_log(
+            as_of, run_date, consensus, sell_pct, mean_pred, mean_ic, mean_hr, dry_run,
+        )
 
     # Step 5: Write diagnostic OOS evaluation report
     # v32.0 — Compute feature importance stability from the primary model
@@ -3565,6 +3644,12 @@ def main(
             f"{conformal_coverage_summary.trailing_empirical_coverage:.1%} "
             f"vs {conformal_coverage_summary.target_coverage:.0%}."
         )
+    nan_live_features = list(diagnostics.get("nan_live_features") or [])
+    if nan_live_features:
+        manifest_warnings.append(
+            f"{len(nan_live_features)} live-model feature(s) are NaN in the decision row "
+            f"and were median-imputed: {', '.join(nan_live_features)}."
+        )
     if model_drift_summary is not None and model_drift_summary.drift_flag:
         manifest_warnings.append(
             "Rolling model IC drift alert active: "
@@ -3573,7 +3658,7 @@ def main(
         )
 
     # v35.1: evaluate retrain trigger and record to audit log
-    _evaluate_and_record_retrain_trigger(conn, model_drift_summary)
+    _evaluate_and_record_retrain_trigger(conn, model_drift_summary, dry_run=dry_run)
 
     if shadow_summary is not None:
         if shadow_summary.recommendation_mode != live_summary.recommendation_mode:
@@ -3677,9 +3762,11 @@ def main(
             str(out_dir / "dashboard.html"),
             str(out_dir / "monthly_summary.json"),
         ],
-        artifact_classification="production",
+        artifact_classification="dry_run" if dry_run else "production",
         cwd=str(Path(__file__).parent.parent),
     )
+    manifest["dry_run"] = bool(dry_run)
+    manifest["nan_live_features"] = nan_live_features
     write_run_manifest(out_dir, manifest)
 
     conn.close()
@@ -3698,7 +3785,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Generate outputs without making HTTP calls or committing to git.",
+        help=(
+            "Read-only run: no HTTP calls, no DB writes, no ledger appends. "
+            "Artifacts go to results/dry_run/monthly_decisions/YYYY-MM/."
+        ),
     )
     parser.add_argument(
         "--skip-fred",

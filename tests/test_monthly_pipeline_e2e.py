@@ -7,6 +7,7 @@ from datetime import date
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -16,11 +17,21 @@ from src.database import db_client
 from src.models.calibration import CalibrationResult
 
 
+@pytest.mark.parametrize(
+    "nan_live_features",
+    [[], ["rate_adequacy_gap_yoy"]],
+    ids=["all-live-features-present", "nan-live-feature"],
+)
 def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
     monkeypatch,
     tmp_path: Path,
+    nan_live_features: list[str],
 ) -> None:
-    """Run the monthly workflow end-to-end with heavy modeling steps stubbed."""
+    """Run the monthly workflow end-to-end with heavy modeling steps stubbed.
+
+    This is a real (non-dry) run against a temp DB and temp output folder: it
+    asserts the DB snapshot write, which a dry run must never do (F14).
+    """
     db_path = tmp_path / "test_monthly.db"
     out_dir = tmp_path / "results" / "2026-04"
 
@@ -64,7 +75,11 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
         lambda *args, **kwargs: (
             signals.copy(),
             {"VOO": object(), "BND": object()},
-            {"obs_feature_report": None, "representative_cpcv": None},
+            {
+                "obs_feature_report": None,
+                "representative_cpcv": None,
+                "nan_live_features": list(nan_live_features),
+            },
         ),
     )
     monkeypatch.setattr(
@@ -202,7 +217,7 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
 
     monkeypatch.setattr(monthly_decision, "_write_diagnostic_report", _write_stub_diagnostic)
 
-    monthly_decision.main(as_of_date_str="2026-04-05", dry_run=True, skip_fred=True)
+    monthly_decision.main(as_of_date_str="2026-04-05", dry_run=False, skip_fred=True)
 
     recommendation_path = out_dir / "recommendation.md"
     signals_path = out_dir / "signals.csv"
@@ -306,6 +321,16 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
         "Trailing conformal coverage deviates materially from nominal" in warning
         for warning in manifest["warnings"]
     )
+    assert manifest["dry_run"] is False
+    assert manifest["artifact_classification"] == "production"
+    # F07: a NaN live feature in the decision row must mark the manifest.
+    assert manifest["nan_live_features"] == nan_live_features
+    nan_warnings = [w for w in manifest["warnings"] if "live-model feature" in w]
+    if nan_live_features:
+        assert len(nan_warnings) == 1
+        assert "rate_adequacy_gap_yoy" in nan_warnings[0]
+    else:
+        assert nan_warnings == []
 
     conn = db_client.get_connection(str(db_path))
     perf_log = db_client.get_model_performance_log(conn)
