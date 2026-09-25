@@ -5,6 +5,75 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v172 (2026-09-25) — Review 2026-09-25, step 2: splits, dividends, target rebuild
+
+WP1 + WP4 from `docs/reviews/REPO_REVIEW_2026-09-25.md` (F03, F05, F08, F22).
+The diff of the rebuilt targets is in
+`docs/reviews/2026-09-25_step2_target_rebuild.md`.
+
+- **F03/F05: one canonical split source.** `config/splits.py`
+  (`KNOWN_SPLITS`, re-exported by `config`) replaces the three hand-kept
+  lists in `scripts/weekly_fetch.py`, `scripts/apply_split_history.py` and
+  `config/features.py`. `PGR_KNOWN_SPLITS` is now derived from it.
+  - Adds VOO 2013-10-24 1-for-2 (ratio 0.5) and VGT 2026-04-21 8-for-1, each
+    with its issuer-notice evidence.
+  - `src/ingestion/split_detector.py` recovers split coefficients from Alpha
+    Vantage adjusted series: `8. split coefficient` in daily adjusted data, or
+    the adjusted-close factor ratio in `TIME_SERIES_WEEKLY_ADJUSTED`.
+  - `scripts/detect_splits.py` reports detections missing from the registry.
+    It makes one AV call per ticker, capped by the day's budget, and caches
+    responses.
+- **Jump guard.** `src/processing/price_integrity.py` flags weekly close
+  ratios outside [0.6, 1.7] with no `split_history` row within ±7 days.
+  Hartford's 2008–09 crisis moves are reviewed exceptions
+  (`KNOWN_PRICE_JUMPS`). `weekly_fetch.py` now skips the target rebuild when
+  PGR or a benchmark shows an unexplained jump.
+- **F22: one price bar per ticker per ISO week.**
+  `upsert_prices(one_bar_per_week=True)`, used by the AV price loader, keeps
+  the latest-dated bar of each week. `dedupe_weekly_price_bars` removed the 31
+  partial-week duplicates from the committed DB.
+- **F22: target windows** end at the last bar on or before
+  `BMonthEnd(t + h)` (`total_return.forward_window_end`), not
+  `t + DateOffset(months=h)`. `build_relative_return_targets(upsert=True)`
+  now replaces each benchmark/horizon, so stale rows cannot linger.
+- **F22: as-of truncation.** `truncate_relative_target_for_asof` drops every
+  target whose window ends after the as-of date. This affects backdated
+  `--as-of` runs and the shadow classifiers; live runs are unaffected.
+  `tests/test_asof_target_truncation.py` now asserts the non-leaky rule.
+- **F08: dividends.**
+  - `MultiDividendLoader.fetch_for_tickers` sleeps before its first call and
+    retries AV "Information" advisories with exponential backoff (2 retries,
+    20 s then 40 s).
+  - A successful fetch with no dividends now records its fetch time.
+  - `db_client.check_dividend_freshness` checks each ticker's cadence (STALE
+    when the last ex-date is more than 1.5 payment intervals behind the last
+    price).
+  - New `weekly_fetch.py --dividend-refresh` mode, scheduled Wednesdays in
+    `weekly_data_fetch.yml`, refreshes due ETF and PGR dividends within the
+    AV budget.
+  - `scripts/check_data_integrity.py` runs after each weekly commit. It fails
+    the run on unexplained jumps, duplicate week bars, or (after a dividend
+    refresh) stale dividends.
+- **Rebuilt `monthly_relative_returns`** with
+  `scripts/rebuild_relative_returns.py`, on a copy that was then committed.
+  - 863 of 9,658 rows changed; none were added or removed.
+  - Split fixes: VOO 18 rows by +106 to +134 pp; VGT 10 rows by −92 to
+    −140 pp, all 10 changing sign.
+  - Window change: 770 rows (mostly 6M), mean 1.3–2.5 pp, 23 sign flips.
+  - Duplicate-bar fix: ≤ 1.65 pp.
+  - **Model training targets change, so live and backtest outputs will move.**
+- **Not done here:** the 2026 dividend backfill needs `AV_API_KEY`, which this
+  session did not have. The first Wednesday refresh, or a manual dispatch with
+  `dividend_refresh: true`, fetches all 22 due tickers and rebuilds targets.
+  Until then 21 tickers report stale dividends.
+- Tests:
+  - new: `test_split_registry.py`, `test_db_price_integrity.py` (DB-integrity
+    checks on the committed DB, read-only), `test_weekly_bar_upsert.py`,
+    `test_target_windows.py`, `test_drip_closed_form.py` (flat price with $1
+    quarterly dividend = ∏(1 + d/P) − 1; 4:1 split with matching drop ≈ 0) and
+    `test_dividend_feed.py`;
+  - extended: `test_weekly_fetch.py` and `test_workflow_contracts.py`.
+
 ## v171 (2026-09-25) — Review 2026-09-25, step 1
 
 Contained fixes from `docs/reviews/REPO_REVIEW_2026-09-25.md`.

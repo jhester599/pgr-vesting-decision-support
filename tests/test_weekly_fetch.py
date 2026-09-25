@@ -74,3 +74,51 @@ class TestWeeklyFetch:
         assert "FRED fetch failed. Continuing with cached data." in caplog.text
         assert "RuntimeError: boom" in caplog.text
         mock_upsert.assert_not_called()
+
+
+class TestRebuildTargetsJumpGuard:
+    """Targets are not rebuilt over a split missing from config/splits.py (F03/F05)."""
+
+    @staticmethod
+    def _conn(tmp_path, vgt_closes):
+        import pandas as pd
+
+        from src.database import db_client
+
+        conn = db_client.get_connection(str(tmp_path / "t.db"))
+        db_client.initialize_schema(conn)
+        dates = pd.date_range("2026-03-06", periods=len(vgt_closes), freq="W-FRI")
+        db_client.upsert_prices(conn, [
+            {"ticker": "VGT", "date": d.strftime("%Y-%m-%d"), "close": c}
+            for d, c in zip(dates, vgt_closes)
+        ])
+        return conn
+
+    def test_unexplained_jump_skips_rebuild(self, tmp_path, monkeypatch, caplog) -> None:
+        import scripts.weekly_fetch as wf
+
+        monkeypatch.setattr(config, "KNOWN_SPLITS", [])
+        conn = self._conn(tmp_path, [800.0, 805.0, 104.0, 105.0])
+        rebuilt = MagicMock()
+        monkeypatch.setattr(wf, "build_relative_return_targets", rebuilt)
+        with caplog.at_level(logging.ERROR):
+            assert wf._rebuild_targets(conn, dry_run=False) is False
+        rebuilt.assert_not_called()
+        assert "Unexplained weekly price jumps" in caplog.text
+        conn.close()
+
+    def test_registered_split_allows_rebuild(self, tmp_path, monkeypatch) -> None:
+        import pandas as pd
+
+        import scripts.weekly_fetch as wf
+
+        monkeypatch.setattr(config, "KNOWN_SPLITS", [{
+            "ticker": "VGT", "split_date": "2026-03-17", "split_ratio": 8.0,
+            "numerator": 8.0, "denominator": 1.0,
+        }])
+        conn = self._conn(tmp_path, [800.0, 805.0, 104.0, 105.0])
+        rebuilt = MagicMock(return_value=pd.DataFrame())
+        monkeypatch.setattr(wf, "build_relative_return_targets", rebuilt)
+        assert wf._rebuild_targets(conn, dry_run=False) is True
+        assert rebuilt.call_count == 2
+        conn.close()

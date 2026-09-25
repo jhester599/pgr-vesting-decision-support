@@ -3,8 +3,12 @@
 ## Normal Workflow Expectations
 
 - `weekly_data_fetch.yml`
-  - should update main prices, dividends, fundamentals, macro data, and
-    relative-return targets
+  - Friday: should update main prices, PGR dividends, fundamentals, macro
+    data, and relative-return targets
+  - Wednesday (`--dividend-refresh`): should update ETF and PGR dividends that
+    are due, within the AV budget
+  - its last step (`scripts/check_data_integrity.py`) must be green: no
+    unexplained price jumps, one bar per ticker-week, fresh dividends
 - `peer_data_fetch.yml`
   - should update peer prices and dividends
 - `monthly_8k_fetch.yml`
@@ -55,6 +59,27 @@ Before `git add data/pgr_financials.db`, every workflow runs
 `python scripts/finalize_db.py`, which checkpoints the WAL
 (`PRAGMA wal_checkpoint(TRUNCATE)`) and sets `journal_mode=DELETE` so the
 committed file is self-contained. `*.db-wal` / `*.db-shm` are gitignored.
+
+### Splits and relative-return targets
+
+`config/splits.py` (`KNOWN_SPLITS`) is the only split list. When the
+integrity check reports an unexplained price jump:
+
+1. Verify the split from the issuer notice. Optionally confirm it with
+   `python scripts/detect_splits.py --tickers <T> --db /tmp/pgr_copy.db`
+   (one AV call per ticker, cached for the day, budget-capped).
+2. Add the row to `KNOWN_SPLITS` with its `evidence`.
+3. Rebuild the targets on a copy, review the diff, then commit the copy:
+
+```bash
+cp data/pgr_financials.db /tmp/pgr_copy.db
+python scripts/rebuild_relative_returns.py --db /tmp/pgr_copy.db \
+    --report /tmp/rebuild.md --rows-csv /tmp/rebuild_rows.csv --attribute
+python scripts/check_data_integrity.py --db /tmp/pgr_copy.db
+```
+
+The weekly job also re-seeds splits and rebuilds (replaces) every target row
+each run, so a registry fix reaches the committed DB on the next Friday.
 
 Fresh schema init:
 

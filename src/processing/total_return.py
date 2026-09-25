@@ -19,10 +19,37 @@ Key formula:
 
   Total return over [t_0, t_T]:
     TR = (shares_held[t_T] * price[t_T]) / (shares_held[t_0] * price[t_0]) - 1
+
+Monthly forward-return windows run from the last bar on or before the
+business month-end t to the last bar on or before BMonthEnd(t + h) (see
+forward_window_end), so every window spans whole calendar months even on
+weekly bars.
 """
 
 import pandas as pd
 import numpy as np
+
+
+def forward_window_end(t: pd.Timestamp, months: int) -> pd.Timestamp:
+    """Return the nominal end of an ``months``-month forward window starting at ``t``.
+
+    The end is the last business day of the calendar month ``months`` after
+    ``t``'s month: ``BMonthEnd(t + months)``. The realised end price is the
+    last bar on or before this date (``compute_total_return`` uses ``asof``).
+
+    Review F22: ``t + DateOffset(months=h)`` could land before the month-end
+    (2025-02-28 + 6M = Thu 2025-08-28), so on weekly bars about a third of
+    windows ended one week early.
+
+    Args:
+        t:      Window start (a month-end date).
+        months: Horizon in calendar months.
+
+    Returns:
+        Business month-end timestamp.
+    """
+    month_end = (pd.Timestamp(t) + pd.DateOffset(months=months)) + pd.offsets.MonthEnd(0)
+    return pd.offsets.BMonthEnd().rollback(month_end)
 
 
 def build_position_series(
@@ -160,8 +187,9 @@ def build_monthly_returns(
     Build a monthly series of forward total returns for use as the ML target.
 
     For each month-end date t, computes the DRIP total return from t to
-    t + ``forward_months`` calendar months. Observations where the forward
-    window extends beyond available data are NaN (no leakage).
+    ``forward_window_end(t, forward_months)``, the business month-end
+    ``forward_months`` later. Observations whose window end lies beyond the
+    last available bar are NaN (no leakage).
 
     Args:
         price_history:    DataFrame from price_loader.load().
@@ -185,7 +213,7 @@ def build_monthly_returns(
     data_end = full_position.index.max()
 
     for t in monthly_dates:
-        t_end = t + pd.DateOffset(months=forward_months)
+        t_end = forward_window_end(t, forward_months)
         if t_end > data_end:
             returns[t] = np.nan
             continue

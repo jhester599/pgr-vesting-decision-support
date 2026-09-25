@@ -88,6 +88,7 @@ from src.processing.valuation_multiples import (
     share_basis_factor,
     trailing_eps_latest_basis,
 )
+from src.processing.total_return import forward_window_end
 
 logger = logging.getLogger(__name__)
 
@@ -1456,20 +1457,22 @@ def truncate_relative_target_for_asof(
     as_of: pd.Timestamp,
     horizon_months: int,
 ) -> pd.Series:
-    """Hide target rows that would need future prices beyond a simulated as-of date.
+    """Hide target rows whose forward window had not ended by a simulated as-of date.
 
     Forward return targets are only knowable once the full horizon has elapsed.
-    For a backdated ``--as-of`` run, any target row whose forward horizon would
-    extend beyond the simulated month-end observation window must be masked out.
-    The relative-return targets are month-end keyed, so we align the cutoff to
-    the month-end containing ``as_of`` before subtracting the horizon.
+    A row keyed at month-end ``t`` realises at ``forward_window_end(t, h)``
+    (the business month-end ``h`` months later, the same window the target
+    builder uses), so it is kept only if that date is on or before ``as_of``.
+
+    Review F22: the previous rule cut at ``MonthEnd(as_of) - h`` and so kept
+    one target per backdated run whose window ended 1-11 days after ``as_of``.
     """
     truncated = relative_returns.copy()
-    as_of_month_end = pd.Timestamp(as_of) + pd.offsets.MonthEnd(0)
-    cutoff = (
-        as_of_month_end - pd.DateOffset(months=horizon_months)
-    ) + pd.offsets.MonthEnd(0)
-    truncated.loc[truncated.index > cutoff] = np.nan
+    as_of_ts = pd.Timestamp(as_of)
+    window_ends = pd.DatetimeIndex(
+        [forward_window_end(t, horizon_months) for t in truncated.index]
+    )
+    truncated.loc[window_ends > as_of_ts] = np.nan
     return truncated
 
 

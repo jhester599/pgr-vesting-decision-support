@@ -7,6 +7,12 @@ database for use by DRIP total-return calculations.
 
 One AV request per ticker.  The DIVIDENDS endpoint returns all historical
 ex-dividend events in a single response (no pagination).
+
+Pacing (review F08): the batch sleeps before its *first* call as well as
+between calls, because the weekly job calls DIVIDENDS straight after a
+22-call price batch and AV answered that burst with an "Information"
+advisory, which silently skipped PGR dividends from 2026-03-26 on.
+Advisories are retried with exponential backoff before a ticker is skipped.
 """
 
 from __future__ import annotations
@@ -26,6 +32,8 @@ from src.ingestion.http_utils import build_retry_session
 _AV_BASE = config.AV_BASE_URL
 _AV_FUNCTION = "DIVIDENDS"
 _MIN_SECONDS_BETWEEN_CALLS = 13  # ≤ 5 req/min AV limit
+_MAX_ADVISORY_RETRIES = 2        # extra attempts after an "Information" advisory
+_ADVISORY_BACKOFF_SECONDS = 20.0  # first retry wait; doubles on each retry
 
 
 # ---------------------------------------------------------------------------
@@ -177,8 +185,9 @@ class MultiDividendLoader:
         raw = _av_dividend_request(self._conn, ticker)
         records = _parse_av_dividends(raw, ticker)
         n = db_client.upsert_dividends(self._conn, records)
-        if n:
-            db_client.update_ingestion_metadata(self._conn, ticker, "dividends", n)
+        # Record every successful fetch, even one with no dividends (e.g. GLD),
+        # so the budget-aware refresh does not re-fetch it every week.
+        db_client.update_ingestion_metadata(self._conn, ticker, "dividends", n)
         return n
 
     def fetch_for_tickers(
@@ -186,19 +195,29 @@ class MultiDividendLoader:
         tickers: list[str],
         dry_run: bool = False,
         sleep_between: float = _MIN_SECONDS_BETWEEN_CALLS,
+        max_advisory_retries: int = _MAX_ADVISORY_RETRIES,
+        advisory_backoff: float = _ADVISORY_BACKOFF_SECONDS,
     ) -> dict[str, int | None]:
         """Fetch dividends for multiple tickers.
 
+        Sleeps ``sleep_between`` seconds before every request, including the
+        first, so a dividend batch never fires straight after another AV
+        batch.  An "Information" advisory is retried up to
+        ``max_advisory_retries`` times, waiting ``advisory_backoff`` seconds
+        and doubling the wait each time; each retry is one more logged AV call.
+
         Args:
-            tickers:       List of ticker symbols.
-            dry_run:       Check budget and log but skip HTTP calls.
-            sleep_between: Seconds between requests.
+            tickers:              List of ticker symbols.
+            dry_run:              Check budget and log but skip HTTP calls.
+            sleep_between:        Seconds before each request.
+            max_advisory_retries: Retries per ticker after an advisory.
+            advisory_backoff:     Wait before the first retry (seconds).
 
         Returns:
             Dict mapping each ticker to rows upserted (int) or None if the
-            ticker was not attempted because the AV server-side rate limit was
-            hit earlier in the batch.  Tickers skipped as already-fresh map
-            to 0.
+            ticker was not fetched (advisory persisted after all retries, or
+            the AV hard limit was hit earlier in the batch).  Tickers skipped
+            as already-fresh map to 0.
 
         Raises:
             RuntimeError: If the local DB daily budget is exhausted before the
@@ -207,20 +226,23 @@ class MultiDividendLoader:
         """
         results: dict[str, int | None] = {}
         for i, ticker in enumerate(tickers):
-            if i > 0 and not dry_run:
+            if not dry_run:
                 time.sleep(sleep_between)
             try:
                 if dry_run:
                     _av_dividend_request(self._conn, ticker, dry_run=True)
                     results[ticker] = 0
                 else:
-                    results[ticker] = self.fetch_dividends(ticker)
+                    results[ticker] = self._fetch_with_advisory_retry(
+                        ticker, max_advisory_retries, advisory_backoff
+                    )
             except AVRateLimitAdvisory as exc:
-                # Soft advisory — quota not exhausted; skip this ticker only.
+                # Advisory persisted after every retry; skip this ticker only.
                 results[ticker] = None
                 print(
-                    f"  [av-advisory] Soft advisory for '{ticker}' — "
-                    f"skipping this ticker, continuing batch. {exc}"
+                    f"  [av-advisory] Soft advisory for '{ticker}' after "
+                    f"{max_advisory_retries} retries — skipping this ticker, "
+                    f"continuing batch. {exc}"
                 )
             except AVRateLimitError as exc:
                 # Hard quota exhausted — stop the batch, defer all remaining.
@@ -237,3 +259,26 @@ class MultiDividendLoader:
                     f"Stopped at ticker '{ticker}': {exc}"
                 ) from exc
         return results
+
+    def _fetch_with_advisory_retry(
+        self,
+        ticker: str,
+        max_retries: int,
+        backoff: float,
+    ) -> int:
+        """Call :meth:`fetch_dividends`, retrying AV advisories with backoff."""
+        wait = backoff
+        for attempt in range(max_retries + 1):
+            try:
+                # force_refresh on retries: the first attempt did not store data.
+                return self.fetch_dividends(ticker, force_refresh=attempt > 0)
+            except AVRateLimitAdvisory:
+                if attempt == max_retries:
+                    raise
+                print(
+                    f"  [av-advisory] '{ticker}' attempt {attempt + 1} got an "
+                    f"advisory; retrying in {wait:.0f}s."
+                )
+                time.sleep(wait)
+                wait *= 2
+        raise AssertionError("unreachable")  # pragma: no cover

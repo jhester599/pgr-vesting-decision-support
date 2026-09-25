@@ -11,8 +11,9 @@ Design notes:
     and compute_total_return() in total_return.py.
   - The AV DIVIDENDS endpoint stores amounts in the ``amount`` column; this
     module renames it to ``dividend`` before calling build_position_series().
-  - ETF split history is typically empty; build_position_series() handles an
-    empty split DataFrame correctly (no events applied).
+  - Split rows come from split_history, seeded from the canonical registry
+    config.KNOWN_SPLITS; build_position_series() handles an empty split
+    DataFrame correctly (no events applied).
 """
 
 from __future__ import annotations
@@ -25,7 +26,11 @@ import pandas as pd
 
 import config
 from src.database import db_client
-from src.processing.total_return import build_position_series, compute_total_return
+from src.processing.total_return import (
+    build_position_series,
+    compute_total_return,
+    forward_window_end,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -87,7 +92,9 @@ def build_etf_monthly_returns(
     Loads price, dividend, and split data from the SQLite database and calls
     the existing build_position_series() / compute_total_return() machinery
     from total_return.py.  The result uses the same month-end convention and
-    forward-return NaN treatment as the v1 build_monthly_returns().
+    forward-return NaN treatment as the v1 build_monthly_returns(): each
+    window runs from the last bar on or before month-end t to the last bar
+    on or before ``BMonthEnd(t + forward_months)``.
 
     Args:
         conn:           Open SQLite connection with v2 schema.
@@ -117,7 +124,8 @@ def build_etf_monthly_returns(
 
     returns: dict[pd.Timestamp, float] = {}
     for t in monthly_dates:
-        t_end = t + pd.DateOffset(months=forward_months)
+        # Review F22: end at the last bar on or before BMonthEnd(t + h).
+        t_end = forward_window_end(t, forward_months)
         if t_end > data_end:
             returns[t] = np.nan
             continue
@@ -153,7 +161,9 @@ def build_relative_return_targets(
         exclude_proxy:  If True, exclude proxy-filled rows from both PGR and
                         ETF return calculations.
         upsert:         If True, persist results to the ``monthly_relative_returns``
-                        table.  Pass False for read-only / test scenarios.
+                        table, replacing every stored row of each benchmark and
+                        horizon that has data.  Pass False for read-only / test
+                        scenarios.
 
     Returns:
         DataFrame with index = month-end date (DatetimeIndex), columns = ETF
@@ -195,7 +205,9 @@ def build_relative_return_targets(
                 if not pd.isna(rel_val)
             ]
             if records:
-                db_client.upsert_relative_returns(conn, records)
+                # Replace (not just upsert) so rows that no longer have a
+                # complete window are not left behind with stale values.
+                db_client.replace_relative_returns(conn, etf, forward_months, records)
 
     if not result_cols:
         return pd.DataFrame()

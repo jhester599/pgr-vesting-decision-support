@@ -78,14 +78,8 @@ DB_PATH: str = os.path.join("data", "pgr_financials.db")
 # ---------------------------------------------------------------------------
 TICKER: str = "PGR"
 
-# ---------------------------------------------------------------------------
-# Known PGR corporate actions (used for validation in tests)
-# ---------------------------------------------------------------------------
-PGR_KNOWN_SPLITS: list[dict] = [
-    {"date": "1992-12-09", "ratio": 3.0},
-    {"date": "2002-04-23", "ratio": 3.0},
-    {"date": "2006-05-19", "ratio": 4.0},
-]
+# Known splits (all tickers) and the derived PGR_KNOWN_SPLITS live in
+# config/splits.py, the single canonical split source.
 
 # ---------------------------------------------------------------------------
 # v2 ETF benchmark universe (20 ETFs)

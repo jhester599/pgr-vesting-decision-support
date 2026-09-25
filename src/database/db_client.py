@@ -451,11 +451,88 @@ def check_data_freshness(
     }
 
 
+def check_dividend_freshness(
+    conn: sqlite3.Connection,
+    tickers: list[str] | None = None,
+    interval_multiple: float = config.DIVIDEND_FRESHNESS_INTERVAL_MULTIPLE,
+    history: int = 8,
+) -> list[dict[str, Any]]:
+    """Per-ticker check that dividends keep up with prices (review F08).
+
+    A ticker is STALE when its latest ex-date is older than its latest
+    (non-proxy) price date minus ``interval_multiple`` times its usual payment
+    interval, i.e. at least one expected payment is missing. The usual
+    interval is the median gap between its last ``history + 1`` ex-dates, so
+    monthly, quarterly and annual payers are each judged on their own cadence.
+
+    Args:
+        conn: Open connection.
+        tickers: Tickers to check. Defaults to PGR, the ETF benchmarks and the
+            peer tickers.
+        interval_multiple: Allowed lag in units of the payment interval.
+        history: Number of recent gaps used for the median interval.
+
+    Returns:
+        One dict per ticker with ``ticker``, ``status`` (``OK``, ``STALE`` or
+        ``NO_HISTORY`` for tickers with fewer than two dividends or no prices),
+        ``last_ex_date``, ``last_price_date``, ``interval_days`` and
+        ``due_by`` (the earliest ex-date that would count as fresh).
+    """
+    if tickers is None:
+        tickers = ["PGR", *config.ETF_BENCHMARK_UNIVERSE, *config.PEER_TICKER_UNIVERSE]
+    results: list[dict[str, Any]] = []
+    for ticker in tickers:
+        ex_dates = [
+            date.fromisoformat(r[0][:10]) for r in conn.execute(
+                "SELECT ex_date FROM daily_dividends WHERE ticker = ? ORDER BY ex_date",
+                (ticker,),
+            )
+        ]
+        row = conn.execute(
+            "SELECT MAX(date) FROM daily_prices WHERE ticker = ? AND proxy_fill = 0",
+            (ticker,),
+        ).fetchone()
+        last_price = _coerce_iso_date(row[0] if row else None)
+        result: dict[str, Any] = {
+            "ticker": ticker,
+            "status": "NO_HISTORY",
+            "last_ex_date": ex_dates[-1].isoformat() if ex_dates else None,
+            "last_price_date": last_price.isoformat() if last_price else None,
+            "interval_days": None,
+            "due_by": None,
+        }
+        if len(ex_dates) >= 2 and last_price is not None:
+            recent = ex_dates[-(history + 1):]
+            gaps = sorted((b - a).days for a, b in zip(recent, recent[1:]))
+            mid = len(gaps) // 2
+            interval = (
+                float(gaps[mid]) if len(gaps) % 2
+                else (gaps[mid - 1] + gaps[mid]) / 2.0
+            )
+            due_by = last_price - timedelta(days=interval_multiple * interval)
+            result.update(
+                status="OK" if ex_dates[-1] >= due_by else "STALE",
+                interval_days=interval,
+                due_by=due_by.isoformat(),
+            )
+        results.append(result)
+    return results
+
+
 # ---------------------------------------------------------------------------
 # Price helpers
 # ---------------------------------------------------------------------------
 
-def upsert_prices(conn: sqlite3.Connection, records: list[dict[str, Any]]) -> int:
+def _iso_week(date_str: str) -> tuple[int, int]:
+    iso = date.fromisoformat(date_str[:10]).isocalendar()
+    return iso[0], iso[1]
+
+
+def upsert_prices(
+    conn: sqlite3.Connection,
+    records: list[dict[str, Any]],
+    one_bar_per_week: bool = False,
+) -> int:
     """Bulk-insert or replace price records.
 
     Args:
@@ -464,6 +541,14 @@ def upsert_prices(conn: sqlite3.Connection, records: list[dict[str, Any]]) -> in
             Required keys: ``ticker``, ``date``, ``close``.
             Optional keys: ``open``, ``high``, ``low``, ``volume``,
             ``source``, ``proxy_fill`` (default 0).
+        one_bar_per_week: Keep at most one bar per ticker per ISO week, the
+            latest-dated one (review F22). Alpha Vantage's weekly series
+            labels the in-progress week with its latest trading day, so a
+            later fetch returns the completed bar under a different date. With
+            this flag the incoming records are collapsed to their latest bar
+            per week, an incoming bar older than a stored bar of the same week
+            is dropped, and stored bars superseded by a newer bar are deleted.
+            The weekly price loaders pass True.
 
     Returns:
         Number of rows written.
@@ -491,9 +576,73 @@ def upsert_prices(conn: sqlite3.Connection, records: list[dict[str, Any]]) -> in
         }
         for r in records
     ]
+    if one_bar_per_week:
+        normalised = _latest_bar_per_week(conn, normalised)
     conn.executemany(sql, normalised)
+    if one_bar_per_week:
+        _delete_superseded_week_bars(conn, sorted({r["ticker"] for r in normalised}))
     conn.commit()
     return len(normalised)
+
+
+def _latest_bar_per_week(
+    conn: sqlite3.Connection, records: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Collapse records to the latest bar per ticker-ISO-week, including stored bars."""
+    latest: dict[tuple[str, int, int], dict[str, Any]] = {}
+    for rec in records:
+        key = (rec["ticker"], *_iso_week(rec["date"]))
+        if key not in latest or rec["date"] > latest[key]["date"]:
+            latest[key] = rec
+    stored_latest: dict[tuple[str, int, int], str] = {}
+    for ticker in {k[0] for k in latest}:
+        for (stored_date,) in conn.execute(
+            "SELECT date FROM daily_prices WHERE ticker = ?", (ticker,)
+        ):
+            key = (ticker, *_iso_week(stored_date))
+            if key in latest and stored_date > stored_latest.get(key, ""):
+                stored_latest[key] = stored_date
+    return [
+        rec for key, rec in latest.items()
+        if rec["date"] >= stored_latest.get(key, "")
+    ]
+
+
+def _delete_superseded_week_bars(conn: sqlite3.Connection, tickers: list[str]) -> int:
+    """Delete bars that share a ticker-ISO-week with a later-dated bar."""
+    doomed: list[tuple[str, str]] = []
+    for ticker in tickers:
+        latest: dict[tuple[int, int], str] = {}
+        dates = [r[0] for r in conn.execute(
+            "SELECT date FROM daily_prices WHERE ticker = ?", (ticker,)
+        )]
+        for d in dates:
+            wk = _iso_week(d)
+            if d > latest.get(wk, ""):
+                latest[wk] = d
+        doomed.extend((ticker, d) for d in dates if d != latest[_iso_week(d)])
+    conn.executemany(
+        "DELETE FROM daily_prices WHERE ticker = ? AND date = ?", doomed
+    )
+    return len(doomed)
+
+
+def dedupe_weekly_price_bars(
+    conn: sqlite3.Connection, tickers: list[str] | None = None
+) -> int:
+    """Keep only the latest bar per ticker-ISO-week in ``daily_prices``.
+
+    Removes partial-week bars left behind before ``upsert_prices`` enforced
+    one bar per week (31 ticker-weeks in March-May 2026, review F22).
+
+    Returns:
+        Number of rows deleted.
+    """
+    if tickers is None:
+        tickers = [r[0] for r in conn.execute("SELECT DISTINCT ticker FROM daily_prices")]
+    n = _delete_superseded_week_bars(conn, list(tickers))
+    conn.commit()
+    return n
 
 
 def get_prices(
@@ -1008,6 +1157,30 @@ def upsert_relative_returns(
     conn.executemany(sql, normalised)
     conn.commit()
     return len(normalised)
+
+
+def replace_relative_returns(
+    conn: sqlite3.Connection,
+    benchmark: str,
+    target_horizon: int,
+    records: list[dict[str, Any]],
+) -> int:
+    """Replace every stored row of one benchmark/horizon with ``records``.
+
+    Unlike :func:`upsert_relative_returns`, rows whose date is absent from
+    ``records`` are deleted, so the table stays a pure function of the stored
+    prices, dividends and splits (e.g. after a window-definition change or a
+    newly added split). Runs in one transaction.
+
+    Returns:
+        Number of rows written.
+    """
+    with conn:
+        conn.execute(
+            "DELETE FROM monthly_relative_returns WHERE benchmark = ? AND target_horizon = ?",
+            (benchmark, int(target_horizon)),
+        )
+    return upsert_relative_returns(conn, records)
 
 
 def get_relative_returns(

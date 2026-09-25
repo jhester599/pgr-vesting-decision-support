@@ -2,11 +2,19 @@ name: Weekly Data Accumulation
 
 on:
   schedule:
-    - cron: '0 22 * * 5'
+    - cron: '0 22 * * 5'   # Friday: prices, PGR dividends, EDGAR, FRED, targets
+    # Wednesday: budget-aware dividend refresh for PGR and the ETF benchmarks
+    # (review F08). Each ticker is re-fetched once its last fetch is ~4 weeks
+    # old (weekly for monthly payers), so ETFs refresh about monthly.
+    - cron: '0 16 * * 3'
   workflow_dispatch:
     inputs:
       dry_run:
         description: 'Dry run (log actions, skip HTTP calls)'
+        required: false
+        default: 'false'
+      dividend_refresh:
+        description: 'Run the budget-aware dividend refresh instead of the price run'
         required: false
         default: 'false'
 
@@ -43,7 +51,11 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             DRY_FLAG="--dry-run"
           fi
-          python scripts/weekly_fetch.py $DRY_FLAG
+          MODE_FLAG=""
+          if [ "${{ github.event.schedule }}" = "0 16 * * 3" ] || [ "${{ github.event.inputs.dividend_refresh }}" = "true" ]; then
+            MODE_FLAG="--dividend-refresh"
+          fi
+          python scripts/weekly_fetch.py $MODE_FLAG $DRY_FLAG
 
       - name: Verify DB postconditions and write summary
         if: ${{ !(github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true') }}
@@ -105,3 +117,17 @@ jobs:
           git add data/pgr_financials.db
           git diff --staged --quiet || git commit -m "chore: weekly data update $(date -u +%Y-%m-%d) [skip ci]"
           git push
+
+      # Runs after the commit so fresh prices are never held back, but turns
+      # the run red when a split is missing from config/splits.py, a ticker
+      # has two bars in one ISO week, or (after a dividend refresh) any
+      # dividend feed is still stale (review F03/F05/F08/F22).
+      - name: Check price, split and dividend integrity
+        if: ${{ !(github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true') }}
+        run: |
+          STALE_FLAG=""
+          if [ "${{ github.event.schedule }}" = "0 16 * * 3" ] || [ "${{ github.event.inputs.dividend_refresh }}" = "true" ]; then
+            STALE_FLAG="--fail-on-stale-dividends"
+          fi
+          set -o pipefail
+          python scripts/check_data_integrity.py $STALE_FLAG | tee -a "$GITHUB_STEP_SUMMARY"
