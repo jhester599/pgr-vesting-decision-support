@@ -365,84 +365,257 @@ def _expected_pgr_edgar_month_end(
     return _previous_month_end(prior_month_end)
 
 
+def business_month_end(year: int, month: int) -> date:
+    """Return the last weekday of a calendar month (pandas ``BME``)."""
+    day = _month_end(year, month)
+    while day.weekday() >= 5:
+        day -= timedelta(days=1)
+    return day
+
+
+def fred_month_label(value: str | date | datetime | pd.Timestamp) -> str:
+    """Return the ``fred_macro_monthly.month_end`` label for a date's month.
+
+    Every row is labelled with the last business day of its calendar month,
+    so a month can only ever have one row per series (review F06/F27).
+    """
+    ts = pd.Timestamp(value)
+    return business_month_end(ts.year, ts.month).isoformat()
+
+
+def _month_index(year: int, month: int) -> int:
+    return year * 12 + month - 1
+
+
+def _month_from_index(index: int) -> tuple[int, int]:
+    return index // 12, index % 12 + 1
+
+
+def decision_month(reference_date: date) -> tuple[int, int]:
+    """Return the (year, month) of the latest feature row on ``reference_date``.
+
+    Feature rows are dated at business month-ends, and a run uses the latest
+    row dated on or before its as-of date: the current month once its last
+    business day is reached, otherwise the previous month.
+    """
+    if reference_date >= business_month_end(reference_date.year, reference_date.month):
+        return reference_date.year, reference_date.month
+    return _month_from_index(_month_index(reference_date.year, reference_date.month) - 1)
+
+
+def live_feature_fred_series() -> dict[str, list[str]]:
+    """Map each FRED series behind a live ensemble feature to those features.
+
+    Live features are the columns each ``config.ENSEMBLE_MODELS`` model is fed
+    (``config.MODEL_FEATURE_OVERRIDES``); ``config.FRED_FEATURE_SOURCES`` names
+    the series each FRED-derived feature is computed from.
+    """
+    series_features: dict[str, list[str]] = {}
+    for model_type in config.ENSEMBLE_MODELS:
+        for feature in config.MODEL_FEATURE_OVERRIDES.get(model_type, []):
+            for series_id in config.FRED_FEATURE_SOURCES.get(feature, ()):
+                features = series_features.setdefault(series_id, [])
+                if feature not in features:
+                    features.append(feature)
+    return series_features
+
+
+def _price_freshness_checks(
+    conn: sqlite3.Connection,
+    reference_date: date,
+    tickers: list[str],
+    max_age_days: int,
+) -> list[dict[str, Any]]:
+    """One freshness row per ticker, from its latest non-proxy bar."""
+    rows: list[dict[str, Any]] = []
+    for ticker in tickers:
+        found = conn.execute(
+            """
+            SELECT MAX(date) FROM daily_prices
+            WHERE ticker = ? AND COALESCE(proxy_fill, 0) = 0 AND date <= ?
+            """,
+            (ticker, reference_date.isoformat()),
+        ).fetchone()
+        latest_date = _coerce_iso_date(found[0] if found else None)
+        row: dict[str, Any] = {
+            "feed": f"Prices {ticker}",
+            "table": "daily_prices",
+            "column": "date",
+            "ticker": ticker,
+            "max_age_days": max_age_days,
+            "limit_label": f"{max_age_days} days",
+            "latest_date": latest_date.isoformat() if latest_date else None,
+            "age_days": None,
+            "status": "MISSING",
+        }
+        if latest_date is not None:
+            age_days = (reference_date - latest_date).days
+            row["age_days"] = age_days
+            row["status"] = "OK" if age_days <= max_age_days else "STALE"
+        rows.append(row)
+    return rows
+
+
+def _fred_freshness_checks(
+    conn: sqlite3.Connection,
+    reference_date: date,
+    series_features: dict[str, list[str]],
+    grace_months: int,
+) -> list[dict[str, Any]]:
+    """One freshness row per FRED series, judged by observation month.
+
+    The decision row for month ``D`` uses each series' observation for month
+    ``D - lag``. A series is STALE when its latest stored observation month is
+    more than ``grace_months`` behind that. Stored labels are month labels,
+    not observation dates, so an in-progress month labelled with a future
+    month-end counts as that month, never as "0 days old"; months after the
+    reference month are ignored.
+    """
+    row_year, row_month = decision_month(reference_date)
+    row_index = _month_index(row_year, row_month)
+    reference_month = f"{reference_date.year:04d}-{reference_date.month:02d}"
+    rows: list[dict[str, Any]] = []
+    for series_id, features in series_features.items():
+        lag = int(config.FRED_SERIES_LAGS.get(series_id, config.FRED_DEFAULT_LAG_MONTHS))
+        needed_index = row_index - lag
+        needed_year, needed_month = _month_from_index(needed_index)
+        found = conn.execute(
+            """
+            SELECT MAX(month_end) FROM fred_macro_monthly
+            WHERE series_id = ? AND value IS NOT NULL AND substr(month_end, 1, 7) <= ?
+            """,
+            (series_id, reference_month),
+        ).fetchone()
+        latest_date = _coerce_iso_date(found[0] if found else None)
+        row: dict[str, Any] = {
+            "feed": f"FRED {series_id}",
+            "table": "fred_macro_monthly",
+            "column": "month_end",
+            "series_id": series_id,
+            "features": list(features),
+            "lag_months": lag,
+            "max_age_days": None,
+            "limit_label": f"lag {lag} mo; needs {needed_year:04d}-{needed_month:02d}",
+            "expected_month_end": business_month_end(needed_year, needed_month).isoformat(),
+            "latest_date": latest_date.isoformat() if latest_date else None,
+            "age_days": None,
+            "months_behind": None,
+            "status": "MISSING",
+        }
+        if latest_date is not None:
+            behind = needed_index - _month_index(latest_date.year, latest_date.month)
+            row["months_behind"] = max(0, behind)
+            row["latest_label"] = f"{latest_date.year:04d}-{latest_date.month:02d}"
+            row["age_label"] = f"{max(0, behind)} mo behind"
+            row["status"] = "OK" if behind <= grace_months else "STALE"
+        rows.append(row)
+    return rows
+
+
 def check_data_freshness(
     conn: sqlite3.Connection,
     reference_date: date,
     price_max_age_days: int = config.DATA_FRESHNESS_MAX_PRICE_AGE_DAYS,
-    fred_max_age_days: int = config.DATA_FRESHNESS_MAX_FRED_AGE_DAYS,
     edgar_max_age_days: int = config.DATA_FRESHNESS_MAX_EDGAR_AGE_DAYS,
+    fred_grace_months: int = config.DATA_FRESHNESS_FRED_GRACE_MONTHS,
+    price_tickers: list[str] | None = None,
+    fred_series: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Evaluate whether core feeds are fresh enough for a live monthly run."""
-    checks: list[tuple[str, str, str, int]] = [
-        ("Daily prices", "daily_prices", "date", price_max_age_days),
-        ("FRED macro", "fred_macro_monthly", "month_end", fred_max_age_days),
-        ("PGR monthly EDGAR", "pgr_edgar_monthly", "month_end", edgar_max_age_days),
-    ]
+    """Evaluate whether core feeds are fresh enough for a live monthly run.
+
+    Checks are per feed item (review F07), so one stale input cannot hide
+    behind a fresh one in the same table:
+
+    - prices: one row per ticker, PGR and ``config.PRIMARY_FORECAST_UNIVERSE``
+      by default, from the latest non-proxy bar on or before the reference
+      date;
+    - FRED: one row per series behind a live ensemble feature by default
+      (:func:`live_feature_fred_series`), judged against the observation month
+      the decision row needs (:func:`_fred_freshness_checks`);
+    - PGR monthly EDGAR: the latest month against the filing-grace rule.
+
+    Args:
+        conn: Open connection.
+        reference_date: Run date.
+        price_max_age_days: Allowed age of each ticker's latest bar.
+        edgar_max_age_days: Kept for the report; EDGAR uses the filing grace.
+        fred_grace_months: Months a FRED series may lag the needed month.
+        price_tickers: Tickers to check instead of the default set.
+        fred_series: FRED series to check instead of the live-feature set.
+
+    Returns:
+        Dict with ``reference_date``, ``overall_status`` (``OK`` or
+        ``WARNING``), ``checks`` (one dict per item) and ``warnings``.
+    """
+    tickers = price_tickers or ["PGR", *config.PRIMARY_FORECAST_UNIVERSE]
+    series_features = live_feature_fred_series()
+    if fred_series is not None:
+        series_features = {sid: series_features.get(sid, []) for sid in fred_series}
 
     results: list[dict[str, Any]] = []
     warnings: list[str] = []
-    has_problem = False
 
-    for feed, table, column, max_age_days in checks:
-        latest_raw = get_table_max_date(conn, table, column)
-        latest_date = _coerce_iso_date(latest_raw)
-        limit_label = f"{max_age_days} days"
-        if latest_date is None:
-            result = {
-                "feed": feed,
-                "table": table,
-                "column": column,
-                "max_age_days": max_age_days,
-                "limit_label": limit_label,
-                "latest_date": None,
-                "age_days": None,
-                "status": "MISSING",
-            }
+    for row in _price_freshness_checks(conn, reference_date, tickers, price_max_age_days):
+        results.append(row)
+        if row["status"] == "MISSING":
+            warnings.append(f"{row['feed']} data is missing from daily_prices.")
+        elif row["status"] != "OK":
             warnings.append(
-                f"{feed} data is missing from {table}."
+                f"{row['feed']} is stale: latest {row['latest_date']} "
+                f"({row['age_days']} days old, limit {price_max_age_days})."
             )
-            has_problem = True
-        else:
-            age_days = max(0, (reference_date - latest_date).days)
-            expected_month_end = None
-            if table == "pgr_edgar_monthly":
-                expected_month_end = _expected_pgr_edgar_month_end(reference_date)
-                status = "OK" if latest_date >= expected_month_end else "STALE"
-                limit_label = (
-                    f"{config.DATA_FRESHNESS_PGR_EDGAR_FILING_GRACE_DAYS}-day "
-                    "filing grace"
-                )
-            else:
-                status = "OK" if age_days <= max_age_days else "STALE"
-            result = {
-                "feed": feed,
-                "table": table,
-                "column": column,
-                "max_age_days": max_age_days,
-                "limit_label": limit_label,
-                "latest_date": latest_date.isoformat(),
-                "age_days": age_days,
-                "status": status,
-            }
-            if expected_month_end is not None:
-                result["expected_month_end"] = expected_month_end.isoformat()
-            if status != "OK":
-                if expected_month_end is not None:
-                    warnings.append(
-                        f"{feed} is stale: latest {latest_date.isoformat()} "
-                        f"({age_days} days old); expected at least "
-                        f"{expected_month_end.isoformat()} after the "
-                        f"{config.DATA_FRESHNESS_PGR_EDGAR_FILING_GRACE_DAYS}-day "
-                        "filing grace."
-                    )
-                else:
-                    warnings.append(
-                        f"{feed} is stale: latest {latest_date.isoformat()} "
-                        f"({age_days} days old, limit {max_age_days})."
-                    )
-                has_problem = True
-        results.append(result)
 
+    for row in _fred_freshness_checks(conn, reference_date, series_features, fred_grace_months):
+        results.append(row)
+        used_by = f" (live features: {', '.join(row['features'])})" if row["features"] else ""
+        needed = row["expected_month_end"][:7]
+        if row["status"] == "MISSING":
+            warnings.append(
+                f"{row['feed']} is missing from fred_macro_monthly{used_by}."
+            )
+        elif row["status"] != "OK":
+            warnings.append(
+                f"{row['feed']} is stale: latest observation {row['latest_date'][:7]}, "
+                f"the decision row needs {needed} (lag {row['lag_months']} mo){used_by}."
+            )
+
+    latest_raw = get_table_max_date(conn, "pgr_edgar_monthly", "month_end")
+    latest_date = _coerce_iso_date(latest_raw)
+    limit_label = (
+        f"{config.DATA_FRESHNESS_PGR_EDGAR_FILING_GRACE_DAYS}-day filing grace"
+    )
+    edgar: dict[str, Any] = {
+        "feed": "PGR monthly EDGAR",
+        "table": "pgr_edgar_monthly",
+        "column": "month_end",
+        "max_age_days": edgar_max_age_days,
+        "limit_label": limit_label,
+        "latest_date": None,
+        "age_days": None,
+        "status": "MISSING",
+    }
+    if latest_date is None:
+        warnings.append("PGR monthly EDGAR data is missing from pgr_edgar_monthly.")
+    else:
+        age_days = max(0, (reference_date - latest_date).days)
+        expected_month_end = _expected_pgr_edgar_month_end(reference_date)
+        edgar.update(
+            latest_date=latest_date.isoformat(),
+            age_days=age_days,
+            expected_month_end=expected_month_end.isoformat(),
+            status="OK" if latest_date >= expected_month_end else "STALE",
+        )
+        if edgar["status"] != "OK":
+            warnings.append(
+                f"PGR monthly EDGAR is stale: latest {latest_date.isoformat()} "
+                f"({age_days} days old); expected at least "
+                f"{expected_month_end.isoformat()} after the "
+                f"{config.DATA_FRESHNESS_PGR_EDGAR_FILING_GRACE_DAYS}-day "
+                "filing grace."
+            )
+    results.append(edgar)
+
+    has_problem = any(row["status"] != "OK" for row in results)
     return {
         "reference_date": reference_date.isoformat(),
         "overall_status": "WARNING" if has_problem else "OK",
@@ -1227,10 +1400,17 @@ def get_relative_returns(
 def upsert_fred_macro(conn: sqlite3.Connection, records: list[dict[str, Any]]) -> int:
     """Bulk-insert or replace FRED macro monthly observations.
 
+    Values must be raw (unlagged) observations. ``month_end`` is normalised
+    to the month's last business day (:func:`fred_month_label`), so a later
+    write for the same series and month replaces the earlier row whatever
+    date it was labelled with; migration 005 also enforces one row per
+    (series, month) with a unique index.
+
     Args:
         conn: Open connection.
         records: List of dicts with keys ``series_id``, ``month_end``
-            (ISO date string ``"YYYY-MM-DD"``), and ``value`` (float or None).
+            (ISO date string ``"YYYY-MM-DD"``, any day of the month), and
+            ``value`` (float or None).
 
     Returns:
         Number of rows written.
@@ -1244,7 +1424,7 @@ def upsert_fred_macro(conn: sqlite3.Connection, records: list[dict[str, Any]]) -
     normalised = [
         {
             "series_id": r["series_id"],
-            "month_end": r["month_end"],
+            "month_end": fred_month_label(r["month_end"]),
             "value":     r.get("value"),
         }
         for r in records

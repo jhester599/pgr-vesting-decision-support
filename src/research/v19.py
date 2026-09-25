@@ -4,14 +4,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from io import StringIO
 import re
 from typing import Any
 
 import pandas as pd
 import requests
 
-from src.ingestion.fred_loader import upsert_fred_to_db
+from src.ingestion.fred_loader import (
+    parse_fredgraph_csv,
+    to_monthly_observations,
+    upsert_fred_to_db,
+)
 
 
 FREDGRAPH_SERIES: tuple[str, ...] = (
@@ -72,19 +75,16 @@ def fetch_fredgraph_series(
     series_id: str,
     observation_start: str = "2008-01-01",
 ) -> pd.DataFrame:
-    """Fetch a monthly-compatible series from FRED's public CSV endpoint."""
+    """Fetch a series from FRED's public CSV endpoint as raw monthly rows.
+
+    One row per month (the last observation), labelled with the month's last
+    business day like the production loader, and not forward-filled.
+    """
     url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
     response = requests.get(url, timeout=30)
     response.raise_for_status()
-    df = pd.read_csv(StringIO(response.text))
-    value_col = df.columns[-1]
-    df["observation_date"] = pd.to_datetime(df["observation_date"], errors="coerce")
-    df[value_col] = pd.to_numeric(df[value_col], errors="coerce")
-    df = df.dropna(subset=["observation_date"]).set_index("observation_date").sort_index()
-    df = df.loc[df.index >= pd.Timestamp(observation_start)]
-    monthly = df[[value_col]].resample("ME").last().ffill(limit=5)
-    monthly.columns = [series_id]
-    return monthly
+    df = parse_fredgraph_csv(response.text, series_id, observation_start)
+    return to_monthly_observations(df)
 
 
 def fetch_bls_series(
@@ -113,7 +113,7 @@ def fetch_bls_series(
             continue
         year = int(row["year"])
         month = int(period[1:])
-        month_end = pd.Timestamp(year=year, month=month, day=1) + pd.offsets.MonthEnd(0)
+        month_end = pd.Timestamp(year=year, month=month, day=1) + pd.offsets.BMonthEnd(0)
         rows.append({"month_end": month_end, series_id: _clean_numeric_string(row.get("value"))})
 
     if not rows:
@@ -136,10 +136,8 @@ def fetch_multpl_series(
     table["Date"] = pd.to_datetime(table["Date"], errors="coerce")
     table[series_id] = table["Value"].map(_clean_numeric_string)
     table = table.dropna(subset=["Date"]).set_index("Date").sort_index()
-    table.index = table.index + pd.offsets.MonthEnd(0)
     table = table.loc[table.index >= pd.Timestamp(observation_start)]
-    monthly = table[[series_id]].resample("ME").last().ffill(limit=3)
-    return monthly
+    return to_monthly_observations(table[[series_id]])
 
 
 def fetch_v19_public_macro(

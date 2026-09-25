@@ -27,13 +27,15 @@ def test_check_data_freshness_reports_all_feeds_ok() -> None:
         [{"month_end": "2026-03-31", "combined_ratio": 90.0}],
     )
 
-    report = db_client.check_data_freshness(conn, date(2026, 4, 5))
+    report = db_client.check_data_freshness(
+        conn, date(2026, 4, 5), price_tickers=["PGR"], fred_series=["T10Y2Y"]
+    )
 
     assert report["overall_status"] == "OK"
     assert report["warnings"] == []
     statuses = {row["feed"]: row["status"] for row in report["checks"]}
-    assert statuses["Daily prices"] == "OK"
-    assert statuses["FRED macro"] == "OK"
+    assert statuses["Prices PGR"] == "OK"
+    assert statuses["FRED T10Y2Y"] == "OK"
     assert statuses["PGR monthly EDGAR"] == "OK"
 
 
@@ -44,14 +46,16 @@ def test_check_data_freshness_flags_stale_and_missing_feeds() -> None:
         [{"ticker": "PGR", "date": "2026-03-01", "close": 250.0}],
     )
 
-    report = db_client.check_data_freshness(conn, date(2026, 4, 5))
+    report = db_client.check_data_freshness(
+        conn, date(2026, 4, 5), price_tickers=["PGR"], fred_series=["T10Y2Y"]
+    )
 
     assert report["overall_status"] == "WARNING"
     statuses = {row["feed"]: row["status"] for row in report["checks"]}
-    assert statuses["Daily prices"] == "STALE"
-    assert statuses["FRED macro"] == "MISSING"
+    assert statuses["Prices PGR"] == "STALE"
+    assert statuses["FRED T10Y2Y"] == "MISSING"
     assert statuses["PGR monthly EDGAR"] == "MISSING"
-    assert any("Daily prices is stale" in warning for warning in report["warnings"])
+    assert any("Prices PGR is stale" in warning for warning in report["warnings"])
 
 
 def test_check_data_freshness_accepts_pgr_edgar_during_filing_grace() -> None:
@@ -69,7 +73,9 @@ def test_check_data_freshness_accepts_pgr_edgar_during_filing_grace() -> None:
         [{"month_end": "2026-02-28", "combined_ratio": 85.7}],
     )
 
-    report = db_client.check_data_freshness(conn, date(2026, 4, 18))
+    report = db_client.check_data_freshness(
+        conn, date(2026, 4, 18), price_tickers=["PGR"], fred_series=["T10Y2Y"]
+    )
 
     statuses = {row["feed"]: row["status"] for row in report["checks"]}
     pgr_edgar = next(row for row in report["checks"] if row["feed"] == "PGR monthly EDGAR")
@@ -95,7 +101,9 @@ def test_check_data_freshness_flags_pgr_edgar_after_filing_grace() -> None:
         [{"month_end": "2026-02-28", "combined_ratio": 85.7}],
     )
 
-    report = db_client.check_data_freshness(conn, date(2026, 4, 26))
+    report = db_client.check_data_freshness(
+        conn, date(2026, 4, 26), price_tickers=["PGR"], fred_series=["T10Y2Y"]
+    )
 
     pgr_edgar = next(row for row in report["checks"] if row["feed"] == "PGR monthly EDGAR")
     assert report["overall_status"] == "WARNING"
@@ -149,3 +157,16 @@ def test_build_data_freshness_lines_includes_warning_block() -> None:
     assert "10 days" in text
     assert "25-day filing grace" in text
     assert "Warnings:" in text
+
+
+def test_build_data_freshness_lines_shows_fred_month_not_future_label() -> None:
+    conn = _make_conn()
+    db_client.upsert_fred_macro(
+        conn, [{"series_id": "VIXCLS", "month_end": "2026-09-30", "value": 15.0}]
+    )
+    report = db_client.check_data_freshness(
+        conn, date(2026, 9, 25), price_tickers=["PGR"], fred_series=["VIXCLS"]
+    )
+    text = "\n".join(build_data_freshness_lines(report))
+
+    assert "| FRED VIXCLS | 2026-09 | 0 mo behind | lag 1 mo; needs 2026-07 | **OK** |" in text

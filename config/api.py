@@ -65,7 +65,11 @@ AV_DAILY_LIMIT: int = 25
 # Data freshness thresholds (peer-review operational safety checks)
 # ---------------------------------------------------------------------------
 DATA_FRESHNESS_MAX_PRICE_AGE_DAYS: int = 10
-DATA_FRESHNESS_MAX_FRED_AGE_DAYS: int = 45
+# FRED freshness is checked per series against the observation month the
+# live decision row needs (feature month minus the series' publication lag;
+# review F07). A series may lag that month by this many months before it is
+# STALE.
+DATA_FRESHNESS_FRED_GRACE_MONTHS: int = 0
 DATA_FRESHNESS_MAX_EDGAR_AGE_DAYS: int = 35
 DATA_FRESHNESS_PGR_EDGAR_FILING_GRACE_DAYS: int = 25
 # Dividends are STALE when the latest ex-date is older than the latest price

@@ -102,24 +102,56 @@ _PROCESSED_PATH = os.path.join(config.DATA_PROCESSED_DIR, "feature_matrix.parque
 
 def _apply_fred_lags(fred_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Shift each FRED series by its configured publication lag.
+    Shift each raw FRED series by its publication lag, by calendar month.
 
-    This prevents look-ahead bias from FRED data revisions. The DB stores
-    the latest-vintage values fetched on the bootstrap date; this function
-    applies point-in-time publication lags so that month-T features only
-    use data that was publicly available at time T.
+    ``fred_macro_monthly`` stores raw observations (review F06); this is the
+    one place their publication lags are applied. Each series is keyed by
+    calendar month, so the output row for month M holds the observation for
+    month M - lag whatever day the input labelled it with, and a month
+    labelled twice (legacy business and calendar month-end rows) counts once,
+    keeping the later label.
+
+    Interior gaps are forward-filled for up to ``config.FRED_MAX_GAP_FILL_MONTHS``
+    months after lagging, but a series is never extended past its latest
+    observation: a stale series stays NaN in the months it cannot cover.
 
     Args:
-        fred_df: DataFrame indexed by month-end dates, columns are FRED series IDs.
+        fred_df: Raw FRED observations indexed by date (one column per series).
 
     Returns:
-        DataFrame with each series shifted by its lag from config.FRED_SERIES_LAGS.
+        DataFrame indexed by business month-end over every month from the
+        first input month to the last lagged month, one column per input
+        series. Lags come from ``config.FRED_SERIES_LAGS`` (default
+        ``config.FRED_DEFAULT_LAG_MONTHS``).
     """
-    result = fred_df.copy()
-    for sid in result.columns:
-        lag = config.FRED_SERIES_LAGS.get(sid, config.FRED_DEFAULT_LAG_MONTHS)
-        if lag > 0:
-            result[sid] = result[sid].shift(lag)
+    if fred_df.empty:
+        return fred_df.copy()
+
+    dates = pd.DatetimeIndex(pd.to_datetime(fred_df.index))
+    lagged: dict[str, pd.Series] = {}
+    for sid in fred_df.columns:
+        values = pd.to_numeric(pd.Series(fred_df[sid].to_numpy(), index=dates), errors="coerce")
+        values = values.dropna().sort_index()
+        if values.empty:
+            continue
+        by_month = pd.Series(values.to_numpy(dtype=float), index=values.index.to_period("M"))
+        by_month = by_month[~by_month.index.duplicated(keep="last")]
+        lag = int(config.FRED_SERIES_LAGS.get(sid, config.FRED_DEFAULT_LAG_MONTHS))
+        by_month.index = by_month.index + lag
+        months = pd.period_range(by_month.index[0], by_month.index[-1], freq="M")
+        lagged[sid] = by_month.reindex(months).ffill(limit=config.FRED_MAX_GAP_FILL_MONTHS)
+
+    first = dates.min().to_period("M")
+    last = max((s.index[-1] for s in lagged.values()), default=dates.max().to_period("M"))
+    months = pd.period_range(first, max(last, dates.max().to_period("M")), freq="M")
+    result = pd.DataFrame(
+        {sid: lagged[sid].reindex(months) if sid in lagged else np.nan for sid in fred_df.columns},
+        index=months,
+    )
+    result.index = pd.DatetimeIndex(
+        [p.to_timestamp() + pd.offsets.BMonthEnd(0) for p in months],
+        name=fred_df.index.name,
+    )
     return result
 
 
@@ -228,9 +260,13 @@ def build_feature_matrix(
         technical_indicators: DataFrame from technical_loader.load() (optional).
         fundamentals:        DataFrame from fundamentals_loader.load() (optional).
         pgr_monthly:         DataFrame from pgr_monthly_loader.load() (optional).
-        fred_macro:          Wide DataFrame from db_client.get_fred_macro() with
-                             DatetimeIndex (month-end) and one column per FRED
-                             series_id.  Optional; omitted in pre-v3.0 runs.
+        fred_macro:          Wide DataFrame with DatetimeIndex (business
+                             month-end) and one column per FRED series_id,
+                             already publication-lagged: row M holds what may
+                             be used at month M (``_apply_fred_lags`` on
+                             ``db_client.get_fred_macro()`` output, as
+                             ``build_feature_matrix_from_db`` does). No lag is
+                             applied here. Optional; omitted in pre-v3.0 runs.
         force_refresh:       If True, recompute even if cached Parquet exists.
 
     Returns:
@@ -715,10 +751,9 @@ def build_feature_matrix(
             duration_monthly = pgr_monthly["fixed_income_duration"].reindex(
                 monthly_dates, method="ffill"
             )
-            if fred_macro is not None and "GS10" in _apply_fred_lags(fred_macro).columns:
-                fred_aligned_local = _apply_fred_lags(fred_macro).reindex(
-                    monthly_dates, method="ffill"
-                )
+            # fred_macro is already publication-lagged (see the Args note).
+            if fred_macro is not None and "GS10" in fred_macro.columns:
+                fred_aligned_local = fred_macro.reindex(monthly_dates, method="ffill")
                 rate_change_3m = fred_aligned_local["GS10"].diff(3)
                 df["duration_rate_shock_3m"] = duration_monthly * rate_change_3m
 
@@ -1219,7 +1254,8 @@ def build_feature_matrix_from_db(
     )
     fred_raw = db_client.get_fred_macro(conn, all_fred_series)
     if not fred_raw.empty:
-        # Apply publication lags to prevent FRED revision look-ahead bias (v4.1)
+        # The table stores raw observations; this is the only place FRED
+        # publication lags are applied (by calendar month; review F06).
         fred_raw = _apply_fred_lags(fred_raw)
 
     # v4.5: pgr_vs_kie_6m — PGR trailing 6M return minus KIE trailing 6M return.
