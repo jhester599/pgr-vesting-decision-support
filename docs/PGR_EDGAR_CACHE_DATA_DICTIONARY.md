@@ -144,7 +144,7 @@ Month-end, millions USD (book value per share in dollars; shares in millions).
 | Column | Non-null | Min | Median | Max | Notes |
 |---|---|---|---|---|---|
 | `shares_repurchased` | 259/265 | 0.00 | 0.30 | 16.90 | Shares repurchased in the month (millions) |
-| `avg_cost_per_share` | 257/265 | 0.00 | 23.81 | 281.35 | Average repurchase price (dollars) |
+| `avg_cost_per_share` | 258/265 | 0.00 | 23.86 | 281.35 | Average repurchase price (dollars) |
 | `debt_to_total_capital` | 265/265 | 14.4 | 24.7 | 35.4 | Debt / (debt + equity), percent |
 | `roe_net_income_trailing_12m` | 265/265 | -2.1 | 19.2 | 38.5 | Trailing-12-month ROE on net income, percent (DB column `roe_net_income_ttm`) |
 | `roe_comprehensive_trailing_12m` | 177/265 | -16.3 | 19.7 | 50.9 | Trailing-12-month ROE on comprehensive income, percent |
@@ -279,6 +279,12 @@ insurance sector / PGR-specific predictors. None are currently in the feature ma
 - **Equity without an equity line:** some 2004–2005 releases print only book
   value per share; `shareholders_equity` is then book value per share × shares
   outstanding (marked `method = 'derived'` in `pgr_edgar_monthly_raw`).
+- **2006-05 buybacks (split month):** the 8-K prints 2.3M shares, which adds
+  pre-split and post-split shares, and an average cost of "NM". Both columns
+  come from the Q2 2006 10-Q (0000950152-06-006431, Part II Item 2) on the
+  post-split basis: 331,496 × 4 + 1,932,200 = 3.258184M shares at $27.09
+  ($88.26M). They are recorded in `pgr_edgar_monthly_raw` under parser
+  `10q-issuer-purchases/2026-09-25` by `scripts/repair_split_month_buybacks.py`.
 - **Revenue identity:** in a few months (e.g. 2010-07, 2013-09, 2014-09)
   total revenues include a gain or loss on extinguishment of debt, which has
   no column, so the revenue components do not add to `total_revenues`.

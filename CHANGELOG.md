@@ -5,6 +5,75 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v177 (2026-09-25) — Review 2026-09-25, step 4c: 2006-05 buyback cost from the 10-Q
+
+Replaces the step-4b estimate for the split month with filed values.
+
+- **What the filings say:**
+  - The May 2006 8-K (0000950152-06-005098) prints 2.3M shares repurchased
+    and an average cost of "NM". Its footnote 3 says the 2.3M is 0.3M shares
+    bought before the 4-for-1 split at $107.94 plus 2.0M after it at $27.16
+    ("we did not split treasury shares"). **The 2.3M is not on the post-split
+    basis.** It adds shares from both bases.
+  - The Q2 2006 10-Q (0000950152-06-006431, filed 2006-08-03), Part II
+    Item 2, gives the exact counts on two rows: May pre-split 331,496 at
+    $107.94 and May post-split 1,932,200 at $27.16. There is no single May
+    average; the quarter's $37.84 total is a "blended average" across bases.
+- **Stored on the report month's (post-split) basis**, which is the basis of
+  every other per-share value in the 2006-05 row and the one
+  `restate_to_latest_share_basis` assumes:
+  - `shares_repurchased` 2.3 → **3.258184** (331,496 × 4 + 1,932,200);
+  - `avg_cost_per_share` NULL → **27.0888** ($88.26M ÷ 3.258184M);
+  - dollars = $35.78M + $52.48M = **$88.26M** (the estimate was $62.1M).
+  - The row's accession stays the 8-K's. Nothing else in the row changes.
+- **Provenance (step-3b tables, append-only):** one `pgr_edgar_filing_parses`
+  row for the 10-Q under parser `10q-issuer-purchases/2026-09-25` with the
+  source URL and fetch time. `pgr_edgar_monthly_raw` holds the four per-leg
+  values (`method = 'parsed'`) and the combined month (`'derived'`). The
+  8-K's 2.3M stays the first-reported value.
+  - New `db_client.PGR_EDGAR_SUPPLEMENT_PARSER_VERSIONS`,
+    `record_pgr_edgar_supplement`, `get_pgr_edgar_supplements` and
+    `apply_pgr_edgar_supplements`.
+  - `scripts/repair_edgar_history.py` re-applies recorded supplements after
+    it rebuilds the table from the 8-Ks, so a rebuild keeps the fix.
+- **Repair script:** `scripts/repair_split_month_buybacks.py` (parser:
+  `src/ingestion/edgar_10q_repurchases.py`). It was run on a copy of the DB,
+  which was finalized and copied over `data/pgr_financials.db`.
+  - EDGAR was called with User-Agent `Jeff Hester jeffrey.r.hester@gmail.com`,
+    cached in `data/raw/edgar_8k_cache` and throttled to ≤ 4 req/s. There
+    were 3 requests: the 2006 submissions file, the 10-Q and the 8-K exhibit.
+  - Before writing, the script checks the 10-Q against:
+    - the 8-K footnote (same prices, counts within 0.1M; the 8-K rounds
+      1,932,200 to 2.0);
+    - the 8-K's printed 2.3M (= pre + post);
+    - the April and June 8-K rows (0.7M at $107.17; 4.1M at $26.01);
+    - the 10-Q's stated Q2 cost ($267.5M).
+  - It is idempotent. The DB diff is those 2 cells plus the appended
+    provenance rows; every other table is unchanged (per-table content hash).
+- **Charts regenerated** with both scripts against the DB copy
+  (`--db-path`). No month is estimated any more, so the hatched bar and its
+  legend are gone. The dollar notes cite the 10-Q for 2006-05, and the
+  hatch note appears only when a month is estimated. The volume chart shows
+  3.26M for 2006-05. Annual 2006 repurchases are $1,218M (was $1,192M).
+- **Features:** historical rows only. `buyback_yield` is now defined in one
+  row (2006-07, after the filing lag; it was NaN), and `buyback_acceleration`
+  changes in the 12 rows from 2006-07 to 2007-06. Live inputs are unchanged.
+- **Regenerated:** `data/processed/pgr_edgar_cache.csv` (the 2006-05 row) and
+  `docs/PGR_EDGAR_CACHE_DATA_DICTIONARY.md` (a new note on the 2006-05
+  buybacks, plus `avg_cost_per_share` coverage 258/265).
+- **Tests:**
+  - `test_pgr_edgar_integrity.py::test_known_filed_values` asserts the
+    2006-05 values.
+  - New in the same file:
+    - `test_split_month_buybacks_trace_to_the_10q` (accession, URL, per-leg
+      values, dollars);
+    - `test_no_repurchase_month_lacks_an_average_cost`.
+  - The traceability test accepts supplement values.
+  - All three new assertions fail on the pre-fix DB.
+  - New `tests/test_split_month_buybacks.py`: table parsing, basis
+    combination, append-only and idempotent recording, supplements surviving
+    an 8-K rebuild, and the cross-checks catching a price or total mismatch.
+
 ## v176 (2026-09-25) — Review 2026-09-25, step 4b: recurring capital-return charts
 
 Fixes the 9 recurring `results/research/pgr_*.png` charts and adds 3

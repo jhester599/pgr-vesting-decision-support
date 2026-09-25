@@ -162,10 +162,12 @@ def repurchases(
 ) -> pd.DataFrame:
     """Monthly shares repurchased (M), average cost ($) and dollars ($M).
 
-    Values are as reported, on the share basis of the report month. Where
-    shares were repurchased but no average cost was reported (the 2006-05
-    split month), the cost is the mean of that month's weekly closes restated
-    onto the month-end basis (``avg_cost_source`` = ``estimated_mean_weekly_close``).
+    Values are as reported, on the share basis of the report month. (The
+    2006-05 split month comes from the Q2 2006 10-Q on the post-split basis;
+    see ``scripts/repair_split_month_buybacks.py``.) Where shares were
+    repurchased but no average cost is recorded, the cost is the mean of that
+    month's weekly closes restated onto the month-end basis
+    (``avg_cost_source`` = ``estimated_mean_weekly_close``).
     """
     shares = pd.to_numeric(edgar["shares_repurchased"], errors="coerce")
     cost = pd.to_numeric(edgar["avg_cost_per_share"], errors="coerce")
