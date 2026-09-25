@@ -12,7 +12,6 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-import yaml
 
 from scripts import capital_return_charts as charts
 from scripts import repurchase_timeseries_charts as timeseries_charts
@@ -118,29 +117,45 @@ def test_main_writes_every_named_chart(db_path: Path, tmp_path: Path) -> None:
     assert sorted(p.name for p in out_dir.iterdir()) == sorted(charts.CHART_FILES)
 
 
-def _workflow_job() -> dict:
-    workflow = yaml.safe_load(_WORKFLOW.read_text(encoding="utf-8"))
-    return workflow["jobs"]["monthly-decision"]
+def _workflow_chart_list(text: str) -> list[str]:
+    """Names in the job-level ``RESEARCH_CHARTS: >-`` block (PyYAML is not a
+    dependency, so the workflow is read as text)."""
+    lines = text.splitlines()
+    start = next(i for i, line in enumerate(lines) if "RESEARCH_CHARTS: >-" in line)
+    indent = len(lines[start]) - len(lines[start].lstrip())
+    names = []
+    for line in lines[start + 1:]:
+        if line.strip() and len(line) - len(line.lstrip()) <= indent:
+            break
+        names.extend(line.split())
+    return names
+
+
+def _workflow_step(text: str, name: str) -> str:
+    """Text of the step named ``name``, up to the next step."""
+    start = text.index(f"- name: {name}\n")
+    end = text.find("\n      - name: ", start + 1)
+    return text[start:] if end == -1 else text[start:end]
 
 
 def test_workflow_regenerates_and_commits_the_named_charts() -> None:
-    job = _workflow_job()
-    steps = {step["name"]: step for step in job["steps"]}
-    named = job["env"]["RESEARCH_CHARTS"].split()
+    text = _WORKFLOW.read_text(encoding="utf-8")
+    named = _workflow_chart_list(text)
     assert sorted(named) == sorted(set(charts.CHART_FILES) | set(timeseries_charts.CHART_FILES))
 
-    chart_step = steps["Regenerate research charts"]
-    assert not chart_step.get("continue-on-error", False)
-    assert "set -euo pipefail" in chart_step["run"]
-    assert "for chart in $RESEARCH_CHARTS" in chart_step["run"]
-    assert "exit 1" in chart_step["run"]
+    chart_step = _workflow_step(text, "Regenerate research charts")
+    assert "continue-on-error" not in chart_step
+    assert "set -euo pipefail" in chart_step
+    assert "for chart in $RESEARCH_CHARTS" in chart_step
+    assert "exit 1" in chart_step
 
-    commit = steps["Commit results"]
-    assert "pgr_*.png" not in commit["run"]
-    assert "for chart in $RESEARCH_CHARTS" in commit["run"]
+    commit = _workflow_step(text, "Commit results")
+    assert "pgr_*.png" not in commit
+    assert "for chart in $RESEARCH_CHARTS" in commit
     # A chart failure must not stop the decision/DB commit or the email.
-    assert "!cancelled()" in commit["if"] and "steps.charts" not in commit["if"]
-    assert "!cancelled()" in steps["Send monthly decision email"]["if"]
+    commit_if = commit[commit.index("if:"):commit.index("env:")]
+    assert "!cancelled()" in commit_if and "steps.charts" not in commit_if
+    assert "!cancelled()" in _workflow_step(text, "Send monthly decision email")
 
 
 def test_cr_scatter_axes_show_every_year() -> None:
