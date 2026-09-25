@@ -1,132 +1,72 @@
 """
 PGR Monthly Time Series: Book Value Per Share, Share Repurchases, Share Price
-Produces five charts saved to results/research/.
+Produces the monthly charts listed in ``CHART_FILES`` in results/research/.
+
+The plotted data comes from ``build_chart_frames``, which the tests check.
 """
 
-import sqlite3
+from __future__ import annotations
+
+import argparse
 import datetime
 import os
+import sys
+from pathlib import Path
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import matplotlib.dates as mdates
+import pandas as pd
 
-# Defensive guard: flag rows where shares_repurchased exceeds the maximum plausible
-# monthly buyback for PGR (~20M shares).  Values this large almost certainly reflect
-# a raw dollar-amount ($M) stored instead of a share count (millions).  This guard
-# should never fire when the upstream parser is correct, but it protects the chart
-# against future regressions in the ingestion pipeline.
-_SHARE_UNIT_ERROR_THRESHOLD = 25.0
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from src.database import db_client  # noqa: E402
+from src.reporting.capital_return_data import (  # noqa: E402
+    AVG_COST_ESTIMATED,
+    build_monthly_frame,
+    load_chart_inputs,
+    split_markers,
+)
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "pgr_financials.db")
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "results", "research")
-os.makedirs(OUT_DIR, exist_ok=True)
 
-# ── 1. Load edgar monthly data ─────────────────────────────────────────────────
-conn = sqlite3.connect(DB_PATH)
-cur = conn.cursor()
+CHART_FILES: tuple[str, ...] = (
+    "pgr_book_value_per_share.png",
+    "pgr_book_value_per_share_split_adjusted.png",
+    "pgr_share_repurchase_volume.png",
+    "pgr_repurchase_dollar_amount.png",
+    "pgr_repurchase_dollar_amount_capped.png",
+    "pgr_share_price.png",
+    "pgr_share_price_split_adjusted.png",
+    "pgr_price_to_book.png",
+    "pgr_price_to_book_split_adjusted.png",
+)
 
-cur.execute("""
-    SELECT
-        month_end,
-        book_value_per_share,
-        shares_repurchased,        -- millions of shares
-        avg_cost_per_share         -- dollars per share
-    FROM pgr_edgar_monthly
-    ORDER BY month_end
-""")
-edgar_rows = cur.fetchall()
+REPURCHASE_AXIS_CAP = 400.0  # $M, capped dollar chart
 
-# ── 2. Load month-end share prices from daily_prices ──────────────────────────
-# "Month-end" = the last available price record in each calendar month.
-cur.execute("""
-    SELECT
-        strftime('%Y-%m', date) AS ym,
-        date,
-        close
-    FROM daily_prices
-    WHERE ticker = 'PGR'
-    ORDER BY date
-""")
-all_prices = cur.fetchall()
-conn.close()
+# Months whose repurchase is a known one-off event, for the chart label.
+REPURCHASE_EVENTS: dict[str, str] = {"2004-10": "Dutch auction tender offer"}
 
-# Collapse to one price per month (last trading date of each month)
-price_by_month = {}
-for ym, date_str, close in all_prices:
-    price_by_month[ym] = (date_str, close)
+PRICE_NOTE = "Monthly price = last weekly close in each calendar month (unadjusted weekly bars)."
 
-# ── 3. Parse and compute series ───────────────────────────────────────────────
-def parse_date(s):
-    return datetime.date.fromisoformat(s)
-
-dates_bvps, bvps_vals = [], []
-dates_repvol, repvol_vals = [], []
-dates_repdol, repdol_vals = [], []
-dates_price, price_vals = [], []
-dates_pb,    pb_vals    = [], []
-
-for month_end, bvps, shares_repurch, avg_cost in edgar_rows:
-    d = parse_date(month_end)
-    ym = month_end[:7]
-
-    if bvps is not None:
-        dates_bvps.append(d)
-        bvps_vals.append(bvps)
-
-    if shares_repurch is not None and avg_cost is not None:
-        # Correct rows where the dollar amount was stored in the shares column.
-        # When shares_repurch > threshold and avg_cost is a plausible per-share
-        # price (>$10), the value is treated as $M and converted back to shares.
-        if shares_repurch > _SHARE_UNIT_ERROR_THRESHOLD and avg_cost > 10:
-            corrected_shares = shares_repurch / avg_cost   # implied M shares
-            corrected_dollars = shares_repurch             # already in $M
-        else:
-            corrected_shares = shares_repurch
-            corrected_dollars = shares_repurch * avg_cost  # $M
-
-        dates_repvol.append(d)
-        repvol_vals.append(corrected_shares)
-
-        dates_repdol.append(d)
-        repdol_vals.append(corrected_dollars)
-
-    elif shares_repurch is not None:
-        # avg_cost missing; record shares only
-        dates_repvol.append(d)
-        repvol_vals.append(shares_repurch)
-
-    if ym in price_by_month:
-        dates_price.append(d)
-        price_vals.append(price_by_month[ym][1])
-
-    # P/B: both price and BVPS are on the same as-reported per-share basis at
-    # each point in time, so the ratio is consistent across the 2006 split.
-    if bvps is not None and bvps > 0 and ym in price_by_month:
-        dates_pb.append(d)
-        pb_vals.append(price_by_month[ym][1] / bvps)
-
-# Also add price points for months before edgar coverage (pre-2004)
-edgar_ym_set = {r[0][:7] for r in edgar_rows}
-for ym, (date_str, close) in sorted(price_by_month.items()):
-    if ym not in edgar_ym_set:
-        d = parse_date(date_str)
-        if d not in dates_price:
-            dates_price.append(d)
-            price_vals.append(close)
-
-dates_price_sorted = sorted(zip(dates_price, price_vals))
-dates_price = [x[0] for x in dates_price_sorted]
-price_vals  = [x[1] for x in dates_price_sorted]
-
-
-# ── 4. Shared style helpers ───────────────────────────────────────────────────
 BLUE   = "#1f77b4"
 ORANGE = "#ff7f0e"
 GREEN  = "#2ca02c"
 RED    = "#d62728"
 PURPLE = "#9467bd"
+
+
+def build_chart_frames(conn) -> dict[str, object]:
+    """Return the monthly frame and the split markers the charts plot."""
+    inputs = load_chart_inputs(conn)
+    monthly = build_monthly_frame(inputs)
+    start = min(monthly.index.min(), monthly["price_date"].min())
+    markers = split_markers(inputs.splits, start, monthly.index.max())
+    return {"monthly": monthly, "split_markers": markers}
+
 
 def style_ax(ax, title, ylabel, color):
     ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
@@ -141,10 +81,6 @@ def style_ax(ax, title, ylabel, color):
     ax.spines["right"].set_visible(False)
 
 
-# PGR stock split history
-SPLIT_2002 = (datetime.date(2002, 4, 23), "3-for-1 split\n(Apr 2002)")
-SPLIT_2006 = (datetime.date(2006, 5, 1),  "4-for-1 split\n(May 2006)")
-
 def _add_split_annotation(ax, split_date, split_label, ymax_frac=0.92):
     """Draw a single vertical dashed split-line with label."""
     ax.axvline(split_date, color="#888888", linewidth=1.0, linestyle="--", alpha=0.7)
@@ -154,142 +90,212 @@ def _add_split_annotation(ax, split_date, split_label, ymax_frac=0.92):
             ha="left", va="top", fontsize=7.5, color="#555555",
             bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="#cccccc", alpha=0.8))
 
-def add_split_line(ax, ymax_frac=0.92):
-    """Annotate the May 2006 4-for-1 split (used on charts whose data starts post-2002)."""
-    _add_split_annotation(ax, *SPLIT_2006, ymax_frac=ymax_frac)
 
-def add_both_split_lines(ax, ymax_frac=0.92):
-    """Annotate both the Apr 2002 3-for-1 and May 2006 4-for-1 splits."""
-    _add_split_annotation(ax, *SPLIT_2002, ymax_frac=ymax_frac)
-    _add_split_annotation(ax, *SPLIT_2006, ymax_frac=ymax_frac)
+def add_split_lines(ax, markers, start, ymax_frac=0.92):
+    """Annotate every split on or after ``start``."""
+    for split_date, label in markers:
+        if split_date >= start:
+            _add_split_annotation(ax, split_date.date(), label, ymax_frac=ymax_frac)
 
 
-# ── 5. Chart 1: Book Value Per Share ──────────────────────────────────────────
-fig, ax = plt.subplots(figsize=(12, 5))
-ax.plot(dates_bvps, bvps_vals, color=BLUE, linewidth=1.8)
-ax.fill_between(dates_bvps, bvps_vals, alpha=0.10, color=BLUE)
-style_ax(ax, "PGR — Book Value Per Share (Monthly, As-Reported)", "$ per share", BLUE)
-ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("$%.0f"))
-add_split_line(ax)
-fig.tight_layout()
-out1 = os.path.join(OUT_DIR, "pgr_book_value_per_share.png")
-fig.savefig(out1, dpi=150, bbox_inches="tight")
-plt.close(fig)
-print(f"Saved: {out1}")
+def _note(fig, text: str) -> None:
+    fig.text(0.01, 0.005, text, fontsize=7.5, color="#555555", ha="left", va="bottom")
 
 
-# ── 6. Chart 2: Share Repurchase Volume ───────────────────────────────────────
-fig, ax = plt.subplots(figsize=(12, 5))
-ax.bar(dates_repvol, repvol_vals, width=20, color=ORANGE, alpha=0.85)
-style_ax(ax, "PGR — Share Repurchase Volume (Monthly, As-Reported)", "Shares Repurchased (millions)", ORANGE)
-ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:.1f}M"))
-add_split_line(ax, ymax_frac=0.88)
-fig.tight_layout()
-out2 = os.path.join(OUT_DIR, "pgr_share_repurchase_volume.png")
-fig.savefig(out2, dpi=150, bbox_inches="tight")
-plt.close(fig)
-print(f"Saved: {out2}")
+def _dates(index) -> list[datetime.date]:
+    return [pd.Timestamp(d).date() for d in index]
 
 
-# ── 7. Chart 3: Repurchase Dollar Amount ──────────────────────────────────────
-fig, ax = plt.subplots(figsize=(12, 5))
-ax.bar(dates_repdol, repdol_vals, width=20, color=GREEN, alpha=0.85)
-style_ax(ax, "PGR — Share Repurchase Dollar Amount (Monthly)", "Repurchase $ (millions)", GREEN)
-ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"${x:,.0f}M"))
-add_split_line(ax, ymax_frac=0.88)
-# Annotate the Oct-2004 large ASR
-asr_date = datetime.date(2004, 10, 31)
-asr_val  = next(v for d, v in zip(dates_repdol, repdol_vals) if d == asr_date)
-ax.annotate("Oct 2004\nASR $1.49B",
-            xy=(asr_date, asr_val), xytext=(asr_date + datetime.timedelta(days=600), asr_val * 0.90),
-            fontsize=7.5, color="#2ca02c",
-            arrowprops=dict(arrowstyle="->", color="#2ca02c", lw=0.8))
-fig.tight_layout()
-out3 = os.path.join(OUT_DIR, "pgr_repurchase_dollar_amount.png")
-fig.savefig(out3, dpi=150, bbox_inches="tight")
-plt.close(fig)
-print(f"Saved: {out3}")
+def plot_charts(frames: dict[str, object], out_dir: str) -> list[str]:
+    """Write every chart in ``CHART_FILES`` to ``out_dir``."""
+    os.makedirs(out_dir, exist_ok=True)
+    monthly: pd.DataFrame = frames["monthly"]
+    markers = frames["split_markers"]
+    edgar = monthly[monthly["edgar_month"]]
+    first_edgar = edgar.index.min()
+    written = []
+
+    def _save(fig, name):
+        fig.tight_layout(rect=(0, 0.03, 1, 1))
+        path = os.path.join(out_dir, name)
+        fig.savefig(path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"Saved: {path}")
+        written.append(path)
+
+    def _line_chart(values, x, title, ylabel, color, fmt, name, note, split_start, mean=False):
+        fig, ax = plt.subplots(figsize=(12, 5))
+        ax.plot(x, values.to_list(), color=color, linewidth=1.8)
+        ax.fill_between(x, values.to_list(), alpha=0.10, color=color)
+        if mean:
+            avg = float(values.mean())
+            ax.axhline(avg, color=color, linewidth=1.0, linestyle="--", alpha=0.6,
+                       label=f"Period mean  {avg:.2f}×")
+            ax.legend(fontsize=9, frameon=False)
+        style_ax(ax, title, ylabel, color)
+        ax.yaxis.set_major_formatter(fmt)
+        add_split_lines(ax, markers, split_start)
+        _note(fig, note)
+        _save(fig, name)
+
+    dollar_fmt = mticker.FormatStrFormatter("$%.0f")
+    multiple_fmt = mticker.FuncFormatter(lambda x, _: f"{x:.1f}×")
+    basis_note = "Restated onto the share basis after the latest split in split_history."
+
+    # Book value per share: as reported and split-adjusted
+    bvps = edgar["book_value_per_share"].dropna()
+    _line_chart(bvps, _dates(bvps.index),
+                "PGR — Book Value Per Share (Monthly, As-Reported)", "$ per share", BLUE,
+                dollar_fmt, "pgr_book_value_per_share.png",
+                "Month-end book value per share from the monthly 8-K, on the share basis "
+                "in effect at the time.", first_edgar)
+    bvps_adj = edgar["book_value_per_share_split_adjusted"].dropna()
+    _line_chart(bvps_adj, _dates(bvps_adj.index),
+                "PGR — Book Value Per Share (Monthly, Split-Adjusted)",
+                "$ per share (current basis)", BLUE, dollar_fmt,
+                "pgr_book_value_per_share_split_adjusted.png",
+                f"Month-end book value per share from the monthly 8-K. {basis_note}",
+                first_edgar)
+
+    # Share repurchase volume (as reported)
+    volume = edgar["shares_repurchased"].dropna()
+    fig, ax = plt.subplots(figsize=(12, 5))
+    ax.bar(_dates(volume.index), volume.to_list(), width=20, color=ORANGE, alpha=0.85)
+    style_ax(ax, "PGR — Share Repurchase Volume (Monthly, As-Reported)",
+             "Shares Repurchased (millions)", ORANGE)
+    ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:.1f}M"))
+    add_split_lines(ax, markers, first_edgar, ymax_frac=0.88)
+    _note(fig, "Shares repurchased in the month, on the share basis in effect at the time.")
+    _save(fig, "pgr_share_repurchase_volume.png")
+
+    # Repurchase dollars: full axis and capped axis
+    dollars = edgar["repurchase_dollars"].dropna()
+    estimated = edgar.loc[dollars.index, "avg_cost_source"] == AVG_COST_ESTIMATED
+    peak_date = dollars.idxmax()
+    peak_val = float(dollars.max())
+    event = REPURCHASE_EVENTS.get(peak_date.strftime("%Y-%m"), "largest month")
+    dollar_note = (
+        "Repurchase $ = shares repurchased × average cost per share (monthly 8-K). "
+        "Hatched: average cost not reported, estimated as the mean of the month's "
+        "weekly closes on the month-end share basis."
+    )
+
+    def _dollar_bars(ax):
+        ax.bar(_dates(dollars.index[~estimated]), dollars[~estimated].to_list(), width=20,
+               color=GREEN, alpha=0.85, label="Reported average cost")
+        if estimated.any():
+            ax.bar(_dates(dollars.index[estimated]), dollars[estimated].to_list(), width=20,
+                   color="white", edgecolor=GREEN, hatch="////", linewidth=0.8,
+                   label="Estimated average cost")
+            ax.legend(fontsize=8, frameon=False, loc="upper right")
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    _dollar_bars(ax)
+    style_ax(ax, "PGR — Share Repurchase Dollar Amount (Monthly)", "Repurchase $ (millions)", GREEN)
+    ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"${x:,.0f}M"))
+    add_split_lines(ax, markers, first_edgar, ymax_frac=0.88)
+    ax.annotate(f"{peak_date:%b %Y}\n{event}\n${peak_val:,.0f}M",
+                xy=(peak_date.date(), peak_val),
+                xytext=(peak_date.date() + datetime.timedelta(days=1100), peak_val * 0.70),
+                fontsize=7.5, color=GREEN,
+                arrowprops=dict(arrowstyle="->", color=GREEN, lw=0.8))
+    _note(fig, dollar_note)
+    _save(fig, "pgr_repurchase_dollar_amount.png")
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    _dollar_bars(ax)
+    style_ax(ax, f"PGR — Share Repurchase Dollar Amount (Monthly, axis capped at "
+                 f"${REPURCHASE_AXIS_CAP:,.0f}M)", "Repurchase $ (millions)", GREEN)
+    ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"${x:,.0f}M"))
+    ax.set_ylim(0, REPURCHASE_AXIS_CAP)
+    add_split_lines(ax, markers, first_edgar, ymax_frac=0.88)
+    for clipped_date, clipped_val in dollars[dollars > REPURCHASE_AXIS_CAP].items():
+        label = REPURCHASE_EVENTS.get(clipped_date.strftime("%Y-%m"), "")
+        ax.annotate(
+            f"{clipped_date:%b %Y} {label}: ${clipped_val:,.0f}M\n(bar clipped — exceeds axis)",
+            xy=(clipped_date.date(), REPURCHASE_AXIS_CAP),
+            xytext=(clipped_date.date() + datetime.timedelta(days=1100),
+                    REPURCHASE_AXIS_CAP * 0.70),
+            fontsize=8, color=GREEN,
+            arrowprops=dict(arrowstyle="->", color=GREEN, lw=0.9),
+            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec=GREEN, alpha=0.85),
+        )
+    _note(fig, dollar_note)
+    _save(fig, "pgr_repurchase_dollar_amount_capped.png")
+
+    # Share price: as reported and split-adjusted, plotted at the bar date
+    priced = monthly.dropna(subset=["price"])
+    x_price = _dates(priced["price_date"])
+    _line_chart(priced["price"], x_price,
+                "PGR — Share Price (Last Weekly Close of Each Month, As-Reported)",
+                "$ per share", RED, dollar_fmt, "pgr_share_price.png",
+                f"{PRICE_NOTE} Not split-adjusted.", priced["price_date"].min())
+    _line_chart(priced["price_split_adjusted"], x_price,
+                "PGR — Share Price (Last Weekly Close of Each Month, Split-Adjusted)",
+                "$ per share (current basis)", RED, dollar_fmt,
+                "pgr_share_price_split_adjusted.png",
+                f"{PRICE_NOTE} {basis_note} Dividends not included.",
+                priced["price_date"].min())
+
+    # Price / book: as reported and split-adjusted
+    pb_note = "P/B = last weekly close of the month ÷ month-end book value per share."
+    pb = edgar["price_to_book"].dropna()
+    _line_chart(pb, _dates(pb.index),
+                "PGR — Price / Book Value Multiple (Monthly, As-Reported)", "P/B multiple",
+                PURPLE, multiple_fmt, "pgr_price_to_book.png",
+                f"{pb_note} Both on the share basis in effect at the time.", first_edgar,
+                mean=True)
+    pb_adj = edgar["price_to_book_split_adjusted"].dropna()
+    _line_chart(pb_adj, _dates(pb_adj.index),
+                "PGR — Price / Book Value Multiple (Monthly, Split-Adjusted)", "P/B multiple",
+                PURPLE, multiple_fmt, "pgr_price_to_book_split_adjusted.png",
+                f"{pb_note} Price and book value both restated onto the latest share basis.",
+                first_edgar, mean=True)
+
+    return written
 
 
-# ── 7b. Chart 3b: Repurchase Dollar Amount — capped at $400M ─────────────────
-fig, ax = plt.subplots(figsize=(12, 5))
-ax.bar(dates_repdol, repdol_vals, width=20, color=GREEN, alpha=0.85)
-style_ax(ax, "PGR — Share Repurchase Dollar Amount (Monthly, axis capped at $400M)", "Repurchase $ (millions)", GREEN)
-ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"${x:,.0f}M"))
-ax.set_ylim(0, 400)
-add_split_line(ax, ymax_frac=0.88)
-
-# Outlier bar (Oct 2004, $1.49B) is clipped — mark it explicitly
-ax.annotate(
-    "Oct 2004 ASR: $1,487M\n(bar clipped — exceeds axis)",
-    xy=(asr_date, 400), xytext=(asr_date + datetime.timedelta(days=500), 355),
-    fontsize=8, color="#2ca02c",
-    arrowprops=dict(arrowstyle="->", color="#2ca02c", lw=0.9),
-    bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#2ca02c", alpha=0.85),
-)
-# Draw a small upward-pointing arrow stub above the clipped bar to signal truncation
-ax.annotate("", xy=(asr_date, 400), xytext=(asr_date, 385),
-            arrowprops=dict(arrowstyle="->", color="#2ca02c", lw=1.2))
-
-fig.tight_layout()
-out3b = os.path.join(OUT_DIR, "pgr_repurchase_dollar_amount_capped.png")
-fig.savefig(out3b, dpi=150, bbox_inches="tight")
-plt.close(fig)
-print(f"Saved: {out3b}")
-
-
-# ── 8. Chart 4: Share Price ───────────────────────────────────────────────────
-fig, ax = plt.subplots(figsize=(12, 5))
-ax.plot(dates_price, price_vals, color=RED, linewidth=1.8)
-ax.fill_between(dates_price, price_vals, alpha=0.08, color=RED)
-style_ax(ax, "PGR — Share Price (Monthly, As-Reported / Not Split-Adjusted)", "$ per share", RED)
-ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("$%.0f"))
-add_both_split_lines(ax)  # price data starts 1999 — both 2002 and 2006 splits visible
-fig.tight_layout()
-out4 = os.path.join(OUT_DIR, "pgr_share_price.png")
-fig.savefig(out4, dpi=150, bbox_inches="tight")
-plt.close(fig)
-print(f"Saved: {out4}")
+def print_summary(frames: dict[str, object]) -> None:
+    monthly: pd.DataFrame = frames["monthly"]
+    edgar = monthly[monthly["edgar_month"]]
+    series = {
+        "Book value per share": edgar["book_value_per_share"].dropna(),
+        "Repurchase volume": edgar["shares_repurchased"].dropna(),
+        "Repurchase $ amount": edgar["repurchase_dollars"].dropna(),
+        "Share price": monthly["price"].dropna(),
+        "Price / Book": edgar["price_to_book"].dropna(),
+    }
+    print()
+    print("─" * 60)
+    for label, values in series.items():
+        print(f"{label:<21}: {len(values):>4} obs  "
+              f"{values.index.min().date()} → {values.index.max().date()}")
+    pb = series["Price / Book"]
+    print()
+    print(f"Latest BVPS          : ${series['Book value per share'].iloc[-1]:.2f}")
+    print(f"Latest repurchase vol: {series['Repurchase volume'].iloc[-1]:.3f}M shares")
+    print(f"Latest repurchase $  : ${series['Repurchase $ amount'].iloc[-1]:.1f}M  "
+          f"(avg cost ${edgar['avg_cost_per_share'].iloc[-1]:.2f})")
+    print(f"Latest share price   : ${series['Share price'].iloc[-1]:.2f}")
+    print(f"Latest P/B           : {pb.iloc[-1]:.2f}×  "
+          f"(mean {pb.mean():.2f}×, min {pb.min():.2f}×, max {pb.max():.2f}×)")
+    print("─" * 60)
 
 
-# ── 9. Chart 5: Price / Book Value Multiple ───────────────────────────────────
-pb_mean = sum(pb_vals) / len(pb_vals)
-
-fig, ax = plt.subplots(figsize=(12, 5))
-ax.plot(dates_pb, pb_vals, color=PURPLE, linewidth=1.8)
-ax.fill_between(dates_pb, pb_vals, alpha=0.10, color=PURPLE)
-ax.axhline(pb_mean, color=PURPLE, linewidth=1.0, linestyle="--", alpha=0.6,
-           label=f"Period mean  {pb_mean:.2f}×")
-ax.legend(fontsize=9, frameon=False)
-style_ax(ax, "PGR — Price / Book Value Multiple (Monthly)", "P/B multiple", PURPLE)
-ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:.1f}×"))
-add_split_line(ax)
-fig.tight_layout()
-out5 = os.path.join(OUT_DIR, "pgr_price_to_book.png")
-fig.savefig(out5, dpi=150, bbox_inches="tight")
-plt.close(fig)
-print(f"Saved: {out5}")
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--db-path", default=DB_PATH)
+    parser.add_argument("--out-dir", default=OUT_DIR)
+    args = parser.parse_args(argv)
+    conn = db_client.get_connection(args.db_path, read_only=True)
+    try:
+        frames = build_chart_frames(conn)
+    finally:
+        conn.close()
+    plot_charts(frames, args.out_dir)
+    print_summary(frames)
+    return 0
 
 
-# ── 10. Console summary ───────────────────────────────────────────────────────
-print()
-print("─" * 60)
-print(f"Book value per share : {len(bvps_vals):>4} obs  "
-      f"{dates_bvps[0]} → {dates_bvps[-1]}")
-print(f"Repurchase volume    : {len(repvol_vals):>4} obs  "
-      f"{dates_repvol[0]} → {dates_repvol[-1]}")
-print(f"Repurchase $ amount  : {len(repdol_vals):>4} obs  "
-      f"{dates_repdol[0]} → {dates_repdol[-1]}")
-print(f"Share price          : {len(price_vals):>4} obs  "
-      f"{dates_price[0]} → {dates_price[-1]}")
-print(f"Price / Book         : {len(pb_vals):>4} obs  "
-      f"{dates_pb[0]} → {dates_pb[-1]}")
-print()
-print(f"Latest BVPS          : ${bvps_vals[-1]:.2f}")
-print(f"Latest repurchase vol: {repvol_vals[-1]:.3f}M shares")
-print(f"Latest repurchase $  : ${repdol_vals[-1]:.1f}M  "
-      f"(avg cost ${edgar_rows[-1][3]:.2f})")
-print(f"Latest share price   : ${price_vals[-1]:.2f}")
-print(f"Latest P/B           : {pb_vals[-1]:.2f}×  "
-      f"(mean {pb_mean:.2f}×, min {min(pb_vals):.2f}×, max {max(pb_vals):.2f}×)")
-print("─" * 60)
+if __name__ == "__main__":
+    raise SystemExit(main())

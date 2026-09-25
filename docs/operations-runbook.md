@@ -19,6 +19,11 @@
   - should produce a `run_manifest.json`
   - should produce `benchmark_quality.csv`, `consensus_shadow.csv`,
     `dashboard.html`, and `monthly_summary.json`
+  - should rewrite every chart in its `RESEARCH_CHARTS` list; a red
+    "Regenerate research charts" step means the charts were not committed.
+    Reproduce locally against a DB copy with
+    `python scripts/repurchase_timeseries_charts.py --db-path <copy> --out-dir <dir>`
+    (and the same for `scripts/capital_return_charts.py`)
 
 ## Local Dry-Run Commands
 
