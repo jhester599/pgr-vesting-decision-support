@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS split_history (
 -- One discrete quarter per row: Q4 = 10-K full year - 10-Q nine months.
 -- Earliest-filed values.  roe = TTM net income / average equity.
 -- filing_date: filing date of the net-income value (10-K for Q4).
--- (Migration 006 dropped the always-NULL pe_ratio / pb_ratio columns.)
+-- (Migration 007 dropped the always-NULL pe_ratio / pb_ratio columns.)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS pgr_fundamentals_quarterly (
     period_end   TEXT    NOT NULL,
@@ -245,8 +245,11 @@ CREATE TABLE IF NOT EXISTS ingestion_metadata (
 -- ---------------------------------------------------------------------------
 -- FRED macro and insurance-specific monthly series (v3.0+)
 -- series_id: FRED series identifier (e.g. 'T10Y2Y', 'BAMLH0A0HYM2')
--- month_end:  ISO date of the last calendar day of the month ('YYYY-MM-DD')
--- value:      Raw FRED observation value (numeric); NULL if FRED reports '.'
+-- month_end:  ISO date of the month's last business day ('YYYY-MM-DD');
+--             one row per series and calendar month (migration 005)
+-- value:      Raw, unlagged FRED observation (the last one in the month);
+--             publication lags are applied once, by calendar month, in
+--             feature_engineering.build_feature_matrix_from_db (review F06)
 --
 -- Populated by src/ingestion/fred_loader.py via scripts/weekly_fetch.py.
 -- Used by src/processing/feature_engineering.py as macro regime features.
@@ -257,6 +260,8 @@ CREATE TABLE IF NOT EXISTS fred_macro_monthly (
     value      REAL,
     PRIMARY KEY (series_id, month_end)
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fred_macro_monthly_series_month
+    ON fred_macro_monthly (series_id, substr(month_end, 1, 7));
 
 -- ---------------------------------------------------------------------------
 -- Monthly model-health monitoring history
@@ -295,7 +300,7 @@ CREATE TABLE IF NOT EXISTS model_retrain_log (
 );
 
 -- ---------------------------------------------------------------------------
--- Append-only provenance for pgr_edgar_monthly (migration 005, F33).
+-- Append-only provenance for pgr_edgar_monthly (migration 006, F33).
 -- One pgr_edgar_filing_parses row per (accession, parser_version); one
 -- pgr_edgar_monthly_raw row per (parse, field).  UPDATE/DELETE abort.
 -- method: parsed | derived | csv.  See the migration for details.

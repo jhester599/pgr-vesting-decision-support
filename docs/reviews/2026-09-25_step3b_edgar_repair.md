@@ -161,7 +161,7 @@ For example, 2021-02 is 0.102 and 2025-02 is 0.182.
 
 ## Provenance (F33)
 
-Migration 005 adds two append-only tables; triggers abort UPDATE and DELETE:
+Migration 006 adds two append-only tables; triggers abort UPDATE and DELETE:
 
 - `pgr_edgar_filing_parses`: one row per (accession, parser version), with
   the exhibit URL, fetched-at and filing date.
@@ -216,7 +216,7 @@ diff.
   - A two-point average was worse (0.72 points).
 - `filing_date` was added (the filing date of the NI fact; the 10-K for Q4).
 - The always-NULL `pe_ratio` / `pb_ratio` columns were dropped (migration
-  006).
+  007).
 
 ## Effect on model inputs
 

@@ -13,6 +13,9 @@ Usage:
 Migrations:
     004_investment_book_yield_percent  Rescale investment_book_yield rows
                                        stored as fractions to percent (F10).
+    005_fred_one_row_per_month         Keep one fred_macro_monthly row per
+                                       series and month; add a unique index
+                                       (F06/F27).
 """
 
 from __future__ import annotations

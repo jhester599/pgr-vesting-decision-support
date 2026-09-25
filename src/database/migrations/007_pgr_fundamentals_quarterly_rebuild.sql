@@ -1,4 +1,4 @@
--- Migration 006: pgr_fundamentals_quarterly without the always-NULL columns.
+-- Migration 007: pgr_fundamentals_quarterly without the always-NULL columns.
 --
 -- Review 2026-09-25, finding F09. pe_ratio and pb_ratio were never populated
 -- (0 of 74 rows): XBRL has no prices, and P/E and P/B are computed from the

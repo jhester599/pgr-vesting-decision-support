@@ -301,12 +301,13 @@ def build_data_freshness_lines(freshness_report: dict[str, Any] | None) -> list[
     ]
 
     for row in freshness_report.get("checks", []):
-        latest_date = row.get("latest_date") or "missing"
-        age_text = (
-            f"{row['age_days']} days"
-            if row.get("age_days") is not None
-            else "n/a"
-        )
+        latest_date = row.get("latest_label") or row.get("latest_date") or "missing"
+        if row.get("age_label"):
+            age_text = str(row["age_label"])
+        elif row.get("age_days") is not None:
+            age_text = f"{row['age_days']} days"
+        else:
+            age_text = "n/a"
         limit_text = row.get("limit_label") or f"{row['max_age_days']} days"
         lines.append(
             f"| {row['feed']} | {latest_date} | {age_text} | "

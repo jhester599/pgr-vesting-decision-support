@@ -1,4 +1,4 @@
--- Migration 005: append-only provenance for the PGR monthly 8-K table.
+-- Migration 006: append-only provenance for the PGR monthly 8-K table.
 --
 -- Review 2026-09-25, finding F33. pgr_edgar_monthly had no point-in-time
 -- history: every monthly run re-parsed 24 months, overwrote filing_date and

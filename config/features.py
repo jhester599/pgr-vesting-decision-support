@@ -222,6 +222,56 @@ FRED_SERIES_LAGS: dict = {
     "T10YIE":            1,
     "VIXCLS":            1,
 }
+# fred_macro_monthly stores raw (unlagged) observations, one row per series
+# and calendar month, labelled with the month's last business day. The lags
+# above are applied exactly once, by calendar month, in
+# feature_engineering.build_feature_matrix_from_db: the feature row for month
+# M uses the observation for month M - lag (review F06).
+#
+# Interior gaps (e.g. a CPI month BLS never published) are forward-filled for
+# at most this many months after lagging. The fill never extends a series past
+# its latest observation, so a stale series shows up as NaN in the live row.
+FRED_MAX_GAP_FILL_MONTHS: int = 5
+
+# FRED series behind each FRED-derived feature. The per-series freshness
+# check (db_client.check_data_freshness) watches the series behind every
+# feature a live ensemble model uses (review F07).
+FRED_FEATURE_SOURCES: dict[str, tuple[str, ...]] = {
+    "yield_slope": ("T10Y2Y",),
+    "yield_curvature": ("GS5", "GS2", "GS10"),
+    "real_rate_10y": ("GS10", "T10YIE"),
+    "real_yield_change_6m": ("GS10", "T10YIE"),
+    # Only built when GS10 is present too (same block as real_rate_10y).
+    "breakeven_inflation_10y": ("GS10", "T10YIE"),
+    "breakeven_momentum_3m": ("GS10", "T10YIE"),
+    "credit_spread_ig": ("BAA10Y",),
+    "baa10y_spread": ("BAA10Y",),
+    "credit_spread_hy": ("BAMLH0A0HYM2",),
+    "credit_spread_ratio": ("BAMLH0A0HYM2", "BAA10Y"),
+    "excess_bond_premium_proxy": ("BAMLH0A0HYM2", "BAA10Y"),
+    "nfci": ("NFCI",),
+    "insurance_cpi_mom3m": ("CUSR0000SETC01",),
+    "vix": ("VIXCLS",),
+    "vmt_yoy": ("TRFVOLUSM227NFWA",),
+    "used_car_cpi_yoy": ("CUSR0000SETA02",),
+    "medical_cpi_yoy": ("CUSR0000SAM2",),
+    "severity_index_yoy": ("CUSR0000SETA02", "CUSR0000SAM2"),
+    "ppi_auto_ins_yoy": ("PCU5241265241261",),
+    "rate_adequacy_gap_yoy": ("PCU5241265241261", "CUSR0000SETA02", "CUSR0000SAM2"),
+    "motor_vehicle_ins_cpi_yoy": ("CUSR0000SETE",),
+    "auto_pricing_power_spread": ("PCU5241265241261", "CUSR0000SETE"),
+    "duration_rate_shock_3m": ("GS10",),
+    "usd_broad_return_3m": ("DTWEXBGS",),
+    "usd_momentum_6m": ("DTWEXBGS",),
+    "wti_return_3m": ("DCOILWTICO",),
+    "mortgage_spread_30y_10y": ("MORTGAGE30US", "GS10"),
+    "term_premium_10y": ("THREEFYTP10",),
+    "legal_services_ppi_relative": ("WPU45110101", "PPIACO"),
+    "gasoline_retail_sales_delta": ("MRTSSM447USN",),
+    "pgr_pe_vs_market_pe": ("SP500_PE_RATIO_MULTPL",),
+    "pgr_price_to_book_relative": ("SP500_PRICE_TO_BOOK_MULTPL",),
+    "equity_risk_premium": ("SP500_EARNINGS_YIELD_MULTPL", "GS10"),
+}
 
 # EDGAR filing lag (months from period-end to public availability).
 # PGR 10-Q is filed ~45 days after quarter end; 10-K ~60 days.

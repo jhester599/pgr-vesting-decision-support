@@ -28,7 +28,7 @@ per row (Q4 = 10-K full year − 10-Q nine months), earliest-filed values:
 
   P/E and P/B are computed downstream from monthly 8-K EPS/BVPS and prices
   (feature_engineering.build_feature_matrix_from_db); the always-NULL
-  pe_ratio / pb_ratio columns were dropped by migration 006.
+  pe_ratio / pb_ratio columns were dropped by migration 007.
 
 Monthly operating metrics (combined ratio, PIF, gainshare):
   PGR files these in monthly 8-K HTML supplements. They are NOT present in
