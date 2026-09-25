@@ -95,10 +95,9 @@ class TestBuildFeatureMatrix:
     ):
         """
         For each monthly observation t, mom_12m[t] must equal
-        (close[t] / close[t - 252 days]) - 1 using only past data.
-
-        We test this by checking that the momentum series is strictly
-        computed from prices on or before t, not after t.
+        close(month-end t) / close(month-end t - 12 calendar months) - 1,
+        each close being the last bar on or before its month-end (review F01:
+        a row count of "trading days" is wrong on weekly bars).
         """
         import config, src.processing.feature_engineering as fe
         monkeypatch.setattr(config, "DATA_PROCESSED_DIR", str(tmp_path))
@@ -106,17 +105,23 @@ class TestBuildFeatureMatrix:
         df = build_feature_matrix(
             price_history, dividend_history, split_history, force_refresh=True
         )
-        # Verify mom_12m at a specific known date
         daily_close = price_history["close"]
         monthly_dates = daily_close.resample("BME").last().index
         # Take an observation well into the dataset (avoid burn-in NaN)
         test_date = monthly_dates[15]
-        expected_shifted = daily_close.shift(252).reindex([test_date], method="ffill").iloc[0]
-        expected_mom = (daily_close.asof(test_date) / expected_shifted) - 1.0
+        year_earlier = monthly_dates[3]
+        expected_mom = daily_close.asof(test_date) / daily_close.asof(year_earlier) - 1.0
         actual_mom = df.at[test_date, "mom_12m"]
         assert np.isclose(actual_mom, expected_mom, rtol=1e-6), (
             f"mom_12m mismatch at {test_date}: expected {expected_mom:.6f}, got {actual_mom:.6f}"
         )
+        # No look-ahead: changing prices after t leaves mom_12m[t] unchanged.
+        perturbed = price_history.copy()
+        perturbed.loc[perturbed.index > test_date, "close"] *= 3.0
+        df_perturbed = build_feature_matrix(
+            perturbed, dividend_history, split_history, force_refresh=True
+        )
+        assert df_perturbed.at[test_date, "mom_12m"] == actual_mom
 
     def test_target_nan_in_final_6_months(
         self, price_history, dividend_history, split_history, tmp_path, monkeypatch

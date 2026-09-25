@@ -184,7 +184,9 @@ def test_duration_rate_shock_lags_gs10_once(monkeypatch, tmp_path: Path) -> None
     monkeypatch.setattr(feature_engineering, "_PROCESSED_PATH", str(tmp_path / "fm.parquet"))
     dates = pd.bdate_range("2012-01-01", "2020-12-31", freq="BME")  # >= 60 obs kept
     steps = np.arange(len(dates), dtype=float)
-    prices = pd.DataFrame({"close": np.linspace(50, 80, len(dates))}, index=dates)
+    # Weekly price bars, as stored in daily_prices (the builder rejects coarser bars).
+    weeks = pd.date_range(dates[0], dates[-1], freq="W-FRI")
+    prices = pd.DataFrame({"close": np.linspace(50, 80, len(weeks))}, index=weeks)
     # GS10 = i**2 at row i, so a 3-month change identifies the row it came from.
     gs10 = pd.DataFrame({"GS10": steps**2}, index=dates)
     pgr_monthly = pd.DataFrame({"fixed_income_duration": 2.0}, index=dates)
@@ -389,7 +391,10 @@ def test_fred_feature_sources_match_the_builder(monkeypatch, tmp_path: Path) -> 
     monkeypatch.setattr(feature_engineering, "_PROCESSED_PATH", str(tmp_path / "fm.parquet"))
     dates = pd.bdate_range("2012-01-01", "2020-12-31", freq="BME")
     rng = np.random.default_rng(0)
-    prices = pd.DataFrame({"close": 50 + np.cumsum(rng.normal(0, 1, len(dates)))}, index=dates)
+    weeks = pd.date_range(dates[0], dates[-1], freq="W-FRI")
+    prices = pd.DataFrame(
+        {"close": 50 + np.cumsum(rng.normal(0, 0.5, len(weeks)))}, index=weeks
+    )
     all_series = sorted({s for srcs in config.FRED_FEATURE_SOURCES.values() for s in srcs})
     fred = pd.DataFrame(
         {sid: 50 + np.cumsum(rng.normal(0, 1, len(dates))) for sid in all_series}, index=dates

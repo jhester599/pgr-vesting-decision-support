@@ -1,8 +1,15 @@
-"""Research-only technical-analysis feature factory for v160-v164.
+"""Technical-analysis feature factory (v160-v164 research; TA shadow lane).
 
 The functions in this module intentionally avoid TA-Lib/pandas-ta and operate
 only on point-in-time price frames already available in the project database.
-They are not wired into the production monthly decision path.
+They feed the reporting-only TA shadow variants, not the live recommendation.
+
+``daily_prices`` holds one unadjusted bar per week (review 2026-09-25, F01/F24).
+``build_ta_feature_matrix`` therefore split-adjusts every OHLCV frame and
+collapses it to weekly bars (raising if the bars are coarser), and its windows
+count weekly bars: 26 bars for the "6m" features, 52 for "12m" and 13 for the
+``_63d`` features (13 weeks span the same quarter as 63 trading days, so the
+names are kept). MACD uses the classic 12/26/9 spans on weekly bars.
 """
 
 from __future__ import annotations
@@ -11,6 +18,8 @@ from collections.abc import Mapping, Sequence
 
 import numpy as np
 import pandas as pd
+
+from src.processing.price_adjustment import split_adjusted_ohlcv, weekly_bars
 
 PRIMARY_TA_BENCHMARKS: tuple[str, ...] = (
     "VOO",
@@ -23,6 +32,19 @@ PRIMARY_TA_BENCHMARKS: tuple[str, ...] = (
     "VDE",
 )
 PEER_TICKERS: tuple[str, ...] = ("ALL", "TRV", "CB", "HIG")
+
+# Window lengths in weekly bars.
+WEEKS_3M: int = 13
+WEEKS_6M: int = 26
+WEEKS_12M: int = 52
+
+
+def _weekly_adjusted(
+    price_df: pd.DataFrame,
+    splits: pd.DataFrame | None,
+) -> pd.DataFrame:
+    """Split-adjusted OHLCV on one bar per week."""
+    return weekly_bars(split_adjusted_ohlcv(price_df, splits))
 
 
 def _price_column(price_df: pd.DataFrame) -> pd.Series:
@@ -174,17 +196,19 @@ def _ratio_series(pgr: pd.Series, benchmark: pd.Series) -> pd.Series:
 
 def _pc_tech(close: pd.Series, price_df: pd.DataFrame | None = None) -> pd.Series:
     components = [
-        close.pct_change(126, fill_method=None).rename("roc"),
-        ema_gap(close, span=252).rename("ema_gap"),
-        relative_strength_index(close, window=126).rename("rsi"),
-        bollinger_percent_b(close, window=126)[0].rename("bb_pct_b"),
+        close.pct_change(WEEKS_6M, fill_method=None).rename("roc"),
+        ema_gap(close, span=WEEKS_12M).rename("ema_gap"),
+        relative_strength_index(close, window=WEEKS_6M).rename("rsi"),
+        bollinger_percent_b(close, window=WEEKS_6M)[0].rename("bb_pct_b"),
     ]
     if price_df is not None and {"high", "low", "close"}.issubset(price_df.columns):
-        components.append(normalized_average_true_range(price_df, window=63).rename("natr"))
+        components.append(
+            normalized_average_true_range(price_df, window=WEEKS_3M).rename("natr")
+        )
     frame = pd.concat(components, axis=1)
-    z = (frame - frame.rolling(252, min_periods=63).mean()) / frame.rolling(
-        252,
-        min_periods=63,
+    z = (frame - frame.rolling(WEEKS_12M, min_periods=WEEKS_3M).mean()) / frame.rolling(
+        WEEKS_12M,
+        min_periods=WEEKS_3M,
     ).std(ddof=0)
     pc = z.mean(axis=1, skipna=True)
     pc.name = "pc_tech"
@@ -195,10 +219,24 @@ def build_ta_feature_matrix(
     price_map: Mapping[str, pd.DataFrame],
     benchmarks: Sequence[str] = PRIMARY_TA_BENCHMARKS,
     peer_tickers: Sequence[str] = PEER_TICKERS,
+    split_map: Mapping[str, pd.DataFrame] | None = None,
 ) -> pd.DataFrame:
-    """Build monthly research-only TA features from available price frames."""
+    """Build monthly TA features from split-adjusted weekly price bars.
+
+    Args:
+        price_map: Unadjusted OHLCV frames by ticker (must include PGR).
+        benchmarks: Tickers for the PGR-relative ratio features.
+        peer_tickers: Peers for the PGR-vs-peer ratio features.
+        split_map: Splits by ticker (``db_client.get_splits`` frames). A
+            ticker without an entry is treated as having no splits.
+    """
     if "PGR" not in price_map:
         raise ValueError("price_map must include PGR.")
+    splits_by_ticker = dict(split_map or {})
+    price_map = {
+        ticker: _weekly_adjusted(frame, splits_by_ticker.get(ticker))
+        for ticker, frame in price_map.items()
+    }
 
     pgr_df = price_map["PGR"].copy()
     pgr_close = _price_column(pgr_df)
@@ -206,8 +244,8 @@ def build_ta_feature_matrix(
     features = pd.DataFrame(index=monthly_index)
     features.index.name = "date"
 
-    pgr_natr = normalized_average_true_range(pgr_df, window=63)
-    pgr_adx = average_directional_index(pgr_df, window=63)
+    pgr_natr = normalized_average_true_range(pgr_df, window=WEEKS_3M)
+    pgr_adx = average_directional_index(pgr_df, window=WEEKS_3M)
     features["ta_pgr_natr_63d"] = _monthly_last(pgr_natr).reindex(monthly_index)
     features["ta_pgr_adx_63d"] = _monthly_last(pgr_adx).reindex(monthly_index)
     features["ta_pgr_macd_hist_norm"] = _monthly_last(
@@ -215,7 +253,7 @@ def build_ta_feature_matrix(
     ).reindex(monthly_index)
     if "volume" in pgr_df.columns:
         features["ta_pgr_obv_detrended"] = _monthly_last(
-            detrended_obv(pgr_df, span=63)
+            detrended_obv(pgr_df, span=WEEKS_3M)
         ).reindex(monthly_index)
 
     for benchmark in benchmarks:
@@ -224,14 +262,14 @@ def build_ta_feature_matrix(
         suffix = benchmark.lower()
         benchmark_close = _price_column(price_map[benchmark])
         ratio = _ratio_series(pgr_close, benchmark_close)
-        ratio_roc = ratio.pct_change(126, fill_method=None)
-        ratio_rsi = relative_strength_index(ratio, window=126)
-        ratio_bb_pct_b, ratio_bb_width = bollinger_percent_b(ratio, window=126)
+        ratio_roc = ratio.pct_change(WEEKS_6M, fill_method=None)
+        ratio_rsi = relative_strength_index(ratio, window=WEEKS_6M)
+        ratio_bb_pct_b, ratio_bb_width = bollinger_percent_b(ratio, window=WEEKS_6M)
         features[f"ta_ratio_roc_6m_{suffix}"] = _monthly_last(ratio_roc).reindex(
             monthly_index
         )
         features[f"ta_ratio_ema_gap_12m_{suffix}"] = _monthly_last(
-            ema_gap(ratio, span=252)
+            ema_gap(ratio, span=WEEKS_12M)
         ).reindex(monthly_index)
         features[f"ta_ratio_rsi_6m_{suffix}"] = _monthly_last(ratio_rsi).reindex(
             monthly_index
@@ -264,7 +302,7 @@ def build_ta_feature_matrix(
             ).reindex(monthly_index)
         else:
             features[f"ta_{suffix}_roc_6m"] = _monthly_last(
-                close.pct_change(126, fill_method=None)
+                close.pct_change(WEEKS_6M, fill_method=None)
             ).reindex(monthly_index)
 
     peer_frames = [
@@ -276,13 +314,13 @@ def build_ta_feature_matrix(
         peer_close = pd.concat(peer_frames, axis=1).dropna(how="all").mean(axis=1)
         peer_ratio = _ratio_series(pgr_close, peer_close)
         features["ta_peer_ratio_roc_6m"] = _monthly_last(
-            peer_ratio.pct_change(126, fill_method=None)
+            peer_ratio.pct_change(WEEKS_6M, fill_method=None)
         ).reindex(monthly_index)
         features["ta_peer_ratio_rsi_6m"] = _monthly_last(
-            relative_strength_index(peer_ratio, window=126)
+            relative_strength_index(peer_ratio, window=WEEKS_6M)
         ).reindex(monthly_index)
         features["ta_peer_ratio_ema_gap_12m"] = _monthly_last(
-            ema_gap(peer_ratio, span=252)
+            ema_gap(peer_ratio, span=WEEKS_12M)
         ).reindex(monthly_index)
 
     return features.astype("float64")

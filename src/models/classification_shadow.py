@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import sqlite3
 from dataclasses import asdict, dataclass
 from datetime import date
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -406,14 +408,25 @@ def _run_dual_track_pass(
     detail_df["benchmark_specific_tier"] = bs_tiers
 
 
+_TA_SHADOW_TICKERS: tuple[str, ...] = ("PGR", "VWO")
+
+
 def _load_ta_price_map(conn: object) -> dict[str, pd.DataFrame]:
     """Load only the price series required by the monthly TA shadow lane."""
     price_map: dict[str, pd.DataFrame] = {}
-    for ticker in ("PGR", "VWO"):
+    for ticker in _TA_SHADOW_TICKERS:
         prices = db_client.get_prices(conn, ticker)
         if not prices.empty:
             price_map[ticker] = prices
     return price_map
+
+
+def _load_ta_split_map(conn: object) -> dict[str, pd.DataFrame]:
+    """Split history for the TA shadow tickers (review F24)."""
+    connection = cast(sqlite3.Connection, conn)
+    return {
+        ticker: db_client.get_splits(connection, ticker) for ticker in _TA_SHADOW_TICKERS
+    }
 
 
 def _build_ta_augmented_feature_frame(
@@ -428,7 +441,11 @@ def _build_ta_augmented_feature_frame(
 
     price_map = _load_ta_price_map(conn)
     if {"PGR", "VWO"}.issubset(price_map):
-        ta_features = build_ta_feature_matrix(price_map, benchmarks=("VWO",))
+        ta_features = build_ta_feature_matrix(
+            price_map,
+            benchmarks=("VWO",),
+            split_map=_load_ta_split_map(conn),
+        )
         feature_df = feature_df.join(ta_features, how="left")
     return feature_df
 
