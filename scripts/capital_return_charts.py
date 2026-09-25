@@ -181,7 +181,7 @@ def plot_charts(frames: dict[str, pd.DataFrame], out_dir: str) -> list[str]:
                     "PGR — Annual Capital Returned to Shareholders: Repurchases vs. Dividends",
                     "$ Billions", lambda x, _: f"${x:.1f}B")
     _note(fig, "Repurchases = Σ monthly shares repurchased × average cost (monthly 8-K; the "
-               "2006-05 split-month cost is estimated from weekly closes). Dividends = amount "
+               "2006-05 split month from the Q2 2006 10-Q). Dividends = amount "
                "per ex-date × shares outstanding that month; Q1 ex-dates count toward the "
                "prior year.")
     fig.tight_layout(rect=(0, 0.03, 1, 1))

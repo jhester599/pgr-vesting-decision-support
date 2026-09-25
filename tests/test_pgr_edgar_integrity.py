@@ -95,6 +95,14 @@ def test_known_filed_values(monthly) -> None:
     assert row["2019-04-30", "net_income"] == pytest.approx(487.8)
     assert row["2019-04-30", "book_value_per_share"] == pytest.approx(20.74)
     assert row["2004-12-31", "shareholders_equity"] == pytest.approx(5155.4, rel=0.01)  # F18
+    # Split month: the 8-K prints 2.3M shares (pre + post split) and "NM".
+    # Q2 2006 10-Q, Part II Item 2: 331,496 pre-split at $107.94 and
+    # 1,932,200 post-split at $27.16, restated onto the post-split basis.
+    assert row["2006-05-31", "shares_repurchased"] == pytest.approx(0.331496 * 4 + 1.9322)
+    assert row["2006-05-31", "avg_cost_per_share"] == pytest.approx(
+        (0.331496 * 107.94 + 1.9322 * 27.16) / (0.331496 * 4 + 1.9322)
+    )
+    assert row["2006-05-31", "avg_cost_per_share"] == pytest.approx(27.0888, abs=1e-4)
 
 
 # ---------------------------------------------------------------------------
@@ -145,10 +153,14 @@ def test_accession_numbers_are_dashed(monthly) -> None:
 
 
 def test_every_value_traces_to_its_row_accession(ro_conn, monthly) -> None:
-    """Each parsed value equals the first-reported raw value of the row's filing."""
+    """Each parsed value equals the first-reported raw value of the row's filing,
+    or, where a supplementary 10-Q parse overrides it, that parse's value."""
     raw = db_client.get_pgr_edgar_first_reported(ro_conn)
     raw["month_end"] = pd.to_datetime(raw["month_end"])
     raw = raw.set_index(["month_end", "field"])
+    supplements = db_client.get_pgr_edgar_supplements(ro_conn)
+    supplements["month_end"] = pd.to_datetime(supplements["month_end"])
+    supplements = supplements.set_index(["month_end", "field"])
     skip = set(DERIVED_FIELDS) | set(db_client.PGR_EDGAR_MONTHLY_DERIVED_ONLY_COLUMNS)
     problems: list[str] = []
     for month_end, row in monthly.iterrows():
@@ -159,18 +171,59 @@ def test_every_value_traces_to_its_row_accession(ro_conn, monthly) -> None:
             if value is None or (isinstance(value, float) and math.isnan(value)):
                 continue
             key = (month_end, field)
-            if key not in raw.index:
+            if key in supplements.index:
+                src = supplements.loc[key]
+            elif key not in raw.index:
                 problems.append(f"{month_end.date()} {field}: no raw value")
                 continue
-            src = raw.loc[key]
-            if src["accession_number"] != row["accession_number"]:
-                problems.append(f"{month_end.date()} {field}: from {src['accession_number']}")
+            else:
+                src = raw.loc[key]
+                if src["accession_number"] != row["accession_number"]:
+                    problems.append(f"{month_end.date()} {field}: from {src['accession_number']}")
             stored = src["value_text"] if field in db_client.PGR_EDGAR_MONTHLY_TEXT_COLUMNS else src["value_real"]
             if stored != value and not (
                 isinstance(value, float) and abs(float(stored) - value) < 1e-9
             ):
                 problems.append(f"{month_end.date()} {field}: {value} != raw {stored}")
     assert not problems, "\n".join(problems[:40])
+
+
+def test_split_month_buybacks_trace_to_the_10q(ro_conn, monthly) -> None:
+    """2006-05 buybacks: per-leg 10-Q values parsed, the month derived from them."""
+    values = pd.read_sql_query(
+        "SELECT * FROM pgr_edgar_monthly_raw_values WHERE month_end = '2006-05-31' "
+        "AND parser_version = '10q-issuer-purchases/2026-09-25'",
+        ro_conn,
+    ).set_index("field")
+    assert set(values["accession_number"]) == {"0000950152-06-006431"}
+    assert set(values["filing_date"]) == {"2006-08-03"}
+    assert values["source_url"].str.endswith("/000095015206006431/l21391ae10vq.htm").all()
+    assert values["fetched_at"].notna().all()
+    parsed = values[values["method"] == "parsed"]["value_real"]
+    assert parsed.to_dict() == pytest.approx({
+        "shares_repurchased_pre_split": 0.331496,
+        "avg_cost_per_share_pre_split": 107.94,
+        "shares_repurchased_post_split": 1.9322,
+        "avg_cost_per_share_post_split": 27.16,
+    })
+    derived = values[values["method"] == "derived"]["value_real"]
+    assert set(derived.index) == {"shares_repurchased", "avg_cost_per_share"}
+    dollars = derived["shares_repurchased"] * derived["avg_cost_per_share"]
+    assert dollars == pytest.approx(0.331496 * 107.94 + 1.9322 * 27.16)  # $88.26M
+    may = monthly.loc["2006-05-31"]
+    assert may["shares_repurchased"] == pytest.approx(derived["shares_repurchased"])
+    assert may["avg_cost_per_share"] == pytest.approx(derived["avg_cost_per_share"])
+    # The row's other values still come from the 8-K; its printed 2.3M is kept.
+    assert may["accession_number"] == "0000950152-06-005098"
+    first = db_client.get_pgr_edgar_first_reported(ro_conn).set_index(["month_end", "field"])
+    assert first.loc[("2006-05-31", "shares_repurchased"), "value_real"] == pytest.approx(2.3)
+
+
+def test_no_repurchase_month_lacks_an_average_cost(monthly) -> None:
+    bought = monthly[monthly["shares_repurchased"] > 0]
+    assert bought["avg_cost_per_share"].notna().all(), bought.index[
+        bought["avg_cost_per_share"].isna()
+    ].tolist()
 
 
 # ---------------------------------------------------------------------------

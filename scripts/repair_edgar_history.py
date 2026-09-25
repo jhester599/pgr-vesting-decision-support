@@ -9,7 +9,9 @@
     pagination file.  One release per month is kept (the earliest filing
     with a combined ratio).  Every parsed value is appended to
     ``pgr_edgar_monthly_raw``; the monthly table is then rebuilt from those
-    records and its derived fields are recomputed over the whole table.
+    records, supplementary 10-Q values recorded by
+    ``scripts/repair_split_month_buybacks.py`` are re-applied, and its derived
+    fields are recomputed over the whole table.
 
 ``pgr_fundamentals_quarterly``
     Rebuilt from the XBRL companyfacts file: discrete quarters (Q4 = FY −
@@ -120,6 +122,7 @@ def rebuild_monthly(conn: sqlite3.Connection, since: str) -> list[dict[str, Any]
     conn.execute("DELETE FROM pgr_edgar_monthly")
     conn.commit()
     db_client.upsert_pgr_edgar_monthly(conn, selected)
+    db_client.apply_pgr_edgar_supplements(conn)
     fetcher.recompute_derived_fields(conn)
     log.info("Recorded %d raw values under parser %s", n_raw, fetcher.PARSER_VERSION)
     return selected

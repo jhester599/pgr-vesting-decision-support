@@ -165,7 +165,8 @@ def plot_charts(frames: dict[str, object], out_dir: str) -> list[str]:
              "Shares Repurchased (millions)", ORANGE)
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:.1f}M"))
     add_split_lines(ax, markers, first_edgar, ymax_frac=0.88)
-    _note(fig, "Shares repurchased in the month, on the share basis in effect at the time.")
+    _note(fig, "Shares repurchased in the month, on the share basis in effect at the time. "
+               "2006-05 (split month): 10-Q pre-split shares × 4 + post-split shares.")
     _save(fig, "pgr_share_repurchase_volume.png")
 
     # Repurchase dollars: full axis and capped axis
@@ -175,10 +176,12 @@ def plot_charts(frames: dict[str, object], out_dir: str) -> list[str]:
     peak_val = float(dollars.max())
     event = REPURCHASE_EVENTS.get(peak_date.strftime("%Y-%m"), "largest month")
     dollar_note = (
-        "Repurchase $ = shares repurchased × average cost per share (monthly 8-K). "
-        "Hatched: average cost not reported, estimated as the mean of the month's "
-        "weekly closes on the month-end share basis."
+        "Repurchase $ = shares repurchased × average cost per share (monthly 8-K; "
+        "2006-05 from the Q2 2006 10-Q)."
     )
+    if estimated.any():
+        dollar_note += (" Hatched: average cost not reported, estimated as the mean of "
+                        "the month's weekly closes on the month-end share basis.")
 
     def _dollar_bars(ax):
         ax.bar(_dates(dollars.index[~estimated]), dollars[~estimated].to_list(), width=20,

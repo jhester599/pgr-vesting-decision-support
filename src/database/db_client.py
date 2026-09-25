@@ -1275,6 +1275,116 @@ def record_pgr_edgar_raw(
     return added
 
 
+# Parses of periodic reports that supply a value the monthly 8-K printed as
+# "NM" or on a mixed share basis.  Their value columns override the 8-K row
+# (``apply_pgr_edgar_supplements``); every other column stays the 8-K's.
+#   10q-issuer-purchases/2026-09-25  split-month buybacks from 10-Q Part II
+#                                    Item 2 (src/ingestion/edgar_10q_repurchases)
+PGR_EDGAR_SUPPLEMENT_PARSER_VERSIONS: tuple[str, ...] = (
+    "10q-issuer-purchases/2026-09-25",
+)
+
+
+def record_pgr_edgar_supplement(
+    conn: sqlite3.Connection,
+    *,
+    accession_number: str,
+    parser_version: str,
+    month_end: str,
+    filing_date: str,
+    source_url: str,
+    fetched_at: str | None,
+    values: list[tuple[str, float, str]],
+    recorded_at: str | None = None,
+) -> int:
+    """Append one supplementary filing parse to the provenance tables.
+
+    ``values`` are ``(field, value, method)`` rows.  Fields may be monthly
+    value columns (these are applied to the row) or extra per-filing fields
+    kept for provenance only.  Nothing is written if (accession,
+    parser_version) is already recorded: the tables are append-only.
+
+    Returns:
+        Number of value rows added.
+    """
+    if parser_version not in PGR_EDGAR_SUPPLEMENT_PARSER_VERSIONS:
+        raise ValueError(f"{parser_version!r} is not a supplement parser version")
+    stamp = recorded_at or datetime.now(tz=timezone.utc).isoformat(timespec="seconds")
+    cursor = conn.execute(
+        """
+        INSERT OR IGNORE INTO pgr_edgar_filing_parses (
+            accession_number, parser_version, month_end, filing_date,
+            source_url, fetched_at, recorded_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            normalise_accession(accession_number), parser_version, month_end,
+            filing_date, source_url, fetched_at, stamp,
+        ),
+    )
+    if cursor.rowcount == 0:
+        conn.commit()
+        return 0
+    conn.executemany(
+        """
+        INSERT INTO pgr_edgar_monthly_raw (parse_id, field, value_real, value_text, method)
+        VALUES (?, ?, ?, NULL, ?)
+        """,
+        [(cursor.lastrowid, field, float(value), method) for field, value, method in values],
+    )
+    conn.commit()
+    return len(values)
+
+
+def get_pgr_edgar_supplements(conn: sqlite3.Connection) -> pd.DataFrame:
+    """Supplementary values that override ``pgr_edgar_monthly`` columns.
+
+    One row per (month_end, field) for monthly value columns, from the
+    latest supplement parse.  Columns as in ``pgr_edgar_monthly_raw_values``.
+    """
+    placeholders = ", ".join("?" for _ in PGR_EDGAR_SUPPLEMENT_PARSER_VERSIONS)
+    frame = pd.read_sql_query(
+        f"""
+        SELECT * FROM (
+            SELECT v.*, ROW_NUMBER() OVER (
+                PARTITION BY v.month_end, v.field ORDER BY v.parse_id DESC
+            ) AS rn
+            FROM pgr_edgar_monthly_raw_values AS v
+            WHERE v.parser_version IN ({placeholders})
+        )
+        WHERE rn = 1
+        ORDER BY month_end, field
+        """,
+        conn,
+        params=list(PGR_EDGAR_SUPPLEMENT_PARSER_VERSIONS),
+    ).drop(columns="rn")
+    return frame[frame["field"].isin(PGR_EDGAR_MONTHLY_VALUE_COLUMNS)].reset_index(drop=True)
+
+
+def apply_pgr_edgar_supplements(conn: sqlite3.Connection) -> int:
+    """Write the recorded supplementary values into ``pgr_edgar_monthly``.
+
+    Months the table does not have are skipped.  Derived fields are not
+    recomputed here.  Returns the number of cells whose value changed.
+    """
+    changed = 0
+    for row in get_pgr_edgar_supplements(conn).itertuples(index=False):
+        current = conn.execute(
+            f"SELECT {row.field} FROM pgr_edgar_monthly WHERE month_end = ?",
+            (row.month_end,),
+        ).fetchone()
+        if current is None:
+            continue
+        if current[0] is None or abs(float(current[0]) - row.value_real) > 1e-12:
+            conn.execute(
+                f"UPDATE pgr_edgar_monthly SET {row.field} = ? WHERE month_end = ?",
+                (row.value_real, row.month_end),
+            )
+            changed += 1
+    conn.commit()
+    return changed
+
+
 def get_pgr_edgar_first_reported(conn: sqlite3.Connection) -> pd.DataFrame:
     """Return the first-reported value of every (month_end, field) as a long table."""
     return pd.read_sql_query(
