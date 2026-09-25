@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 
 import config
+from src.processing import pgr_edgar_derived
 
 
 _EDGAR_CACHE_PATH = os.path.join(config.DATA_PROCESSED_DIR, "pgr_edgar_cache.csv")
@@ -145,29 +146,16 @@ def load(force_refresh: bool = False, apply_filing_lag: bool = True) -> pd.DataF
         pd.to_numeric(raw[pif_col], errors="coerce") if pif_col else np.nan
     )
 
-    # --- YoY PIF growth (compute if not already present) ---
+    # --- YoY PIF growth: calendar month vs the same month a year earlier ---
     if not df["pif_total"].isna().all():
-        df["pif_growth_yoy"] = df["pif_total"].pct_change(periods=12)
+        df["pif_growth_yoy"] = pgr_edgar_derived.yoy_growth_series(df["pif_total"])
     else:
         df["pif_growth_yoy"] = np.nan
 
-    # --- Gainshare estimate (0.0–2.0) ---
-    # Based on public proxy filing disclosures; conditional on CR availability.
-    cr = df["combined_ratio"]
-    pif_growth = df["pif_growth_yoy"]
-
-    if not cr.isna().all():
-        cr_score = ((96.0 - cr) / 10.0).clip(lower=0.0, upper=2.0)
-    else:
-        cr_score = pd.Series(np.nan, index=df.index)
-
-    if not pif_growth.isna().all():
-        # 10% YoY PIF growth = max score
-        pif_score = (pif_growth / 0.10).clip(lower=0.0, upper=2.0)
-    else:
-        pif_score = pd.Series(np.nan, index=df.index)
-
-    df["gainshare_estimate"] = (0.5 * cr_score + 0.5 * pif_score)
+    # --- Gainshare estimate (0.0–2.0): the single shared formula ---
+    df["gainshare_estimate"] = pgr_edgar_derived.gainshare_series(
+        df["combined_ratio"].astype(float), df["pif_growth_yoy"].astype(float)
+    )
 
     # --- Book Value Per Share (v6.x) ---
     # PGR reports BVPS in its monthly 8-K earnings supplements.  Used downstream

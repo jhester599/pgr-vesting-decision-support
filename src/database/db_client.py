@@ -24,6 +24,7 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from calendar import monthrange
 from datetime import date, datetime, timedelta, timezone
@@ -35,6 +36,8 @@ import pandas as pd
 import config
 from src.database import migration_runner
 from src.ingestion.provider_registry import get_provider_limit
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -808,25 +811,24 @@ def get_splits(conn: sqlite3.Connection, ticker: str) -> pd.DataFrame:
 def upsert_pgr_fundamentals(
     conn: sqlite3.Connection, records: list[dict[str, Any]]
 ) -> int:
-    """Bulk-insert or replace PGR quarterly fundamentals from FMP."""
+    """Bulk-insert or replace PGR quarterly fundamentals from EDGAR XBRL."""
     if not records:
         return 0
     sql = """
         INSERT OR REPLACE INTO pgr_fundamentals_quarterly
-            (period_end, pe_ratio, pb_ratio, roe, eps, revenue, net_income, source)
+            (period_end, roe, eps, revenue, net_income, filing_date, source)
         VALUES
-            (:period_end, :pe_ratio, :pb_ratio, :roe, :eps, :revenue, :net_income, :source)
+            (:period_end, :roe, :eps, :revenue, :net_income, :filing_date, :source)
     """
     normalised = [
         {
-            "period_end": r["period_end"],
-            "pe_ratio":   r.get("pe_ratio"),
-            "pb_ratio":   r.get("pb_ratio"),
-            "roe":        r.get("roe"),
-            "eps":        r.get("eps"),
-            "revenue":    r.get("revenue"),
-            "net_income": r.get("net_income"),
-            "source":     r.get("source"),
+            "period_end":  r["period_end"],
+            "roe":         r.get("roe"),
+            "eps":         r.get("eps"),
+            "revenue":     r.get("revenue"),
+            "net_income":  r.get("net_income"),
+            "filing_date": r.get("filing_date"),
+            "source":      r.get("source"),
         }
         for r in records
     ]
@@ -835,10 +837,22 @@ def upsert_pgr_fundamentals(
     return len(normalised)
 
 
+def replace_pgr_fundamentals(
+    conn: sqlite3.Connection, records: list[dict[str, Any]]
+) -> int:
+    """Replace the whole ``pgr_fundamentals_quarterly`` table with ``records``.
+
+    Used when the definitions change, so rows that the new extraction no
+    longer produces (e.g. a full-year row stored as a quarter) do not linger.
+    """
+    conn.execute("DELETE FROM pgr_fundamentals_quarterly")
+    return upsert_pgr_fundamentals(conn, records)
+
+
 def get_pgr_fundamentals(conn: sqlite3.Connection) -> pd.DataFrame:
     """Load all PGR quarterly fundamentals, sorted ascending by period_end."""
     sql = """
-        SELECT period_end, pe_ratio, pb_ratio, roe, eps, revenue, net_income
+        SELECT period_end, roe, eps, revenue, net_income, filing_date
         FROM pgr_fundamentals_quarterly
         ORDER BY period_end ASC
     """
@@ -848,236 +862,252 @@ def get_pgr_fundamentals(conn: sqlite3.Connection) -> pd.DataFrame:
     return df
 
 
-def upsert_pgr_edgar_monthly(
-    conn: sqlite3.Connection, records: list[dict[str, Any]]
-) -> int:
-    """Bulk-insert or replace PGR monthly EDGAR metrics.
+# Value columns of pgr_edgar_monthly (everything except the key and the
+# provenance columns filing_date / filing_type / accession_number).
+PGR_EDGAR_MONTHLY_VALUE_COLUMNS: tuple[str, ...] = (
+    "combined_ratio", "pif_total", "pif_growth_yoy",
+    "gainshare_estimate", "book_value_per_share", "eps_basic",
+    "avg_diluted_equivalent_shares",
+    "net_premiums_written", "net_premiums_earned", "net_income",
+    "eps_diluted", "total_net_realized_gains", "service_revenues",
+    "fees_and_other_revenues", "losses_lae", "policy_acquisition_costs",
+    "other_underwriting_expenses", "interest_expense",
+    "provision_for_income_taxes", "total_comprehensive_income",
+    "comprehensive_eps_diluted", "avg_shares_basic", "avg_shares_diluted",
+    "loss_lae_ratio", "expense_ratio",
+    "npw_agency", "npw_direct", "npw_commercial", "npw_property",
+    "npe_agency", "npe_direct", "npe_commercial", "npe_property",
+    "pif_agency_auto", "pif_direct_auto", "pif_special_lines", "pif_property",
+    "pif_commercial_lines",
+    "pif_total_personal_lines",
+    "investment_income", "total_revenues", "total_expenses",
+    "income_before_income_taxes", "roe_net_income_ttm",
+    "roe_comprehensive_trailing_12m", "shareholders_equity", "total_assets",
+    "total_investments", "loss_lae_reserves", "unearned_premiums",
+    "debt", "total_liabilities", "common_shares_outstanding",
+    "shares_repurchased", "avg_cost_per_share",
+    "fte_return_fixed_income", "fte_return_common_stocks",
+    "fte_return_total_portfolio", "investment_book_yield",
+    "net_unrealized_gains_fixed", "fixed_income_duration",
+    "debt_to_total_capital", "weighted_avg_credit_quality",
+    "channel_mix_agency_pct", "npw_growth_yoy", "underwriting_income",
+    "unearned_premium_growth_yoy", "buyback_yield",
+)
+PGR_EDGAR_MONTHLY_PROVENANCE_COLUMNS: tuple[str, ...] = (
+    "filing_date", "filing_type", "accession_number",
+)
+# Columns computed over the whole time series, never read from one filing.
+# They are not recorded in pgr_edgar_monthly_raw.  (pif_total and
+# pif_total_personal_lines are also recomputed from their components, but the
+# raw table keeps the totals as printed in each filing.)
+PGR_EDGAR_MONTHLY_DERIVED_ONLY_COLUMNS: frozenset[str] = frozenset({
+    "pif_growth_yoy", "gainshare_estimate", "channel_mix_agency_pct",
+    "npw_growth_yoy", "underwriting_income", "unearned_premium_growth_yoy",
+    "buyback_yield",
+})
+PGR_EDGAR_MONTHLY_TEXT_COLUMNS: frozenset[str] = frozenset({
+    "filing_date", "filing_type", "accession_number", "weighted_avg_credit_quality",
+})
 
-    Accepts any subset of the full v6.2 column set; missing keys default to
-    ``None`` (SQLite NULL).  This keeps callers that only supply core fields
-    (e.g. the live EDGAR HTML fetcher) compatible with the expanded schema.
+
+def normalise_accession(accession: Any) -> str | None:
+    """Return an EDGAR accession number in dashed ``##########-YY-######`` form.
+
+    The table held both forms (235 dashed, 28 undashed; F33).  Anything that
+    is not 18 digits is returned unchanged (as a string).
+    """
+    if accession is None:
+        return None
+    text = str(accession).strip()
+    if not text or text.lower() == "nan":
+        return None
+    digits = "".join(ch for ch in text if ch.isdigit())
+    if len(digits) != 18:
+        return text
+    return f"{digits[:10]}-{digits[10:12]}-{digits[12:]}"
+
+
+def _normalise_edgar_monthly_record(r: dict[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = {"month_end": r["month_end"]}
+    for col in PGR_EDGAR_MONTHLY_PROVENANCE_COLUMNS + PGR_EDGAR_MONTHLY_VALUE_COLUMNS:
+        out[col] = r.get(col)
+    # The live 8-K parser emits the CSV-era key ``roe_net_income_trailing_12m``;
+    # accept either name.
+    if out["roe_net_income_ttm"] is None:
+        out["roe_net_income_ttm"] = r.get("roe_net_income_trailing_12m")
+    out["accession_number"] = normalise_accession(out["accession_number"])
+    for col, value in list(out.items()):
+        if isinstance(value, float) and value != value:
+            out[col] = None
+    return out
+
+
+def upsert_pgr_edgar_monthly(
+    conn: sqlite3.Connection,
+    records: list[dict[str, Any]],
+    mode: str = "merge",
+) -> int:
+    """Insert or update PGR monthly EDGAR rows without mixing filings (F33).
+
+    Accepts any subset of the column set; missing keys are NULL.  A row's
+    ``accession_number`` and ``filing_date`` say which filing its values came
+    from, and an update never makes that false:
+
+    * no row for the month: insert it;
+    * same filing (equal accession, or either side has none): the new
+      non-NULL values win, others are kept, and the stored provenance
+      columns are kept;
+    * a different filing: an **earlier-filed** one replaces the whole row
+      (first-reported wins); a later one leaves the row unchanged and is
+      logged.  Every parse is still recorded in ``pgr_edgar_monthly_raw`` by
+      the caller.
+
+    ``mode="insert_missing"`` only inserts months that are absent; existing
+    rows are never touched.  ``load_from_csv`` uses it, so re-seeding from
+    the CSV cannot overwrite newer rows.
+
+    Derived fields (YoY growth, Gainshare, PIF totals, …) should be refreshed
+    afterwards over the whole table with
+    ``scripts.edgar_8k_fetcher.recompute_derived_fields``.
+
+    Returns:
+        Number of rows inserted or updated.
+    """
+    if mode not in ("merge", "insert_missing"):
+        raise ValueError(f"unknown mode: {mode!r}")
+    if not records:
+        return 0
+    columns = ("month_end",) + PGR_EDGAR_MONTHLY_PROVENANCE_COLUMNS + PGR_EDGAR_MONTHLY_VALUE_COLUMNS
+    insert_sql = (
+        f"INSERT INTO pgr_edgar_monthly ({', '.join(columns)}) "
+        f"VALUES ({', '.join(':' + c for c in columns)})"
+    )
+    merge_sql = (
+        "UPDATE pgr_edgar_monthly SET "
+        + ", ".join(
+            [f"{c} = COALESCE({c}, :{c})" for c in PGR_EDGAR_MONTHLY_PROVENANCE_COLUMNS]
+            + [f"{c} = COALESCE(:{c}, {c})" for c in PGR_EDGAR_MONTHLY_VALUE_COLUMNS]
+        )
+        + " WHERE month_end = :month_end"
+    )
+    replace_sql = (
+        "UPDATE pgr_edgar_monthly SET "
+        + ", ".join(
+            f"{c} = :{c}"
+            for c in PGR_EDGAR_MONTHLY_PROVENANCE_COLUMNS + PGR_EDGAR_MONTHLY_VALUE_COLUMNS
+        )
+        + " WHERE month_end = :month_end"
+    )
+
+    written = 0
+    for record in records:
+        row = _normalise_edgar_monthly_record(record)
+        existing = conn.execute(
+            "SELECT accession_number, filing_date FROM pgr_edgar_monthly WHERE month_end = ?",
+            (row["month_end"],),
+        ).fetchone()
+        if existing is None:
+            conn.execute(insert_sql, row)
+            written += 1
+            continue
+        if mode == "insert_missing":
+            continue
+        old_accession = normalise_accession(existing[0])
+        old_filed = existing[1]
+        new_accession = row["accession_number"]
+        if old_accession is None or new_accession is None or old_accession == new_accession:
+            conn.execute(merge_sql, row)
+            written += 1
+        elif row["filing_date"] and old_filed and row["filing_date"] < old_filed:
+            conn.execute(replace_sql, row)
+            written += 1
+        else:
+            logger.info(
+                "pgr_edgar_monthly %s: keeping %s (filed %s); later filing %s "
+                "(filed %s) not merged",
+                row["month_end"], old_accession, old_filed,
+                new_accession, row["filing_date"],
+            )
+    conn.commit()
+    return written
+
+
+def record_pgr_edgar_raw(
+    conn: sqlite3.Connection,
+    records: list[dict[str, Any]],
+    parser_version: str,
+    method: str = "parsed",
+    recorded_at: str | None = None,
+) -> int:
+    """Append parsed 8-K values to the provenance tables (F33).
+
+    Each record becomes one ``pgr_edgar_filing_parses`` row (accession,
+    parser version, source URL, fetched-at) and one ``pgr_edgar_monthly_raw``
+    row per non-NULL value column.  A (accession, parser_version) pair that is
+    already recorded is left as it is: the tables are append-only.  Records
+    without an accession number are skipped.  A record's ``derived_fields``
+    list marks values computed by the parser (``method='derived'``).
+
+    Returns:
+        Number of value rows added.
     """
     if not records:
         return 0
-    sql = """
-        INSERT INTO pgr_edgar_monthly (
-            month_end, filing_date, filing_type, accession_number,
-            combined_ratio, pif_total, pif_growth_yoy,
-            gainshare_estimate, book_value_per_share, eps_basic,
-            avg_diluted_equivalent_shares,
-            net_premiums_written, net_premiums_earned, net_income,
-            eps_diluted, total_net_realized_gains, service_revenues,
-            fees_and_other_revenues, losses_lae, policy_acquisition_costs,
-            other_underwriting_expenses, interest_expense,
-            provision_for_income_taxes, total_comprehensive_income,
-            comprehensive_eps_diluted, avg_shares_basic, avg_shares_diluted,
-            loss_lae_ratio, expense_ratio,
-            npw_agency, npw_direct, npw_commercial, npw_property,
-            npe_agency, npe_direct, npe_commercial, npe_property,
-            pif_agency_auto, pif_direct_auto, pif_special_lines, pif_property,
-            pif_commercial_lines,
-            pif_total_personal_lines,
-            investment_income, total_revenues, total_expenses,
-            income_before_income_taxes, roe_net_income_ttm,
-            roe_comprehensive_trailing_12m, shareholders_equity, total_assets,
-            total_investments, loss_lae_reserves, unearned_premiums,
-            debt, total_liabilities, common_shares_outstanding,
-            shares_repurchased, avg_cost_per_share,
-            fte_return_fixed_income, fte_return_common_stocks,
-            fte_return_total_portfolio, investment_book_yield,
-            net_unrealized_gains_fixed, fixed_income_duration,
-            debt_to_total_capital, weighted_avg_credit_quality,
-            channel_mix_agency_pct, npw_growth_yoy, underwriting_income,
-            unearned_premium_growth_yoy, buyback_yield
-        ) VALUES (
-            :month_end, :filing_date, :filing_type, :accession_number,
-            :combined_ratio, :pif_total, :pif_growth_yoy,
-            :gainshare_estimate, :book_value_per_share, :eps_basic,
-            :avg_diluted_equivalent_shares,
-            :net_premiums_written, :net_premiums_earned, :net_income,
-            :eps_diluted, :total_net_realized_gains, :service_revenues,
-            :fees_and_other_revenues, :losses_lae, :policy_acquisition_costs,
-            :other_underwriting_expenses, :interest_expense,
-            :provision_for_income_taxes, :total_comprehensive_income,
-            :comprehensive_eps_diluted, :avg_shares_basic, :avg_shares_diluted,
-            :loss_lae_ratio, :expense_ratio,
-            :npw_agency, :npw_direct, :npw_commercial, :npw_property,
-            :npe_agency, :npe_direct, :npe_commercial, :npe_property,
-            :pif_agency_auto, :pif_direct_auto, :pif_special_lines, :pif_property,
-            :pif_commercial_lines,
-            :pif_total_personal_lines,
-            :investment_income, :total_revenues, :total_expenses,
-            :income_before_income_taxes, :roe_net_income_ttm,
-            :roe_comprehensive_trailing_12m, :shareholders_equity, :total_assets,
-            :total_investments, :loss_lae_reserves, :unearned_premiums,
-            :debt, :total_liabilities, :common_shares_outstanding,
-            :shares_repurchased, :avg_cost_per_share,
-            :fte_return_fixed_income, :fte_return_common_stocks,
-            :fte_return_total_portfolio, :investment_book_yield,
-            :net_unrealized_gains_fixed, :fixed_income_duration,
-            :debt_to_total_capital, :weighted_avg_credit_quality,
-            :channel_mix_agency_pct, :npw_growth_yoy, :underwriting_income,
-            :unearned_premium_growth_yoy, :buyback_yield
-        )
-        ON CONFLICT (month_end) DO UPDATE SET
-            filing_date                   = excluded.filing_date,
-            filing_type                   = excluded.filing_type,
-            accession_number              = excluded.accession_number,
-            combined_ratio                = COALESCE(excluded.combined_ratio,                pgr_edgar_monthly.combined_ratio),
-            pif_total                     = COALESCE(excluded.pif_total,                     pgr_edgar_monthly.pif_total),
-            pif_growth_yoy                = COALESCE(excluded.pif_growth_yoy,                pgr_edgar_monthly.pif_growth_yoy),
-            gainshare_estimate            = COALESCE(excluded.gainshare_estimate,            pgr_edgar_monthly.gainshare_estimate),
-            book_value_per_share          = COALESCE(excluded.book_value_per_share,          pgr_edgar_monthly.book_value_per_share),
-            eps_basic                     = COALESCE(excluded.eps_basic,                     pgr_edgar_monthly.eps_basic),
-            avg_diluted_equivalent_shares = COALESCE(excluded.avg_diluted_equivalent_shares, pgr_edgar_monthly.avg_diluted_equivalent_shares),
-            net_premiums_written          = COALESCE(excluded.net_premiums_written,          pgr_edgar_monthly.net_premiums_written),
-            net_premiums_earned           = COALESCE(excluded.net_premiums_earned,           pgr_edgar_monthly.net_premiums_earned),
-            net_income                    = COALESCE(excluded.net_income,                    pgr_edgar_monthly.net_income),
-            eps_diluted                   = COALESCE(excluded.eps_diluted,                   pgr_edgar_monthly.eps_diluted),
-            total_net_realized_gains      = COALESCE(excluded.total_net_realized_gains,      pgr_edgar_monthly.total_net_realized_gains),
-            service_revenues              = COALESCE(excluded.service_revenues,              pgr_edgar_monthly.service_revenues),
-            fees_and_other_revenues       = COALESCE(excluded.fees_and_other_revenues,       pgr_edgar_monthly.fees_and_other_revenues),
-            losses_lae                    = COALESCE(excluded.losses_lae,                    pgr_edgar_monthly.losses_lae),
-            policy_acquisition_costs      = COALESCE(excluded.policy_acquisition_costs,      pgr_edgar_monthly.policy_acquisition_costs),
-            other_underwriting_expenses   = COALESCE(excluded.other_underwriting_expenses,   pgr_edgar_monthly.other_underwriting_expenses),
-            interest_expense              = COALESCE(excluded.interest_expense,              pgr_edgar_monthly.interest_expense),
-            provision_for_income_taxes    = COALESCE(excluded.provision_for_income_taxes,    pgr_edgar_monthly.provision_for_income_taxes),
-            total_comprehensive_income    = COALESCE(excluded.total_comprehensive_income,    pgr_edgar_monthly.total_comprehensive_income),
-            comprehensive_eps_diluted     = COALESCE(excluded.comprehensive_eps_diluted,     pgr_edgar_monthly.comprehensive_eps_diluted),
-            avg_shares_basic              = COALESCE(excluded.avg_shares_basic,              pgr_edgar_monthly.avg_shares_basic),
-            avg_shares_diluted            = COALESCE(excluded.avg_shares_diluted,            pgr_edgar_monthly.avg_shares_diluted),
-            loss_lae_ratio                = COALESCE(excluded.loss_lae_ratio,                pgr_edgar_monthly.loss_lae_ratio),
-            expense_ratio                 = COALESCE(excluded.expense_ratio,                 pgr_edgar_monthly.expense_ratio),
-            npw_agency                    = COALESCE(excluded.npw_agency,                    pgr_edgar_monthly.npw_agency),
-            npw_direct                    = COALESCE(excluded.npw_direct,                    pgr_edgar_monthly.npw_direct),
-            npw_commercial                = COALESCE(excluded.npw_commercial,                pgr_edgar_monthly.npw_commercial),
-            npw_property                  = COALESCE(excluded.npw_property,                  pgr_edgar_monthly.npw_property),
-            npe_agency                    = COALESCE(excluded.npe_agency,                    pgr_edgar_monthly.npe_agency),
-            npe_direct                    = COALESCE(excluded.npe_direct,                    pgr_edgar_monthly.npe_direct),
-            npe_commercial                = COALESCE(excluded.npe_commercial,                pgr_edgar_monthly.npe_commercial),
-            npe_property                  = COALESCE(excluded.npe_property,                  pgr_edgar_monthly.npe_property),
-            pif_agency_auto               = COALESCE(excluded.pif_agency_auto,               pgr_edgar_monthly.pif_agency_auto),
-            pif_direct_auto               = COALESCE(excluded.pif_direct_auto,               pgr_edgar_monthly.pif_direct_auto),
-            pif_special_lines             = COALESCE(excluded.pif_special_lines,             pgr_edgar_monthly.pif_special_lines),
-            pif_property                  = COALESCE(excluded.pif_property,                  pgr_edgar_monthly.pif_property),
-            pif_commercial_lines          = COALESCE(excluded.pif_commercial_lines,          pgr_edgar_monthly.pif_commercial_lines),
-            pif_total_personal_lines      = COALESCE(excluded.pif_total_personal_lines,      pgr_edgar_monthly.pif_total_personal_lines),
-            investment_income             = COALESCE(excluded.investment_income,             pgr_edgar_monthly.investment_income),
-            total_revenues                = COALESCE(excluded.total_revenues,                pgr_edgar_monthly.total_revenues),
-            total_expenses                = COALESCE(excluded.total_expenses,                pgr_edgar_monthly.total_expenses),
-            income_before_income_taxes    = COALESCE(excluded.income_before_income_taxes,    pgr_edgar_monthly.income_before_income_taxes),
-            roe_net_income_ttm            = COALESCE(excluded.roe_net_income_ttm,            pgr_edgar_monthly.roe_net_income_ttm),
-            roe_comprehensive_trailing_12m= COALESCE(excluded.roe_comprehensive_trailing_12m,pgr_edgar_monthly.roe_comprehensive_trailing_12m),
-            shareholders_equity           = COALESCE(excluded.shareholders_equity,           pgr_edgar_monthly.shareholders_equity),
-            total_assets                  = COALESCE(excluded.total_assets,                  pgr_edgar_monthly.total_assets),
-            total_investments             = COALESCE(excluded.total_investments,             pgr_edgar_monthly.total_investments),
-            loss_lae_reserves             = COALESCE(excluded.loss_lae_reserves,             pgr_edgar_monthly.loss_lae_reserves),
-            unearned_premiums             = COALESCE(excluded.unearned_premiums,             pgr_edgar_monthly.unearned_premiums),
-            debt                          = COALESCE(excluded.debt,                          pgr_edgar_monthly.debt),
-            total_liabilities             = COALESCE(excluded.total_liabilities,             pgr_edgar_monthly.total_liabilities),
-            common_shares_outstanding     = COALESCE(excluded.common_shares_outstanding,     pgr_edgar_monthly.common_shares_outstanding),
-            shares_repurchased            = COALESCE(excluded.shares_repurchased,            pgr_edgar_monthly.shares_repurchased),
-            avg_cost_per_share            = COALESCE(excluded.avg_cost_per_share,            pgr_edgar_monthly.avg_cost_per_share),
-            fte_return_fixed_income       = COALESCE(excluded.fte_return_fixed_income,       pgr_edgar_monthly.fte_return_fixed_income),
-            fte_return_common_stocks      = COALESCE(excluded.fte_return_common_stocks,      pgr_edgar_monthly.fte_return_common_stocks),
-            fte_return_total_portfolio    = COALESCE(excluded.fte_return_total_portfolio,    pgr_edgar_monthly.fte_return_total_portfolio),
-            investment_book_yield         = COALESCE(excluded.investment_book_yield,         pgr_edgar_monthly.investment_book_yield),
-            net_unrealized_gains_fixed    = COALESCE(excluded.net_unrealized_gains_fixed,    pgr_edgar_monthly.net_unrealized_gains_fixed),
-            fixed_income_duration         = COALESCE(excluded.fixed_income_duration,         pgr_edgar_monthly.fixed_income_duration),
-            debt_to_total_capital         = COALESCE(excluded.debt_to_total_capital,         pgr_edgar_monthly.debt_to_total_capital),
-            weighted_avg_credit_quality   = COALESCE(excluded.weighted_avg_credit_quality,   pgr_edgar_monthly.weighted_avg_credit_quality),
-            channel_mix_agency_pct        = COALESCE(excluded.channel_mix_agency_pct,        pgr_edgar_monthly.channel_mix_agency_pct),
-            npw_growth_yoy                = COALESCE(excluded.npw_growth_yoy,                pgr_edgar_monthly.npw_growth_yoy),
-            underwriting_income           = COALESCE(excluded.underwriting_income,           pgr_edgar_monthly.underwriting_income),
-            unearned_premium_growth_yoy   = COALESCE(excluded.unearned_premium_growth_yoy,   pgr_edgar_monthly.unearned_premium_growth_yoy),
-            buyback_yield                 = COALESCE(excluded.buyback_yield,                 pgr_edgar_monthly.buyback_yield)
-    """
-    normalised = [
-        {
-            "month_end":                   r["month_end"],
-            "filing_date":                r.get("filing_date"),
-            "filing_type":                r.get("filing_type"),
-            "accession_number":           r.get("accession_number"),
-            "combined_ratio":              r.get("combined_ratio"),
-            "pif_total":                   r.get("pif_total"),
-            "pif_growth_yoy":              r.get("pif_growth_yoy"),
-            "gainshare_estimate":          r.get("gainshare_estimate"),
-            "book_value_per_share":        r.get("book_value_per_share"),
-            "eps_basic":                   r.get("eps_basic"),
-            "avg_diluted_equivalent_shares": r.get("avg_diluted_equivalent_shares"),
-            "net_premiums_written":        r.get("net_premiums_written"),
-            "net_premiums_earned":         r.get("net_premiums_earned"),
-            "net_income":                  r.get("net_income"),
-            "eps_diluted":                 r.get("eps_diluted"),
-            "total_net_realized_gains":    r.get("total_net_realized_gains"),
-            "service_revenues":            r.get("service_revenues"),
-            "fees_and_other_revenues":     r.get("fees_and_other_revenues"),
-            "losses_lae":                  r.get("losses_lae"),
-            "policy_acquisition_costs":    r.get("policy_acquisition_costs"),
-            "other_underwriting_expenses": r.get("other_underwriting_expenses"),
-            "interest_expense":            r.get("interest_expense"),
-            "provision_for_income_taxes":  r.get("provision_for_income_taxes"),
-            "total_comprehensive_income":  r.get("total_comprehensive_income"),
-            "comprehensive_eps_diluted":   r.get("comprehensive_eps_diluted"),
-            "avg_shares_basic":            r.get("avg_shares_basic"),
-            "avg_shares_diluted":          r.get("avg_shares_diluted"),
-            "loss_lae_ratio":              r.get("loss_lae_ratio"),
-            "expense_ratio":               r.get("expense_ratio"),
-            "npw_agency":                  r.get("npw_agency"),
-            "npw_direct":                  r.get("npw_direct"),
-            "npw_commercial":              r.get("npw_commercial"),
-            "npw_property":                r.get("npw_property"),
-            "npe_agency":                  r.get("npe_agency"),
-            "npe_direct":                  r.get("npe_direct"),
-            "npe_commercial":              r.get("npe_commercial"),
-            "npe_property":                r.get("npe_property"),
-            "pif_agency_auto":             r.get("pif_agency_auto"),
-            "pif_direct_auto":             r.get("pif_direct_auto"),
-            "pif_special_lines":           r.get("pif_special_lines"),
-            "pif_property":                r.get("pif_property"),
-            "pif_commercial_lines":        r.get("pif_commercial_lines"),
-            "pif_total_personal_lines":    r.get("pif_total_personal_lines"),
-            "investment_income":           r.get("investment_income"),
-            "total_revenues":              r.get("total_revenues"),
-            "total_expenses":              r.get("total_expenses"),
-            "income_before_income_taxes":  r.get("income_before_income_taxes"),
-            # The live 8-K parser emits the CSV-era key
-            # ``roe_net_income_trailing_12m``; accept either name.
-            "roe_net_income_ttm":          (
-                r.get("roe_net_income_ttm")
-                if r.get("roe_net_income_ttm") is not None
-                else r.get("roe_net_income_trailing_12m")
+    stamp = recorded_at or datetime.now(tz=timezone.utc).isoformat(timespec="seconds")
+    added = 0
+    for record in records:
+        row = _normalise_edgar_monthly_record(record)
+        accession = row["accession_number"]
+        if accession is None:
+            continue
+        cursor = conn.execute(
+            """
+            INSERT OR IGNORE INTO pgr_edgar_filing_parses (
+                accession_number, parser_version, month_end, filing_date,
+                source_url, fetched_at, recorded_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                accession, parser_version, row["month_end"], row["filing_date"],
+                record.get("document_url"), record.get("fetched_at"), stamp,
             ),
-            "roe_comprehensive_trailing_12m": r.get("roe_comprehensive_trailing_12m"),
-            "shareholders_equity":         r.get("shareholders_equity"),
-            "total_assets":                r.get("total_assets"),
-            "total_investments":           r.get("total_investments"),
-            "loss_lae_reserves":           r.get("loss_lae_reserves"),
-            "unearned_premiums":           r.get("unearned_premiums"),
-            "debt":                        r.get("debt"),
-            "total_liabilities":           r.get("total_liabilities"),
-            "common_shares_outstanding":   r.get("common_shares_outstanding"),
-            "shares_repurchased":          r.get("shares_repurchased"),
-            "avg_cost_per_share":          r.get("avg_cost_per_share"),
-            "fte_return_fixed_income":     r.get("fte_return_fixed_income"),
-            "fte_return_common_stocks":    r.get("fte_return_common_stocks"),
-            "fte_return_total_portfolio":  r.get("fte_return_total_portfolio"),
-            "investment_book_yield":       r.get("investment_book_yield"),
-            "net_unrealized_gains_fixed":  r.get("net_unrealized_gains_fixed"),
-            "fixed_income_duration":       r.get("fixed_income_duration"),
-            "debt_to_total_capital":       r.get("debt_to_total_capital"),
-            "weighted_avg_credit_quality": r.get("weighted_avg_credit_quality"),
-            "channel_mix_agency_pct":      r.get("channel_mix_agency_pct"),
-            "npw_growth_yoy":              r.get("npw_growth_yoy"),
-            "underwriting_income":         r.get("underwriting_income"),
-            "unearned_premium_growth_yoy": r.get("unearned_premium_growth_yoy"),
-            "buyback_yield":               r.get("buyback_yield"),
-        }
-        for r in records
-    ]
-    conn.executemany(sql, normalised)
+        )
+        if cursor.rowcount == 0:
+            continue  # this filing was already recorded under this parser
+        parse_id = cursor.lastrowid
+        derived = set(record.get("derived_fields") or ())
+        values = []
+        for field in PGR_EDGAR_MONTHLY_VALUE_COLUMNS:
+            value = row[field]
+            if value is None or field in PGR_EDGAR_MONTHLY_DERIVED_ONLY_COLUMNS:
+                continue
+            is_text = field in PGR_EDGAR_MONTHLY_TEXT_COLUMNS
+            values.append((
+                parse_id,
+                field,
+                None if is_text else float(value),
+                str(value) if is_text else None,
+                "derived" if field in derived else method,
+            ))
+        conn.executemany(
+            """
+            INSERT INTO pgr_edgar_monthly_raw
+                (parse_id, field, value_real, value_text, method)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            values,
+        )
+        added += len(values)
     conn.commit()
-    return len(normalised)
+    return added
+
+
+def get_pgr_edgar_first_reported(conn: sqlite3.Connection) -> pd.DataFrame:
+    """Return the first-reported value of every (month_end, field) as a long table."""
+    return pd.read_sql_query(
+        "SELECT * FROM pgr_edgar_monthly_first_reported ORDER BY month_end, field",
+        conn,
+    )
 
 
 def get_pgr_edgar_monthly(conn: sqlite3.Connection) -> pd.DataFrame:

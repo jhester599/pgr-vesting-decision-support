@@ -115,21 +115,14 @@ def latest_share_basis_factor(split_history: pd.DataFrame) -> float:
 
 
 def _quarterly_eps(quarterly: pd.DataFrame) -> pd.Series:
-    """Return discrete-quarter EPS from XBRL rows whose Q4 rows are full-year.
+    """Return discrete-quarter EPS from ``pgr_fundamentals_quarterly``.
 
-    Q4 is derived as full-year EPS less Q1-Q3 when all three are present.
+    Every row, Q4 included, is already a discrete quarter (Q4 = full year −
+    nine months, derived in ``edgar_client``; F09).
     """
     eps = pd.to_numeric(quarterly["eps"], errors="coerce").dropna()
     eps.index = pd.DatetimeIndex(eps.index) + pd.offsets.MonthEnd(0)
-    discrete = eps[eps.index.month != 12].copy()
-    for year_end, annual in eps[eps.index.month == 12].items():
-        quarter_ends = [
-            pd.Timestamp(year_end.year, month, 1) + pd.offsets.MonthEnd(0)
-            for month in (3, 6, 9)
-        ]
-        if all(q in discrete.index for q in quarter_ends):
-            discrete[year_end] = annual - discrete[quarter_ends].sum()
-    return discrete.sort_index()
+    return eps.sort_index()
 
 
 def fill_eps_and_bvps_gaps(
@@ -152,7 +145,7 @@ def fill_eps_and_bvps_gaps(
         edgar_monthly: Monthly 8-K data indexed by period month-end with
             ``eps_basic``, ``book_value_per_share`` and ``filing_date``.
         quarterly_fundamentals: XBRL rows indexed by quarter-end with an
-            ``eps`` column (Q4 rows hold full-year EPS), or None.
+            ``eps`` column (discrete quarters), or None.
         split_history: Splits indexed by split date with ``split_ratio``.
 
     Returns:

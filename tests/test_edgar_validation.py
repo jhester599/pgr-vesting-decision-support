@@ -96,13 +96,13 @@ class TestValidateParsedRecord:
         assert result["combined_ratio"] == 95.0
 
     def test_validate_pif_below_floor(self):
-        """pif_total=5,000 < 10,000 canonical floor → set to None."""
-        rec = _rec(pif_total=5_000.0)
+        """pif_total=4,000 < 5,000 floor → set to None (unit mis-parse)."""
+        rec = _rec(pif_total=4_000.0)
         result = _validate_parsed_record(rec, "2026-01-20", "ACC004")
         assert result["pif_total"] is None
 
     def test_validate_pif_above_floor(self):
-        """pif_total=20,000 (thousands) ≥ 10,000 floor → preserved."""
+        """pif_total=20,000 (thousands) ≥ 5,000 floor → preserved."""
         rec = _rec(pif_total=20_000.0)
         result = _validate_parsed_record(rec, "2026-01-20", "ACC005")
         assert result["pif_total"] == 20_000.0
@@ -147,10 +147,16 @@ class TestValidateParsedRecord:
         assert result["combined_ratio"] == 95.0
 
     def test_validate_pif_at_floor_boundary(self):
-        """pif_total=10,000 exactly → not < 10,000 → preserved."""
-        rec = _rec(pif_total=10_000.0)
+        """pif_total=5,000 exactly → not < 5,000 → preserved."""
+        rec = _rec(pif_total=5_000.0)
         result = _validate_parsed_record(rec, "2026-01-20", "ACC011")
-        assert result["pif_total"] == 10_000.0
+        assert result["pif_total"] == 5_000.0
+
+    def test_validate_keeps_2004_pif_scale(self):
+        """PGR had 9,049K policies in Sep-2004; that is not a mis-parse."""
+        rec = _rec(pif_total=9_049.0)
+        result = _validate_parsed_record(rec, "2004-10-20", "ACC012")
+        assert result["pif_total"] == 9_049.0
 
 
 # ---------------------------------------------------------------------------
@@ -207,7 +213,7 @@ class TestBothNullifiedSkip:
             combined_ratio=95.0,
             loss_lae_ratio=65.0,
             expense_ratio=40.0,   # delta=10 > 5 → CR nullified
-            pif_total=5_000.0,    # < 10,000 → PIF nullified
+            pif_total=4_000.0,    # < 5,000 → PIF nullified
         )
         result = _validate_parsed_record(rec, "2026-01-20", "ACC_BOTH")
 

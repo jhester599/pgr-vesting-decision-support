@@ -11,24 +11,28 @@ Schedule (see .github/workflows/monthly_8k_fetch.yml):
   - Primary run:  20th of each month at 14:00 UTC
   - Fallback run: 25th of each month at 14:00 UTC (covers late filers)
 
-Both runs are idempotent: ``db_client.upsert_pgr_edgar_monthly`` uses
-``INSERT OR REPLACE``, so running the fetcher twice in the same month is a safe
-no-op when no new data is present, and correctly overwrites the existing row
-when updated data is available.
+Both runs are idempotent.  Every parsed value is appended to
+``pgr_edgar_monthly_raw`` (keyed by accession, field and ``PARSER_VERSION``;
+an existing key is left alone), ``db_client.upsert_pgr_edgar_monthly`` never
+mixes filings within a row, and derived fields are recomputed over the whole
+table (``recompute_derived_fields``).
 
 EDGAR pagination:
-  The primary submissions JSON (CIK0000080661.json) only contains the ~40 most
-  recent filings.  Older filings are in paginated files listed in
-  ``filings.files``: ``CIK0000080661-submissions-001.json``, etc.
-  This script fetches all pagination files until the requested cutoff date is
-  exceeded, giving access to the full PGR 8-K history.
+  The primary submissions JSON (CIK0000080661.json) only contains the ~1,000
+  most recent filings under ``filings.recent``.  Older filings are in the
+  pagination files listed in ``filings.files``
+  (``CIK0000080661-submissions-001.json``, …), which are *flat*: the parallel
+  arrays sit at the top level.  Files whose ``filingTo`` precedes the cutoff
+  are skipped.
 
 HTML parsing coverage:
-  PGR's monthly supplement format has been broadly consistent since ~2010.
-  Pre-2015 filings sometimes use legacy table layouts; parse exceptions are
-  caught per-filing and logged — one bad filing never aborts the full run.
+  Every monthly release since August 2004 parses (the August 2004 exhibit is
+  plain text and is converted to tables first).  Parse exceptions are caught
+  per filing and logged; one bad filing never aborts the full run.
+  ``scripts/repair_edgar_history.py`` re-parses the full history.
 
-SEC EDGAR rate limits: 10 requests/second max; ``User-Agent`` header required.
+SEC EDGAR rate limits: 10 requests/second max (this script stays at 4);
+``User-Agent`` header required (``EDGAR_USER_AGENT``).
 """
 
 from __future__ import annotations
@@ -55,6 +59,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config
 from src.database import db_client
+from src.processing import pgr_edgar_derived
 from src.logging_config import configure_logging
 
 
@@ -71,30 +76,119 @@ PGR_CIK_NUMERIC: int = 80661          # numeric CIK for archive URLs
 SUBMISSIONS_BASE_URL: str = "https://data.sec.gov/submissions"
 EDGAR_ARCHIVES_URL: str = "https://www.sec.gov/Archives/edgar/data/80661"
 
-# PGR's monthly 8-K supplement HTML format is reliably parseable from ~2010
-# onward.  Set this as the hard earliest boundary for backfills.
+# Earliest filing date a ``--backfill-years`` run reaches.  (The full history
+# back to August 2004 is rebuilt by scripts/repair_edgar_history.py.)
 BACKFILL_EARLIEST_DATE: str = "2010-01-01"
 
-# Polite rate limit: well under SEC's 10 req/s ceiling.
-_SEC_SLEEP_SECONDS: float = 0.15
+# Polite rate limit: at most 4 requests/second, well under SEC's 10 req/s.
+_SEC_MIN_INTERVAL_SECONDS: float = 0.25
+_last_request_monotonic: float | None = None
+
+# Version tag stored with every parsed value in ``pgr_edgar_monthly_raw``.
+# Bump it whenever a change to the parser can change a stored value.
+PARSER_VERSION: str = "8k-html/2026-09-25"
+
+# Optional on-disk response cache (set by ``set_http_cache_dir``).  EDGAR
+# filings are immutable, so a cached body never goes stale; only the
+# submissions index changes, and callers can bypass the cache for it.
+_http_cache_dir: str | None = None
 
 
 # ---------------------------------------------------------------------------
 # HTTP helper
 # ---------------------------------------------------------------------------
 
-def _get(url: str, retries: int = 3) -> requests.Response:
+class CachedResponse:
+    """Minimal stand-in for ``requests.Response`` served from the disk cache."""
+
+    def __init__(self, url: str, content: bytes, fetched_at: str) -> None:
+        self.url = url
+        self.content = content
+        self.status_code = 200
+        self.fetched_at = fetched_at
+
+    @property
+    def text(self) -> str:
+        return self.content.decode("utf-8", errors="replace")
+
+    def json(self) -> Any:
+        return json.loads(self.content)
+
+    def raise_for_status(self) -> None:
+        return None
+
+
+def set_http_cache_dir(path: str | None) -> None:
+    """Enable (or with ``None`` disable) the on-disk EDGAR response cache."""
+    global _http_cache_dir
+    _http_cache_dir = path
+    if path is not None:
+        os.makedirs(path, exist_ok=True)
+
+
+def _cache_paths(url: str) -> tuple[str, str]:
+    import hashlib
+
+    assert _http_cache_dir is not None
+    key = hashlib.sha256(url.encode("utf-8")).hexdigest()[:32]
+    return (
+        os.path.join(_http_cache_dir, f"{key}.body"),
+        os.path.join(_http_cache_dir, f"{key}.json"),
+    )
+
+
+def _throttle() -> None:
+    """Sleep so that consecutive network requests start >= 0.25 s apart."""
+    global _last_request_monotonic
+    now = time.monotonic()
+    if _last_request_monotonic is not None:
+        wait = _SEC_MIN_INTERVAL_SECONDS - (now - _last_request_monotonic)
+        if wait > 0:
+            time.sleep(wait)
+    _last_request_monotonic = time.monotonic()
+
+
+def _get(url: str, retries: int = 3, use_cache: bool = True) -> Any:
+    """GET with retry, a 4 req/s throttle and the optional disk cache.
+
+    Returns a ``requests.Response`` for a network fetch, or a
+    ``CachedResponse`` when the body is served from the cache.  Both expose
+    ``text``, ``content``, ``json()`` and a ``fetched_at`` ISO timestamp.
+    """
+    if _http_cache_dir is not None and use_cache:
+        body_path, meta_path = _cache_paths(url)
+        if os.path.exists(body_path) and os.path.exists(meta_path):
+            with open(meta_path, encoding="utf-8") as fh:
+                meta = json.load(fh)
+            with open(body_path, "rb") as fh:
+                return CachedResponse(url, fh.read(), meta.get("fetched_at", ""))
+    resp = _get_network(url, retries=retries)
+    fetched_at = datetime.now(tz=timezone.utc).isoformat(timespec="seconds")
+    try:
+        resp.fetched_at = fetched_at
+    except AttributeError:
+        pass
+    if _http_cache_dir is not None:
+        body_path, meta_path = _cache_paths(url)
+        with open(body_path, "wb") as fh:
+            fh.write(resp.content)
+        with open(meta_path, "w", encoding="utf-8") as fh:
+            json.dump({"url": url, "fetched_at": fetched_at}, fh)
+    return resp
+
+
+def _get_network(url: str, retries: int = 3) -> requests.Response:
     """GET with exponential back-off retry and polite inter-request delay."""
     last_exc: Exception | None = None
     for attempt in range(retries):
         try:
+            _throttle()
             resp = requests.get(
                 url,
                 headers=config.build_edgar_headers(),
                 timeout=30,
             )
             resp.raise_for_status()
-            time.sleep(_SEC_SLEEP_SECONDS)
             return resp
         except requests.HTTPError as exc:
             last_exc = exc
@@ -133,8 +227,46 @@ def _fetch_submissions_page(page_id: str | None = None) -> dict:
         url = f"{SUBMISSIONS_BASE_URL}/{PGR_CIK}.json"
     else:
         url = f"{SUBMISSIONS_BASE_URL}/{PGR_CIK}-submissions-{page_id}.json"
-    resp = _get(url)
+    # The submissions index grows with every filing: never serve it from cache.
+    resp = _get(url, use_cache=False)
     return resp.json()
+
+
+def _filings_block(page: dict) -> dict:
+    """Return the parallel-array filings block of a submissions page.
+
+    The primary ``CIK##########.json`` nests it at ``filings.recent``; the
+    pagination files (``CIK##########-submissions-001.json`` …) are flat and
+    carry ``accessionNumber``, ``form``, ``items`` … at the top level (F17).
+    """
+    nested = page.get("filings", {}).get("recent")
+    if nested:
+        return nested
+    if "accessionNumber" in page:
+        return page
+    return {}
+
+
+def _match_item_code(item_str: str) -> str | None:
+    """Return the item code that makes an 8-K a candidate monthly release.
+
+    * ``2.02`` — Results of Operations (quarter-end months); wins when a
+      filing lists both 2.02 and 7.01.
+    * ``7.01`` — Regulation FD monthly supplement (non-quarter-end months).
+    * ``9.01`` alone — exhibits only.  PGR filed at least one monthly
+      release this way (May 2015, 0000080661-15-000034).  Such a filing is
+      accepted only if its index lists an EX-99 exhibit, and only kept if
+      that exhibit parses as an earnings release.
+    """
+    parsed_items = [i.strip() for i in str(item_str).split(",") if i.strip()]
+    # A filing listing both is the quarter-end results release.
+    if "2.02" in parsed_items:
+        return "2.02"
+    if "7.01" in parsed_items:
+        return "7.01"
+    if parsed_items == ["9.01"]:
+        return "9.01"
+    return None
 
 
 def _collect_8k_filings(
@@ -142,19 +274,21 @@ def _collect_8k_filings(
     cutoff_date: str,
     out: list[dict[str, Any]],
 ) -> bool:
-    """Extract PGR operating-metrics 8-K filings from one ``filings.recent`` block.
+    """Extract PGR operating-metrics 8-K filings from one filings block.
 
-    Accepts both item 7.01 (Regulation FD monthly supplement, used for
-    non-quarter-end months) and item 2.02 (Results of Operations, used for
-    quarter-end months: March, June, September, December).  The matched item
-    code is stored in the ``"item_code"`` key of each output dict so that
+    Accepts item 7.01 (Regulation FD monthly supplement, used for
+    non-quarter-end months), item 2.02 (Results of Operations, used for
+    quarter-end months: March, June, September, December) and 9.01-only
+    filings (see ``_match_item_code``).  The matched item code is stored in
+    the ``"item_code"`` key of each output dict so that
     ``_parse_html_exhibit`` can set ``filing_type`` correctly.
 
     Modifies ``out`` in-place with matching filings.
 
     Args:
         recent: Dict with parallel arrays ``form``, ``filingDate``, ``items``,
-            ``accessionNumber`` as returned by the EDGAR submissions endpoint.
+            ``accessionNumber`` as returned by the EDGAR submissions endpoint
+            (``filings.recent`` or a flat pagination file).
         cutoff_date: ISO date string (``"YYYY-MM-DD"``).  Filings with
             ``filingDate < cutoff_date`` are excluded.
         out: List to append matched filings to.
@@ -178,14 +312,8 @@ def _collect_8k_filings(
         if form != "8-K":
             continue
         # ``items`` is a comma-separated string like ``"7.01,9.01"``
-        parsed_items = [i.strip() for i in str(item_str).split(",")]
-        # Item 7.01: Regulation FD monthly supplement (non-quarter-end months).
-        # Item 2.02: Results of Operations quarterly supplement (quarter-end months).
-        if "7.01" in parsed_items:
-            item_code = "7.01"
-        elif "2.02" in parsed_items:
-            item_code = "2.02"
-        else:
+        item_code = _match_item_code(item_str)
+        if item_code is None:
             continue
         # Clean accession number: remove dashes for use in archive paths
         cleaned = accession.replace("-", "")
@@ -221,8 +349,7 @@ def fetch_all_8k_filings(cutoff_date: str) -> list[dict[str, Any]]:
 
     log.info("Fetching primary EDGAR submissions for PGR …")
     primary = _fetch_submissions_page()
-    recent = primary.get("filings", {}).get("recent", {})
-    _collect_8k_filings(recent, cutoff_date, results)
+    _collect_8k_filings(_filings_block(primary), cutoff_date, results)
 
     # Pagination overflow files are listed in primary["filings"]["files"]
     extra_files = primary.get("filings", {}).get("files", [])
@@ -232,17 +359,22 @@ def fetch_all_8k_filings(cutoff_date: str) -> list[dict[str, Any]]:
         if not m:
             continue
         page_id = m.group(1)
+        # Skip pages that end before the cutoff (the primary lists their range).
+        filing_to = file_entry.get("filingTo")
+        if filing_to and filing_to < cutoff_date:
+            continue
         log.info("Fetching pagination file %s …", name)
         page_data = _fetch_submissions_page(page_id)
-        page_recent = page_data.get("filings", {}).get("recent", {})
-        stop = _collect_8k_filings(page_recent, cutoff_date, results)
+        stop = _collect_8k_filings(_filings_block(page_data), cutoff_date, results)
         if stop:
             log.debug("Oldest filing in %s precedes cutoff — stopping pagination.", name)
             break
 
-    results.sort(key=lambda r: r["filing_date"])
+    unique = {r["accession_number"]: r for r in results}
+    results = sorted(unique.values(), key=lambda r: r["filing_date"])
     log.info(
-        "Found %d 8-K (items 7.01/2.02) filings back to %s.", len(results), cutoff_date
+        "Found %d candidate 8-K (items 7.01/2.02/9.01) filings back to %s.",
+        len(results), cutoff_date,
     )
     return results
 
@@ -254,6 +386,7 @@ def fetch_all_8k_filings(cutoff_date: str) -> list[dict[str, Any]]:
 def _get_all_filing_doc_urls(
     accession_number: str,
     accession_dashed: str,
+    require_ex99: bool = False,
 ) -> list[str]:
     """Return all candidate HTML exhibit URLs for an 8-K filing, sorted by preference.
 
@@ -268,10 +401,12 @@ def _get_all_filing_doc_urls(
             ``"000008066124000001"``.
         accession_dashed: Original dashed form, e.g.
             ``"0000080661-24-000001"``.
+        require_ex99: Return an empty list unless the index lists an EX-99
+            ``.htm`` exhibit (used for 9.01-only filings).
 
     Returns:
-        Ordered list of full exhibit URLs; empty list if the index cannot be
-        fetched or no suitable ``.htm`` files are found.
+        Ordered list of full exhibit URLs (EX-99 exhibits first); empty list
+        if the index cannot be fetched or no suitable ``.htm`` files are found.
     """
     index_url = (
         f"{EDGAR_ARCHIVES_URL}/{accession_number}"
@@ -282,6 +417,23 @@ def _get_all_filing_doc_urls(
         html = resp.text
     except Exception as exc:
         log.debug("Cannot fetch index for %s: %s", accession_number, exc, exc_info=True)
+        return []
+
+    # EX-99 exhibits (the earnings release) come first, whatever their name.
+    ex99 = [
+        f"https://www.sec.gov{href}"
+        for href, doc_type in _index_documents(html)
+        if doc_type.upper().startswith("EX-99") and href.lower().endswith(".htm")
+    ]
+    # Plain-text EX-99 exhibits (only Aug-2004 among the monthly releases)
+    # are tried last; ``parse_filing`` converts them with
+    # ``_text_exhibit_to_html``.
+    ex99_text = [
+        f"https://www.sec.gov{href}"
+        for href, doc_type in _index_documents(html)
+        if doc_type.upper().startswith("EX-99") and href.lower().endswith(".txt")
+    ]
+    if require_ex99 and not ex99 and not ex99_text:
         return []
 
     # Extract all .htm hrefs from the filing index
@@ -296,6 +448,8 @@ def _get_all_filing_doc_urls(
     other: list[str] = []
 
     for href in candidates:
+        if f"https://www.sec.gov{href}" in ex99:
+            continue
         fname = href.split("/")[-1].lower()
         # Skip XBRL viewer and inline XBRL files
         if any(skip in href for skip in ("ix?doc=", "R1.htm", "R2.htm")):
@@ -310,7 +464,58 @@ def _get_all_filing_doc_urls(
         else:
             other.append(url)
 
-    return pgr_named + k8_named + other
+    return ex99 + pgr_named + k8_named + other + ex99_text
+
+
+def _text_exhibit_to_html(text: str) -> str:
+    """Wrap a plain-text (pre-2005 EDGAR) exhibit so the HTML parser can read it.
+
+    Each ``<TABLE>`` block becomes an HTML table with one row per line and
+    cells split on runs of two or more spaces (the fixed-width column gaps).
+    The full text is kept in a ``<pre>`` block for the text-mode fallbacks.
+    """
+    from html import escape
+
+    tables: list[str] = []
+    for block in re.findall(r"<TABLE>(.*?)</TABLE>", text, flags=re.IGNORECASE | re.DOTALL):
+        rows: list[str] = []
+        for line in block.splitlines():
+            stripped = line.strip()
+            if not stripped or re.fullmatch(r"(<[A-Z]+>\s*)+", stripped):
+                continue
+            if re.fullmatch(r"[-=\s]+", stripped):
+                continue
+            cells = re.split(r"\s{2,}", stripped)
+            rows.append("<tr>" + "".join(f"<td>{escape(c)}</td>" for c in cells) + "</tr>")
+        if rows:
+            tables.append("<table>" + "".join(rows) + "</table>")
+    body = re.sub(r"<TABLE>.*?</TABLE>", " ", text, flags=re.IGNORECASE | re.DOTALL)
+    return (
+        "<html><body>" + "".join(tables) + "<pre>" + escape(body) + "</pre></body></html>"
+    )
+
+
+_INDEX_ROW_RE = re.compile(r"<tr[^>]*>(.*?)</tr>", re.IGNORECASE | re.DOTALL)
+_INDEX_CELL_RE = re.compile(r"<td[^>]*>(.*?)</td>", re.IGNORECASE | re.DOTALL)
+
+
+def _index_documents(index_html: str) -> list[tuple[str, str]]:
+    """Return ``(href, type)`` for each row of a filing index's document table.
+
+    The table columns are Seq, Description, Document, Type, Size; ``type`` is
+    e.g. ``"8-K"``, ``"EX-99"``, ``"EX-99.1"`` or ``"GRAPHIC"``.
+    """
+    docs: list[tuple[str, str]] = []
+    for row in _INDEX_ROW_RE.findall(index_html):
+        cells = _INDEX_CELL_RE.findall(row)
+        if len(cells) < 4:
+            continue
+        href = re.search(r'href="([^"]+)"', cells[2])
+        if href is None:
+            continue
+        doc_type = re.sub(r"<[^>]+>", "", cells[3]).strip()
+        docs.append((href.group(1), doc_type))
+    return docs
 
 
 def _get_filing_doc_url(
@@ -422,6 +627,7 @@ def _try_float(val: str) -> float | None:
     )
     if cleaned.lower() in ("nan", "none", "n/a", ""):
         return None
+    cleaned = _UNICODE_MINUS_RE.sub("-", cleaned)
     cleaned = cleaned.replace("(", "-").replace(")", "").strip()
     try:
         result = float(cleaned)
@@ -466,37 +672,103 @@ def _normalise_pif_value(value: float | None) -> float | None:
 
 import re as _re  # already imported at module level but kept local alias for clarity
 
-_NEG_PAT = _re.compile(r"^\((.+)\)$")
+# Dash-like characters that PGR's filings use as a minus sign when they sit
+# directly before a number: U+2212 minus, U+2012 figure dash, U+2013 en dash,
+# U+2011 non-breaking hyphen, U+FE63 small hyphen-minus, U+FF0D fullwidth.
+_UNICODE_MINUS_RE = _re.compile(r"[\u2212\u2012\u2013\u2011\ufe63\uff0d](?=\s*[\d.])")
+
+# A cell holding only an opening parenthesis (optionally with "$"): the
+# number follows in the next cell and is negative.
+_OPEN_PAREN_CELL_RE = _re.compile(r"^\$?\s*\(\s*\$?$")
+
+
+_LEADING_NUMBER_RE = _re.compile(
+    r"^[^\d(.\-]*(?P<paren>\()?\s*(?P<minus>-)?\s*(?P<num>\d+(?:\.\d+)?|\.\d+)"
+)
 
 
 def _parse_number(text: str) -> float | None:
-    """Parse a financial number from a cell's text (e.g. '$1,234.5', '(56.7)', '89.2%')."""
+    """Parse a financial number from a cell's text.
+
+    Handles ``$1,234.5``, ``89.2%``, parenthesised negatives ``(56.7)`` and
+    ``$(56.7)``, a split-cell opening parenthesis ``(56.7`` (the closing
+    ``)`` sits in the next cell), and Unicode minus signs (``−56.7``).
+    A cell holding only the closing half (``56.7)``) is returned positive;
+    ``_row_numbers`` applies the sign from the preceding ``(`` cell.  Only
+    the first number in the cell is read, so a trailing footnote marker
+    (``2.9% 1``) is ignored.
+    """
     if not text:
         return None
-    t = text.strip().replace(",", "").replace("$", "").replace("%", "").strip()
-    m = _NEG_PAT.match(t)
-    if m:
-        t = "-" + m.group(1)
-    t = re.sub(r"[^0-9.\-]+$", "", t).strip()
-    t = re.sub(r"^[^0-9.\-]+", "", t).strip()
-    try:
-        return float(t)
-    except ValueError:
+    t = _UNICODE_MINUS_RE.sub("-", text.replace("\xa0", " "))
+    t = t.replace(",", "").replace("$", "").replace("%", "").strip()
+    match = _LEADING_NUMBER_RE.match(t)
+    if match is None:
         return None
+    value = float(match.group("num"))
+    if match.group("paren") or match.group("minus"):
+        return -value
+    return value
+
+
+def _row_numbers(cells: list[str], decimals_only: bool = False) -> list[float]:
+    """Return every number in a row's cells, in order, with split-cell signs.
+
+    Some filings put the parentheses of a negative in their own cells:
+    ``["(", "16.8", ")"]`` or ``["$(", "16.8", ")"]``.  A lone opening
+    parenthesis marks the next number negative; ``$`` cells in between are
+    skipped.
+
+    With ``decimals_only`` a cell counts only if it holds a decimal point.
+    Ratios are always printed to one decimal, so this drops footnote
+    markers that sit in their own cells between ratio columns (2025-09:
+    "36.5 | 2 | 37.0 | 2 | …" shifted the companywide column; F34).
+    """
+    numbers: list[float] = []
+    pending_negative = False
+    for cell in cells:
+        text = cell.replace("\xa0", " ").strip()
+        if not text:
+            continue
+        if _OPEN_PAREN_CELL_RE.match(text):
+            pending_negative = True
+            continue
+        value = _parse_number(text)
+        if value is None:
+            if text not in ("$", ")", ")%", "%)", "%"):
+                pending_negative = False
+            continue
+        if decimals_only and "." not in text:
+            continue
+        if pending_negative:
+            value = -abs(value)
+            pending_negative = False
+        numbers.append(value)
+    return numbers
 
 
 def _get_first_numeric(cells: list[str]) -> float | None:
     """Return the first parseable number from a list of cell-text strings."""
-    for c in cells:
-        v = _parse_number(c)
-        if v is not None:
-            return v
-    return None
+    numbers = _row_numbers(cells)
+    return numbers[0] if numbers else None
 
 
 def _cells_text(row) -> list[str]:
-    """Return a list of stripped text strings for all td/th in a BS4 row."""
-    return [c.get_text(separator=" ", strip=True) for c in row.find_all(["td", "th"])]
+    """Return stripped text of every td/th in a BS4 row, from the first non-empty cell.
+
+    Leading empty cells are dropped so that ``cells[0]`` is the row label even
+    in layouts with a spacer column before it (e.g. the 2007-08 balance sheet).
+    Runs of whitespace, including line breaks inside a label ("Other\nPersonal
+    Lines" in 2004), become one space.
+    """
+    cells = [
+        re.sub(r"\s+", " ", c.get_text(separator=" ", strip=True))
+        for c in row.find_all(["td", "th"])
+    ]
+    for idx, cell in enumerate(cells):
+        if cell:
+            return cells[idx:]
+    return []
 
 
 def _find_row_value(rows, *keywords) -> float | None:
@@ -509,6 +781,40 @@ def _find_row_value(rows, *keywords) -> float | None:
         label = ctexts[0].lower()
         if all(k in label for k in kws):
             return _get_first_numeric(ctexts[1:])
+    return None
+
+
+def _normalise_label(label: str) -> str:
+    """Lower-case a row label, unify apostrophes and drop footnote markers."""
+    t = label.replace("\u2019", "'").replace("\x92", "'").replace("\u2018", "'")
+    t = re.sub(r"\s+", " ", t.replace("\xa0", " ")).strip().lower()
+    t = re.sub(r"(\s*\(\d\)|\s+\d)+$", "", t)  # trailing "(1)" / " 2" footnotes
+    return t.rstrip(":").strip()
+
+
+# Anchored balance-sheet labels (F18).  A bare substring match picked up
+# "Return on average shareholders' equity" and "Debt to total capital ratio".
+_EQUITY_LABEL_RE = re.compile(
+    r"^(total )?(common )?shareholders'? equity( \(deficit\))?$"
+)
+_DEBT_LABEL_RE = re.compile(r"^(total )?debt( outstanding)?$")
+
+
+def _find_anchored_row_value(rows, label_re: re.Pattern[str]) -> float | None:
+    """Return the first number from a row whose whole label matches ``label_re``.
+
+    Rows whose label matches but carry no number (section headers) are
+    skipped, so a later "Total shareholders' equity" row is still found.
+    """
+    for row in rows:
+        ctexts = _cells_text(row)
+        if not ctexts:
+            continue
+        if not label_re.match(_normalise_label(ctexts[0])):
+            continue
+        value = _get_first_numeric(ctexts[1:])
+        if value is not None:
+            return value
     return None
 
 
@@ -797,8 +1103,17 @@ def _extract_eps_comprehensive(tbl) -> dict:
 
 
 def _extract_investment_returns(tbl) -> dict:
-    """Extract FTE total-return and book-yield rows."""
+    """Extract FTE total-return and book-yield rows.
+
+    Rows are read from the "fully taxable equivalent" header onward when it
+    is present, so a table that also holds EPS or balance-sheet rows (e.g.
+    2023-04..2023-09) does not feed its earlier rows to these label matches.
+    """
     rows = tbl.find_all("tr")
+    for idx, row in enumerate(rows):
+        if "fully taxable equivalent" in row.get_text(" ", strip=True).lower():
+            rows = rows[idx:]
+            break
     d: dict = {}
 
     d["fte_return_fixed_income"]    = _find_row_value_multi(rows, [
@@ -960,14 +1275,9 @@ def _extract_balance_sheet(tbl, month_end: str) -> dict:
     d["total_assets"]        = rv("total assets")
     d["loss_lae_reserves"]   = rv("loss and loss adjustment expense reserves")
     d["unearned_premiums"]   = rv("unearned premiums")
-    d["debt"]                = rv("debt")
+    d["debt"]                = _find_anchored_row_value(rows, _DEBT_LABEL_RE)
     d["total_liabilities"]   = _find_total_liabilities_only(rows)
-    d["shareholders_equity"] = _find_row_value_multi(rows, [
-        ("shareholders\u2019 equity",),
-        ("shareholders\x92 equity",),
-        ("shareholders' equity",),
-        ("shareholders equity",),
-    ])
+    d["shareholders_equity"] = _find_anchored_row_value(rows, _EQUITY_LABEL_RE)
     d["common_shares_outstanding"] = rv("common shares outstanding")
 
     # Shares repurchased: extract raw, then normalise via _resolve_share_count.
@@ -1011,14 +1321,25 @@ def _extract_balance_sheet(tbl, month_end: str) -> dict:
 
 
 def _extract_policies_in_force(tbl) -> dict:
-    """Extract Policies in Force (thousands)."""
+    """Extract Policies in Force (thousands).
+
+    Only rows from the first "policies in force" row onward are read, so the
+    block can sit inside a larger table whose earlier rows reuse the same
+    labels (e.g. "Agency – Auto" net premiums written).
+    """
     rows = tbl.find_all("tr")
+    for idx, row in enumerate(rows):
+        if "policies in force" in row.get_text(" ", strip=True).lower():
+            rows = rows[idx:]
+            break
     d: dict = {}
 
     d["pif_agency_auto"]  = _find_row_value_multi(rows, [
         ("agency", "auto"),
         ("agency \u2013 auto",),
         ("agency  auto",),
+        # 2006-01..2007-01 releases label the agency channel by its brand.
+        ("drive", "auto"),
     ])
     d["pif_direct_auto"]  = _find_row_value_multi(rows, [
         ("direct", "auto"),
@@ -1072,11 +1393,8 @@ def _extract_segment(tbl) -> dict:
                                      "reserve", "development")):
             continue
 
-        nums: list[float] = []
-        for cell in row_texts[1:]:
-            v = _parse_number(cell)
-            if v is not None:
-                nums.append(v)
+        is_ratio_row = "ratio" in label
+        nums = _row_numbers(row_texts[1:], decimals_only=is_ratio_row)
 
         if not nums:
             continue
@@ -1368,6 +1686,11 @@ def _parse_html_exhibit(
             for k, v in eps.items():
                 if table_metrics.get(k) is None:
                     table_metrics[k] = v
+            # Some releases put the investment results under the EPS rows.
+            if "fully taxable equivalent" in tbl_text:
+                for k, v in _extract_investment_returns(tbl).items():
+                    if table_metrics.get(k) is None:
+                        table_metrics[k] = v
             continue
 
         # Investment returns (some old exhibits embed these inside the IS table;
@@ -1426,6 +1749,18 @@ def _parse_html_exhibit(
     # scan all tables with a simple row-label pass.  This handles minimal test
     # fixtures and any real filing whose data falls in an unclassified table.
     # -----------------------------------------------------------------------
+    # Policies in force embedded in a larger, unclassified table
+    # (e.g. 2009-04, 2009-05, 2010-08).
+    if table_metrics["pif_direct_auto"] is None:
+        for tbl in tables:
+            if "policies in force" not in _table_full_text(tbl):
+                continue
+            for k, v in _extract_policies_in_force(tbl).items():
+                if table_metrics.get(k) is None:
+                    table_metrics[k] = v
+            if table_metrics["pif_direct_auto"] is not None:
+                break
+
     _needs_fallback = any(
         table_metrics[f] is None
         for f in ("combined_ratio", "pif_total", "net_premiums_written",
@@ -1434,17 +1769,16 @@ def _parse_html_exhibit(
     )
     if _needs_fallback:
         for tbl in tables:
+            roe_context = False
             for row in tbl.find_all("tr"):
                 ctexts = _cells_text(row)
                 if not ctexts:
                     continue
                 label = ctexts[0].lower()
+                if "return on" in label or "trailing 12" in label:
+                    roe_context = True
                 val = _get_first_numeric(ctexts[1:])
-                nums = [
-                    parsed
-                    for parsed in (_parse_number(cell) for cell in ctexts[1:])
-                    if parsed is not None
-                ]
+                nums = _row_numbers(ctexts[1:], decimals_only="ratio" in label)
                 ratio_values = [value for value in nums if 60.0 <= value <= 140.0]
 
                 if (
@@ -1524,9 +1858,12 @@ def _parse_html_exhibit(
                     if 100.0 <= val <= 5_000.0:
                         table_metrics["avg_shares_diluted"] = val
 
-                # ROE: "Net income" / "Comprehensive income" rows with a trailing "%" cell
+                # ROE: "Net income" / "Comprehensive income" rows with a "%"
+                # cell, only under a "return on …" / "trailing 12 …" header.
+                # (A bare "Net income" row with a %-change column is not ROE:
+                # 2007-08 stored 76.9 that way.)
                 has_pct = any("%" in c for c in ctexts[1:])
-                if has_pct and 0.0 < val < 100.0:
+                if roe_context and has_pct and 0.0 < val < 100.0:
                     if table_metrics["roe_net_income_trailing_12m"] is None and (
                         "net income" in label and "comprehensive" not in label
                     ):
@@ -1624,6 +1961,13 @@ def _parse_html_exhibit(
 
             combined_ratio = best_cr_candidate
 
+    # Narrative fallback for the fixed-income duration, which pre-2006
+    # releases give only in the commentary ("the duration was 3.0 years").
+    if table_metrics["fixed_income_duration"] is None:
+        m = re.search(r"duration (?:was|of) (\d{1,2}\.\d) years", text, re.IGNORECASE)
+        if m and 0.5 <= float(m.group(1)) <= 10.0:
+            table_metrics["fixed_income_duration"] = float(m.group(1))
+
     # Sub-ratio fallback: combined_ratio = loss/LAE + expense by definition.
     # When all direct extraction paths fail but both sub-ratios were parsed
     # from the same exhibit, compute the combined ratio rather than leave it NULL.
@@ -1645,6 +1989,19 @@ def _parse_html_exhibit(
         se = table_metrics.get("shareholders_equity")
         if ta is not None and se is not None:
             table_metrics["total_liabilities"] = round(ta - se, 1)
+
+    # -----------------------------------------------------------------------
+    # F18: some releases (e.g. Dec-2004) have no total-equity line.  Use
+    # book value per share x common shares outstanding (common equity; it
+    # excludes the 2018-03..2024-01 preferred stock) or leave it NULL.
+    # -----------------------------------------------------------------------
+    derived_fields: list[str] = []
+    if table_metrics.get("shareholders_equity") is None:
+        bvps = table_metrics.get("book_value_per_share")
+        shares = table_metrics.get("common_shares_outstanding")
+        if bvps is not None and shares is not None and bvps > 0 and shares > 0:
+            table_metrics["shareholders_equity"] = round(bvps * shares, 1)
+            derived_fields.append("shareholders_equity")
 
     # -----------------------------------------------------------------------
     # Normalise pif_total to canonical thousands unit
@@ -1744,6 +2101,8 @@ def _parse_html_exhibit(
         "npw_growth_yoy": None,
         "unearned_premium_growth_yoy": None,
         "buyback_yield": None,
+        # Fields computed from other parsed fields rather than read directly.
+        "derived_fields": derived_fields,
     }
 
 
@@ -1754,120 +2113,90 @@ def _parse_html_exhibit(
 def _prior_year_key(month_end: str) -> str:
     """Return the month_end string for the same month one year prior.
 
-    Handles the Feb-29 edge case: if month_end is 2024-02-29 (leap year),
-    the prior-year key is 2023-02-28.
+    Period arithmetic on the calendar month (F11): 2025-02-28 maps to
+    2024-02-29, and 2024-02-29 maps to 2023-02-28.
     """
-    dt = datetime.strptime(month_end, "%Y-%m-%d")
-    try:
-        prior = dt.replace(year=dt.year - 1)
-    except ValueError:
-        # Feb 29 in a leap year → Feb 28 in a non-leap year
-        prior = dt.replace(year=dt.year - 1, day=28)
-    return prior.strftime("%Y-%m-%d")
+    return pgr_edgar_derived.prior_year_month_end(month_end)
+
+
+# Fields that ``_compute_derived_fields`` owns.  They are always recomputed
+# from the parsed fields, never read from a filing or the CSV.
+DERIVED_FIELDS: tuple[str, ...] = (
+    "pif_total",
+    "pif_total_personal_lines",
+    "pif_growth_yoy",
+    "gainshare_estimate",
+    "channel_mix_agency_pct",
+    "underwriting_income",
+    "npw_growth_yoy",
+    "unearned_premium_growth_yoy",
+)
 
 
 def _compute_derived_fields(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Compute all derived fields for the full sorted 8-K time series.
+    """Compute all derived fields for the full 8-K time series, in place.
 
-    These fields require a full sorted time series so that year-ago values can
-    be looked up.  Must be called after all records are collected and sorted
-    ascending by ``month_end``.
+    Uses the single definitions in ``src.processing.pgr_edgar_derived``:
 
-    Derived fields computed:
-      - ``pif_growth_yoy``          — YoY PIF growth (% change vs same month prior year)
-      - ``gainshare_estimate``       — PGR Gainshare multiplier estimate (0–2 scale)
+      - ``pif_total``                — agency auto + direct auto + special lines
+        + commercial lines (property excluded); None unless all are present
+      - ``pif_total_personal_lines`` — agency auto + direct auto + special lines
+      - ``pif_growth_yoy``           — calendar-month YoY of ``pif_total``
+      - ``gainshare_estimate``       — 0.5 × CR score + 0.5 × PIF score (0–2);
+        None unless both CR and PIF growth exist
       - ``channel_mix_agency_pct``   — Agency NPW / (Agency + Direct NPW)
-      - ``underwriting_income``      — NPE × (1 − CR/100)  (core P&C profitability $)
-      - ``npw_growth_yoy``           — YoY % change in total Net Premiums Written
-      - ``unearned_premium_growth_yoy`` — YoY % change in unearned premium reserve
-        NOTE: unearned_premiums is rarely in the monthly supplement HTML; this will
-        typically remain None for the live-fetch path (available via CSV backfill).
+      - ``underwriting_income``      — NPE × (1 − CR/100)
+      - ``npw_growth_yoy``           — calendar-month YoY of total NPW
+      - ``unearned_premium_growth_yoy`` — calendar-month YoY of unearned premiums
 
-    The gainshare formula mirrors ``pgr_monthly_loader.py``:
-      - ``cr_score``    = clip((96 − CR) / 10,  0, 2)
-      - ``pif_score``   = clip(pif_growth / 0.10, 0, 2)
-      - ``gainshare``   = 0.5 × cr_score + 0.5 × pif_score
+    YoY values are None when the same month one year earlier is missing, so
+    a gap never produces a 13-month change (F16).  Every derived field is
+    assigned (possibly None), so recomputing over the full table clears
+    stale values.
 
     Args:
-        records: List of record dicts, already sorted ascending by ``month_end``.
+        records: Record dicts with a ``month_end`` key (any order).
 
     Returns:
-        The same list with all computable derived fields filled in.
+        The same list with all derived fields assigned.
     """
-    # Build lookup dicts for all fields that feed YoY computations
-    pif_by_month: dict[str, float] = {
-        r["month_end"]: r["pif_total"]
-        for r in records
-        if r.get("pif_total") is not None
-    }
-    npw_by_month: dict[str, float] = {
-        r["month_end"]: r["net_premiums_written"]
-        for r in records
-        if r.get("net_premiums_written") is not None
-    }
-    unprem_by_month: dict[str, float] = {
-        r["month_end"]: r["unearned_premiums"]
-        for r in records
-        if r.get("unearned_premiums") is not None
-    }
+    for rec in records:
+        rec["pif_total"] = pgr_edgar_derived.pif_sum(
+            rec, pgr_edgar_derived.PIF_TOTAL_COMPONENTS
+        )
+        rec["pif_total_personal_lines"] = pgr_edgar_derived.pif_sum(
+            rec, pgr_edgar_derived.PIF_PERSONAL_LINES_COMPONENTS
+        )
+
+    def _yoy(field: str) -> dict[pd.Period, float | None]:
+        return pgr_edgar_derived.yoy_growth_by_period(
+            {r["month_end"]: r.get(field) for r in records}
+        )
+
+    pif_yoy = _yoy("pif_total")
+    npw_yoy = _yoy("net_premiums_written")
+    unprem_yoy = _yoy("unearned_premiums")
 
     for rec in records:
-        me_key = rec["month_end"]
-        prior_key = _prior_year_key(me_key)
+        period = pgr_edgar_derived.month_key(rec["month_end"])
+        rec["pif_growth_yoy"] = pif_yoy.get(period)
+        rec["npw_growth_yoy"] = npw_yoy.get(period)
+        rec["unearned_premium_growth_yoy"] = unprem_yoy.get(period)
 
-        # --- YoY PIF growth ---
-        pif_cur = rec.get("pif_total")
-        if pif_cur is not None:
-            prior_pif = pif_by_month.get(prior_key)
-            if prior_pif and prior_pif != 0.0:
-                rec["pif_growth_yoy"] = (pif_cur - prior_pif) / prior_pif
-
-        # --- YoY NPW growth ---
-        npw_cur = rec.get("net_premiums_written")
-        if npw_cur is not None:
-            prior_npw = npw_by_month.get(prior_key)
-            if prior_npw and prior_npw != 0.0:
-                rec["npw_growth_yoy"] = (npw_cur - prior_npw) / prior_npw
-
-        # --- YoY unearned premium growth ---
-        unprem_cur = rec.get("unearned_premiums")
-        if unprem_cur is not None:
-            prior_unprem = unprem_by_month.get(prior_key)
-            if prior_unprem and prior_unprem != 0.0:
-                rec["unearned_premium_growth_yoy"] = (
-                    (unprem_cur - prior_unprem) / prior_unprem
-                )
-
-        # --- Gainshare estimate ---
         cr = rec.get("combined_ratio")
-        pif_growth = rec.get("pif_growth_yoy")
-
-        cr_score: float | None = None
-        pif_score: float | None = None
-
-        if cr is not None:
-            cr_score = min(max((96.0 - cr) / 10.0, 0.0), 2.0)
-        if pif_growth is not None:
-            pif_score = min(max(pif_growth / 0.10, 0.0), 2.0)
-
-        if cr_score is not None and pif_score is not None:
-            rec["gainshare_estimate"] = 0.5 * cr_score + 0.5 * pif_score
-        elif cr_score is not None:
-            rec["gainshare_estimate"] = cr_score
-        elif pif_score is not None:
-            rec["gainshare_estimate"] = pif_score
-
-        # --- Per-row derived fields (no time series needed) ---
+        rec["gainshare_estimate"] = pgr_edgar_derived.gainshare_estimate(
+            cr, rec["pif_growth_yoy"]
+        )
 
         # channel_mix_agency_pct = npw_agency / (npw_agency + npw_direct)
+        rec["channel_mix_agency_pct"] = None
         npw_ag = rec.get("npw_agency")
         npw_di = rec.get("npw_direct")
-        if npw_ag is not None and npw_di is not None:
-            denom = npw_ag + npw_di
-            if denom > 0.0:
-                rec["channel_mix_agency_pct"] = npw_ag / denom
+        if npw_ag is not None and npw_di is not None and npw_ag + npw_di > 0.0:
+            rec["channel_mix_agency_pct"] = npw_ag / (npw_ag + npw_di)
 
         # underwriting_income = net_premiums_earned × (1 − CR / 100)
+        rec["underwriting_income"] = None
         npe = rec.get("net_premiums_earned")
         if npe is not None and cr is not None:
             rec["underwriting_income"] = npe * (1.0 - cr / 100.0)
@@ -1916,6 +2245,9 @@ def check_staleness(conn: sqlite3.Connection) -> None:
 # v7.2 — Parsed record cross-validator
 # ---------------------------------------------------------------------------
 
+_PIF_TOTAL_FLOOR: int = 5_000
+
+
 def _validate_parsed_record(
     record: dict[str, Any],
     filing_date: str,
@@ -1930,7 +2262,7 @@ def _validate_parsed_record(
       2. net_premiums_written >= sum of segment NPW (agency + direct +
          commercial + property).  If total < sum of parts, log WARNING.
       3. pif_total is stored in thousands of policies for PGR monthly data.
-         If parsed pif_total < 10,000, likely a mis-parse; set to None.
+         If parsed pif_total < 5,000, likely a mis-parse; set to None.
       4. eps_basic should be in range [-5.0, 15.0] for monthly figures.
          Out-of-range values are set to None.
 
@@ -1969,12 +2301,13 @@ def _validate_parsed_record(
             npw_total, npw_parts, accession, filing_date,
         )
 
-    # PIF floor
+    # PIF floor (thousands of policies).  PGR had ~9,000K policies in 2004,
+    # so the floor only catches unit mis-parses (e.g. a value in millions).
     pif = record.get("pif_total")
-    if pif is not None and pif < 10_000:
+    if pif is not None and pif < _PIF_TOTAL_FLOOR:
         log.warning(
-            "VALIDATION: pif_total=%.0f < 10,000 floor in %s. Setting None.",
-            pif, accession,
+            "VALIDATION: pif_total=%.0f < %d floor in %s. Setting None.",
+            pif, _PIF_TOTAL_FLOOR, accession,
         )
         record["pif_total"] = None
 
@@ -2025,6 +2358,113 @@ def _validate_parsed_record(
 # Main fetch-and-upsert logic
 # ---------------------------------------------------------------------------
 
+_RECORD_META_KEYS: frozenset[str] = frozenset({
+    "month_end", "filing_date", "filing_type", "accession_number",
+    "document_url", "fetched_at", "derived_fields",
+})
+
+
+def _completeness_score(rec: dict[str, Any]) -> int:
+    """Count non-None fields; combined_ratio presence adds a large bonus."""
+    base = sum(
+        1 for k, v in rec.items() if v is not None and k not in _RECORD_META_KEYS
+    )
+    # Heavily weight having a combined_ratio — it's the most critical field.
+    if rec.get("combined_ratio") is not None:
+        base += 100
+    return base
+
+
+def parse_filing(filing: dict[str, Any]) -> dict[str, Any] | None:
+    """Fetch and parse one candidate 8-K; return a validated record or None.
+
+    Every exhibit of the filing is tried, EX-99 first, and the most complete
+    parse wins (stopping at the first one with a combined ratio).  A 9.01-only
+    filing is considered only when its index lists an EX-99 exhibit.
+
+    The record carries ``accession_number`` (dashed), ``document_url`` and
+    ``fetched_at`` for the provenance table.
+    """
+    accession = filing["accession_number"]
+    accession_dashed = filing["accession_dashed"]
+    filing_date = filing["filing_date"]
+    item_code = filing.get("item_code", "7.01")
+    log.debug("Processing %s (filed %s, item %s) …", accession, filing_date, item_code)
+
+    doc_urls = _get_all_filing_doc_urls(
+        accession, accession_dashed, require_ex99=item_code == "9.01",
+    )
+    if not doc_urls:
+        log.debug("No HTML exhibit found for %s — skipping.", accession)
+        return None
+
+    parsed: dict[str, Any] | None = None
+    for url_idx, doc_url in enumerate(doc_urls):
+        try:
+            resp = _get(doc_url)
+            html = resp.text
+            if doc_url.lower().endswith(".txt"):
+                html = _text_exhibit_to_html(html)
+            candidate = _parse_html_exhibit(html, filing_date, item_code=item_code)
+        except Exception as exc:
+            log.warning(
+                "Failed to fetch/parse exhibit %d for %s (%s): %r",
+                url_idx + 1, accession, doc_url, exc,
+            )
+            continue
+
+        if candidate is None:
+            log.debug(
+                "Exhibit %d for %s yielded no parseable data (%s).",
+                url_idx + 1, accession, doc_url,
+            )
+            continue
+        candidate["document_url"] = doc_url
+        candidate["fetched_at"] = getattr(resp, "fetched_at", None)
+
+        if parsed is None or _completeness_score(candidate) > _completeness_score(parsed):
+            parsed = candidate
+
+        # Stop as soon as we have a combined_ratio — core field satisfied.
+        if parsed.get("combined_ratio") is not None:
+            break
+
+    if parsed is None:
+        log.debug("No parseable data in %s (filed %s).", accession, filing_date)
+        return None
+
+    # v7.2: cross-validate parsed fields; nullify inconsistent ones.
+    parsed = _validate_parsed_record(parsed, filing_date, accession)
+    parsed["accession_number"] = accession_dashed
+
+    # If validation nullified combined_ratio but sub-ratios survived,
+    # recover it from loss/LAE + expense (combined ratio = their sum by definition).
+    if parsed.get("combined_ratio") is None:
+        _lr = parsed.get("loss_lae_ratio")
+        _er = parsed.get("expense_ratio")
+        if _lr is not None and _er is not None and 60.0 <= _lr + _er <= 140.0:
+            parsed["combined_ratio"] = round(_lr + _er, 1)
+            log.info(
+                "CR recovered from sub-ratios for %s: %.1f + %.1f = %.1f",
+                accession, _lr, _er, _lr + _er,
+            )
+
+    # If validation nullified both core fields, skip this filing.
+    if parsed["combined_ratio"] is None and parsed["pif_total"] is None:
+        log.debug("Validation nullified both CR and PIF for %s — skipping.", accession)
+        return None
+
+    log.info(
+        "Parsed %s  month_end=%-12s  CR=%-6s  PIF=%s  item=%s",
+        accession,
+        parsed["month_end"],
+        f"{parsed['combined_ratio']:.1f}" if parsed["combined_ratio"] else "n/a",
+        f"{parsed['pif_total']:,.0f}" if parsed["pif_total"] else "n/a",
+        item_code,
+    )
+    return parsed
+
+
 def fetch_and_upsert(
     conn: sqlite3.Connection,
     backfill_years: int = 2,
@@ -2073,142 +2513,20 @@ def fetch_and_upsert(
     records: list[dict[str, Any]] = []
     parse_errors = 0
 
-    def _completeness_score(rec: dict[str, Any]) -> int:
-        """Count non-None fields; combined_ratio presence adds a large bonus."""
-        base = sum(1 for k, v in rec.items() if v is not None and k != "month_end")
-        # Heavily weight having a combined_ratio — it's the most critical field.
-        if rec.get("combined_ratio") is not None:
-            base += 100
-        return base
-
     for filing in filings:
-        accession = filing["accession_number"]
-        accession_dashed = filing["accession_dashed"]
-        filing_date = filing["filing_date"]
-        item_code = filing.get("item_code", "7.01")
-        log.debug("Processing %s (filed %s, item %s) …", accession, filing_date, item_code)
-
         try:
-            doc_urls = _get_all_filing_doc_urls(accession, accession_dashed)
-            if not doc_urls:
-                log.debug("No HTML exhibit found for %s — skipping.", accession)
-                continue
-
-            # For quarterly earnings (item 2.02) the 8-K often has two exhibits:
-            #   (1) the form cover page (no data), (2) the operating supplement.
-            # Try all exhibit URLs and keep the one with the best parsed coverage,
-            # prioritising any exhibit that yields a non-null combined_ratio.
-            # For monthly supplements (item 7.01) only the first URL is tried
-            # (current behaviour, which works reliably).
-            max_exhibits_to_try = len(doc_urls) if item_code == "2.02" else 1
-
-            parsed: dict[str, Any] | None = None
-            used_url: str = doc_urls[0]
-
-            for url_idx, doc_url in enumerate(doc_urls[:max_exhibits_to_try]):
-                try:
-                    resp = _get(doc_url)
-                    html = resp.text
-                    candidate = _parse_html_exhibit(html, filing_date, item_code=item_code)
-                except Exception as exc:
-                    log.warning(
-                        "Failed to fetch/parse exhibit %d for %s (%s): %r",
-                        url_idx + 1, accession, doc_url, exc,
-                    )
-                    continue
-
-                if candidate is None:
-                    log.debug(
-                        "Exhibit %d for %s yielded no parseable data (%s).",
-                        url_idx + 1, accession, doc_url,
-                    )
-                    continue
-
-                if parsed is None or _completeness_score(candidate) > _completeness_score(parsed):
-                    parsed = candidate
-                    used_url = doc_url
-
-                # Stop as soon as we have a combined_ratio — core field satisfied.
-                if parsed.get("combined_ratio") is not None:
-                    if url_idx > 0:
-                        log.info(
-                            "Quarterly CR found in exhibit %d for %s (%s).",
-                            url_idx + 1, accession, doc_url,
-                        )
-                    break
-
-            if parsed is None:
-                log.debug(
-                    "No parseable data in %s (filed %s).", accession, filing_date
-                )
-                continue
-
-            # Diagnostic: log surrounding text when quarterly CR is still None.
-            if item_code == "2.02" and parsed.get("combined_ratio") is None:
-                try:
-                    resp_diag = _get(used_url)
-                    text_diag = _strip_html_text(resp_diag.text)
-                    idx = text_diag.lower().find("combined ratio")
-                    if idx >= 0:
-                        log.warning(
-                            "DIAG %s: 'combined ratio' found at char %d in %s. "
-                            "Vicinity (300 chars): %r",
-                            accession, idx, used_url,
-                            text_diag[idx : idx + 300],
-                        )
-                    else:
-                        log.warning(
-                            "DIAG %s: 'combined ratio' NOT found in stripped text of %s. "
-                            "First 600 chars: %r",
-                            accession, used_url,
-                            text_diag[:600],
-                        )
-                except Exception:
-                    pass
-
-            # v7.2: cross-validate parsed fields; nullify inconsistent ones.
-            parsed = _validate_parsed_record(parsed, filing_date, accession)
-            parsed["accession_number"] = accession
-
-            # If validation nullified combined_ratio but sub-ratios survived,
-            # recover it from loss/LAE + expense (combined ratio = their sum by definition).
-            if parsed.get("combined_ratio") is None:
-                _lr = parsed.get("loss_lae_ratio")
-                _er = parsed.get("expense_ratio")
-                if _lr is not None and _er is not None and 60.0 <= _lr + _er <= 140.0:
-                    parsed["combined_ratio"] = round(_lr + _er, 1)
-                    log.info(
-                        "CR recovered from sub-ratios for %s: %.1f + %.1f = %.1f",
-                        accession, _lr, _er, _lr + _er,
-                    )
-
-            # If validation nullified both core fields, skip this filing.
-            if parsed["combined_ratio"] is None and parsed["pif_total"] is None:
-                log.debug(
-                    "Validation nullified both CR and PIF for %s — skipping.",
-                    accession,
-                )
-                continue
-
-            log.info(
-                "Parsed %s  month_end=%-12s  CR=%-6s  PIF=%s  item=%s",
-                accession,
-                parsed["month_end"],
-                f"{parsed['combined_ratio']:.1f}" if parsed["combined_ratio"] else "n/a",
-                f"{parsed['pif_total']:,.0f}" if parsed["pif_total"] else "n/a",
-                item_code,
-            )
-            records.append(parsed)
-
+            parsed = parse_filing(filing)
         except Exception as exc:
             parse_errors += 1
             log.exception(
                 "SKIP %s (filed %s) due to parse failure. Error=%r",
-                accession,
-                filing_date,
+                filing["accession_number"],
+                filing["filing_date"],
                 exc,
             )
             continue
+        if parsed is not None:
+            records.append(parsed)
 
     if parse_errors > 0:
         log.warning("%d filing(s) skipped due to parse errors.", parse_errors)
@@ -2217,17 +2535,7 @@ def fetch_and_upsert(
         log.info("No records to upsert.")
         return 0
 
-    # Sort, derive fields, deduplicate
-    records.sort(key=lambda r: r["month_end"])
-    records = _compute_derived_fields(records)
-
-    # Prefer the filing with the most non-null fields when deduplicating.
-    seen: dict[str, dict[str, Any]] = {}
-    for rec in records:
-        me = rec["month_end"]
-        if me not in seen or _completeness_score(rec) >= _completeness_score(seen[me]):
-            seen[me] = rec
-    deduped = sorted(seen.values(), key=lambda r: r["month_end"])
+    deduped = select_monthly_releases(records)
 
     # Coverage report
     n_total = len(deduped)
@@ -2237,19 +2545,14 @@ def fetch_and_upsert(
         return f"{n}/{n_total}"
 
     log.info(
-        "Coverage  combined_ratio=%s  pif_total=%s  gainshare=%s  "
-        "npw=%s  npw_agency=%s  investment_income=%s  bvps=%s  "
-        "channel_mix=%s  underwriting_income=%s  "
-        "date_range=%s->%s",
+        "Coverage  combined_ratio=%s  pif_total=%s  npw=%s  npw_agency=%s  "
+        "investment_income=%s  bvps=%s  date_range=%s->%s",
         _cov("combined_ratio"),
         _cov("pif_total"),
-        _cov("gainshare_estimate"),
         _cov("net_premiums_written"),
         _cov("npw_agency"),
         _cov("investment_income"),
         _cov("book_value_per_share"),
-        _cov("channel_mix_agency_pct"),
-        _cov("underwriting_income"),
         deduped[0]["month_end"],
         deduped[-1]["month_end"],
     )
@@ -2258,24 +2561,79 @@ def fetch_and_upsert(
         log.info("Dry run — skipping DB write (%d rows would be upserted).", n_total)
         return 0
 
+    months_before = conn.execute(
+        "SELECT COUNT(*) FROM pgr_edgar_monthly"
+    ).fetchone()[0]
+    # Every parse is kept, append-only, before the monthly table is touched.
+    n_raw = db_client.record_pgr_edgar_raw(conn, deduped, PARSER_VERSION)
     n = db_client.upsert_pgr_edgar_monthly(conn, deduped)
-    log.info("Upserted %d rows to pgr_edgar_monthly.", n)
+    recompute_derived_fields(conn)
+    months_after = conn.execute(
+        "SELECT COUNT(*) FROM pgr_edgar_monthly"
+    ).fetchone()[0]
+    log.info(
+        "Recorded %d raw values; upserted %d rows to pgr_edgar_monthly "
+        "(%d new months).",
+        n_raw, n, months_after - months_before,
+    )
 
     # v7.2: warn when no new months were added to alert on format changes.
-    existing_months_row = conn.execute(
-        "SELECT COUNT(DISTINCT month_end) FROM pgr_edgar_monthly"
-    ).fetchone()
-    existing_count = existing_months_row[0] if existing_months_row else 0
-
-    if n == 0 or (existing_count > 0 and n <= existing_count):
+    if months_after == months_before:
         log.warning(
-            "NOTE: No new months added this run (upserted %d rows into "
-            "a table with %d existing months). If this persists, check "
-            "whether PGR has changed its 8-K filing format.",
-            n, existing_count,
+            "NOTE: No new months added this run (table has %d months). If this "
+            "persists, check whether PGR has changed its 8-K filing format.",
+            months_after,
         )
 
     return n
+
+
+def select_monthly_releases(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep one parsed record per ``month_end``: the month's release.
+
+    Prefers a record with a combined ratio, then the earliest filing (the
+    monthly release; a later filing for the same month is a quarterly letter
+    or an unrelated 8-K whose numbers can parse as a partial record), then
+    the most complete.  Returns records sorted by ``month_end``.
+    """
+    def _rank(rec: dict[str, Any]) -> tuple[int, str, int]:
+        return (
+            0 if rec.get("combined_ratio") is not None else 1,
+            rec.get("filing_date") or "",
+            -_completeness_score(rec),
+        )
+
+    seen: dict[str, dict[str, Any]] = {}
+    for rec in records:
+        me = rec["month_end"]
+        if me not in seen or _rank(rec) < _rank(seen[me]):
+            seen[me] = rec
+    return sorted(seen.values(), key=lambda r: r["month_end"])
+
+
+def recompute_derived_fields(conn: sqlite3.Connection) -> int:
+    """Recompute every derived column over the whole ``pgr_edgar_monthly`` table.
+
+    YoY windows need the full history, so derived fields are never computed
+    on a partial fetch window (F16/F33).  Returns the number of rows updated.
+    """
+    cur = conn.execute("SELECT * FROM pgr_edgar_monthly ORDER BY month_end")
+    names = [d[0] for d in cur.description]
+    records = [dict(zip(names, row)) for row in cur.fetchall()]
+    if not records:
+        return 0
+    _compute_derived_fields(records)
+    sql = (
+        "UPDATE pgr_edgar_monthly SET "
+        + ", ".join(f"{f} = ?" for f in DERIVED_FIELDS)
+        + " WHERE month_end = ?"
+    )
+    conn.executemany(
+        sql,
+        [tuple(rec[f] for f in DERIVED_FIELDS) + (rec["month_end"],) for rec in records],
+    )
+    conn.commit()
+    return len(records)
 
 
 # ---------------------------------------------------------------------------
@@ -2292,9 +2650,13 @@ def load_from_csv(
     The CSV (``data/processed/pgr_edgar_cache.csv``) contains 256+ rows of
     monthly PGR data going back to 2004, pre-extracted from SEC EDGAR filings.
     This function converts the CSV's ``report_period`` (``"YYYY-MM"``) to
-    ``month_end`` (last calendar day of that month, ``"YYYY-MM-DD"``), maps all
-    65 CSV columns into the v6.2 expanded DB schema, computes derived features,
-    and upserts all rows.
+    ``month_end`` (last calendar day of that month, ``"YYYY-MM-DD"``) and maps
+    the CSV columns into the DB schema.
+
+    Only months missing from the table are inserted, so re-running it on a
+    live-populated DB changes nothing (F33).  Inserted values are recorded in
+    ``pgr_edgar_monthly_raw`` with ``method='csv'``.  Derived fields are then
+    recomputed over the whole table.
 
     No network calls are made.  The regular ``fetch_and_upsert`` EDGAR fetch
     covers recent months not yet in the CSV.
@@ -2305,7 +2667,7 @@ def load_from_csv(
         dry_run: If True, parse but skip the DB write.
 
     Returns:
-        Number of rows upserted (0 for dry runs).
+        Number of months inserted (0 for dry runs).
 
     Raises:
         FileNotFoundError: If ``csv_path`` does not exist.
@@ -2423,44 +2785,11 @@ def load_from_csv(
             df[db_col] = float("nan")
 
     # -----------------------------------------------------------------------
-    # Derived fields (computed once the full sorted time series is available)
+    # Build records.  Derived fields (YoY growth, Gainshare, PIF totals,
+    # channel mix, underwriting income) are not taken from the CSV: they are
+    # recomputed over the whole table after the insert, by calendar month (F16).
     # -----------------------------------------------------------------------
-
-    # pif_growth_yoy and gainshare_estimate: reuse existing logic via records path
-    # npw_growth_yoy: 12-month YoY on net_premiums_written
-    df["npw_growth_yoy"] = df["net_premiums_written"].pct_change(periods=12, fill_method=None)
-
-    # channel_mix_agency_pct = npw_agency / (npw_agency + npw_direct)
-    npw_pl = df["npw_agency"] + df["npw_direct"]
-    df["channel_mix_agency_pct"] = df["npw_agency"].where(npw_pl > 0) / npw_pl.where(npw_pl > 0)
-
-    # underwriting_income = npe * (1 - combined_ratio / 100)
-    df["underwriting_income"] = df["net_premiums_earned"] * (
-        1.0 - df["combined_ratio"] / 100.0
-    )
-
-    # unearned_premium_growth_yoy: 12-month YoY on unearned_premiums
-    df["unearned_premium_growth_yoy"] = df["unearned_premiums"].pct_change(periods=12, fill_method=None)
-
-    # buyback_yield requires market_cap (price data) — set NULL for CSV path
-    df["buyback_yield"] = float("nan")
-
-    # -----------------------------------------------------------------------
-    # Build records list and apply pif_growth_yoy / gainshare via existing helper
-    # -----------------------------------------------------------------------
-    db_cols = list(DIRECT_MAP.values()) + [
-        "month_end",
-        "npw_growth_yoy", "channel_mix_agency_pct",
-        "underwriting_income", "unearned_premium_growth_yoy", "buyback_yield",
-    ]
-    # Deduplicate column list (roe_net_income_ttm could appear once)
-    seen_cols: set[str] = set()
-    unique_cols = []
-    for c in db_cols:
-        if c not in seen_cols:
-            unique_cols.append(c)
-            seen_cols.add(c)
-
+    unique_cols = ["month_end"] + list(dict.fromkeys(DIRECT_MAP.values()))
     df_out = df[unique_cols].copy()
 
     def _nan_to_none(val: Any) -> Any:
@@ -2470,16 +2799,14 @@ def load_from_csv(
                 return None
         except TypeError:
             pass
+        if isinstance(val, str) and val.lower() == "nan":
+            return None
         return val
 
     records_raw: list[dict[str, Any]] = [
         {col: _nan_to_none(row[col]) for col in unique_cols}
         for _, row in df_out.iterrows()
     ]
-
-    # Compute pif_growth_yoy and gainshare_estimate using the existing helper
-    # (operates on sorted list; only needs pif_total and combined_ratio)
-    records_raw = _compute_derived_fields(records_raw)
 
     log.info(
         "CSV loaded: %d rows  date_range=%s->%s",
@@ -2488,29 +2815,112 @@ def load_from_csv(
         records_raw[-1]["month_end"] if records_raw else "n/a",
     )
 
-    # Coverage summary
-    def _coverage(field: str) -> str:
-        n = sum(1 for r in records_raw if r.get(field) is not None)
-        return f"{n}/{len(records_raw)}"
-
-    log.info(
-        "Coverage  combined_ratio=%s  npw=%s  npw_agency=%s  "
-        "investment_income=%s  book_value=%s  gainshare=%s",
-        _coverage("combined_ratio"),
-        _coverage("net_premiums_written"),
-        _coverage("npw_agency"),
-        _coverage("investment_income"),
-        _coverage("book_value_per_share"),
-        _coverage("gainshare_estimate"),
-    )
-
     if dry_run:
-        log.info("Dry run — skipping DB write (%d rows would be upserted).", len(records_raw))
+        log.info("Dry run — skipping DB write (%d rows read).", len(records_raw))
         return 0
 
-    n = db_client.upsert_pgr_edgar_monthly(conn, records_raw)
-    log.info("Upserted %d rows from CSV to pgr_edgar_monthly.", n)
+    # Idempotent against newer rows (F33): only months absent from the table
+    # are inserted; rows written by the live parser are never overwritten.
+    existing = {
+        str(row[0])
+        for row in conn.execute("SELECT month_end FROM pgr_edgar_monthly").fetchall()
+    }
+    new_records = [r for r in records_raw if r["month_end"] not in existing]
+    db_client.record_pgr_edgar_raw(
+        conn, new_records, parser_version=os.path.basename(csv_path), method="csv",
+    )
+    n = db_client.upsert_pgr_edgar_monthly(conn, new_records, mode="insert_missing")
+    recompute_derived_fields(conn)
+    log.info(
+        "Inserted %d missing months from CSV into pgr_edgar_monthly "
+        "(%d months already present were left unchanged).",
+        n, len(records_raw) - len(new_records),
+    )
     return n
+
+
+# Column order of data/processed/pgr_edgar_cache.csv.  ``report_period`` is
+# ``YYYY-MM``; ``roe_net_income_trailing_12m`` is the DB's ``roe_net_income_ttm``.
+EDGAR_CACHE_CSV_COLUMNS: tuple[str, ...] = (
+    "report_period",
+    "filing_date",
+    "filing_type",
+    "accession_number",
+    "net_premiums_written",
+    "net_premiums_earned",
+    "combined_ratio",
+    "avg_diluted_equivalent_shares",
+    "investment_income",
+    "total_net_realized_gains",
+    "service_revenues",
+    "fees_and_other_revenues",
+    "total_revenues",
+    "losses_lae",
+    "policy_acquisition_costs",
+    "other_underwriting_expenses",
+    "interest_expense",
+    "total_expenses",
+    "income_before_income_taxes",
+    "provision_for_income_taxes",
+    "net_income",
+    "total_comprehensive_income",
+    "eps_basic",
+    "eps_diluted",
+    "comprehensive_eps_diluted",
+    "avg_shares_basic",
+    "avg_shares_diluted",
+    "loss_lae_ratio",
+    "expense_ratio",
+    "pif_agency_auto",
+    "pif_direct_auto",
+    "pif_special_lines",
+    "pif_property",
+    "pif_total_personal_lines",
+    "pif_commercial_lines",
+    "pif_total",
+    "npw_agency",
+    "npw_direct",
+    "npw_property",
+    "npw_commercial",
+    "npe_agency",
+    "npe_direct",
+    "npe_property",
+    "npe_commercial",
+    "total_investments",
+    "total_assets",
+    "loss_lae_reserves",
+    "unearned_premiums",
+    "debt",
+    "total_liabilities",
+    "shareholders_equity",
+    "common_shares_outstanding",
+    "shares_repurchased",
+    "avg_cost_per_share",
+    "book_value_per_share",
+    "roe_net_income_trailing_12m",
+    "roe_comprehensive_trailing_12m",
+    "debt_to_total_capital",
+    "fixed_income_duration",
+    "fte_return_fixed_income",
+    "fte_return_common_stocks",
+    "fte_return_total_portfolio",
+    "investment_book_yield",
+    "net_unrealized_gains_fixed",
+    "weighted_avg_credit_quality",
+)
+
+
+def export_edgar_cache_csv(conn: sqlite3.Connection, csv_path: str) -> int:
+    """Write ``pgr_edgar_monthly`` to ``pgr_edgar_cache.csv`` (the committed seed).
+
+    The CSV is a snapshot of the DB table, so re-seeding an empty DB from it
+    with ``load_from_csv`` reproduces the table.  Returns the number of rows.
+    """
+    df = pd.read_sql_query("SELECT * FROM pgr_edgar_monthly ORDER BY month_end", conn)
+    df["report_period"] = df["month_end"].str.slice(0, 7)
+    df["roe_net_income_trailing_12m"] = df["roe_net_income_ttm"]
+    df[list(EDGAR_CACHE_CSV_COLUMNS)].to_csv(csv_path, index=False, float_format="%.6f")
+    return len(df)
 
 
 # ---------------------------------------------------------------------------
@@ -2555,7 +2965,19 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Parse/read data but do not write to the database.",
+        help=(
+            "Parse/read data but do not write to the database. The DB is "
+            "opened read-only and migrations are not applied."
+        ),
+    )
+    parser.add_argument(
+        "--cache-dir",
+        metavar="DIR",
+        default=None,
+        help=(
+            "Cache EDGAR responses (filing indexes and exhibits) in DIR. "
+            "Filings are immutable; the submissions index is always re-fetched."
+        ),
     )
     return parser.parse_args()
 
@@ -2563,8 +2985,13 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     configure_logging()
     args = _parse_args()
-    conn = db_client.get_connection(config.DB_PATH)
-    db_client.initialize_schema(conn)
+    if args.cache_dir:
+        set_http_cache_dir(args.cache_dir)
+    if args.dry_run:
+        conn = db_client.get_connection(config.DB_PATH, read_only=True)
+    else:
+        conn = db_client.get_connection(config.DB_PATH)
+        db_client.initialize_schema(conn)
 
     try:
         if args.load_from_csv is not None:

@@ -216,19 +216,28 @@ class TestUpsertSplits:
 class TestPGRFundamentals:
     def test_upsert_and_retrieve(self, conn):
         records = [
-            {"period_end": "2023-03-31", "pe_ratio": 22.5, "pb_ratio": 4.1,
-             "roe": 0.18, "eps": 5.2, "revenue": 1500.0, "net_income": 300.0,
-             "source": "fmp"},
+            {"period_end": "2023-03-31", "roe": 0.18, "eps": 5.2,
+             "revenue": 1500.0, "net_income": 300.0,
+             "filing_date": "2023-05-01", "source": "edgar"},
         ]
         n = db_client.upsert_pgr_fundamentals(conn, records)
         assert n == 1
         df = db_client.get_pgr_fundamentals(conn)
         assert len(df) == 1
-        assert df["pe_ratio"].iloc[0] == pytest.approx(22.5)
+        assert df["roe"].iloc[0] == pytest.approx(0.18)
+        assert df["filing_date"].iloc[0] == "2023-05-01"
+
+    def test_null_pe_pb_columns_dropped(self, conn):
+        """F09: the always-NULL pe_ratio / pb_ratio columns no longer exist."""
+        cols = {
+            row[1]
+            for row in conn.execute("PRAGMA table_info(pgr_fundamentals_quarterly)")
+        }
+        assert "pe_ratio" not in cols and "pb_ratio" not in cols
 
     def test_datetimeindex(self, conn):
         db_client.upsert_pgr_fundamentals(conn, [
-            {"period_end": "2023-03-31", "pe_ratio": 22.5, "source": "fmp"}
+            {"period_end": "2023-03-31", "roe": 0.2, "source": "edgar"}
         ])
         df = db_client.get_pgr_fundamentals(conn)
         assert isinstance(df.index, pd.DatetimeIndex)

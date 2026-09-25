@@ -96,8 +96,10 @@ they open the DB with `mode=ro`, skip migrations, API-log rows, split seeding,
 the model-health snapshot, the retrain log, `decision_log.md` and the shadow
 ledgers, and write monthly artifacts to the gitignored
 `results/dry_run/monthly_decisions/YYYY-MM/` (manifest `dry_run: true`).
-`peer_fetch.py` and `edgar_8k_fetcher.py` dry runs are not yet read-only, and
-`edgar_8k_fetcher.py --dry-run` calls SEC EDGAR; run them against a DB copy.
+`edgar_8k_fetcher.py --dry-run` also opens the DB read-only and skips
+migrations, but it calls SEC EDGAR (set `EDGAR_USER_AGENT`; add
+`--cache-dir data/raw/edgar_8k_cache` to reuse cached filings).
+`peer_fetch.py --dry-run` is not yet read-only; run it against a DB copy.
 
 Optional local dashboard:
 

@@ -2,9 +2,10 @@
 Tests for src/ingestion/edgar_client.py.
 
 Validates:
-  - _extract_flow_concept: correct quarter filtering, deduplication, empty fallback
+  - _extract_flow_concept: quarter filtering, Q4 = FY - 9M, earliest-filed
+    values, empty fallback
   - _extract_instant_concept: correct instant item handling
-  - fetch_pgr_fundamentals_quarterly: field mapping, ROE derivation, NULL fields,
+  - fetch_pgr_fundamentals_quarterly: field mapping, TTM / average-equity ROE,
     output schema matches pgr_fundamentals_quarterly DB columns
 
 All tests use synthetic in-memory companyfacts dicts; no HTTP calls are made.
@@ -12,7 +13,6 @@ All tests use synthetic in-memory companyfacts dicts; no HTTP calls are made.
 
 from __future__ import annotations
 
-import math
 from unittest.mock import MagicMock
 
 import pytest
@@ -77,7 +77,8 @@ _Q2_YTD_REVENUE = {
     "fp": "Q2",
 }
 
-# Amended Q1 10-Q: same period, filed later — should replace the original.
+# Amended Q1 10-Q: same period, filed later — the original (first-reported)
+# value is kept.
 _Q1_REVENUE_AMENDED = {
     "start": "2023-01-01",
     "end": "2023-03-31",
@@ -129,22 +130,31 @@ class TestExtractFlowConcept:
         series = _extract_flow_concept(facts, "us-gaap", "Revenues")
         assert series.empty
 
-    def test_annual_10k_included(self):
-        """A 10-K annual record (~365 days) is kept."""
+    def test_annual_10k_without_nine_months_is_dropped(self):
+        """A full-year fact is never stored as a quarter (F09)."""
         facts = _make_facts("us-gaap", "Revenues", "USD", [_FY_REVENUE])
         series = _extract_flow_concept(facts, "us-gaap", "Revenues")
-        assert not series.empty
-        assert "2022-12-31" in series.index
-        assert series["2022-12-31"] == pytest.approx(55_000_000_000)
+        assert series.empty
 
-    def test_amendment_replaces_original(self):
-        """When the same period_end appears twice, the later-filed value wins."""
+    def test_q4_is_full_year_less_nine_months(self):
+        """Q4 = 10-K full year − 10-Q nine-month YTD with the same start (F09)."""
+        nine_months = {
+            "start": "2022-01-01", "end": "2022-09-30", "val": 40_000_000_000,
+            "filed": "2022-11-01", "form": "10-Q", "accn": "q3",
+        }
+        facts = _make_facts("us-gaap", "Revenues", "USD", [_FY_REVENUE, nine_months])
+        series = _extract_flow_concept(facts, "us-gaap", "Revenues")
+        assert list(series.index) == ["2022-12-31"]
+        assert series["2022-12-31"] == pytest.approx(15_000_000_000)
+
+    def test_earliest_filed_value_kept(self):
+        """When the same period appears twice, the first-filed value is kept."""
         facts = _make_facts(
-            "us-gaap", "Revenues", "USD", [_Q1_REVENUE, _Q1_REVENUE_AMENDED]
+            "us-gaap", "Revenues", "USD", [_Q1_REVENUE_AMENDED, _Q1_REVENUE]
         )
         series = _extract_flow_concept(facts, "us-gaap", "Revenues")
         assert len(series) == 1
-        assert series["2023-03-31"] == pytest.approx(15_100_000_000)
+        assert series["2023-03-31"] == pytest.approx(15_000_000_000)
 
     def test_missing_concept_returns_empty(self):
         """If the concept is absent from the facts dict, return an empty Series."""
@@ -241,10 +251,10 @@ class TestFetchPGRFundamentalsQuarterly:
         )
         rec = fetch_pgr_fundamentals_quarterly()[0]
         expected_keys = {
-            "period_end", "pe_ratio", "pb_ratio", "roe",
-            "eps", "revenue", "net_income", "source",
+            "period_end", "roe", "eps", "revenue", "net_income",
+            "filing_date", "source",
         }
-        assert expected_keys.issubset(rec.keys())
+        assert set(rec.keys()) == expected_keys
 
     def test_period_end_is_iso_string(self, monkeypatch):
         monkeypatch.setattr(
@@ -271,25 +281,22 @@ class TestFetchPGRFundamentalsQuarterly:
         rec = fetch_pgr_fundamentals_quarterly()[0]
         assert rec["eps"] == pytest.approx(3.25)
 
-    def test_roe_annualised(self, monkeypatch):
-        """ROE = (quarterly net_income × 4) / equity."""
+    def test_roe_needs_four_quarters(self, monkeypatch):
+        """ROE is TTM net income / average equity: one quarter gives None."""
         monkeypatch.setattr(
             "src.ingestion.edgar_client.fetch_companyfacts",
             lambda **_: _make_full_facts(),
         )
         rec = fetch_pgr_fundamentals_quarterly()[0]
-        expected_roe = (1_500_000_000 * 4) / 20_000_000_000   # = 0.30
-        assert rec["roe"] == pytest.approx(expected_roe)
+        assert rec["roe"] is None
 
-    def test_pe_pb_are_nan(self, monkeypatch):
-        """pe_ratio and pb_ratio must be NaN (not available from XBRL alone)."""
+    def test_filing_date_is_net_income_filing(self, monkeypatch):
         monkeypatch.setattr(
             "src.ingestion.edgar_client.fetch_companyfacts",
             lambda **_: _make_full_facts(),
         )
         rec = fetch_pgr_fundamentals_quarterly()[0]
-        assert math.isnan(rec["pe_ratio"])
-        assert math.isnan(rec["pb_ratio"])
+        assert rec["filing_date"] == "2023-05-01"
 
     def test_source_is_edgar(self, monkeypatch):
         monkeypatch.setattr(
@@ -336,39 +343,17 @@ class TestFetchPGRFundamentalsQuarterly:
 
     def test_equity_fallback_to_attributable(self, monkeypatch):
         """If StockholdersEquity absent, fall back to StockholdersEquityAttributableToParent."""
-        net_income_rec = {
-            "start": "2023-01-01", "end": "2023-03-31",
-            "val": 1_000_000_000, "filed": "2023-05-01", "form": "10-Q",
-            "accn": "x",
-        }
-        attr_equity = {
-            "end": "2023-03-31",
-            "val": 10_000_000_000,
-            "filed": "2023-05-01",
-            "form": "10-Q",
-            "accn": "x",
-        }
-        facts = {
-            "facts": {
-                "us-gaap": {
-                    "Revenues": {"units": {"USD": [_Q1_REVENUE]}},
-                    "NetIncomeLoss": {"units": {"USD": [net_income_rec]}},
-                    "StockholdersEquityAttributableToParent": {
-                        "units": {"USD": [attr_equity]}
-                    },
-                }
-            }
-        }
+        facts = _annual_facts()
+        us_gaap = facts["facts"]["us-gaap"]
+        us_gaap["StockholdersEquityAttributableToParent"] = us_gaap.pop(
+            "StockholdersEquity"
+        )
         monkeypatch.setattr(
             "src.ingestion.edgar_client.fetch_companyfacts",
             lambda **_: facts,
         )
-        records = fetch_pgr_fundamentals_quarterly()
-        assert len(records) >= 1
-        rec = records[0]
-        # ROE derived from attributable equity fallback
-        expected_roe = (1_000_000_000 * 4) / 10_000_000_000
-        assert rec["roe"] == pytest.approx(expected_roe)
+        rec = {r["period_end"]: r for r in fetch_pgr_fundamentals_quarterly()}
+        assert rec["2018-12-31"]["roe"] == pytest.approx(2615.3e6 / _AVG_EQUITY_2018)
 
     def test_multiple_quarters_returned(self, monkeypatch):
         """Multiple quarters produce one record per period_end."""
@@ -395,6 +380,90 @@ class TestFetchPGRFundamentalsQuarterly:
         assert "2023-03-31" in period_ends
         assert "2023-06-30" in period_ends
         assert len(records) == 2
+
+
+def _annual_facts() -> dict:
+    """PGR FY2018 facts as filed in XBRL (companyfacts), in USD.
+
+    Net income: Q1 718.0M, Q2 704.2M, Q3 928.4M, 6M 1,422.2M, 9M 2,350.6M
+    (10-Q 0000080661-18-000050), FY 2,615.3M (10-K 0000080661-19-000008), so
+    Q4 = 264.7M.  Basic EPS: Q1 1.23, Q2 1.20, Q3 1.58, 9M 4.01, FY 4.45, so
+    Q4 = 0.44.  Equity: 9,284.8M (2017-12-31), 10,323.2M, 11,000.8M,
+    11,858.8M, 10,821.8M (2018-12-31).  PGR printed a trailing-12-month ROE of
+    24.7 % for December 2018 (8-K 0000080661-19-000003).  The restated 2020
+    comparative is illustrative: it checks that the first filing wins.
+    """
+    def dur(start, end, val, filed, form):
+        return {"start": start, "end": end, "val": val, "filed": filed, "form": form}
+
+    ni = [
+        dur("2018-01-01", "2018-03-31", 718.0e6, "2018-05-02", "10-Q"),
+        dur("2018-04-01", "2018-06-30", 704.2e6, "2018-07-31", "10-Q"),
+        dur("2018-07-01", "2018-09-30", 928.4e6, "2018-10-31", "10-Q"),
+        dur("2018-01-01", "2018-06-30", 1422.2e6, "2018-07-31", "10-Q"),
+        dur("2018-01-01", "2018-09-30", 2350.6e6, "2018-10-31", "10-Q"),
+        dur("2018-01-01", "2018-12-31", 2615.3e6, "2019-02-27", "10-K"),
+        dur("2018-01-01", "2018-12-31", 2600.0e6, "2020-03-02", "10-K"),
+    ]
+    eps = [
+        dur("2018-01-01", "2018-03-31", 1.23, "2018-05-02", "10-Q"),
+        dur("2018-04-01", "2018-06-30", 1.20, "2018-07-31", "10-Q"),
+        dur("2018-07-01", "2018-09-30", 1.58, "2018-10-31", "10-Q"),
+        dur("2018-01-01", "2018-09-30", 4.01, "2018-10-31", "10-Q"),
+        dur("2018-01-01", "2018-12-31", 4.45, "2019-02-27", "10-K"),
+    ]
+    equity = [
+        {"end": "2017-12-31", "val": 9284.8e6, "filed": "2018-02-27", "form": "10-K"},
+        {"end": "2018-03-31", "val": 10323.2e6, "filed": "2018-05-02", "form": "10-Q"},
+        {"end": "2018-06-30", "val": 11000.8e6, "filed": "2018-07-31", "form": "10-Q"},
+        {"end": "2018-09-30", "val": 11858.8e6, "filed": "2018-10-31", "form": "10-Q"},
+        {"end": "2018-12-31", "val": 10821.8e6, "filed": "2019-02-27", "form": "10-K"},
+    ]
+    return {
+        "facts": {
+            "us-gaap": {
+                "NetIncomeLoss": {"units": {"USD": ni}},
+                "EarningsPerShareBasic": {"units": {"USD/shares": eps}},
+                "StockholdersEquity": {"units": {"USD": equity}},
+            }
+        }
+    }
+
+
+_AVG_EQUITY_2018 = (9284.8 + 10323.2 + 11000.8 + 11858.8 + 10821.8) / 5 * 1e6
+
+
+class TestAnnualFactsF09:
+    """F09: 10-K annual + 10-Q YTD facts give discrete quarters and sane ROE."""
+
+    def _records(self, monkeypatch) -> dict:
+        monkeypatch.setattr(
+            "src.ingestion.edgar_client.fetch_companyfacts",
+            lambda **_: _annual_facts(),
+        )
+        return {r["period_end"]: r for r in fetch_pgr_fundamentals_quarterly()}
+
+    def test_q4_eps_is_full_year_less_nine_months(self, monkeypatch):
+        rec = self._records(monkeypatch)
+        assert rec["2018-12-31"]["eps"] == pytest.approx(4.45 - 4.01)
+        assert rec["2018-12-31"]["net_income"] == pytest.approx((2615.3 - 2350.6) * 1e6)
+
+    def test_q4_uses_first_filed_annual_value(self, monkeypatch):
+        rec = self._records(monkeypatch)
+        assert rec["2018-12-31"]["filing_date"] == "2019-02-27"
+
+    def test_ytd_facts_never_stored_as_quarters(self, monkeypatch):
+        rec = self._records(monkeypatch)
+        assert sorted(rec) == ["2018-03-31", "2018-06-30", "2018-09-30", "2018-12-31"]
+        assert rec["2018-06-30"]["net_income"] == pytest.approx(704.2e6)
+
+    def test_roe_is_ttm_over_average_equity(self, monkeypatch):
+        rec = self._records(monkeypatch)
+        roe = rec["2018-12-31"]["roe"]
+        assert roe == pytest.approx(2615.3e6 / _AVG_EQUITY_2018)
+        assert roe == pytest.approx(0.247, abs=0.005)  # PGR printed 24.7 %
+        for r in rec.values():
+            assert r["roe"] is None or -0.5 <= r["roe"] <= 0.6
 
 
 class TestEdgarHeaders:

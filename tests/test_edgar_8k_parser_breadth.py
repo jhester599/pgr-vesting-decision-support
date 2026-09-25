@@ -78,6 +78,7 @@ def _broad_exhibit_html() -> str:
         <tr><td>Common shares repurchased - actual</td><td>46,822</td></tr>
         <tr><td>Average cost per common share</td><td>$</td><td>130.01</td></tr>
         <tr><td>Book value per common share</td><td>$</td><td>28.93</td></tr>
+        <tr><td>Trailing 12-month return on average common shareholders' equity</td></tr>
         <tr><td>Net income</td><td>10.4</td><td>%</td></tr>
         <tr><td>Comprehensive income</td><td>8.4</td><td>%</td></tr>
         <tr><td>Net unrealized pretax gains (losses) on fixed-maturity securities</td><td>$</td><td>(3339.2)</td></tr>
