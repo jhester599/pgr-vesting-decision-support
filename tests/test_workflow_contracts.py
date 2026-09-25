@@ -43,3 +43,17 @@ def test_monthly_8k_workflow_verifies_calendar_aware_freshness() -> None:
     assert "check_data_freshness" in text
     assert "PGR monthly EDGAR" in text
     assert "expected_month_end" in text
+
+
+def test_weekly_workflow_refreshes_dividends_and_checks_integrity() -> None:
+    """Review F08: a budget-aware dividend refresh runs on its own cron, and
+    the integrity check (split jumps, duplicate week bars, dividend
+    freshness) runs after the DB commit."""
+    text = _read(".github/workflows/weekly_data_fetch.yml")
+    assert "- cron: '0 16 * * 3'" in text
+    assert 'MODE_FLAG="--dividend-refresh"' in text
+    assert "python scripts/weekly_fetch.py $MODE_FLAG $DRY_FLAG" in text
+    assert "python scripts/check_data_integrity.py $STALE_FLAG" in text
+    assert text.index("Commit updated database") < text.index(
+        "python scripts/check_data_integrity.py"
+    )

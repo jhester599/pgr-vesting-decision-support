@@ -4,18 +4,30 @@
 
 ### `weekly_data_fetch.yml`
 
-Purpose:
+Two schedules (review 2026-09-25, WP1/WP4):
 
-- refresh main benchmark price data
-- refresh PGR dividends
-- refresh PGR quarterly fundamentals
-- refresh FRED macro data
-- rebuild monthly relative-return targets
+- **Friday 22:00 UTC** (`weekly_fetch.py`): refresh main benchmark prices
+  (one bar per ticker per ISO week), PGR dividends, PGR quarterly
+  fundamentals and FRED macro data; seed `split_history` from
+  `config/splits.py`; rebuild monthly relative-return targets.
+- **Wednesday 16:00 UTC** (`weekly_fetch.py --dividend-refresh`, also
+  `workflow_dispatch` input `dividend_refresh`): budget-aware DIVIDENDS
+  refresh for PGR and the ETF benchmarks. A ticker is re-fetched once its
+  last dividend fetch is 27+ days old (6+ days for monthly payers), oldest
+  first, within the AV calls left that day minus 2. Then targets are rebuilt.
+
+Both runs skip the target rebuild if PGR or a benchmark has a weekly close
+ratio outside [0.6, 1.7] with no split row within 7 days (a split missing
+from `config/splits.py`).
 
 Outputs:
 
 - `data/pgr_financials.db`
 - job summary with key counts and latest dates
+- a final "Check price, split and dividend integrity" step
+  (`scripts/check_data_integrity.py`), run after the DB commit. It fails the
+  run on an unexplained price jump or a duplicate ticker-week bar and, after a
+  dividend refresh, on any stale dividend feed.
 
 ### `peer_data_fetch.yml`
 

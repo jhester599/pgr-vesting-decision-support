@@ -1,7 +1,8 @@
 """
 Load historical stock split data for PGR.
 
-Source: Hardcoded from SEC filings / config.PGR_KNOWN_SPLITS.
+Source: config.PGR_KNOWN_SPLITS, derived from the canonical config.KNOWN_SPLITS
+(config/splits.py).
 PGR has had exactly 3 stock splits in its public history, all pre-2010.
 No API call is required; the data is static and stable.
 

@@ -68,5 +68,16 @@ DATA_FRESHNESS_MAX_PRICE_AGE_DAYS: int = 10
 DATA_FRESHNESS_MAX_FRED_AGE_DAYS: int = 45
 DATA_FRESHNESS_MAX_EDGAR_AGE_DAYS: int = 35
 DATA_FRESHNESS_PGR_EDGAR_FILING_GRACE_DAYS: int = 25
+# Dividends are STALE when the latest ex-date is older than the latest price
+# date minus this many usual payment intervals (review F08).
+DIVIDEND_FRESHNESS_INTERVAL_MULTIPLE: float = 1.5
+# Budget-aware dividend refresh (scripts/weekly_fetch.py --dividend-refresh):
+# re-fetch a ticker once its last dividend fetch is this many days old.
+# Monthly payers (usual interval <= 45 days) are refreshed weekly so that they
+# stay within 1.5 intervals; everything else about monthly.
+DIVIDEND_REFRESH_MIN_AGE_DAYS: int = 27
+DIVIDEND_REFRESH_MIN_AGE_DAYS_MONTHLY_PAYER: int = 6
+# AV calls kept in reserve when sizing the dividend refresh batch.
+DIVIDEND_REFRESH_AV_RESERVE: int = 2
 HTTP_RETRY_TOTAL: int = 3
 HTTP_RETRY_BACKOFF_FACTOR: float = 1.0

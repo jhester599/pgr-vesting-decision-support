@@ -12,6 +12,19 @@ Operational notes:
 - free-tier daily limit applies
 - tracked in the database request log
 - production workflows should verify row growth and latest dates after runs
+- prices come from `TIME_SERIES_WEEKLY` and are **unadjusted**; the store
+  keeps one bar per ticker per ISO week (the latest-dated one), because the
+  in-progress week is labelled with its latest trading day
+- `DIVIDENDS` amounts are raw per-share amounts (not split-adjusted); the
+  loader sleeps before its first call and retries "Information" advisories
+  with exponential backoff
+- splits are not ingested automatically: `config/splits.py` is the canonical
+  list, and `scripts/detect_splits.py` checks it against split coefficients
+  recovered from `TIME_SERIES_WEEKLY_ADJUSTED`
+
+Relative-return targets (`monthly_relative_returns`) are DRIP total returns
+on unadjusted prices from the last bar on or before business month-end `t` to
+the last bar on or before `BMonthEnd(t + h)`.
 
 ## FRED
 

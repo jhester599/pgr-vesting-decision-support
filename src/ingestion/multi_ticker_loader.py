@@ -198,7 +198,7 @@ class MultiTickerLoader:
 
         raw = _av_request(self._conn, ticker)
         records = _parse_av_daily(raw, ticker)
-        n = db_client.upsert_prices(self._conn, records)
+        n = db_client.upsert_prices(self._conn, records, one_bar_per_week=True)
         if n:
             db_client.update_ingestion_metadata(self._conn, ticker, "prices", n)
         return n

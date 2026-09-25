@@ -451,6 +451,12 @@ class TestParseAvDividends:
 # ---------------------------------------------------------------------------
 
 class TestMultiDividendLoader:
+    @pytest.fixture(autouse=True)
+    def _no_real_sleep(self, monkeypatch):
+        # fetch_for_tickers sleeps before every call and backs off on
+        # advisories (review F08); keep these offline tests instant.
+        monkeypatch.setattr("src.ingestion.multi_dividend_loader.time.sleep", lambda s: None)
+
     def _av_div_response(self, ticker: str = "VTI") -> dict:
         return {
             "symbol": ticker,

@@ -21,9 +21,11 @@ Friday run) to avoid competing for the same daily call budget.
   ─────────
   8 AV calls  (limit: 25/day; 17 calls of margin)
 
-ETF dividends are fetched by scripts/initial_fetch.py (one-time or quarterly
-manual refresh) rather than on every weekly run, to stay within the 25 AV
-call/day limit.
+ETF dividends are refreshed by ``scripts/weekly_fetch.py --dividend-refresh``
+on a Wednesday cron (review F08): tickers whose last dividend fetch is about
+four weeks old (one week for monthly payers) are re-fetched, oldest first,
+within the AV calls left that day.  scripts/initial_fetch.py remains the
+one-time bootstrap.
 """
 
 from __future__ import annotations
@@ -46,9 +48,9 @@ def get_all_price_tickers() -> list[str]:
 def get_all_dividend_tickers() -> list[str]:
     """Return all 23 tickers for a full dividend fetch.
 
-    Used by scripts/initial_fetch.py for the one-time bootstrap and
-    for quarterly ETF dividend refreshes.  The weekly cron only fetches
-    PGR dividends; this function is not called from weekly_fetch.py.
+    Used by scripts/initial_fetch.py for the one-time bootstrap and by
+    ``scripts/weekly_fetch.py --dividend-refresh``, which picks the due
+    tickers from this list within the day's AV budget.
 
     Returns:
         List of 23 ticker symbols: [``"PGR"``] + all 22 ETF benchmarks.
