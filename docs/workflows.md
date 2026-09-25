@@ -75,6 +75,10 @@ Outputs:
 - `results/monthly_decisions/decision_log.md`
 - `results/monthly_decisions/classification_shadow_history.csv`
 - `results/monthly_decisions/ta_shadow_variant_history.csv`
+- the 12 recurring capital-return charts named in the workflow's
+  `RESEARCH_CHARTS` list, under `results/research/pgr_*.png`, from
+  `scripts/repurchase_timeseries_charts.py` and
+  `scripts/capital_return_charts.py`
 
 Notes:
 
@@ -89,6 +93,11 @@ Notes:
 - monthly postconditions are verified by
   `python scripts/verify_monthly_outputs.py --summary-path workflow_summary.md`
 - the email step is non-fatal by design and should not block report generation
+- the chart step fails if either chart script errors or any chart in
+  `RESEARCH_CHARTS` is not rewritten. The decision artifacts, DB and email
+  still go out (their steps run after a chart failure), but the charts are
+  not committed and the job ends red. Both scripts open the DB read-only and
+  take `--db-path` / `--out-dir`
 
 ## Historical / Manual Workflows
 

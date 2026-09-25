@@ -44,6 +44,24 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write   # required for git push back to the repo
+    env:
+      # Every recurring chart, by name. The chart step fails unless each one
+      # is rewritten by this run, and only these files are committed.
+      # tests/test_capital_return_charts.py checks this list against the
+      # CHART_FILES of both chart scripts.
+      RESEARCH_CHARTS: >-
+        pgr_book_value_per_share.png
+        pgr_book_value_per_share_split_adjusted.png
+        pgr_share_repurchase_volume.png
+        pgr_repurchase_dollar_amount.png
+        pgr_repurchase_dollar_amount_capped.png
+        pgr_share_price.png
+        pgr_share_price_split_adjusted.png
+        pgr_price_to_book.png
+        pgr_price_to_book_split_adjusted.png
+        pgr_repurchase_dividend_annual.png
+        pgr_capital_return_pct_marketcap.png
+        pgr_cr_vs_capital_return.png
 
     steps:
       - name: Check out repository
@@ -59,6 +77,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run monthly decision script
+        id: decision
         env:
           AV_API_KEY: ${{ secrets.AV_API_KEY }}
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
@@ -81,6 +100,7 @@ jobs:
           python scripts/monthly_decision.py $AS_OF_FLAG $DRY_FLAG $FRED_FLAG
 
       - name: Verify monthly artifacts and write summary
+        id: verify
         if: ${{ github.event.inputs.dry_run != 'true' }}
         run: |
           python scripts/verify_monthly_outputs.py --summary-path workflow_summary.md
@@ -88,17 +108,34 @@ jobs:
 
       - name: Regenerate research charts
         # Runs after the decision script so the DB is fully up to date.
-        # Non-fatal: if chart generation fails the email still sends with
-        # whatever charts already exist in results/research/.
+        # Fails if either script errors or any chart in RESEARCH_CHARTS is
+        # not rewritten. The commit and email steps still run (their `if:`
+        # does not require this step), but the job ends red and the stale
+        # charts are not committed.
+        id: charts
         if: ${{ github.event.inputs.dry_run != 'true' }}
-        continue-on-error: true
         run: |
+          set -euo pipefail
+          started="$(mktemp)"
           python scripts/repurchase_timeseries_charts.py
           python scripts/capital_return_charts.py
+          for chart in $RESEARCH_CHARTS; do
+            if [ ! "results/research/$chart" -nt "$started" ]; then
+              echo "::error::chart not regenerated: results/research/$chart"
+              exit 1
+            fi
+          done
 
       - name: Commit results
-        # Skip commit on dry-run; only commit if there are changes
-        if: ${{ github.event.inputs.dry_run != 'true' }}
+        # Skip commit on dry-run; only commit if there are changes.
+        # Runs even if the chart step failed, so the decision and DB are
+        # still committed; the charts are staged only when that step passed.
+        id: commit
+        if: >-
+          ${{ !cancelled() && github.event.inputs.dry_run != 'true'
+          && steps.decision.outcome == 'success' && steps.verify.outcome == 'success' }}
+        env:
+          CHARTS_OUTCOME: ${{ steps.charts.outcome }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -107,7 +144,13 @@ jobs:
           python scripts/finalize_db.py
           git add results/monthly_decisions/
           git add data/pgr_financials.db
-          git add results/research/pgr_*.png
+          if [ "$CHARTS_OUTCOME" = "success" ]; then
+            for chart in $RESEARCH_CHARTS; do
+              git add "results/research/$chart"
+            done
+          else
+            echo "::warning::chart step did not succeed; research charts not committed"
+          fi
           # Only commit if there are staged changes
           git diff --staged --quiet || git commit -m \
             "feat: monthly decision report $(date -u +%Y-%m) [skip ci]"
@@ -117,7 +160,9 @@ jobs:
         # Send after a successful (non-dry-run) report.  Failure is non-fatal —
         # data collection and DB commit are more critical than the notification.
         # Email logic lives in src/reporting/email_sender.py (testable module).
-        if: ${{ github.event.inputs.dry_run != 'true' }}
+        if: >-
+          ${{ !cancelled() && github.event.inputs.dry_run != 'true'
+          && steps.commit.outcome == 'success' }}
         continue-on-error: true
         env:
           SMTP_SERVER:   ${{ secrets.SMTP_SERVER }}

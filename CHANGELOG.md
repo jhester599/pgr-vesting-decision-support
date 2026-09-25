@@ -5,6 +5,77 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v176 (2026-09-25) — Review 2026-09-25, step 4b: recurring capital-return charts
+
+Fixes the 9 recurring `results/research/pgr_*.png` charts and adds 3
+split-adjusted ones. The charts now use the repaired EDGAR table (step 3b)
+and the split-adjusted price helper (step 4). The committed charts were last
+built on 2026-09-20, before steps 2–3b.
+
+- **One data module** (`src/reporting/capital_return_data.py`) builds the
+  frames that both scripts plot; tests check those frames, not pixels. Both
+  scripts take `--db-path` / `--out-dir` and open the DB read-only. The first
+  commit of this step is a behaviour-preserving refactor: all 9 charts were
+  pixel-identical.
+- **Share counts:** `common_shares_outstanding` as reported.
+  (Equity − preferred) / BVPS is used only when that is missing and the result
+  is 300–2,000M on the latest share basis. The F18 rows (about 1M shares) are
+  rejected. Market cap = last weekly close × shares of the same month,
+  computed on the latest basis. `verify_monthly_frame` stops the charts if
+  market cap ≠ price × shares, a share count is out of range, or the split
+  month has a gap.
+- **Buybacks:** in 2006-05 the 8-K gives 2.3M shares but no average cost. The
+  cost is now estimated as the mean of that month's weekly closes on the
+  post-split basis ($27.01, about $62M). The bar is hatched and labelled as
+  estimated; before, the month was left out of the dollar charts and the
+  annual totals.
+- **Unit check:** the old rule silently read any month over 25M shares as
+  dollars. Now a month's repurchase above 15 % of shares outstanding stops the
+  charts.
+- **Split markers** are read from `split_history`: 2006-05-19 (was
+  2006-05-01), with the date in the label.
+- **Prices:**
+  - The monthly price is labelled "last weekly close of each month".
+  - The price chart is plotted at each bar's own date.
+- **New charts:** split-adjusted versions of the share price, BVPS and P/B
+  charts.
+- **Annual charts:**
+  - Year-end market cap = last weekly close of the year's last EDGAR month ×
+    that month's shares. For 2026 the month is August (was the Sep-18 close ×
+    August shares).
+  - Partial-year labels are computed from the data: "Jan–Aug 2026" (was the
+    hard-coded "Jan–Apr 2026 (repurchases only)").
+  - Dividends before the first EDGAR month are dropped (they have no share
+    count; this removes the Jun-2004 dividend).
+  - The CR scatter covers every full year, and the ★ only marks partial
+    years in the console summary.
+- **CR scatter axes (pre-existing bug):** year labels are drawn with
+  `ax.text`, which does not widen the axes, so the limits came from the
+  regression line alone. The committed chart showed 3 of its 19 years
+  (2006, 2013, 2020) in the %-of-market-cap panel and hid 2025 ($8.3B) in
+  the $B panel. Invisible markers now set the limits, and all 21 years
+  show.
+- **Workflow (`monthly_decision.yml`):**
+  - The job-level `RESEARCH_CHARTS` list names all 12 charts. It replaces the
+    `pgr_*.png` glob and "whatever charts already exist".
+  - The chart step no longer has `continue-on-error`. It fails if a script
+    errors or any named chart is not rewritten.
+  - The commit and email steps still run after a chart failure, but the
+    charts are not committed and the job ends red.
+- **Tests:** new `tests/test_repurchase_timeseries_charts.py` and
+  `tests/test_capital_return_charts.py`, on the fixture DB
+  `tests/capital_return_fixture.py`. They check:
+  - market cap = price × shares every month, and year-end;
+  - that the shares fallback is only used inside its range;
+  - no NaN in the split month, and the split-month cost estimate;
+  - the split marker date;
+  - monthly and annual buyback totals;
+  - the dividend share basis and the partial-year labels;
+  - that every scatter year lies inside the axes;
+  - the named workflow list.
+- Docs: `docs/workflows.md`, `docs/operations-runbook.md`,
+  `docs/artifact-policy.md`.
+
 ## v175 (2026-09-25) — Review 2026-09-25, step 4: price-feature rewrite
 
 WP2 from `docs/reviews/REPO_REVIEW_2026-09-25.md` (F01, F15, the Monte Carlo

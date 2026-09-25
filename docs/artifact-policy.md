@@ -49,6 +49,10 @@ These are committed as reproducible evidence from versioned research and
 promotion studies. They are not consumed directly by production workflows
 unless a later promotion explicitly wires them in.
 
+Exception: the recurring `results/research/pgr_*.png` capital-return charts
+are production outputs. `monthly_decision.yml` regenerates and commits them
+by name (`RESEARCH_CHARTS`), and the email embeds four of them.
+
 ## Provenance Rule
 
 Major generated artifacts should be traceable to:
