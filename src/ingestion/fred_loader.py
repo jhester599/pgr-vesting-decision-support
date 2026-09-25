@@ -28,9 +28,11 @@ Series added in v3.1 / v4.5 (FRED_SERIES_PGR from config.py):
   NOTE: CUSR0000SETC01 (motor vehicle insurance CPI) removed 2026-03-24 —
         series does not exist in FRED (400 Bad Request). Re-add when valid ID found.
 
-All series are resampled to month-end frequency using the last available
-observation in the month.  Forward-fill is applied for up to 5 business days
-to handle end-of-month reporting gaps.
+All series are resampled to one row per calendar month, labelled with the
+month's last business day and holding the last observation in the month.
+Values are stored raw: no publication lag and no forward fill (review F06).
+``feature_engineering.build_feature_matrix_from_db`` applies each series'
+publication lag exactly once, by calendar month, when features are built.
 
 Usage:
     import sqlite3
@@ -46,6 +48,7 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+from io import StringIO
 from typing import Any
 
 import pandas as pd
@@ -123,6 +126,64 @@ def fetch_fred_series(
     return df
 
 
+FREDGRAPH_CSV_URL: str = "https://fred.stlouisfed.org/graph/fredgraph.csv"
+
+
+def fetch_fred_series_csv(
+    series_id: str,
+    observation_start: str = "2008-01-01",
+    session: requests.Session | None = None,
+) -> pd.DataFrame:
+    """Fetch a FRED series from the public ``fredgraph.csv`` endpoint.
+
+    Same observations as :func:`fetch_fred_series` (the current vintage),
+    but no API key is needed. Used by ``scripts/rebuild_fred_macro.py`` when
+    ``FRED_API_KEY`` is not set, and by the v19 research loader.
+
+    Returns:
+        DataFrame with a DatetimeIndex and one column named ``series_id``,
+        in ascending date order. Missing values are NaN.
+    """
+    http = session or build_retry_session()
+    resp = http.get(FREDGRAPH_CSV_URL, params={"id": series_id}, timeout=60)
+    resp.raise_for_status()
+    return parse_fredgraph_csv(resp.text, series_id, observation_start)
+
+
+def parse_fredgraph_csv(
+    text: str,
+    series_id: str,
+    observation_start: str = "2008-01-01",
+) -> pd.DataFrame:
+    """Parse a ``fredgraph.csv`` body into a one-column observation frame."""
+    raw = pd.read_csv(StringIO(text))
+    date_col = raw.columns[0]
+    value_col = raw.columns[-1]
+    df = pd.DataFrame(
+        {
+            series_id: pd.to_numeric(raw[value_col], errors="coerce").to_numpy(),
+        },
+        index=pd.DatetimeIndex(pd.to_datetime(raw[date_col], errors="coerce")),
+    )
+    df = df.loc[df.index.notna()].sort_index()
+    return df.loc[df.index >= pd.Timestamp(observation_start)]
+
+
+def to_monthly_observations(observations: pd.DataFrame | pd.Series) -> pd.DataFrame:
+    """Collapse raw observations to one value per calendar month.
+
+    Each month holds its last non-missing observation and is labelled with
+    the month's last business day, the label ``fred_macro_monthly`` uses.
+    Months with no observation are dropped rather than filled, so stored rows
+    are raw FRED values only.
+    """
+    frame = observations.to_frame() if isinstance(observations, pd.Series) else observations
+    frame = frame.copy()
+    frame.index = pd.DatetimeIndex(pd.to_datetime(frame.index))
+    monthly = frame.sort_index().resample("BME").last()
+    return monthly.dropna(how="all")
+
+
 # ---------------------------------------------------------------------------
 # Multi-series fetch + monthly resampling
 # ---------------------------------------------------------------------------
@@ -146,16 +207,14 @@ def fetch_all_fred_macro(
     series_ids: list[str],
     observation_start: str = "2008-01-01",
     dry_run: bool = False,
-    apply_publication_lags: bool = True,
+    apply_publication_lags: bool = False,
 ) -> pd.DataFrame:
     """
     Fetch multiple FRED series and join them into a single month-end DataFrame.
 
-    Each series is individually fetched, then resampled to month-end frequency
-    using the last available observation on the final business day of each month.
-    A forward-fill
-    of up to 5 periods is applied to handle series that are not available on the
-    last calendar day of the month (e.g. daily yield curve data).
+    Each series is fetched and collapsed to one row per calendar month (the
+    last observation in the month, labelled with the month's last business
+    day; see :func:`to_monthly_observations`). Nothing is forward-filled.
 
     Args:
         series_ids:              List of FRED series identifiers.  Typically
@@ -164,11 +223,12 @@ def fetch_all_fred_macro(
         observation_start:       ISO date string passed to each ``fetch_fred_series``
                                  call.
         dry_run:                 If True, return an empty DataFrame without HTTP calls.
-        apply_publication_lags:  If True (default), shift each series by its
-                                 configured publication lag from
-                                 ``config.FRED_SERIES_LAGS`` /
-                                 ``config.FRED_DEFAULT_LAG_MONTHS`` to prevent
-                                 look-ahead bias from FRED data revisions (v4.1).
+        apply_publication_lags:  Default False: return raw observations, which
+                                 is what ``fred_macro_monthly`` stores. The
+                                 feature builder applies the lags once (review
+                                 F06). True shifts each series by its configured
+                                 lag, by calendar month, for ad-hoc analysis;
+                                 never store that output.
 
     Returns:
         DataFrame with a DatetimeIndex (month-end, last business day) and one
@@ -193,11 +253,7 @@ def fetch_all_fred_macro(
         if df.empty:
             continue
 
-        # Resample to the last business day of month; take the final observation.
-        monthly = df.resample("BME").last()
-        # Forward-fill to handle occasional end-of-month data gaps
-        monthly = monthly.ffill(limit=5)
-        frames.append(monthly)
+        frames.append(to_monthly_observations(df))
 
     if not frames:
         return pd.DataFrame(columns=series_ids)
@@ -205,12 +261,10 @@ def fetch_all_fred_macro(
     combined = pd.concat(frames, axis=1)
     combined = combined.sort_index()
 
-    # v4.1: apply per-series publication lags to prevent look-ahead bias
     if apply_publication_lags:
-        for sid in combined.columns:
-            lag = config.FRED_SERIES_LAGS.get(sid, config.FRED_DEFAULT_LAG_MONTHS)
-            if lag > 0:
-                combined[sid] = combined[sid].shift(lag)
+        from src.processing.feature_engineering import _apply_fred_lags
+
+        combined = _apply_fred_lags(combined)
 
     return combined
 
@@ -231,8 +285,9 @@ def upsert_fred_to_db(
 
     Args:
         conn: Open SQLite connection.
-        df:   Output of ``fetch_all_fred_macro()`` — DatetimeIndex (month-end),
-              one column per series_id.
+        df:   Raw (unlagged) output of ``fetch_all_fred_macro()`` —
+              DatetimeIndex (month-end), one column per series_id. Each
+              timestamp is stored under its month's last business day.
 
     Returns:
         Total number of rows upserted (series × months).

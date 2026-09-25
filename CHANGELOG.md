@@ -5,6 +5,68 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v173 (2026-09-25) — Review 2026-09-25, step 3a: FRED pipeline
+
+WP3 from `docs/reviews/REPO_REVIEW_2026-09-25.md` (F06, F07, and the FRED part
+of F27). The rebuild diff and the change to the live decision row are in
+`docs/reviews/2026-09-25_step3a_fred_rebuild.md`.
+
+- **F06: raw storage, one lag.**
+  - `fetch_all_fred_macro` now defaults to `apply_publication_lags=False` and
+    no longer forward-fills. `fred_macro_monthly` stores raw observations:
+    one row per series and calendar month (the month's last observation),
+    labelled with the month's last business day
+    (`fred_loader.to_monthly_observations`).
+  - `feature_engineering._apply_fred_lags` shifts by calendar month, not by
+    row. It is applied once, in `build_feature_matrix_from_db`.
+    `duration_rate_shock_3m` no longer lags a second time. Feature(M) =
+    raw(M − configured lag).
+  - Interior gaps are filled for up to `FRED_MAX_GAP_FILL_MONTHS` (5) after
+    lagging. A series is never carried past its latest observation.
+  - Effective lags drop from 2 to 1 (VIX, rates, spreads), from 3–4 to 2
+    (NFCI) and from 4 to 2 (VMT).
+- **F27: one row per (series, month).**
+  - `upsert_fred_macro` normalises every label to the business month-end
+    (`db_client.fred_month_label`).
+  - Migration `005_fred_one_row_per_month` deletes the 576 legacy
+    calendar-month-end duplicates and adds a unique (series, month) index.
+  - `src/research/v19.py` writes business month-end labels and no longer
+    forward-fills.
+- **Rebuilt `fred_macro_monthly`** with the new
+  `scripts/rebuild_fred_macro.py`, on a copy that was then committed.
+  - It refetched 20 FRED series unlagged, using the public `fredgraph.csv`
+    endpoint because no API key was set. Responses were cached.
+  - Rows went from 8,079 to 7,574, with 0 duplicates.
+  - FRED now serves only three years of `BAMLH0A0HYM2`. Its 1996-12 →
+    2023-08 history was kept from the old table, un-lagged by the measured
+    stored lag (1 month, 100 % match on a 36-month overlap).
+  - **Live inputs change, so live and backtest outputs will move.**
+  - On the 2026-08-31 decision row:
+    - VIX, rates and spreads now come from July, not June;
+    - NFCI now comes from June, not April;
+    - `rate_adequacy_gap_yoy` is no longer NaN or median-imputed.
+  - v134 was not re-run (step 8a).
+- **F07: freshness per item.** `check_data_freshness` now returns:
+  - one row per ticker for PGR and the 8 `PRIMARY_FORECAST_UNIVERSE`
+    benchmarks, using the latest non-proxy bar on or before the reference
+    date;
+  - one row per FRED series behind a live Ridge/GBT feature
+    (`config.FRED_FEATURE_SOURCES`, `db_client.live_feature_fred_series`).
+    Each series is judged against the observation month that the decision
+    row needs, so a future month-end label no longer counts as "0 days old".
+
+  `DATA_FRESHNESS_MAX_FRED_AGE_DAYS` is replaced by
+  `DATA_FRESHNESS_FRED_GRACE_MONTHS` (0). `monthly_decision` now checks
+  freshness after the FRED refresh. The report's freshness table has one row
+  per item, so `verify_monthly_outputs` fails when any live series or
+  ticker is stale.
+- Tests:
+  - new: `tests/test_fred_pipeline_wp3.py` (fetch → store → build lag
+    identity, lag by month, stale series not extended, duplicate-month
+    guards, migration 005, per-series and per-ticker WARNING, and the
+    feature→series map checked against the builder);
+  - updated: `test_data_freshness.py` and `test_migration_runner.py`.
+
 ## v172 (2026-09-25) — Review 2026-09-25, step 2: splits, dividends, target rebuild
 
 WP1 + WP4 from `docs/reviews/REPO_REVIEW_2026-09-25.md` (F03, F05, F08, F22).

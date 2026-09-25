@@ -243,8 +243,11 @@ CREATE TABLE IF NOT EXISTS ingestion_metadata (
 -- ---------------------------------------------------------------------------
 -- FRED macro and insurance-specific monthly series (v3.0+)
 -- series_id: FRED series identifier (e.g. 'T10Y2Y', 'BAMLH0A0HYM2')
--- month_end:  ISO date of the last calendar day of the month ('YYYY-MM-DD')
--- value:      Raw FRED observation value (numeric); NULL if FRED reports '.'
+-- month_end:  ISO date of the month's last business day ('YYYY-MM-DD');
+--             one row per series and calendar month (migration 005)
+-- value:      Raw, unlagged FRED observation (the last one in the month);
+--             publication lags are applied once, by calendar month, in
+--             feature_engineering.build_feature_matrix_from_db (review F06)
 --
 -- Populated by src/ingestion/fred_loader.py via scripts/weekly_fetch.py.
 -- Used by src/processing/feature_engineering.py as macro regime features.
@@ -255,6 +258,8 @@ CREATE TABLE IF NOT EXISTS fred_macro_monthly (
     value      REAL,
     PRIMARY KEY (series_id, month_end)
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fred_macro_monthly_series_month
+    ON fred_macro_monthly (series_id, substr(month_end, 1, 7));
 
 -- ---------------------------------------------------------------------------
 -- Monthly model-health monitoring history

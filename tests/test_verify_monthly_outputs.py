@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+import config
 from src.database import db_client
 
 
@@ -100,13 +101,20 @@ def _write_valid_monthly_fixture(base_dir: Path, db_path: Path) -> None:
 
     conn = db_client.get_connection(str(db_path))
     db_client.initialize_schema(conn)
+    # Freshness is checked per ticker and per live-feature FRED series (F07).
     db_client.upsert_prices(
         conn,
-        [{"ticker": "PGR", "date": "2026-04-17", "close": 250.0}],
+        [
+            {"ticker": ticker, "date": "2026-04-17", "close": 250.0}
+            for ticker in ["PGR", *config.PRIMARY_FORECAST_UNIVERSE]
+        ],
     )
     db_client.upsert_fred_macro(
         conn,
-        [{"series_id": "T10Y2Y", "month_end": "2026-03-31", "value": 0.5}],
+        [
+            {"series_id": series_id, "month_end": "2026-03-31", "value": 0.5}
+            for series_id in db_client.live_feature_fred_series()
+        ],
     )
     db_client.upsert_pgr_edgar_monthly(
         conn,

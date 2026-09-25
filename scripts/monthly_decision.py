@@ -3112,12 +3112,14 @@ def main(
         conn = db_client.get_connection(config.DB_PATH)
         db_client.initialize_schema(conn)
     db_client.warn_if_db_behind(conn, context="monthly_decision")
-    freshness_report = db_client.check_data_freshness(conn, run_date)
-    for message in freshness_report["warnings"]:
-        logger.warning("[data-freshness] %s", message)
 
     # Step 1: Refresh FRED data
     _fetch_fred_step(conn, dry_run=dry_run, skip_fred=skip_fred)
+
+    # Checked after the FRED refresh so the report describes the data used.
+    freshness_report = db_client.check_data_freshness(conn, run_date)
+    for message in freshness_report["warnings"]:
+        logger.warning("[data-freshness] %s", message)
 
     # Step 2: Generate signals (ensemble: ElasticNet + Ridge + BayesianRidge + GBT)
     logger.info("Generating ensemble signals (as-of %s)...", as_of)

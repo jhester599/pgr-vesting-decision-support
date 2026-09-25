@@ -35,7 +35,28 @@ Used for:
 
 Operational notes:
 
-- publication lags are applied in feature engineering
+- `fred_macro_monthly` stores raw, unlagged observations: one row per series
+  and calendar month (the month's last observation), labelled with the
+  month's last business day. A unique index on (series, month) prevents a
+  second label for the same month (migration 005).
+- publication lags (`config.FRED_SERIES_LAGS`, default 1 month) are applied
+  exactly once, by calendar month, in
+  `feature_engineering.build_feature_matrix_from_db`: the feature row for
+  month M uses the observation for month M − lag. Interior gaps (e.g. the
+  October 2025 CPI BLS never published) are forward-filled for up to
+  `FRED_MAX_GAP_FILL_MONTHS`; a series is never carried past its latest
+  observation.
+- the weekly and monthly jobs refresh the macro and PGR-specific series
+  (`production_fred_series()`).
+- freshness is checked per FRED series behind a live Ridge/GBT feature
+  (`config.FRED_FEATURE_SOURCES`) against the month the decision row needs,
+  and per ticker for PGR and the 8 forecast benchmarks.
+- FRED serves only the last three years of ICE BofA series
+  (`BAMLH0A0HYM2`); older months in the table were recovered from the
+  pre-rebuild store and must not be deleted. Values are the current vintage,
+  not point-in-time (NFCI, CPIs, PPIs and VMT are revised).
+- `scripts/rebuild_fred_macro.py --db COPY` rebuilds the table from FRED
+  (API with `FRED_API_KEY`, else the public `fredgraph.csv` endpoint).
 - production monthly workflow can skip live fetch if the environment lacks
   `FRED_API_KEY`
 
