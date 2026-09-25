@@ -60,17 +60,19 @@ CREATE TABLE IF NOT EXISTS split_history (
 -- PGR quarterly fundamental metrics from SEC EDGAR XBRL (via edgar_client.py)
 -- Sourced from 10-Q and 10-K filings; free, authoritative, no API key needed.
 -- Previously sourced from FMP (deprecated 2025-08-31 for free-tier accounts).
--- pe_ratio, pb_ratio: NULL (require market price data; not available from XBRL)
+-- One discrete quarter per row: Q4 = 10-K full year - 10-Q nine months.
+-- Earliest-filed values.  roe = TTM net income / average equity.
+-- filing_date: filing date of the net-income value (10-K for Q4).
+-- (Migration 007 dropped the always-NULL pe_ratio / pb_ratio columns.)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS pgr_fundamentals_quarterly (
-    period_end  TEXT    NOT NULL,
-    pe_ratio    REAL,
-    pb_ratio    REAL,
-    roe         REAL,
-    eps         REAL,
-    revenue     REAL,
-    net_income  REAL,
-    source      TEXT,
+    period_end   TEXT    NOT NULL,
+    roe          REAL,
+    eps          REAL,
+    revenue      REAL,
+    net_income   REAL,
+    filing_date  TEXT,
+    source       TEXT,
     PRIMARY KEY (period_end)
 );
 
@@ -296,3 +298,101 @@ CREATE TABLE IF NOT EXISTS model_retrain_log (
     notes          TEXT,                   -- human-readable reason string
     created_at     TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ---------------------------------------------------------------------------
+-- Append-only provenance for pgr_edgar_monthly (migration 006, F33).
+-- One pgr_edgar_filing_parses row per (accession, parser_version); one
+-- pgr_edgar_monthly_raw row per (parse, field).  UPDATE/DELETE abort.
+-- method: parsed | derived | csv.  See the migration for details.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS pgr_edgar_filing_parses (
+    parse_id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    accession_number TEXT    NOT NULL,
+    parser_version   TEXT    NOT NULL,
+    month_end        TEXT    NOT NULL,
+    filing_date      TEXT,
+    source_url       TEXT,
+    fetched_at       TEXT,
+    recorded_at      TEXT    NOT NULL,
+    UNIQUE (accession_number, parser_version)
+);
+
+CREATE TABLE IF NOT EXISTS pgr_edgar_monthly_raw (
+    parse_id    INTEGER NOT NULL REFERENCES pgr_edgar_filing_parses (parse_id),
+    field       TEXT    NOT NULL,
+    value_real  REAL,
+    value_text  TEXT,
+    method      TEXT    NOT NULL DEFAULT 'parsed',
+    PRIMARY KEY (parse_id, field)
+) WITHOUT ROWID;
+
+CREATE TRIGGER IF NOT EXISTS pgr_edgar_filing_parses_no_update
+BEFORE UPDATE ON pgr_edgar_filing_parses
+BEGIN
+    SELECT RAISE(ABORT, 'pgr_edgar_filing_parses is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS pgr_edgar_filing_parses_no_delete
+BEFORE DELETE ON pgr_edgar_filing_parses
+BEGIN
+    SELECT RAISE(ABORT, 'pgr_edgar_filing_parses is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS pgr_edgar_monthly_raw_no_update
+BEFORE UPDATE ON pgr_edgar_monthly_raw
+BEGIN
+    SELECT RAISE(ABORT, 'pgr_edgar_monthly_raw is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS pgr_edgar_monthly_raw_no_delete
+BEFORE DELETE ON pgr_edgar_monthly_raw
+BEGIN
+    SELECT RAISE(ABORT, 'pgr_edgar_monthly_raw is append-only');
+END;
+
+CREATE VIEW IF NOT EXISTS pgr_edgar_monthly_raw_values AS
+SELECT
+    p.accession_number,
+    r.field,
+    p.parser_version,
+    p.month_end,
+    p.filing_date,
+    r.value_real,
+    r.value_text,
+    r.method,
+    p.source_url,
+    p.fetched_at,
+    p.recorded_at,
+    p.parse_id
+FROM pgr_edgar_monthly_raw AS r
+JOIN pgr_edgar_filing_parses AS p ON p.parse_id = r.parse_id;
+
+CREATE VIEW IF NOT EXISTS pgr_edgar_monthly_raw_current AS
+SELECT
+    accession_number, field, parser_version, month_end, filing_date,
+    value_real, value_text, method, source_url, fetched_at, recorded_at, parse_id
+FROM (
+    SELECT
+        v.*,
+        ROW_NUMBER() OVER (
+            PARTITION BY v.accession_number, v.field
+            ORDER BY v.parse_id DESC
+        ) AS rn
+    FROM pgr_edgar_monthly_raw_values AS v
+)
+WHERE rn = 1;
+
+CREATE VIEW IF NOT EXISTS pgr_edgar_monthly_first_reported AS
+SELECT
+    month_end, field, value_real, value_text, accession_number, filing_date,
+    parser_version, method, fetched_at
+FROM (
+    SELECT
+        v.*,
+        ROW_NUMBER() OVER (
+            PARTITION BY v.month_end, v.field
+            ORDER BY COALESCE(v.filing_date, '9999'), v.accession_number, v.parse_id DESC
+        ) AS rn
+    FROM pgr_edgar_monthly_raw_values AS v
+)
+WHERE rn = 1;

@@ -27,12 +27,12 @@ def test_initialize_schema_applies_migration_on_fresh_db(tmp_path: Path) -> None
     migration_rows = conn.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0]
     conn.close()
 
-    assert version == "005_fred_one_row_per_month"
+    assert version == "007_pgr_fundamentals_quarterly_rebuild"
     assert "pgr_edgar_monthly" in tables
     assert "model_performance_log" in tables
     assert "model_retrain_log" in tables
     assert "schema_migrations" in tables
-    assert migration_rows == 5
+    assert migration_rows == 7
 
 
 def test_initialize_schema_reconciles_legacy_db_shape(tmp_path: Path) -> None:
@@ -59,7 +59,7 @@ def test_initialize_schema_reconciles_legacy_db_shape(tmp_path: Path) -> None:
     assert "book_value_per_share" in cols
     assert "buyback_yield" in cols
     assert "investment_book_yield" in cols
-    assert version == "005_fred_one_row_per_month"
+    assert version == "007_pgr_fundamentals_quarterly_rebuild"
 
 
 def test_initialize_schema_is_idempotent(tmp_path: Path) -> None:
@@ -78,6 +78,8 @@ def test_initialize_schema_is_idempotent(tmp_path: Path) -> None:
         "003_model_retrain_log",
         "004_investment_book_yield_percent",
         "005_fred_one_row_per_month",
+        "006_pgr_edgar_monthly_raw",
+        "007_pgr_fundamentals_quarterly_rebuild",
     ]
 
 
@@ -88,6 +90,8 @@ def test_list_migrations_includes_python_migrations_in_order() -> None:
     ids = [m.migration_id for m in migrations]
     assert ids == sorted(ids)
     assert "004_investment_book_yield_percent" in ids
+    assert "006_pgr_edgar_monthly_raw" in ids
+    assert "007_pgr_fundamentals_quarterly_rebuild" in ids
     assert all(not m.path.name.startswith("_") for m in migrations)
 
 

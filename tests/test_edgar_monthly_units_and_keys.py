@@ -75,7 +75,8 @@ def test_parse_upsert_read_back_round_trips_every_parsed_field(tmp_path: Path) -
 
     mismatches: dict[str, tuple[object, object]] = {}
     for key, value in parsed.items():
-        if value is None:
+        # ``derived_fields`` is provenance metadata for pgr_edgar_monthly_raw.
+        if value is None or key == "derived_fields":
             continue
         column = _PARSER_TO_DB_COLUMN.get(key, key)
         assert column in stored, f"parser key {key!r} has no DB column"

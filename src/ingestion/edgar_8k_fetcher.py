@@ -44,6 +44,7 @@ import pandas as pd
 import requests
 
 import config
+from src.processing import pgr_edgar_derived
 
 logger = logging.getLogger(__name__)
 
@@ -62,9 +63,10 @@ _INDEX_SUFFIX: str = "-index.html"
 _REQUEST_DELAY: float = 0.15
 
 # Gainshare calibration constants (from PGR proxy disclosures).
-_CR_TARGET: float = 96.0          # Below this = positive CR contribution
-_CR_SCALE: float = 10.0           # 10 pts below target = max score
-_PIF_GROWTH_MAX: float = 0.10     # 10 % YoY PIF growth = max PIF score
+# Gainshare calibration lives in src.processing.pgr_edgar_derived.
+_CR_TARGET: float = pgr_edgar_derived.GAINSHARE_CR_TARGET
+_CR_SCALE: float = pgr_edgar_derived.GAINSHARE_CR_SCALE
+_PIF_GROWTH_MAX: float = pgr_edgar_derived.GAINSHARE_PIF_GROWTH_FULL
 
 
 # ---------------------------------------------------------------------------
@@ -497,29 +499,23 @@ def _compute_gainshare(df: pd.DataFrame) -> pd.DataFrame:
     """
     Append ``pif_growth_yoy`` and ``gainshare_estimate`` columns.
 
-    Uses the same calibration as ``pgr_monthly_loader.py``.
+    Uses the single definitions in ``src.processing.pgr_edgar_derived``:
+    calendar-month YoY PIF growth (NaN when the same month a year earlier is
+    missing) and the shared Gainshare formula.
     """
     df = df.copy()
 
     if "pif_total" in df.columns and not df["pif_total"].isna().all():
-        df["pif_growth_yoy"] = df["pif_total"].pct_change(periods=12)
+        df["pif_growth_yoy"] = pgr_edgar_derived.yoy_growth_series(df["pif_total"])
     else:
         df["pif_growth_yoy"] = np.nan
 
-    cr = df.get("combined_ratio", pd.Series(np.nan, index=df.index))
-    pif_growth = df.get("pif_growth_yoy", pd.Series(np.nan, index=df.index))
-
-    if not cr.isna().all():
-        cr_score = ((_CR_TARGET - cr) / _CR_SCALE).clip(lower=0.0, upper=2.0)
-    else:
-        cr_score = pd.Series(np.nan, index=df.index)
-
-    if not pif_growth.isna().all():
-        pif_score = (pif_growth / _PIF_GROWTH_MAX).clip(lower=0.0, upper=2.0)
-    else:
-        pif_score = pd.Series(np.nan, index=df.index)
-
-    df["gainshare_estimate"] = 0.5 * cr_score + 0.5 * pif_score
+    cr = df["combined_ratio"] if "combined_ratio" in df.columns else pd.Series(
+        np.nan, index=df.index
+    )
+    df["gainshare_estimate"] = pgr_edgar_derived.gainshare_series(
+        cr.astype(float), df["pif_growth_yoy"].astype(float)
+    )
     return df
 
 

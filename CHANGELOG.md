@@ -5,6 +5,89 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v174 (2026-09-25) — Review 2026-09-25, step 3b: EDGAR parser and table repair
+
+WP5 + WP6 from `docs/reviews/REPO_REVIEW_2026-09-25.md` (F09, F11, F12, F16,
+F17, F18, F33, F34). The report is in
+`docs/reviews/2026-09-25_step3b_edgar_repair.md`; the cell-level diff is in
+`docs/reviews/2026-09-25_step3b_edgar_cell_diff.csv`.
+
+- **Parser (`scripts/edgar_8k_fetcher.py`, `PARSER_VERSION = 8k-html/2026-09-25`):**
+  - `_parse_number` / `_row_numbers` handle `(x)`, a split-cell `(x` … `)`,
+    a lone `(` cell and Unicode minus signs (F12). They also read only the
+    first number in a cell, so a trailing footnote marker is ignored.
+  - Ratio rows read only decimal cells. Footnote markers had shifted the
+    2025-09 companywide column (F34).
+  - Candidates are 7.01, 2.02 (which wins when a filing lists both), and
+    9.01-only 8-Ks with an EX-99 exhibit. The flat pagination files are read
+    (F17). EX-99 exhibits are tried first, and plain-text exhibits are
+    converted to tables.
+  - Equity and debt labels must match the whole label. With no equity line,
+    equity = BVPS × shares, or NULL (F18).
+  - Row labels skip leading spacer cells and collapse line breaks. PIF also
+    accepts "Drive – Auto" and blocks embedded in larger tables. FTE returns
+    and book yield are read when they share a table with EPS. ROE is read
+    only under a "return on" header.
+  - `_prior_year_key` uses calendar periods (F11).
+  - One month = the earliest filing with a combined ratio.
+  - HTTP responses can be cached (`--cache-dir`) and are throttled to 4 req/s.
+  - `--dry-run` opens the DB read-only and skips migrations.
+- **One definition each (`src/processing/pgr_edgar_derived.py`, F11/F16):**
+  - `pif_total` = agency + direct + special lines + commercial auto;
+    property is excluded and stored separately.
+  - `pif_total_personal_lines` excludes property.
+  - YoY growth is by calendar month and NULL when the base month is missing.
+  - One Gainshare formula, NULL unless CR and PIF growth both exist. It is
+    used by the script fetcher, `pgr_monthly_loader` and
+    `src/ingestion/edgar_8k_fetcher`.
+  - Derived fields are recomputed over the whole table after every write
+    (`recompute_derived_fields`).
+- **Provenance (F33):**
+  - Migration 006 adds the append-only `pgr_edgar_filing_parses` and
+    `pgr_edgar_monthly_raw` tables (triggers abort UPDATE/DELETE), and the
+    views `pgr_edgar_monthly_raw_values`, `pgr_edgar_monthly_raw_current`
+    and `pgr_edgar_monthly_first_reported`.
+  - `upsert_pgr_edgar_monthly` never mixes filings in a row. A later filing
+    for a month is not merged; an earlier one replaces the row. Accessions
+    are stored dashed.
+  - `load_from_csv` inserts only missing months, so it is idempotent against
+    newer rows.
+- **Quarterly fundamentals (F09, `src/ingestion/edgar_client.py`):**
+  - Q4 = FY − 9M.
+  - Earliest-filed values.
+  - ROE = TTM NI / average of five quarter-end equities.
+  - New `filing_date` column; migration 007 drops the always-NULL
+    `pe_ratio` / `pb_ratio`.
+  - `valuation_multiples._quarterly_eps` no longer derives Q4 itself.
+- **Repair (`scripts/repair_edgar_history.py`, run on a copy, then committed):**
+  - Re-fetched and re-parsed all 309 candidate 8-Ks since 2004-09 (cached,
+    ≤ 4 req/s): 265 months, including 2015-05 and 2019-04.
+  - Rebuilt `pgr_fundamentals_quarterly` from XBRL.
+  - `pgr_edgar_monthly`: 1,259 cells in 223 rows changed.
+  - `pgr_fundamentals_quarterly`: 213 cells in 74 rows changed.
+  - No other table changed.
+  - Every row now passes: revenue − expenses = pretax; CR = LR + ER;
+    equity ≈ BVPS × shares; monthly NI = XBRL quarterly NI in all 73
+    quarters; no missing months since 2004-08.
+  - **Live inputs change:** `pif_growth_yoy` (every month since 2024-04),
+    the 2025-09 combined ratio (100.4, was 88.7), `gainshare_estimate`, and
+    `roe_net_income_ttm` for 2026-02 … 08 (was NULL). Live predictions will
+    move.
+- **Regenerated:**
+  - `data/processed/pgr_edgar_cache.csv` (265 rows, exported from the DB);
+  - `docs/PGR_EDGAR_CACHE_DATA_DICTIONARY.md` (new generator:
+    `scripts/generate_edgar_data_dictionary.py`);
+  - `data/processed/pgr_valuation_monthly.csv` (no gap fills remain).
+- **Tests:**
+  - new: `tests/test_edgar_parser_repair.py` and
+    `tests/test_pgr_edgar_integrity.py` (row-level checks on the committed
+    DB; `PGR_EDGAR_INTEGRITY_DB` points it at another copy);
+  - updated: `test_edgar_client.py` (FY2018 XBRL fixture with annual and YTD
+    facts), `test_db_client.py`, `test_edgar_validation.py` (PIF floor 5,000),
+    `test_valuation_multiples.py`, `test_v62_schema_and_csv.py`,
+    `test_edgar_8k_parser_breadth.py` (ROE header row),
+    `test_edgar_monthly_units_and_keys.py` and `test_migration_runner.py`.
+
 ## v173 (2026-09-25) — Review 2026-09-25, step 3a: FRED pipeline
 
 WP3 from `docs/reviews/REPO_REVIEW_2026-09-25.md` (F06, F07, and the FRED part

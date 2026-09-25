@@ -478,18 +478,30 @@ class TestLoadFromCsvDerivedFields:
 # 7. pif_growth_yoy and gainshare_estimate via existing helper
 # ---------------------------------------------------------------------------
 
+def _pif_components(total: float) -> dict[str, str]:
+    """CSV PIF columns whose components sum to ``total`` (property excluded)."""
+    return {
+        "pif_agency_auto": str(0.3 * total),
+        "pif_direct_auto": str(0.4 * total),
+        "pif_special_lines": str(0.25 * total),
+        "pif_commercial_lines": str(0.05 * total),
+        "pif_property": "3000",
+    }
+
+
 class TestLoadFromCsvGainshare:
     def test_pif_growth_yoy_computed_after_12_months(self):
         from scripts.edgar_8k_fetcher import load_from_csv
+        # pif_total is agency + direct + special lines + commercial (F11).
         rows = [
             {"report_period": str(pd.Period("2024-01", freq="M") + i),
-             "combined_ratio": "85.0", "pif_total": "30000"}
+             "combined_ratio": "85.0", **_pif_components(30000)}
             for i in range(12)
         ]
         rows.append({
             "report_period": "2025-01",
             "combined_ratio": "85.0",
-            "pif_total": "33000",  # 10% growth
+            **_pif_components(33000),  # 10% growth
         })
         csv = _minimal_csv(rows)
         conn = _in_memory_conn()
@@ -510,7 +522,7 @@ class TestLoadFromCsvGainshare:
         # CR = 86 → cr_score = (96-86)/10 = 1.0; PIF flat → pif_score = 0 → gainshare = 0.5
         rows = [
             {"report_period": str(pd.Period("2024-01", freq="M") + i),
-             "combined_ratio": "86.0", "pif_total": "30000"}
+             "combined_ratio": "86.0", **_pif_components(30000)}
             for i in range(13)
         ]
         csv = _minimal_csv(rows)

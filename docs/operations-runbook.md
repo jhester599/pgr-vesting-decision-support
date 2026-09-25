@@ -34,8 +34,10 @@ they open the DB with `mode=ro`, skip migrations, API-log rows, split seeding,
 the model-health snapshot, the retrain log, `decision_log.md` and the shadow
 ledgers, and write monthly artifacts to the gitignored
 `results/dry_run/monthly_decisions/YYYY-MM/` (manifest `dry_run: true`).
-`peer_fetch.py` and `edgar_8k_fetcher.py` dry runs are not yet read-only, and
-`edgar_8k_fetcher.py --dry-run` calls SEC EDGAR; run them against a DB copy.
+`edgar_8k_fetcher.py --dry-run` also opens the DB read-only and skips
+migrations, but it calls SEC EDGAR (set `EDGAR_USER_AGENT`; add
+`--cache-dir data/raw/edgar_8k_cache` to reuse cached filings).
+`peer_fetch.py --dry-run` is not yet read-only; run it against a DB copy.
 
 Optional local dashboard check:
 
@@ -93,11 +95,37 @@ print('schema ok')
 PY
 ```
 
-Historical CSV backfill:
+Historical CSV backfill (seeds an empty or partial DB):
 
 ```bash
 python scripts/edgar_8k_fetcher.py --load-from-csv
 ```
+
+It inserts only months that `pgr_edgar_monthly` does not have, so it never
+overwrites rows written by the monthly fetch; re-running it changes nothing.
+Derived fields (YoY growth, Gainshare, PIF totals) are then recomputed over the
+whole table.
+
+Rebuilding the EDGAR tables from the filings (review 2026-09-25 step 3b; only
+when the parser changes, and always on a copy first):
+
+```bash
+cp data/pgr_financials.db /tmp/repair.db
+EDGAR_USER_AGENT="Name email@example.com" python scripts/repair_edgar_history.py \
+    --db /tmp/repair.db --diff-csv /tmp/edgar_cell_diff.csv \
+    --export-csv data/processed/pgr_edgar_cache.csv
+python scripts/generate_edgar_data_dictionary.py --db /tmp/repair.db
+PGR_EDGAR_INTEGRITY_DB=/tmp/repair.db python -m pytest tests/test_pgr_edgar_integrity.py
+```
+
+The script re-fetches every monthly release since August 2004 (cached in
+`data/raw/edgar_8k_cache`, at most 4 requests per second), records every value
+in the append-only `pgr_edgar_monthly_raw` table under the current
+`PARSER_VERSION`, rebuilds `pgr_edgar_monthly` and `pgr_fundamentals_quarterly`,
+writes a cell-level diff and prints the row-level validation results. Review the
+diff, then finalize the copy (`scripts/finalize_db.py --db /tmp/repair.db`) and
+copy it over the committed DB. Bump `PARSER_VERSION` in
+`scripts/edgar_8k_fetcher.py` whenever a parser change can change a value.
 
 Health check:
 

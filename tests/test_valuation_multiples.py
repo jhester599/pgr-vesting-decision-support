@@ -162,17 +162,19 @@ def test_missing_month_eps_is_quarter_less_reported_months() -> None:
     assert filled.loc["2015-04-30", "eps_basic_source"] == SOURCE_REPORTED
 
 
-def test_q4_gap_uses_full_year_less_first_three_quarters() -> None:
+def test_q4_gap_uses_discrete_q4_less_reported_months() -> None:
     months = pd.date_range("2018-01-31", "2018-12-31", freq="ME")
     eps = [0.1] * 12
     edgar = _edgar(months, eps=eps, bvps=[10.0] * 12).drop(pd.Timestamp("2018-11-30"))
+    # pgr_fundamentals_quarterly stores Q4 as a discrete quarter (FY − 9M,
+    # derived in edgar_client; F09): 1.5 − 0.9 = 0.6.
     quarterly = _quarterly(
-        {"2018-03-31": 0.3, "2018-06-30": 0.3, "2018-09-30": 0.3, "2018-12-31": 1.5}
+        {"2018-03-31": 0.3, "2018-06-30": 0.3, "2018-09-30": 0.3, "2018-12-31": 0.6}
     )
 
     filled = fill_eps_and_bvps_gaps(edgar, quarterly, NO_SPLITS)
 
-    # Q4 = 1.5 - 0.9 = 0.6; November = 0.6 - 0.1 - 0.1.
+    # November = Q4 0.6 - 0.1 - 0.1.
     assert filled.loc["2018-11-30", "eps_basic"] == pytest.approx(0.4)
     assert filled.loc["2018-11-30", "eps_available_date"] == pd.Timestamp("2019-03-01")
 

@@ -34,12 +34,9 @@ def load(force_refresh: bool = False) -> pd.DataFrame:
 
     Returns:
         DataFrame indexed by period end date (DatetimeIndex, ascending) with
-        columns: pe_ratio, pb_ratio, roe, eps, revenue, net_income.
+        columns: roe, eps, revenue, net_income (discrete quarters; Q4 =
+        full year − nine months; roe = TTM net income / average equity).
         All values are float64; missing data appears as NaN.
-
-        Note: pe_ratio and pb_ratio are always NaN — they require market
-        price data that is not available from XBRL.  They can be computed
-        downstream by joining with daily_prices.
     """
     if not force_refresh and os.path.exists(_PROCESSED_PATH):
         return pd.read_parquet(_PROCESSED_PATH)
@@ -50,7 +47,7 @@ def load(force_refresh: bool = False) -> pd.DataFrame:
 
     if not records:
         empty = pd.DataFrame(
-            columns=["pe_ratio", "pb_ratio", "roe", "eps", "revenue", "net_income"]
+            columns=["roe", "eps", "revenue", "net_income"]
         )
         empty.index = pd.DatetimeIndex([], name="date")
         return empty
@@ -61,7 +58,7 @@ def load(force_refresh: bool = False) -> pd.DataFrame:
     df.index.name = "date"
 
     # Select only the columns expected by feature_engineering.py.
-    cols = ["pe_ratio", "pb_ratio", "roe", "eps", "revenue", "net_income"]
+    cols = ["roe", "eps", "revenue", "net_income"]
     df = df.reindex(columns=cols).astype("float64")
 
     os.makedirs(config.DATA_PROCESSED_DIR, exist_ok=True)
