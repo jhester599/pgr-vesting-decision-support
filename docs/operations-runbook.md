@@ -42,8 +42,8 @@ streamlit run dashboard/app.py
 
 ## Rebuilding / Validating the Database
 
-Changes to the committed DB go through ordered SQL files in
-`src/database/migrations/`. Apply them to a copy first, check the diff, then
+Changes to the committed DB go through ordered migration files (`.sql`, or
+`.py` with an `upgrade(conn)` function) in `src/database/migrations/`. Apply them to a copy first, check the diff, then
 commit the file the script produced:
 
 ```bash

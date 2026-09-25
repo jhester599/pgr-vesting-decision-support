@@ -1,7 +1,8 @@
 """Apply pending SQL migrations to a database, then finalize it for commit.
 
 This is the explicit, reviewable way to change the committed database: the
-SQL lives in ``src/database/migrations/`` and this script applies whatever is
+migrations (``.sql`` scripts or ``.py`` modules with ``upgrade(conn)``) live in
+``src/database/migrations/`` and this script applies whatever is
 pending, records it in ``schema_migrations``, and leaves the file in
 ``journal_mode=DELETE``. Normal read-write runs apply the same migrations via
 ``db_client.initialize_schema``.
