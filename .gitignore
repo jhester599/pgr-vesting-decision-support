@@ -18,6 +18,7 @@ data/processed/
 # Exception: user-maintained reference data committed intentionally
 !data/processed/pgr_edgar_cache.csv
 !data/processed/pgr_combined_ratio_manual.csv
+!data/processed/pgr_valuation_monthly.csv
 
 # Personal financial data — never commit
 data/processed/position_lots.csv

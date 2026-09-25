@@ -1,0 +1,183 @@
+<title>PGR Valuation Findings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+:root {
+  --surface: #f5f6f8; --panel: #ffffff; --ink: #15181d; --ink-2: #4f5765; --ink-3: #7c8492;
+  --rule: #dde1e7; --grid: #e8ebef; --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+  --serif: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+  --sans: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark; --surface: #111317; --panel: #181b20; --ink: #eceef2; --ink-2: #b3b9c4; --ink-3: #848c9a;
+    --rule: #2b3038; --grid: #23272e; --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark; --surface: #111317; --panel: #181b20; --ink: #eceef2; --ink-2: #b3b9c4; --ink-3: #848c9a;
+  --rule: #2b3038; --grid: #23272e; --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+}
+body { background: var(--surface); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.6;
+  padding-inline: 20px; padding-block: 40px 64px; }
+.page { max-width: 760px; margin: 0 auto; display: grid; gap: 44px; }
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(1.9rem, 5vw, 2.5rem); line-height: 1.15; }
+h2 { font-size: 1.35rem; line-height: 1.3; }
+h3 { font-size: 1.02rem; }
+p { margin: 0; }
+section { display: grid; gap: 14px; }
+.prose { max-width: 66ch; }
+.eyebrow { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+header { display: grid; gap: 12px; border-bottom: 1px solid var(--rule); padding-block-end: 24px; }
+.deck { font-size: 1.08rem; color: var(--ink-2); max-width: 62ch; }
+.meta { font-family: var(--mono); font-size: 0.76rem; color: var(--ink-3); display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.bottom { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 22px 24px; display: grid; gap: 12px; }
+.bottom ol { margin: 0; padding-left: 1.3em; display: grid; gap: 10px; }
+.bottom li::marker { font-family: var(--mono); color: var(--ink-3); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.tile { border-top: 2px solid var(--ink); padding-top: 8px; display: grid; gap: 2px; align-content: start; }
+.tile .label { font-size: 0.8rem; color: var(--ink-2); }
+.tile .value { font-family: var(--mono); font-size: 1.6rem; font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.tile .note { font-size: 0.78rem; color: var(--ink-3); }
+.figure { display: grid; gap: 8px; }
+.figure-title { font-weight: 600; font-size: 0.95rem; }
+.caption { font-size: 0.84rem; color: var(--ink-2); max-width: 68ch; }
+svg { width: 100%; max-width: 560px; height: auto; display: block; overflow: visible; font-family: var(--sans); }
+svg .grid { stroke: var(--grid); stroke-width: 1; }
+svg .zero { stroke: var(--ink-3); stroke-width: 1; }
+svg .tick { fill: var(--ink-3); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+svg .lab { fill: var(--ink); font-size: 15px; font-weight: 500; }
+svg .sub { fill: var(--ink-3); font-size: 12.5px; }
+svg .val { fill: var(--ink); font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+svg .ci { stroke: var(--ink-2); stroke-width: 1.5; }
+svg .total { stroke: var(--ink); stroke-width: 2; }
+svg .axis-note { fill: var(--ink-3); font-size: 12.5px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.82rem; color: var(--ink-2); }
+.legend .sw { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.legend .ln { display: inline-block; width: 2px; height: 12px; background: var(--ink); margin-right: 6px; vertical-align: -1px; }
+.legend .ci-key { display: inline-block; width: 16px; height: 1.5px; background: var(--ink-2); margin-right: 6px; vertical-align: middle; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; align-items: start; }
+.equation { font-family: var(--serif); font-size: 1.15rem; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline;
+  padding: 14px 18px; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; width: fit-content; max-width: 100%; }
+.equation .term { display: grid; text-align: center; }
+.equation .term span:last-child { font-family: var(--sans); font-size: 0.72rem; color: var(--ink-3); }
+.equation .op { color: var(--ink-3); }
+ul.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 8px; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; font-size: 0.86rem; }
+th, td { padding: 6px 10px; text-align: right; white-space: nowrap; }
+th { font-weight: 500; color: var(--ink-2); border-bottom: 1px solid var(--rule); font-size: 0.8rem; }
+td { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+td:first-child, th:first-child { text-align: left; }
+tbody tr + tr td { border-top: 1px solid var(--grid); }
+td.hl { outline: 2px solid var(--ink); outline-offset: -2px; font-weight: 600; }
+code { font-family: var(--mono); font-size: 0.84em; background: var(--panel); border: 1px solid var(--rule); border-radius: 3px; padding: 1px 5px; }
+footer { border-top: 1px solid var(--rule); padding-top: 18px; font-size: 0.82rem; color: var(--ink-3); display: grid; gap: 6px; }
+</style>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">Research summary · Progressive (PGR) · September 2026</div>
+    <h1>What P/B and P/E tell us about PGR</h1>
+    <p class="deck">Is price-to-book or price-to-earnings the better way to judge PGR's valuation? We tested both against 22 years of monthly data, then looked at what each is good for.</p>
+    <div class="meta"><span>265 months · Sep 2004 to Sep 2026</span><span>Monthly SEC filings + prices</span><span>Returns include reinvested dividends</span></div>
+  </header>
+
+  <section class="bottom" aria-labelledby="bl">
+    <h2 id="bl">Bottom line</h2>
+    <ol>
+      <li><strong>Neither multiple works as a “cheap means buy” signal for PGR.</strong> Low P/B did not predict better returns, and low P/E predicted <em>worse</em> ones.</li>
+      <li><strong>P/E's signal comes from the profitability cycle, not the price.</strong> A low P/E has usually meant return on equity (ROE) running well above normal, just before margins come back down. ROE compared with its own 5-year average is the stronger and more consistent indicator.</li>
+      <li><strong>P/B is the better tool for understanding the business.</strong> P/B was about 3.5× in both 2004 and 2026. All of PGR's return over that span came from growing book value per share and paying dividends. Today's price assumes PGR can earn about 21% on equity over the long run.</li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="ev1">
+    <div class="eyebrow">Finding 1</div>
+    <h2 id="ev1">A cheap P/E came before weaker returns; P/B predicted nothing</h2>
+    <p class="prose">Each bar is the rank correlation between a measure at month-end and PGR's return over the next 12 months. Measures are oriented so a higher value means cheaper (or, for ROE, more profitable than usual). Positive means that reading came before better returns.</p>
+    <div class="figure">
+      <div class="legend"><span><i class="sw" style="background:var(--s1)"></i>PGR total return</span><span><i class="sw" style="background:var(--s2)"></i>PGR vs total US market</span></div>
+      <svg viewBox="0 0 480 270" role="img" aria-labelledby="c1t"><title id="c1t">12-month rank correlation of each measure with forward returns, with 90% intervals</title><line class="grid" x1="223.8" x2="223.8" y1="8" y2="240"/><text class="tick" x="223.8" y="256" text-anchor="middle">−0.6</text><line class="grid" x1="272.7" x2="272.7" y1="8" y2="240"/><text class="tick" x="272.7" y="256" text-anchor="middle">−0.4</text><line class="grid" x1="321.5" x2="321.5" y1="8" y2="240"/><text class="tick" x="321.5" y="256" text-anchor="middle">−0.2</text><line class="zero" x1="370.3" x2="370.3" y1="8" y2="240"/><text class="tick" x="370.3" y="256" text-anchor="middle">0.0</text><line class="grid" x1="419.2" x2="419.2" y1="8" y2="240"/><text class="tick" x="419.2" y="256" text-anchor="middle">+0.2</text><line class="grid" x1="468.0" x2="468.0" y1="8" y2="240"/><text class="tick" x="468.0" y="256" text-anchor="middle">+0.4</text><text class="lab" x="0" y="28">Price-to-book</text><text class="sub" x="0" y="44">(book-to-price)</text><g><title>Price-to-book, PGR total return: 0.00 (90% interval −0.30 to +0.26)</title><path d="M370.3,16.0 H369.8 Q369.2,16.0 369.2,16.6 V29.4 Q369.2,30.0 369.8,30.0 H370.3 Z" style="fill:var(--s1)"/><line class="ci" x1="298.1" x2="432.6" y1="23.0" y2="23.0"/><line class="ci" x1="298.1" x2="298.1" y1="19.0" y2="27.0"/><line class="ci" x1="432.6" x2="432.6" y1="19.0" y2="27.0"/><rect x="175" y="13.0" width="305" height="20" fill="transparent"/></g><text class="val" x="293.1" y="27" text-anchor="end">0.00</text><g><title>Price-to-book, PGR vs market: −0.01 (90% interval −0.28 to +0.21)</title><path d="M370.3,36.0 H369.0 Q367.7,36.0 367.7,37.3 V48.7 Q367.7,50.0 369.0,50.0 H370.3 Z" style="fill:var(--s2)"/><line class="ci" x1="302.9" x2="421.6" y1="43.0" y2="43.0"/><line class="ci" x1="302.9" x2="302.9" y1="39.0" y2="47.0"/><line class="ci" x1="421.6" x2="421.6" y1="39.0" y2="47.0"/><rect x="175" y="33.0" width="305" height="20" fill="transparent"/></g><text class="val" x="297.9" y="47" text-anchor="end">−0.01</text><text class="lab" x="0" y="86">Price-to-earnings</text><text class="sub" x="0" y="102">(earnings yield)</text><g><title>Price-to-earnings, PGR total return: −0.40 (90% interval −0.61 to −0.19)</title><path d="M370.3,74.0 H276.8 Q272.8,74.0 272.8,78.0 V84.0 Q272.8,88.0 276.8,88.0 H370.3 Z" style="fill:var(--s1)"/><line class="ci" x1="221.1" x2="324.3" y1="81.0" y2="81.0"/><line class="ci" x1="221.1" x2="221.1" y1="77.0" y2="85.0"/><line class="ci" x1="324.3" x2="324.3" y1="77.0" y2="85.0"/><rect x="175" y="71.0" width="305" height="20" fill="transparent"/></g><text class="val" x="216.1" y="85" text-anchor="end">−0.40</text><g><title>Price-to-earnings, PGR vs market: −0.18 (90% interval −0.41 to +0.04)</title><path d="M370.3,94.0 H331.3 Q327.3,94.0 327.3,98.0 V104.0 Q327.3,108.0 331.3,108.0 H370.3 Z" style="fill:var(--s2)"/><line class="ci" x1="269.2" x2="381.1" y1="101.0" y2="101.0"/><line class="ci" x1="269.2" x2="269.2" y1="97.0" y2="105.0"/><line class="ci" x1="381.1" x2="381.1" y1="97.0" y2="105.0"/><rect x="175" y="91.0" width="305" height="20" fill="transparent"/></g><text class="val" x="264.2" y="105" text-anchor="end">−0.18</text><text class="lab" x="0" y="144">P/E on normal earnings</text><text class="sub" x="0" y="160">(5y avg ROE × book)</text><g><title>P/E on normal earnings, PGR total return: +0.01 (90% interval −0.32 to +0.29)</title><path d="M370.3,132.0 H371.0 Q371.6,132.0 371.6,132.6 V145.4 Q371.6,146.0 371.0,146.0 H370.3 Z" style="fill:var(--s1)"/><line class="ci" x1="292.9" x2="441.7" y1="139.0" y2="139.0"/><line class="ci" x1="292.9" x2="292.9" y1="135.0" y2="143.0"/><line class="ci" x1="441.7" x2="441.7" y1="135.0" y2="143.0"/><rect x="175" y="129.0" width="305" height="20" fill="transparent"/></g><text class="val" x="446.7" y="143" text-anchor="start">+0.01</text><g><title>P/E on normal earnings, PGR vs market: +0.04 (90% interval −0.29 to +0.33)</title><path d="M370.3,152.0 H376.7 Q380.7,152.0 380.7,156.0 V162.0 Q380.7,166.0 376.7,166.0 H370.3 Z" style="fill:var(--s2)"/><line class="ci" x1="300.4" x2="449.9" y1="159.0" y2="159.0"/><line class="ci" x1="300.4" x2="300.4" y1="155.0" y2="163.0"/><line class="ci" x1="449.9" x2="449.9" y1="155.0" y2="163.0"/><rect x="175" y="149.0" width="305" height="20" fill="transparent"/></g><text class="val" x="454.9" y="163" text-anchor="start">+0.04</text><text class="lab" x="0" y="202">ROE vs its 5-year avg</text><text class="sub" x="0" y="218">(not a price measure)</text><g><title>ROE vs its 5-year avg, PGR total return: −0.46 (90% interval −0.61 to −0.24)</title><path d="M370.3,190.0 H261.2 Q257.2,190.0 257.2,194.0 V200.0 Q257.2,204.0 261.2,204.0 H370.3 Z" style="fill:var(--s1)"/><line class="ci" x1="220.7" x2="311.3" y1="197.0" y2="197.0"/><line class="ci" x1="220.7" x2="220.7" y1="193.0" y2="201.0"/><line class="ci" x1="311.3" x2="311.3" y1="193.0" y2="201.0"/><rect x="175" y="187.0" width="305" height="20" fill="transparent"/></g><text class="val" x="215.7" y="201" text-anchor="end">−0.46</text><g><title>ROE vs its 5-year avg, PGR vs market: −0.41 (90% interval −0.58 to −0.17)</title><path d="M370.3,210.0 H274.5 Q270.5,210.0 270.5,214.0 V220.0 Q270.5,224.0 274.5,224.0 H370.3 Z" style="fill:var(--s2)"/><line class="ci" x1="229.6" x2="327.7" y1="217.0" y2="217.0"/><line class="ci" x1="229.6" x2="229.6" y1="213.0" y2="221.0"/><line class="ci" x1="327.7" x2="327.7" y1="213.0" y2="221.0"/><rect x="175" y="207.0" width="305" height="20" fill="transparent"/></g><text class="val" x="224.6" y="221" text-anchor="end">−0.41</text><text class="axis-note" x="175.0" y="269">← signal came before lower returns</text><text class="axis-note" x="468" y="269" text-anchor="end">higher →</text></svg>
+      <p class="caption">Whiskers show 90% intervals from a bootstrap that keeps overlapping return windows together. Only filings already public at each date are used. The ROE-based measure starts in August 2008.</p>
+    </div>
+    <p class="prose">Real-time tests told the same story. Refit every year on past data only, the ROE gap beat a simple historical-average forecast by 11% of the variation in PGR's 12-month returns and by 7% against the market. P/E beat it by 4% and 0%. P/B did worse than the average (-24%).</p>
+  </section>
+
+  <section aria-labelledby="ev2">
+    <div class="eyebrow">Finding 2</div>
+    <h2 id="ev2">The profitability cycle is what matters</h2>
+    <p class="prose">P/E = P/B ÷ ROE. When PGR's P/E looked low, it was usually because ROE was unusually high, not because the price was low. Strip out the cycle by computing P/E on normal (5-year average) earnings, and the signal disappears. Measure the cycle directly, and the signal gets stronger:</p>
+    <div class="figure">
+      <div class="figure-title">Average return over the next 12 months, by where ROE stood</div>
+      <div class="legend"><span><i class="sw" style="background:var(--s1)"></i>PGR total return</span><span><i class="sw" style="background:var(--s2)"></i>PGR vs total US market</span></div>
+      <svg viewBox="0 0 480 190" role="img" aria-labelledby="c2t"><title id="c2t">Average return over the next 12 months, by where ROE stood against its 5-year average</title><line class="grid" x1="203.4" x2="203.4" y1="8" y2="164"/><text class="tick" x="203.4" y="180" text-anchor="middle">−10%</text><line class="zero" x1="250.7" x2="250.7" y1="8" y2="164"/><text class="tick" x="250.7" y="180" text-anchor="middle">0%</text><line class="grid" x1="298.0" x2="298.0" y1="8" y2="164"/><text class="tick" x="298.0" y="180" text-anchor="middle">+10%</text><line class="grid" x1="345.4" x2="345.4" y1="8" y2="164"/><text class="tick" x="345.4" y="180" text-anchor="middle">+20%</text><line class="grid" x1="392.7" x2="392.7" y1="8" y2="164"/><text class="tick" x="392.7" y="180" text-anchor="middle">+30%</text><line class="grid" x1="440.0" x2="440.0" y1="8" y2="164"/><text class="tick" x="440.0" y="180" text-anchor="middle">+40%</text><text class="lab" x="0" y="28">Below its average</text><text class="sub" x="0" y="44">ROE vs 5y avg · 69 months</text><g><title>ROE below its average: +34.4% pgr total return, next 12 months</title><path d="M250.7,16.0 H409.7 Q413.7,16.0 413.7,20.0 V26.0 Q413.7,30.0 409.7,30.0 H250.7 Z" style="fill:var(--s1)"/><rect x="175" y="13.0" width="305" height="20" fill="transparent"/></g><text class="val" x="418.7" y="27" text-anchor="start">+34.4%</text><g><title>ROE below its average: +17.3% pgr vs market, next 12 months</title><path d="M250.7,36.0 H328.8 Q332.8,36.0 332.8,40.0 V46.0 Q332.8,50.0 328.8,50.0 H250.7 Z" style="fill:var(--s2)"/><rect x="175" y="33.0" width="305" height="20" fill="transparent"/></g><text class="val" x="337.8" y="47" text-anchor="start">+17.3%</text><text class="lab" x="0" y="80">0 to 3 pts above</text><text class="sub" x="0" y="96">ROE vs 5y avg · 68 months</text><g><title>ROE 0 to 3 pts above: +15.2% pgr total return, next 12 months</title><path d="M250.7,68.0 H318.6 Q322.6,68.0 322.6,72.0 V78.0 Q322.6,82.0 318.6,82.0 H250.7 Z" style="fill:var(--s1)"/><rect x="175" y="65.0" width="305" height="20" fill="transparent"/></g><text class="val" x="327.6" y="79" text-anchor="start">+15.2%</text><g><title>ROE 0 to 3 pts above: +2.6% pgr vs market, next 12 months</title><path d="M250.7,88.0 H259.3 Q263.3,88.0 263.3,92.0 V98.0 Q263.3,102.0 259.3,102.0 H250.7 Z" style="fill:var(--s2)"/><rect x="175" y="85.0" width="305" height="20" fill="transparent"/></g><text class="val" x="268.3" y="99" text-anchor="start">+2.6%</text><text class="lab" x="0" y="132">3.5+ pts above</text><text class="sub" x="0" y="148">ROE vs 5y avg · 68 months</text><g><title>ROE 3.5+ pts above: +12.5% pgr total return, next 12 months</title><path d="M250.7,120.0 H305.8 Q309.8,120.0 309.8,124.0 V130.0 Q309.8,134.0 305.8,134.0 H250.7 Z" style="fill:var(--s1)"/><rect x="175" y="117.0" width="305" height="20" fill="transparent"/></g><text class="val" x="314.8" y="131" text-anchor="start">+12.5%</text><g><title>ROE 3.5+ pts above: −3.6% pgr vs market, next 12 months</title><path d="M250.7,140.0 H237.6 Q233.6,140.0 233.6,144.0 V150.0 Q233.6,154.0 237.6,154.0 H250.7 Z" style="fill:var(--s2)"/><rect x="175" y="137.0" width="305" height="20" fill="transparent"/></g><text class="val" x="228.6" y="151" text-anchor="end">−3.6%</text></svg>
+      <p class="caption">Months since August 2008 split into thirds by trailing ROE minus its 5-year average. About 68 overlapping months per third, from roughly 17 independent years in total.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="ev3">
+    <div class="eyebrow">Finding 3</div>
+    <h2 id="ev3">PGR's return came from compounding book value</h2>
+    <div class="equation" aria-label="P/E equals P/B divided by ROE">
+      <div class="term"><span>P/E</span><span>price per $ of earnings</span></div><div class="op">=</div>
+      <div class="term"><span>P/B</span><span>price per $ of capital</span></div><div class="op">÷</div>
+      <div class="term"><span>ROE</span><span>earnings per $ of capital</span></div>
+    </div>
+    <p class="prose">Splitting PGR's total return into book value growth, dividends and the change in P/B shows where value came from. The 2005–2012 de-rating from 3.5× to 2.1× book was reversed by 2026. Over the full period the multiple added nothing, and 79% of the return came from growth in book value per share.</p>
+    <div class="figure">
+      <div class="figure-title">Annualized total return, split into its sources</div>
+      <div class="legend"><span><i class="sw" style="background:var(--s1)"></i>Book value growth</span><span><i class="sw" style="background:var(--s3)"></i>Dividends</span><span><i class="sw" style="background:var(--s2)"></i>Change in P/B</span></div>
+      <svg viewBox="0 0 480 218" role="img" aria-labelledby="c3t"><title id="c3t">Annualized PGR total return split into book value growth, dividends and change in P/B, by era</title><line class="grid" x1="202.5" x2="202.5" y1="8" y2="192"/><text class="tick" x="202.5" y="208" text-anchor="middle">-5%</text><line class="zero" x1="248.2" x2="248.2" y1="8" y2="192"/><text class="tick" x="248.2" y="208" text-anchor="middle">0%</text><line class="grid" x1="294.0" x2="294.0" y1="8" y2="192"/><text class="tick" x="294.0" y="208" text-anchor="middle">5%</text><line class="grid" x1="339.8" x2="339.8" y1="8" y2="192"/><text class="tick" x="339.8" y="208" text-anchor="middle">10%</text><line class="grid" x1="385.6" x2="385.6" y1="8" y2="192"/><text class="tick" x="385.6" y="208" text-anchor="middle">15%</text><line class="grid" x1="431.4" x2="431.4" y1="8" y2="192"/><text class="tick" x="431.4" y="208" text-anchor="middle">20%</text><text class="lab" x="0" y="24">2005–2012</text><text class="sub" x="0" y="40">P/B 3.5× → 2.1×</text><g><title>2005–2012 · Book value growth: +6.2% a year</title><rect x="249.2" y="16" width="55.1" height="18" rx="2" style="fill:var(--s1)"/></g><g><title>2005–2012 · Dividends: +2.9% a year</title><rect x="306.4" y="16" width="24.6" height="18" rx="2" style="fill:var(--s3)"/></g><g><title>2005–2012 · Change in P/B: −6.5% a year</title><rect x="190.1" y="16" width="57.1" height="18" rx="2" style="fill:var(--s2)"/></g><line class="total" x1="273.0" x2="273.0" y1="12" y2="38"/><text class="val" x="338.0" y="29">+2.7%</text><text class="lab" x="0" y="70">2013–2019</text><text class="sub" x="0" y="86">P/B 2.1× → 3.0×</text><g><title>2013–2019 · Book value growth: +12.5% a year</title><rect x="249.2" y="62" width="112.8" height="18" rx="2" style="fill:var(--s1)"/></g><g><title>2013–2019 · Dividends: +2.6% a year</title><rect x="364.1" y="62" width="22.3" height="18" rx="2" style="fill:var(--s3)"/></g><g><title>2013–2019 · Change in P/B: +5.2% a year</title><rect x="388.3" y="62" width="45.6" height="18" rx="2" style="fill:var(--s2)"/></g><line class="total" x1="434.9" x2="434.9" y1="58" y2="84"/><text class="val" x="440.9" y="75">+20.4%</text><text class="lab" x="0" y="116">2020–2026</text><text class="sub" x="0" y="132">P/B 3.0× → 3.5×</text><g><title>2020–2026 · Book value growth: +13.7% a year</title><rect x="249.2" y="108" width="123.1" height="18" rx="2" style="fill:var(--s1)"/></g><g><title>2020–2026 · Dividends: +2.9% a year</title><rect x="374.3" y="108" width="24.4" height="18" rx="2" style="fill:var(--s3)"/></g><g><title>2020–2026 · Change in P/B: +2.4% a year</title><rect x="400.7" y="108" width="20.2" height="18" rx="2" style="fill:var(--s2)"/></g><line class="total" x1="421.8" x2="421.8" y1="104" y2="130"/><text class="val" x="427.9" y="121">+18.9%</text><text class="lab" x="0" y="162">2005–2026 (full)</text><text class="sub" x="0" y="178">P/B 3.5× → 3.5×</text><g><title>2005–2026 (full) · Book value growth: +10.6% a year</title><rect x="249.2" y="154" width="94.8" height="18" rx="2" style="fill:var(--s1)"/></g><g><title>2005–2026 (full) · Dividends: +2.8% a year</title><rect x="346.0" y="154" width="23.8" height="18" rx="2" style="fill:var(--s3)"/></g><g><title>2005–2026 (full) · Change in P/B: +0.1% a year</title><rect x="370.9" y="154" width="0.5" height="18" rx="2" style="fill:var(--s2)"/></g><line class="total" x1="371.3" x2="371.3" y1="150" y2="176"/><text class="val" x="377.3" y="167">+13.4%</text></svg>
+      <p class="caption">Annualized log returns, so the parts add up to the total (black tick). Book growth is net of dividends paid out.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="now">
+    <div class="eyebrow">Where PGR stands · data through August 2026 filings</div>
+    <h2 id="now">Today's reading</h2>
+    <div class="tiles">
+      <div class="tile"><div class="label">Price-to-book</div><div class="value">3.50×</div><div class="note">5-year median 4.65×</div></div>
+      <div class="tile"><div class="label">Price-to-earnings</div><div class="value">11.0×</div><div class="note">5-year median 19.7×</div></div>
+      <div class="tile"><div class="label">Return on equity</div><div class="value">32%</div><div class="note">5-year average 24%</div></div>
+      <div class="tile"><div class="label">P/E vs S&amp;P 500</div><div class="value">0.36×</div><div class="note">median 0.71× since 2008</div></div>
+    </div>
+    <div class="two">
+      <p class="prose">P/E looks cheap: lower than in 85% of months since 2005, and cheaper relative to the S&amp;P 500 than in 94% of months since 2008. The reason is profitability. ROE is 7.9 points above its 5-year average, in the top third of its history. In the past, that combination came before below-average returns.</p>
+      <div class="figure">
+        <div class="figure-title">Long-run ROE implied by P/B 3.50×</div>
+        <div class="scroll"><table class="grid"><thead><tr><th>r ↓ &nbsp;g →</th><th>3%</th><th>4%</th><th>5%</th><th>6%</th></tr></thead><tbody><tr><td>8%</td><td>20.5%</td><td>18.0%</td><td>15.5%</td><td>13.0%</td></tr><tr><td>9%</td><td>24.0%</td><td class="hl">21.5%</td><td>19.0%</td><td>16.5%</td></tr><tr><td>10%</td><td>27.5%</td><td>25.0%</td><td>22.5%</td><td>20.0%</td></tr></tbody></table></div>
+        <p class="caption">Rows: cost of equity (r). Columns: long-run growth (g). From P/B = (ROE − g) ÷ (r − g). Compare with 32% today and a 19% median since 2005.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="use">
+    <h2 id="use">How to use each measure</h2>
+    <ul class="plain prose">
+      <li><strong>P/B: what does the price assume?</strong> Convert it to the long-run ROE it requires and ask whether the business can sustain that.</li>
+      <li><strong>ROE against its own average: where are we in the cycle?</strong> Well above average has been a peak-margin warning. The combined ratio and policy growth in the monthly filings lead it.</li>
+      <li><strong>P/E: read it only alongside ROE.</strong> A low P/E on peak earnings isn't a bargain; a high P/E on depressed earnings has preceded PGR's best years.</li>
+      <li><strong>Book value per share growth, plus dividends: the scorecard.</strong> It explains most of what shareholders earned.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="caveats">
+    <h2 id="caveats">Method and caveats</h2>
+    <ul class="plain prose">
+      <li>Monthly data from PGR's SEC filings (book value, EPS, ROE), used only once each filing was public. Figures are restated across the 2006 4-for-1 split, and returns include reinvested dividends. The market is the total US stock market (VTI).</li>
+      <li>Correlations use bootstrap intervals and Newey-West errors for overlapping returns. Real-time tests refit each year with a gap equal to the forecast horizon. Results hold when sampling just once a year.</li>
+      <li>Shorter earnings windows (3 or 6 months) and shorter horizons (1 or 3 months) don't help. PGR's earnings are seasonal, and valuation works slowly.</li>
+      <li>22 years is roughly 20 independent 12-month periods, so every estimate has wide uncertainty. Treat these as consistent tendencies, not forecasts.</li>
+      <li>Two missing months of EPS were rebuilt from quarterly filings, and five missing months of book value were interpolated.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>This is historical research, not investment advice.</span>
+    <span>Reproducible from the <code>pgr-vesting-decision-support</code> repository: <code>scripts/research/pb_vs_pe_analysis.py</code>, with results in <code>results/research/pb_vs_pe/</code>.</span>
+  </footer>
+</div>

@@ -83,6 +83,11 @@ import numpy as np
 import pandas as pd
 
 import config
+from src.processing.valuation_multiples import (
+    latest_share_basis_factor,
+    share_basis_factor,
+    trailing_eps_latest_basis,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1127,6 +1132,9 @@ def build_feature_matrix_from_db(
 
     # Load monthly EDGAR 8-K data first (needed for pb_ratio via BVPS below).
     edgar_raw = db_client.get_pgr_edgar_monthly(conn)
+    # Unlagged copy: TTM EPS must be summed on report periods, where the
+    # share basis of each month's EPS is known.
+    edgar_by_period = edgar_raw.copy()
     if not edgar_raw.empty:
         # Apply filing lag to prevent EDGAR period-end vs filing date look-ahead bias (v4.1)
         edgar_raw = _apply_edgar_lag(edgar_raw)
@@ -1134,8 +1142,10 @@ def build_feature_matrix_from_db(
 
     # --- Derive pe_ratio, pb_ratio, and roe from EDGAR data (v6.x) ---
     # pe_ratio: monthly_price / TTM_EPS
-    #   Source: pgr_edgar_monthly.eps_basic (monthly 8-K).  TTM EPS =
-    #   rolling 12-month sum.  Lag already applied to edgar_raw above.
+    #   Source: pgr_edgar_monthly.eps_basic (monthly 8-K).  TTM EPS = sum of
+    #   12 consecutive calendar months, each restated to one share basis so
+    #   the window can straddle a split (4-for-1 on 2006-05-19); the price is
+    #   restated to the same basis.  Filing lag is applied to the TTM series.
     #   Superior to quarterly XBRL: 256 monthly obs vs ~86 quarterly;
     #   no frequency interpolation needed; consistent source with pb_ratio.
     # pb_ratio: monthly_price / book_value_per_share
@@ -1151,18 +1161,21 @@ def build_feature_matrix_from_db(
 
         # pe_ratio from monthly EPS (8-K supplements, lag already applied)
         if (
-            not edgar_raw.empty
-            and "eps_basic" in edgar_raw.columns
-            and not edgar_raw["eps_basic"].isna().all()
+            not edgar_by_period.empty
+            and "eps_basic" in edgar_by_period.columns
+            and not edgar_by_period["eps_basic"].isna().all()
         ):
-            eps = edgar_raw["eps_basic"].copy()
-            eps.index = pd.to_datetime(eps.index)
-            # TTM EPS: rolling 12-month sum of monthly EPS figures
-            eps_ttm = eps.rolling(12, min_periods=12).sum()
+            eps_ttm = trailing_eps_latest_basis(edgar_by_period["eps_basic"], splits)
+            eps_ttm = _apply_edgar_lag(eps_ttm)
             eps_aligned = eps_ttm.reindex(monthly_fundamentals.index, method="ffill")
+            close_latest_basis = (
+                monthly_close_vals
+                * share_basis_factor(monthly_close_vals.index, splits)
+                / latest_share_basis_factor(splits)
+            )
             # Avoid division by zero or negative TTM EPS
             valid_eps = eps_aligned.where(eps_aligned > 0)
-            monthly_fundamentals["pe_ratio"] = monthly_close_vals / valid_eps
+            monthly_fundamentals["pe_ratio"] = close_latest_basis / valid_eps
 
         # roe from quarterly XBRL (forward-filled to monthly, EDGAR lag applied)
         if not fundamentals_raw.empty and "roe" in fundamentals_raw.columns:

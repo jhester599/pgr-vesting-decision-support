@@ -170,7 +170,7 @@ Snapshot at month-end, in millions USD.
 | `pif_growth_yoy` | `pif_total` | `pct_change(12)` |
 | `gainshare_est` | `combined_ratio_ttm` | Gainshare lookup table (≤96 CR → multiplier) |
 | `cr_acceleration` | `combined_ratio_ttm` | `.diff(3)` (3-period second difference) |
-| `pe_ratio` | `eps_basic` + price | `rolling(12).sum()` for TTM EPS, then price / TTM EPS |
+| `pe_ratio` | `eps_basic` + price + splits | TTM EPS = 12 consecutive calendar months restated to one share basis (`src/processing/valuation_multiples.py`), filing lag applied, then split-consistent price / TTM EPS |
 | `pb_ratio` | `book_value_per_share` + price | price / BVPS (already monthly) |
 | `roe` | `roe_net_income_trailing_12m` | Used directly (pre-computed in filing) |
 

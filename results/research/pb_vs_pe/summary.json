@@ -1,0 +1,33 @@
+{
+  "market_benchmark": "VTI",
+  "first_signal_month": "2004-09-30",
+  "last_signal_month": "2026-09-30",
+  "horizons_months": [
+    1,
+    3,
+    6,
+    12,
+    24,
+    36
+  ],
+  "signals": [
+    "bp",
+    "ep",
+    "bp_z60",
+    "ep_z60",
+    "pb_roe_adj",
+    "ep_6m",
+    "ep_3m",
+    "ep_norm",
+    "roe_gap",
+    "ep_rel_mkt"
+  ],
+  "today": {
+    "date": "2026-09-30",
+    "pb": 3.504267892317794,
+    "pe": 11.04397309881014,
+    "roe": 0.31979485482670195,
+    "roe_avg60": 0.24102949209115304,
+    "roe_gap": 0.0787653627355489
+  }
+}
