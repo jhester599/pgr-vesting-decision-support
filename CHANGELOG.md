@@ -44,7 +44,7 @@ mutation tables and before/after tests:
   - Before this, 64 tests wrote `data/processed/feature_matrix.parquet`
     and 27 opened the committed DB (18 read-write). The suite now leaves
     the working tree clean.
-- **Stored-artifact tests.** `@pytest.mark.artifact` (176 tests in 73
+- **Stored-artifact tests.** `@pytest.mark.artifact` (198 tests in 73
   files) marks tests whose assertions are about committed data. CI's
   `test` job runs `-m "not artifact"`; a new `artifacts` job runs
   `-m artifact`.

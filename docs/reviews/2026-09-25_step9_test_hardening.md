@@ -137,7 +137,7 @@ is not guarded.
 
 ## 4. Stored-artifact tests and other fixes
 
-**`@pytest.mark.artifact`** (registered in `pyproject.toml`) marks 176
+**`@pytest.mark.artifact`** (registered in `pyproject.toml`) marks 198
 tests in 73 files. They are the tests the discovery run saw reading
 committed data, filtered to those whose assertions are about that data:
 
@@ -150,6 +150,16 @@ committed data, filtered to those whose assertions are about that data:
 CI's `test` job runs `-m "not artifact"`. A new `artifacts` job runs
 `-m artifact`, and its comment says a failure there means committed outputs
 changed or went stale. A plain `python -m pytest` still runs everything.
+
+A module- or class-scoped fixture that reads committed data is recorded
+only against the first test that uses it, so every test on such a fixture
+is marked (the whole module for the DB and EDGAR integrity files). The
+first CI run missed this. The `-m "not artifact"` job deselected the one
+marked test, so the module's committed-DB connection opened in an unmarked
+test and the guard refused it (24 errors). The autouse fixture also sends
+`config.DATA_RAW_DIR` and `REQUEST_COUNTS_FILE` to `tmp_path`. A fresh CI
+checkout has no `data/raw`, and the EDGAR client creates it before writing
+its (already redirected) cache.
 
 These tests read committed files but **stay in the main job**, because they
 test production code that loads committed inputs (the F30 dependence on
