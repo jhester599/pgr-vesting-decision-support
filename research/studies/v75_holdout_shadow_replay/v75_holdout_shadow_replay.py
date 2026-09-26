@@ -15,7 +15,7 @@ if hasattr(sys.stdout, "reconfigure"):
 warnings.filterwarnings("ignore", message="All-NaN slice encountered", category=RuntimeWarning)
 
 import config
-from scripts import monthly_decision
+from pgr_vds.decision import health, signal_generation
 from src.database import db_client
 from src.research.v37_utils import print_footer, print_header
 from src.research.v75 import V75Decision, choose_v75_decision, holdout_monthly_review_dates, summarize_v75_review
@@ -23,7 +23,7 @@ from src.research.study_paths import study_output_path
 
 
 def _build_path_rows(as_of: date, conn) -> list[dict[str, object]]:
-    signals, ensemble_results, diagnostics = monthly_decision._generate_signals(  # noqa: SLF001
+    signals, ensemble_results, diagnostics = signal_generation.generate_signals(
         conn,
         as_of,
         target_horizon_months=6,
@@ -31,17 +31,17 @@ def _build_path_rows(as_of: date, conn) -> list[dict[str, object]]:
     if signals.empty or not ensemble_results:
         return []
 
-    aggregate_health = monthly_decision._compute_aggregate_health(  # noqa: SLF001
+    aggregate_health = health.compute_aggregate_health(
         ensemble_results,
         target_horizon_months=6,
     )
     if aggregate_health is None:
         return []
 
-    consensus, mean_pred, mean_ic, mean_hr, mean_prob, confidence_tier = monthly_decision._consensus_signal(  # noqa: SLF001
+    consensus, mean_pred, mean_ic, mean_hr, mean_prob, confidence_tier = signal_generation.consensus_signal(
         signals
     )
-    live_mode = monthly_decision._determine_recommendation_mode(  # noqa: SLF001
+    live_mode = health.determine_recommendation_mode(
         consensus,
         mean_pred,
         mean_ic,
@@ -70,7 +70,7 @@ def _build_path_rows(as_of: date, conn) -> list[dict[str, object]]:
         }
     ]
 
-    shadow_df = monthly_decision._build_v74_shadow_consensus(  # noqa: SLF001
+    shadow_df = signal_generation.build_v74_shadow_consensus(
         signals,
         aggregate_health,
         diagnostics.get("representative_cpcv"),

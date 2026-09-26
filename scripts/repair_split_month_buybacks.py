@@ -48,7 +48,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config  # noqa: E402
-from scripts import edgar_8k_fetcher as fetcher  # noqa: E402
+from pgr_vds.ingestion.edgar_monthly import derive, fetch, load  # noqa: E402
 from scripts.repair_edgar_history import validate  # noqa: E402
 from src.database import db_client  # noqa: E402
 from src.ingestion import edgar_10q_repurchases as q10  # noqa: E402
@@ -202,7 +202,7 @@ def main() -> int:
         log.error("%s does not exist", target)
         return 2
 
-    fetcher.set_http_cache_dir(args.cache_dir)
+    fetch.set_http_cache_dir(args.cache_dir)
     conn = db_client.get_connection(str(target))
     try:
         db_client.initialize_schema(conn)
@@ -213,8 +213,8 @@ def main() -> int:
             (may["accession_number"],),
         ).fetchone()[0]
 
-        ten_q = fetcher._get(TEN_Q["url"])
-        eight_k = fetcher._get(eight_k_url)
+        ten_q = fetch.get(TEN_Q["url"])
+        eight_k = fetch.get(eight_k_url)
         rows = q10.parse_issuer_purchases(ten_q.text)
         purchases = q10.split_month_purchases(rows, MONTH_LABEL, _split_ratio(conn))
         for row in rows:
@@ -246,7 +246,7 @@ def main() -> int:
         )
         log.info("Recorded %d raw values under %s", added, q10.PARSER_VERSION)
         changed = db_client.apply_pgr_edgar_supplements(conn)
-        fetcher.recompute_derived_fields(conn)
+        derive.recompute_derived_fields(conn)
         after = _row(conn, MONTH_END)
         log.info(
             "%d cell(s) changed; %s: shares_repurchased %s -> %s, avg_cost_per_share %s -> %s",
@@ -256,7 +256,7 @@ def main() -> int:
 
         failures = validate(conn)
         if args.export_csv:
-            n = fetcher.export_edgar_cache_csv(conn, args.export_csv)
+            n = load.export_edgar_cache_csv(conn, args.export_csv)
             log.info("Wrote %d rows to %s", n, args.export_csv)
     finally:
         conn.close()

@@ -477,7 +477,7 @@ def build_feature_matrix(
         # ------------------------------------------------------------------
         # v6.3 — Channel-mix features (P1.4)
         # These are pre-computed and stored in pgr_edgar_monthly by the CSV
-        # loader (scripts/edgar_8k_fetcher.py --load-from-csv) and by the
+        # loader (cli/edgar_monthly_fetch.py --load-from-csv) and by the
         # live EDGAR fetch once P2.6 updates the HTML parser.
         # ------------------------------------------------------------------
 

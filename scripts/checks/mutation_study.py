@@ -80,7 +80,7 @@ CONS_TESTS = [
 DEC_TESTS = [
     "unit/models/test_live_policy_backtest.py",
     "integration/pipeline/test_validation_gating.py",
-    "unit/scripts/test_monthly_decision_recommendation_mode.py",
+    "unit/decision/test_recommendation_mode.py",
     "integration/pipeline/test_monthly_pipeline_e2e.py",
     "unit/tax/test_monte_carlo_tax.py",
     "unit/reporting/test_data_freshness.py",

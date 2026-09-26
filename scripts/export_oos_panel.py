@@ -3,7 +3,7 @@
 Review 2026-09-25, step 6 (WP8, F20). The live ACTIONABLE sell-% mapping is
 backtested on the same prequential OOS record the monthly gate scores
 (``build_prequential_panel``). This script rebuilds that record exactly as
-``monthly_decision._generate_signals`` does for one as-of date and writes one
+``pgr_vds.decision.signal_generation.generate_signals`` does for one as-of date and writes one
 row per (benchmark, OOS date) to CSV:
 
     benchmark, date, y_true, z, alpha, y_hat, naive
@@ -45,13 +45,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", required=True, help="Output CSV path.")
     args = parser.parse_args(argv)
 
-    from scripts.monthly_decision import _generate_signals
+    from pgr_vds.decision.signal_generation import generate_signals
 
     db_path = Path(args.db_path)
     before = _sha256(db_path)
     conn = db_client.get_connection(str(db_path), read_only=True)
     try:
-        _, _, diagnostics = _generate_signals(conn, date.fromisoformat(args.as_of))
+        _, _, diagnostics = generate_signals(conn, date.fromisoformat(args.as_of))
     finally:
         conn.close()
     after = _sha256(db_path)

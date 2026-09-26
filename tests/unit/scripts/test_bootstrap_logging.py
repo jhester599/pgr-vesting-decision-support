@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 def test_run_monthly_decision_logs_exception_context(caplog) -> None:
     from scripts import bootstrap
 
-    with patch("scripts.monthly_decision.main", side_effect=RuntimeError("bootstrap boom")):
+    with patch("pgr_vds.decision.pipeline.main", side_effect=RuntimeError("bootstrap boom")):
         with caplog.at_level(logging.ERROR):
             rc = bootstrap._run_monthly_decision("2026-04-05", dry_run=True)
 

@@ -100,7 +100,7 @@ Used for:
 Operational notes:
 
 - every monthly release since August 2004 is parsed by the repository's
-  parser (`scripts/edgar_8k_fetcher.py`): items 7.01 and 2.02, and 9.01-only
+  parser (`pgr_vds.ingestion.edgar_monthly`, run by `cli/edgar_monthly_fetch.py`): items 7.01 and 2.02, and 9.01-only
   filings with an EX-99 exhibit, found through the primary submissions file
   and the flat pagination files
 - monthly results are stored in `pgr_edgar_monthly`; each row's values all

@@ -4,8 +4,8 @@ Review 2026-09-25 (F11, F16) found three copies of the Gainshare formula,
 row-based ``pct_change(12)`` YoY that spans 13 months at data gaps, a
 leap-year key bug, and a policies-in-force (PIF) total whose definition
 changed in 2024.  Every producer of these fields
-(``scripts/edgar_8k_fetcher.py``, ``src/ingestion/pgr_monthly_loader.py``,
-``src/ingestion/edgar_8k_fetcher.py``) now calls this module.
+(``pgr_vds.ingestion.edgar_monthly``; the legacy ``pgr_monthly_loader.py`` and
+``src/ingestion/edgar_8k_fetcher.py`` copies were deleted in phase 5) calls this module.
 
 Definitions
 -----------

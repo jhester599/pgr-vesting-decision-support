@@ -16,7 +16,7 @@ folder has a README naming the script and workflow that write it.
 | Path | Was | Written by |
 |---|---|---|
 | `data/pgr_financials.db` | — | every DB-writing workflow |
-| `artifacts/monthly_decisions/` | `results/monthly_decisions/` | `scripts/monthly_decision.py` |
+| `artifacts/monthly_decisions/` | `results/monthly_decisions/` | `cli/monthly_decision.py` (`pgr_vds.decision`) |
 | `artifacts/charts/pgr_*.png` | `results/research/pgr_*.png` | `scripts/repurchase_timeseries_charts.py`, `scripts/capital_return_charts.py` |
 | `artifacts/ops/fetch_status.md` | `data/fetch_status.md` | `scripts/initial_fetch.py` |
 | `artifacts/shadow_reviews/` | `results/v14/shadow_reviews/` | nothing today (v14 study record) |

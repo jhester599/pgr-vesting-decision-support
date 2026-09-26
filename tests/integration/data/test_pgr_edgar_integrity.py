@@ -17,7 +17,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from scripts.edgar_8k_fetcher import DERIVED_FIELDS, _compute_derived_fields
+from pgr_vds.ingestion.edgar_monthly.derive import DERIVED_FIELDS, compute_derived_fields
 from src.database import db_client
 from src.processing import pgr_edgar_validation as v
 
@@ -133,7 +133,7 @@ def test_derived_fields_match_a_full_recompute(monthly) -> None:
         {k: (None if isinstance(val, float) and math.isnan(val) else val) for k, val in r.items()}
         for r in frame.to_dict("records")
     ]
-    expected = pd.DataFrame(_compute_derived_fields(records)).set_index("month_end")
+    expected = pd.DataFrame(compute_derived_fields(records)).set_index("month_end")
     for field in DERIVED_FIELDS:
         stored = monthly[field].to_numpy(dtype=float)
         fresh = expected[field].astype(float).to_numpy()

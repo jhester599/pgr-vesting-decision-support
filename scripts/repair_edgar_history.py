@@ -3,7 +3,7 @@
 
 ``pgr_edgar_monthly``
     Every monthly release since August 2004 is re-fetched from EDGAR and
-    re-parsed with the current parser (``edgar_8k_fetcher.PARSER_VERSION``).
+    re-parsed with the current parser (``edgar_8k_parse.PARSER_VERSION``).
     Candidates are 8-Ks with item 7.01 or 2.02, or 9.01-only filings with an
     EX-99 exhibit, read from the primary submissions file and every flat
     pagination file.  One release per month is kept (the earliest filing
@@ -53,7 +53,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config  # noqa: E402
-from scripts import edgar_8k_fetcher as fetcher  # noqa: E402
+from pgr_vds.ingestion.edgar_monthly import derive, fetch, load, parse  # noqa: E402
 from src.database import db_client  # noqa: E402
 from src.ingestion import edgar_client  # noqa: E402
 from src.processing import pgr_edgar_validation as validation  # noqa: E402
@@ -107,24 +107,24 @@ def cell_diff(before: pd.DataFrame, after: pd.DataFrame, table: str) -> pd.DataF
 
 def rebuild_monthly(conn: sqlite3.Connection, since: str) -> list[dict[str, Any]]:
     """Re-fetch, re-parse and rebuild ``pgr_edgar_monthly``; return the records."""
-    filings = fetcher.fetch_all_8k_filings(cutoff_date=since)
+    filings = fetch.fetch_all_8k_filings(cutoff_date=since)
     parsed: list[dict[str, Any]] = []
     for filing in filings:
-        record = fetcher.parse_filing(filing)
+        record = parse.parse_filing(filing)
         if record is not None:
             parsed.append(record)
-    selected = fetcher.select_monthly_releases(parsed)
+    selected = parse.select_monthly_releases(parsed)
     log.info(
         "%d candidate filings, %d parsed, %d months selected",
         len(filings), len(parsed), len(selected),
     )
-    n_raw = db_client.record_pgr_edgar_raw(conn, selected, fetcher.PARSER_VERSION)
+    n_raw = db_client.record_pgr_edgar_raw(conn, selected, parse.PARSER_VERSION)
     conn.execute("DELETE FROM pgr_edgar_monthly")
     conn.commit()
     db_client.upsert_pgr_edgar_monthly(conn, selected)
     db_client.apply_pgr_edgar_supplements(conn)
-    fetcher.recompute_derived_fields(conn)
-    log.info("Recorded %d raw values under parser %s", n_raw, fetcher.PARSER_VERSION)
+    derive.recompute_derived_fields(conn)
+    log.info("Recorded %d raw values under parser %s", n_raw, parse.PARSER_VERSION)
     return selected
 
 
@@ -191,7 +191,7 @@ def main() -> int:
         log.error("Refusing to modify the committed DB; run on a copy.")
         return 2
 
-    fetcher.set_http_cache_dir(args.cache_dir)
+    fetch.set_http_cache_dir(args.cache_dir)
     conn = db_client.get_connection(str(target))
     try:
         db_client.initialize_schema(conn)
@@ -222,7 +222,7 @@ def main() -> int:
 
         failures = validate(conn)
         if args.export_csv:
-            n = fetcher.export_edgar_cache_csv(conn, args.export_csv)
+            n = load.export_edgar_cache_csv(conn, args.export_csv)
             log.info("Wrote %d rows to %s", n, args.export_csv)
     finally:
         conn.close()

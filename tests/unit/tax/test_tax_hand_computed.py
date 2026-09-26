@@ -301,7 +301,8 @@ def test_provisional_scenario_does_not_use_the_relative_forecast(
     scenarios and the Monte Carlo use TAX_SCENARIO_PGR_ANNUAL_RETURN (0 %),
     and only vested lots count (100 shares, not 150)."""
     import config
-    import scripts.monthly_decision as md
+    from pgr_vds.decision import tax_lots
+    from src.database import db_client
 
     monkeypatch.chdir(tmp_path)
     (tmp_path / "data" / "processed").mkdir(parents=True)
@@ -315,11 +316,11 @@ def test_provisional_scenario_does_not_use_the_relative_forecast(
     ).to_csv(tmp_path / "data" / "processed" / "position_lots.csv", index=False)
     weeks = pd.date_range("2025-06-06", "2026-09-18", freq="W-FRI")
     prices = pd.DataFrame({"close": [200.0 + (i % 3) for i in range(len(weeks))]}, index=weeks)
-    monkeypatch.setattr(md.db_client, "get_prices", lambda *a, **k: prices)
-    monkeypatch.setattr(md.db_client, "get_splits", lambda *a, **k: pd.DataFrame())
+    monkeypatch.setattr(db_client, "get_prices", lambda *a, **k: prices)
+    monkeypatch.setattr(db_client, "get_splits", lambda *a, **k: pd.DataFrame())
     monkeypatch.setattr(config, "TAX_SCENARIO_PGR_ANNUAL_RETURN", 0.0)
 
-    summary = md._build_provisional_vest_scenario(None, date(2026, 9, 21), -0.30, 0.2)
+    summary = tax_lots.build_provisional_vest_scenario(None, date(2026, 9, 21), -0.30, 0.2)
     assert summary is not None
     assert summary["shares"] == pytest.approx(100.0)
     a, b, c = summary["scenario"].scenarios

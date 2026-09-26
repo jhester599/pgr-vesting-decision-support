@@ -6,7 +6,7 @@ Everything the scheduled GitHub workflows write and commit lives here
 
 | Folder | Written by | Committed by |
 |---|---|---|
-| [`monthly_decisions/`](monthly_decisions/README.md) | `scripts/monthly_decision.py` | `monthly_decision.yml`, `post_initial_bootstrap.yml` |
+| [`monthly_decisions/`](monthly_decisions/README.md) | `cli/monthly_decision.py` | `monthly_decision.yml`, `post_initial_bootstrap.yml` |
 | [`charts/`](charts/README.md) | `scripts/repurchase_timeseries_charts.py`, `scripts/capital_return_charts.py` | `monthly_decision.yml` |
 | [`ops/`](ops/README.md) | `scripts/initial_fetch.py --status-file` | `initial_fetch_prices.yml`, `initial_fetch_dividends.yml` |
 | [`shadow_reviews/`](shadow_reviews/README.md) | nothing today (v14 study, archived) | — |

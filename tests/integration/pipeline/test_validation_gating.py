@@ -28,7 +28,8 @@ import pandas as pd
 import pytest
 
 import config
-import scripts.monthly_decision as md
+from pgr_vds.decision import health as decision_health
+from pgr_vds.decision import signal_generation
 from src.models.multi_benchmark_wfo import EnsembleWFOResult
 from src.models.wfo_engine import CPCVResult, FoldResult, WFOResult, run_cpcv
 
@@ -137,7 +138,7 @@ def _skilled_health() -> dict:
     signal = rng.normal(0.02, 0.10, n)
     y_true = signal + rng.normal(0.0, 0.03, n)
     ens = _ensemble("VTI", dates, y_true, {"ridge": signal, "gbt": signal})
-    health = md._compute_aggregate_health({"VTI": ens})
+    health = decision_health.compute_aggregate_health({"VTI": ens})
     assert health is not None
     health = dict(health)
     health["oos_r2"] = 0.05
@@ -254,7 +255,7 @@ def _oracle_panel_ensembles(seed: int = 6, n_bench: int = 8, n_hist: int = 60, n
 def test_oracle_forecaster_gets_positive_pooled_oos_r2() -> None:
     """F04: the forecast equal to the true conditional mean must beat the naive."""
     ensembles = _oracle_panel_ensembles()
-    health = md._compute_aggregate_health(ensembles)
+    health = decision_health.compute_aggregate_health(ensembles)
     assert health is not None
     assert health["oos_r2"] > 0.0
 
@@ -264,7 +265,7 @@ def test_naive_benchmark_never_uses_a_target_realised_after_t() -> None:
     from src.models.prequential import prevailing_mean_forecast
 
     ensembles = _oracle_panel_ensembles()
-    health = md._compute_aggregate_health(ensembles)
+    health = decision_health.compute_aggregate_health(ensembles)
     panel = health["panel"]
     for benchmark, ens in ensembles.items():
         history = ens.target_history
@@ -313,8 +314,8 @@ def test_reported_ensemble_predictions_use_no_later_fold_statistics() -> None:
     full = _two_model_ensemble(n_oos=96)
     truncated = _truncate(full, 48)
 
-    health_full = md._compute_aggregate_health({"VTI": full})
-    health_trunc = md._compute_aggregate_health({"VTI": truncated})
+    health_full = decision_health.compute_aggregate_health({"VTI": full})
+    health_trunc = decision_health.compute_aggregate_health({"VTI": truncated})
     early = health_trunc["agg_predicted"].index
     np.testing.assert_allclose(
         health_full["agg_predicted"].loc[early].to_numpy(dtype=float),
@@ -348,8 +349,8 @@ def test_calibration_probabilities_use_no_later_fold_statistics() -> None:
         },
         index=pd.Index(["VTI"], name="benchmark"),
     )
-    _, cal_full, probs_full, outcomes_full = md._calibrate_signals(signals, {"VTI": full})
-    _, cal_trunc, probs_trunc, outcomes_trunc = md._calibrate_signals(signals, {"VTI": truncated})
+    _, cal_full, probs_full, outcomes_full = signal_generation.calibrate_signals(signals, {"VTI": full})
+    _, cal_trunc, probs_trunc, outcomes_trunc = signal_generation.calibrate_signals(signals, {"VTI": truncated})
     assert len(probs_trunc) > 0
     np.testing.assert_allclose(probs_full[: len(probs_trunc)], probs_trunc, rtol=0, atol=1e-12)
     np.testing.assert_array_equal(outcomes_full[: len(outcomes_trunc)], outcomes_trunc)
@@ -364,13 +365,13 @@ def test_always_positive_predictor_fails_hit_rate_gate() -> None:
     y_true = np.where(outcome_up, rng.uniform(0.01, 0.2, n), -rng.uniform(0.01, 0.2, n))
     always_up = rng.uniform(0.02, 0.10, n)
     ens = _ensemble("VTI", dates, y_true, {"ridge": always_up, "gbt": always_up})
-    health = md._compute_aggregate_health({"VTI": ens})
+    health = decision_health.compute_aggregate_health({"VTI": ens})
     assert health is not None
     health = dict(health)
     health["oos_r2"] = 0.05  # isolate the hit-rate gate
     assert health["agg_hit"] > config.DIAG_MIN_HIT_RATE  # the old absolute gate passes
 
-    mode = md._determine_recommendation_mode(
+    mode = decision_health.determine_recommendation_mode(
         "OUTPERFORM", 0.10, 0.10, health["agg_hit"], health, _GOOD_CPCV
     )
     assert mode["mode"] != "actionable"
@@ -379,7 +380,7 @@ def test_always_positive_predictor_fails_hit_rate_gate() -> None:
 def test_skilled_directional_predictor_passes_hit_rate_gate() -> None:
     """Positive control: the gate is passable when direction is genuinely predicted."""
     health = _skilled_health()
-    mode = md._determine_recommendation_mode(
+    mode = decision_health.determine_recommendation_mode(
         "OUTPERFORM", 0.10, 0.10, health["agg_hit"], health, _GOOD_CPCV
     )
     assert mode["mode"] == "actionable"
@@ -401,7 +402,7 @@ def test_gate_uses_the_equal_weight_ic() -> None:
     health["benchmark_quality_df"] = pd.DataFrame(
         {"benchmark": ["VOO", "BND", "GLD", "DBC"], "nw_ic": [0.40, 0.0, 0.0, 0.0]}
     )
-    live, table = md._resolve_live_consensus(signals, health, _GOOD_CPCV)
+    live, table = signal_generation.resolve_live_consensus(signals, health, _GOOD_CPCV)
     assert table is not None
     live_row = table[table["is_live_path"]].iloc[0]
     assert live_row["variant"] == "quality_weighted"
@@ -425,7 +426,7 @@ def test_pooled_ic_significance_is_clustered_by_date() -> None:
         y_true = common + rng.normal(0.0, 0.03, n_oos)
         pred = 0.5 * common + rng.normal(0.0, 0.08, n_oos)
         ensembles[f"B{b}"] = _ensemble(f"B{b}", dates, y_true, {"ridge": pred, "gbt": pred})
-    health = md._compute_aggregate_health(ensembles)
+    health = decision_health.compute_aggregate_health(ensembles)
     # The IC is ranked on the ensemble score before shrinkage (proportional to
     # the prediction when the shrinkage is a constant, as before WP7).
     predicted = health.get("agg_score", health["agg_predicted"])
@@ -475,7 +476,7 @@ def test_monthly_signals_no_longer_report_in_sample_conformal_coverage() -> None
         {"predicted_relative_return": [0.02], "raw_ensemble_prediction": [0.04]},
         index=pd.Index(["VTI"], name="benchmark"),
     )
-    out = md._compute_conformal_intervals(signals, {"VTI": ens})
+    out = signal_generation.compute_conformal_intervals(signals, {"VTI": ens})
     assert "ci_empirical_coverage" not in out.columns
     assert "ci_trailing_empirical_coverage" in out.columns
 
@@ -488,7 +489,7 @@ def test_monthly_signals_no_longer_report_in_sample_conformal_coverage() -> None
 @pytest.mark.parametrize("cpcv", [None, _cpcv([])], ids=["missing", "unknown"])
 def test_missing_or_unknown_cpcv_does_not_permit_actionable(cpcv) -> None:
     health = _skilled_health()
-    mode = md._determine_recommendation_mode(
+    mode = decision_health.determine_recommendation_mode(
         "UNDERPERFORM", -0.10, 0.10, 0.60, health, cpcv
     )
     assert mode["mode"] != "actionable"
@@ -497,7 +498,7 @@ def test_missing_or_unknown_cpcv_does_not_permit_actionable(cpcv) -> None:
 def test_cpcv_verdict_is_diagnostic_only() -> None:
     """F02: a FAIL verdict no longer forces DEFER when every gate passes."""
     health = _skilled_health()
-    mode = md._determine_recommendation_mode(
+    mode = decision_health.determine_recommendation_mode(
         "OUTPERFORM", 0.18, 0.10, 0.60, health, _cpcv([0.1] + [-0.1] * 6)
     )
     assert mode["mode"] == "actionable"
@@ -533,7 +534,7 @@ def test_confidence_tiers_are_not_all_identical() -> None:
         },
         index=pd.Index(["VOO", "BND"], name="benchmark"),
     )
-    calibrated, *_ = md._calibrate_signals(signals, ensembles)
+    calibrated, *_ = signal_generation.calibrate_signals(signals, ensembles)
     tiers = calibrated["confidence_tier"].tolist()
     assert len(set(tiers)) > 1, tiers
     assert calibrated.loc["VOO", "confidence_tier"] == "HIGH"
@@ -751,7 +752,7 @@ def test_backdated_health_snapshot_ignores_later_months(tmp_path) -> None:
             for month in range(2, 10)
         ],
     )
-    summary = md._record_model_health_snapshot(
+    summary = decision_health.record_model_health_snapshot(
         conn,
         date(2026, 2, 28),
         {"oos_r2": 0.06, "nw_ic": 0.16, "agg_hit": 0.64},

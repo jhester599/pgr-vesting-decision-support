@@ -68,11 +68,12 @@ Documentation map: [docs/README.md](docs/README.md)
 
 - `scripts/weekly_fetch.py`
 - `scripts/peer_fetch.py`
-- `scripts/edgar_8k_fetcher.py`
-- `scripts/monthly_decision.py`
+- `cli/edgar_monthly_fetch.py` (logic in `src/pgr_vds/ingestion/edgar_monthly/`)
+- `cli/monthly_decision.py` (logic in `src/pgr_vds/decision/`)
 
 These scripts are the operational surface area. Reusable logic belongs under
-`src/`.
+`src/`; the two monthly jobs are thin command-line wrappers in `cli/` around
+the installable `pgr_vds` package (`src/pgr_vds/`, review 2026-09-25 phase 5).
 
 ## Quick Start
 
@@ -81,7 +82,8 @@ These scripts are the operational surface area. Reusable logic belongs under
 2. Install the package and its dependencies with `pip install -e .`, or
    `pip install -e ".[dev]"` to also get the pinned test and lint tools.
    `pyproject.toml` (package `pgr_vds`) is the only dependency list; the
-   editable install lets `src` and `config` import without `sys.path` edits.
+   editable install lets `src`, `config` and `pgr_vds` import without
+   `sys.path` edits.
 3. Configure `.env` with required API keys, SMTP settings, and EDGAR user-agent
    values.
 4. Run the dry-run checks below.
@@ -91,16 +93,16 @@ Recommended local smoke checks:
 ```bash
 python scripts/weekly_fetch.py --dry-run --skip-fred
 python scripts/peer_fetch.py --dry-run
-python scripts/edgar_8k_fetcher.py --dry-run
-python scripts/monthly_decision.py --as-of 2026-04-11 --dry-run --skip-fred
+python cli/edgar_monthly_fetch.py --dry-run
+python cli/monthly_decision.py --as-of 2026-04-11 --dry-run --skip-fred
 ```
 
-`weekly_fetch.py --dry-run` and `monthly_decision.py --dry-run` are read-only:
+`weekly_fetch.py --dry-run` and `cli/monthly_decision.py --dry-run` are read-only:
 they open the DB with `mode=ro`, skip migrations, API-log rows, split seeding,
 the model-health snapshot, the retrain log, `decision_log.md` and the shadow
 ledgers, and write monthly artifacts to the gitignored
 `results/dry_run/monthly_decisions/YYYY-MM/` (manifest `dry_run: true`).
-`edgar_8k_fetcher.py --dry-run` also opens the DB read-only and skips
+`cli/edgar_monthly_fetch.py --dry-run` also opens the DB read-only and skips
 migrations, but it calls SEC EDGAR (set `EDGAR_USER_AGENT`; add
 `--cache-dir data/raw/edgar_8k_cache` to reuse cached filings).
 `peer_fetch.py --dry-run` is read-only too. CI runs all four dry runs through

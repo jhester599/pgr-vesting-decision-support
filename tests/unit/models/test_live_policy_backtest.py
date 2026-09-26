@@ -126,13 +126,13 @@ def test_backtest_replays_the_live_rules_on_a_hand_built_panel() -> None:
 
 def test_monthly_policy_backtest_includes_the_live_mapping() -> None:
     """The report's policy backtest scores the live mapping, not only tiered_25_50_100."""
-    import scripts.monthly_decision as md
+    from pgr_vds.decision import health
     from src.models.live_policy_backtest import LIVE_MAPPING_POLICY
-    from tests.unit.scripts.test_monthly_decision_policy_backtest import _make_ensemble
+    from tests.unit.decision.test_policy_backtest import _make_ensemble
 
     y_hat = [0.05, -0.02, 0.08, -0.04, 0.03, 0.01, -0.06, 0.09]
     y_true = [0.04, -0.03, 0.07, -0.05, 0.02, -0.01, 0.03, 0.06]
-    summary = md._compute_policy_summary({"VTI": _make_ensemble(y_hat, y_true)})
+    summary = health.compute_policy_summary({"VTI": _make_ensemble(y_hat, y_true)})
     assert summary is not None
     assert LIVE_MAPPING_POLICY in summary
     assert summary[LIVE_MAPPING_POLICY].n_obs == len(y_true)

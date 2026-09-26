@@ -5,6 +5,59 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v185 (2026-09-26) — Review 2026-09-25, step 12: restructure phase 5 (split the monoliths)
+
+WP13 phase 5 from section 5 of `docs/reviews/REPO_REVIEW_2026-09-25.md`
+(F32). A pure refactor: the September 2026 dry run on one DB copy writes
+byte-identical output before and after. Report:
+`docs/reviews/2026-09-25_step12_restructure_phase5.md`.
+
+- **Monthly decision.** `scripts/monthly_decision.py` (4,080 lines,
+  mypy-exempt) is split into `src/pgr_vds/decision/`: `schedule`,
+  `refresh`, `signal_generation`, `health`, `tax_lots`, `portfolio`,
+  `rendering`, `recommendation_report`, `diagnostic_report`, `artifacts`
+  and `pipeline` (`main`, 726 → 428 lines). Function bodies moved verbatim;
+  cross-module calls go through the module, so a test patches a function
+  once. The entry point is `cli/monthly_decision.py` (argument parsing
+  only); `run_manifest.json` records `script_name: cli/monthly_decision.py`.
+  The report footer still names `scripts/monthly_decision.py` (kept for
+  byte-identical output; one constant).
+- **mypy.** The `scripts.monthly_decision` `ignore_errors` override is gone;
+  14 type errors fixed by annotation only, plus one in the EDGAR fetcher
+  (`setattr` for the `fetched_at` attribute on a `requests.Response`). CI runs
+  `mypy --follow-imports=silent src/pgr_vds cli`; `types-requests` is pinned
+  in the `dev` extra so local and CI runs use the same stubs.
+- **EDGAR 8-K.** `scripts/edgar_8k_fetcher.py` is split into
+  `src/pgr_vds/ingestion/edgar_monthly/` (`fetch`, `parse`, `derive`,
+  `load`), with `load.load_from_csv` as the one CSV loader, behind
+  `cli/edgar_monthly_fetch.py`. The diverged test-only copy
+  `src/ingestion/edgar_8k_fetcher.py` and `src/ingestion/pgr_monthly_loader.py`
+  are deleted, with the 59 tests of the former; `migrate_v1_to_v2.py` (manual,
+  no workflow) seeds from `load_from_csv`.
+- **Package.** `src/pgr_vds/` is installed as the top-level package
+  `pgr_vds` (`pip install -e .`); `import src.pgr_vds` raises, so no module
+  loads twice.
+- **Workflows.** `monthly_decision.yml`, `monthly_8k_fetch.yml` and the CI
+  smoke runs call the `cli/` entry points.
+- **Golden output.** New `scripts/checks/golden_replay.py` replays the
+  monthly dry run on two commits with one DB copy and compares the outputs:
+  `master` vs this branch, as of 2026-09-21: 10 of 10 files byte-identical,
+  the manifest differs only in `git_sha`, `run_timestamp_utc` and
+  `script_name`; DB copy sha256 unchanged.
+- **Tests.** New `tests/integration/repo/test_restructure_phase5.py`
+  (17 tests): 17 failed on `master`, 17 pass. It caught a missing
+  `__main__` block in the first cut of `cli/edgar_monthly_fetch.py` (the CI
+  smoke run exited 0 without fetching). The monthly decision tests moved to
+  `tests/unit/decision/`, the EDGAR tests to
+  `tests/unit/ingestion/test_edgar_monthly_*.py`.
+- **Docs.** `README.md`, `CONTRIBUTING.md` (package, `cli/`, patching
+  convention, golden replay), `docs/architecture.md`, `docs/workflows.md`,
+  `docs/operations-runbook.md`, `docs/artifact-policy.md`,
+  `docs/data-sources.md`, `docs/troubleshooting.md`, the `artifacts/`
+  READMEs and the EDGAR data dictionary name the new paths.
+- **Suite.** `python -m pytest -o addopts="--tb=short" -q`: 2494 passed,
+  1 skipped (2,537 on `master` − 59 legacy-fetcher tests + 17 phase-5 tests).
+
 ## v184 (2026-09-26) — Review 2026-09-25, step 11: restructure phase 4 (docs and tests layout)
 
 WP13 phase 4 from section 5 of `docs/reviews/REPO_REVIEW_2026-09-25.md`

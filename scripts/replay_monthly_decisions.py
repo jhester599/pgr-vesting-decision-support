@@ -2,7 +2,7 @@
 
 Review 2026-09-25, step 5 (WP7) re-baseline. For each as-of date this runs
 
-    python scripts/monthly_decision.py --dry-run --as-of <date> --skip-fred
+    python cli/monthly_decision.py --dry-run --as-of <date> --skip-fred
 
 in a subprocess, then collects the decision and health fields from the dry-run
 artifacts under ``results/dry_run/monthly_decisions/YYYY-MM/`` into one CSV row.
@@ -128,7 +128,7 @@ def replay(as_of_dates: list[date], python: str = sys.executable) -> pd.DataFram
         subprocess.run(
             [
                 python,
-                "scripts/monthly_decision.py",
+                "cli/monthly_decision.py",
                 "--dry-run",
                 "--as-of",
                 as_of.isoformat(),

@@ -273,7 +273,7 @@ class TestGetPgrEdgarMonthly:
 
 class TestLoadFromCsvDirectMapping:
     def _run_load(self, csv_content: str, dry_run: bool = False) -> tuple[int, Any]:
-        from scripts.edgar_8k_fetcher import load_from_csv
+        from pgr_vds.ingestion.edgar_monthly.load import load_from_csv
         conn = _in_memory_conn()
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".csv", delete=False, encoding="utf-8"
@@ -384,7 +384,7 @@ class TestLoadFromCsvDerivedFields:
         unearned_premiums: list[float],
         start_period: str = "2024-01",
     ) -> pd.DataFrame:
-        from scripts.edgar_8k_fetcher import load_from_csv
+        from pgr_vds.ingestion.edgar_monthly.load import load_from_csv
         n = len(npw_agency)
         rows = []
         for i in range(n):
@@ -491,7 +491,7 @@ def _pif_components(total: float) -> dict[str, str]:
 
 class TestLoadFromCsvGainshare:
     def test_pif_growth_yoy_computed_after_12_months(self):
-        from scripts.edgar_8k_fetcher import load_from_csv
+        from pgr_vds.ingestion.edgar_monthly.load import load_from_csv
         # pif_total is agency + direct + special lines + commercial (F11).
         rows = [
             {"report_period": str(pd.Period("2024-01", freq="M") + i),
@@ -518,7 +518,7 @@ class TestLoadFromCsvGainshare:
         assert df.iloc[-1]["pif_growth_yoy"] == pytest.approx(0.10)
 
     def test_gainshare_estimate_computed(self):
-        from scripts.edgar_8k_fetcher import load_from_csv
+        from pgr_vds.ingestion.edgar_monthly.load import load_from_csv
         # CR = 86 → cr_score = (96-86)/10 = 1.0; PIF flat → pif_score = 0 → gainshare = 0.5
         rows = [
             {"report_period": str(pd.Period("2024-01", freq="M") + i),
@@ -546,7 +546,7 @@ class TestLoadFromCsvGainshare:
 
 class TestLoadFromCsvNullHandling:
     def test_missing_optional_fields_produce_null(self):
-        from scripts.edgar_8k_fetcher import load_from_csv
+        from pgr_vds.ingestion.edgar_monthly.load import load_from_csv
         csv = _minimal_csv([{
             "report_period": "2026-02",
             "combined_ratio": "85.7",
@@ -568,7 +568,7 @@ class TestLoadFromCsvNullHandling:
         assert pd.isna(df.iloc[0]["channel_mix_agency_pct"])
 
     def test_empty_string_in_numeric_field_becomes_null(self):
-        from scripts.edgar_8k_fetcher import load_from_csv
+        from pgr_vds.ingestion.edgar_monthly.load import load_from_csv
         csv = _minimal_csv([{
             "report_period": "2026-02",
             "combined_ratio": "85.7",
@@ -595,7 +595,7 @@ class TestLoadFromCsvNullHandling:
 
 class TestLoadFromCsvDryRun:
     def test_dry_run_returns_zero_and_writes_nothing(self):
-        from scripts.edgar_8k_fetcher import load_from_csv
+        from pgr_vds.ingestion.edgar_monthly.load import load_from_csv
         csv = _minimal_csv([{
             "report_period": "2026-02",
             "combined_ratio": "85.7",
@@ -622,13 +622,13 @@ class TestLoadFromCsvDryRun:
 
 class TestLoadFromCsvErrors:
     def test_missing_file_raises_file_not_found(self):
-        from scripts.edgar_8k_fetcher import load_from_csv
+        from pgr_vds.ingestion.edgar_monthly.load import load_from_csv
         conn = _in_memory_conn()
         with pytest.raises(FileNotFoundError):
             load_from_csv(conn, "/nonexistent/path/pgr_edgar_cache.csv")
 
     def test_missing_report_period_column_raises_value_error(self):
-        from scripts.edgar_8k_fetcher import load_from_csv
+        from pgr_vds.ingestion.edgar_monthly.load import load_from_csv
         csv = "combined_ratio,pif_total\n85.7,39220\n"
         conn = _in_memory_conn()
         with tempfile.NamedTemporaryFile(
@@ -649,7 +649,7 @@ class TestLoadFromCsvErrors:
 
 class TestChannelMixEdgeCases:
     def test_zero_denominator_produces_null(self):
-        from scripts.edgar_8k_fetcher import load_from_csv
+        from pgr_vds.ingestion.edgar_monthly.load import load_from_csv
         csv = _minimal_csv([{
             "report_period": "2026-02",
             "combined_ratio": "85.7",

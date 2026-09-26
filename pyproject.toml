@@ -14,7 +14,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pgr_vds"
-version = "0.184.0"
+version = "0.185.0"
 description = "PGR RSU vesting decision support: monthly sell/hold recommendation engine."
 readme = "README.md"
 # pandas 3 needs Python 3.11+; CI and every workflow run 3.11.
@@ -46,14 +46,21 @@ dev = [
     "hypothesis==6.135.7",
     # research/tools/registry.py reads research/registry.yaml (CI check).
     "pyyaml==6.0.2",
+    # Stubs for `requests`, so mypy on src/pgr_vds sees the same types
+    # locally and in CI.
+    "types-requests==2.33.0.20260906",
 ]
 dashboard = [
     "streamlit>=1.35.0",
 ]
 
+# `src` and `config` are found from the repository root. `pgr_vds` lives at
+# src/pgr_vds/ (the review's target layout) and is installed as a top-level
+# package; it is excluded from `src.*` so it has one import name only.
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["src", "src.*", "config", "config.*"]
+where = [".", "src"]
+include = ["src", "src.*", "config", "config.*", "pgr_vds", "pgr_vds.*"]
+exclude = ["src.pgr_vds", "src.pgr_vds.*"]
 
 # ---------------------------------------------------------------------------
 # pytest (was pytest.ini). No -q in addopts: CI adds -q, and -qq hides the
@@ -80,10 +87,6 @@ python_version = "3.11"
 ignore_missing_imports = true
 warn_unused_ignores = true
 check_untyped_defs = true
-
-[[tool.mypy.overrides]]
-module = "scripts.monthly_decision"
-ignore_errors = true
 
 # ---------------------------------------------------------------------------
 # ruff (was ruff.toml)
