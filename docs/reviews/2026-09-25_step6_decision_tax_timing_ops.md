@@ -169,6 +169,11 @@ The remaining failures on `master` are the new APIs (`X_current`,
 `as_of=`, `gain_fraction=`, `edgar_availability_dates`,
 `ci_offline_smoke`, `_validate_layer_mode`, `_write_step_output`).
 
+Full suite on this branch (`python -m pytest -o addopts="--tb=short" -q`):
+**2329 passed, 2 skipped** in 9 min 14 s; the committed DB's sha256 and the
+tracked files were unchanged afterwards. `ruff check .` and the CI mypy set
+pass.
+
 Existing tests changed because they encoded the old behaviour:
 
 - `test_three_scenario_tax.py`: breakeven sign (−21.25 %), the stored
