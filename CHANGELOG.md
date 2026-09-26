@@ -5,6 +5,80 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v180 (2026-09-26) — Review 2026-09-25, step 7: restructure phases 0–2
+
+WP13 phases 0–2 from section 5 of `docs/reviews/REPO_REVIEW_2026-09-25.md`
+(F32, and the import part of F30). No production behaviour changes: the
+September 2026 replay is identical before and after. The report, the
+before/after tests and the replay diff are in
+`docs/reviews/2026-09-25_step7_restructure_phases_0_2.md`.
+
+- **Phase 0: safety nets.**
+  - `pyproject.toml`: package `pgr_vds` (`pip install -e .` installs `src`
+    and `config`), Python ≥ 3.11, runtime dependencies with pandas pinned to
+    the tested major (`>=3.0,<4`; also in `requirements.txt`, which the
+    workflows install), `dev` and `dashboard` extras, and the pytest, mypy
+    and ruff config. `pytest.ini`, `mypy.ini` and `ruff.toml` are deleted.
+  - `scripts/checks/check_doc_links.py`: every relative link and anchor in
+    the active docs (root `*.md`, `docs/*.md`, `docs/data`, `docs/research`,
+    `docs/reviews`, the `artifacts/` READMEs) must resolve. It found 4 broken
+    Windows-absolute links in `docs/research/x_series_resume_2026-04-24.md`
+    and the 2 links the phase 1 move broke; all are fixed.
+  - `tests/test_entrypoint_imports.py`: every script and module a workflow
+    runs is imported in a fresh interpreter outside the repository; the list
+    must cover every `python scripts/...` and inline `from src...` in the
+    workflows.
+  - `scripts/checks/check_sys_path_edits.py`: no new `sys.path` edit
+    outside `tests/conftest.py`. The 227 files that already edit it are in
+    `scripts/checks/sys_path_allowlist.txt`, which may only shrink.
+  - CI installs the package and runs both checks; the mypy list checks
+    `src/models/evaluation.py` instead of the deleted shim.
+- **Phase 1: production artifacts under `artifacts/`** (`git mv`, 103
+  files): `results/monthly_decisions/` → `artifacts/monthly_decisions/`,
+  `results/v14/shadow_reviews/` → `artifacts/shadow_reviews/`,
+  `results/research/pgr_*.png` (the 12 monthly charts) → `artifacts/charts/`,
+  `data/fetch_status.md` → `artifacts/ops/fetch_status.md`.
+  - The paths are constants in `config/paths.py` (`MONTHLY_DECISIONS_DIR`,
+    `DECISION_LOG_PATH`, `SHADOW_REVIEWS_DIR`, `CHARTS_DIR`,
+    `FETCH_STATUS_PATH`, `DRY_RUN_MONTHLY_DECISIONS_DIR`), used by
+    `monthly_decision.py`, the classifier ledgers, the email, both chart
+    scripts, `initial_fetch.py`, `verify_monthly_outputs.py` and
+    `replay_monthly_decisions.py`. `dashboard/data.py` mirrors the constant
+    (it runs without the repo root on `sys.path`); a test checks it.
+  - Workflows stage exact paths only: `post_initial_bootstrap.yml` no longer
+    runs `git add results/ || true`; the chart list is `MONTHLY_CHARTS`, and
+    the chart step is "Regenerate monthly charts".
+  - Dry runs still write to the gitignored `results/dry_run/`.
+  - Each `artifacts/` folder has a README naming its writer.
+- **Phase 2: de-versioned library.**
+  - The nine `from X import *` shims in `src/research/` (`v11`, `v12`,
+    `v22`, `v27`, `v29`, `evaluation`, `policy_metrics`, `benchmark_sets`,
+    `diversification`) are deleted. The 40 files that imported them (the
+    review counted 39; `archive/tests/test_v11_research.py` imports the `v11`
+    shim) now import the real modules: scripts, tests, `archive/`,
+    `src/research/v28.py` and `results/research/v162_ta_broad_screen.py`.
+  - `results/research/v46_classification.py`, which production imported via
+    `classification_shadow` → `v66_utils` (F30), is now
+    `src/research/binary_classification.py`. Importing it no longer inserts
+    into `sys.path`, reconfigures `sys.stdout`, or installs global
+    "ignore" filters for ConvergenceWarning, sklearn FutureWarning and
+    "All-NaN slice"; its `main()` sets them for the study run only.
+    `monthly_decision.py` now sets UTF-8 stdout itself in its `__main__`
+    block, so console output is unchanged. **Visible change:** warnings the
+    import used to silence during a monthly run (outside the WFO block that
+    already counts ConvergenceWarnings) now reach the log.
+  - `src/research/v37_utils.py` creates `results/research/` when saving,
+    not at import.
+- **Tests:** new `test_restructure_phase0.py`, `test_restructure_phase1.py`,
+  `test_restructure_phase2.py` and `test_entrypoint_imports.py` (68 tests).
+  Against unfixed `master`: 56 failed, 12 passed (the 12 script import
+  smokes, positive controls). Updated: `test_capital_return_charts.py`
+  (`MONTHLY_CHARTS`), `test_dry_run_read_only.py` (copies and hashes
+  `artifacts/`), `test_repo_hygiene.py` (reads the pytest config from
+  `pyproject.toml`).
+- **Full suite:** 2397 passed, 2 skipped (master: 2329 passed, 2 skipped; the
+  difference is the 68 new tests).
+
 ## v179 (2026-09-26) — Review 2026-09-25, step 6: decision and tax layer, timing, ops
 
 WP8 and WP10 from `docs/reviews/REPO_REVIEW_2026-09-25.md` (F19, the mapping

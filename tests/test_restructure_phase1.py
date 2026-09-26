@@ -93,8 +93,10 @@ def test_production_artifacts_moved_out_of_results_and_data() -> None:
     decisions = _tracked(config.MONTHLY_DECISIONS_DIR)
     assert f"{_posix(config.MONTHLY_DECISIONS_DIR)}/2026-09/recommendation.md" in decisions
     assert _posix(config.DECISION_LOG_PATH) in decisions
-    assert len(_tracked(config.SHADOW_REVIEWS_DIR)) == 6
-    assert sorted(Path(p).name for p in _tracked(config.CHARTS_DIR)) == sorted(MONTHLY_CHARTS)
+    memos = [p for p in _tracked(config.SHADOW_REVIEWS_DIR) if Path(p).name != "README.md"]
+    assert len(memos) == 6
+    charts = [Path(p).name for p in _tracked(config.CHARTS_DIR) if Path(p).name != "README.md"]
+    assert sorted(charts) == sorted(MONTHLY_CHARTS)
     assert _tracked(config.FETCH_STATUS_PATH) == [_posix(config.FETCH_STATUS_PATH)]
 
 
