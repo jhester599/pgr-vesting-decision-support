@@ -33,6 +33,28 @@ The weekly and monthly dry runs are read-only (DB opened with `mode=ro`;
 monthly artifacts go to the gitignored `results/dry_run/`). They leave the
 committed DB and `artifacts/monthly_decisions/` untouched.
 
+## Tests
+
+- CI runs `python -m pytest -q -m "not artifact"` in the `test` job and
+  `python -m pytest -q -m artifact` in the `artifacts` job. A plain
+  `python -m pytest -q` runs both.
+- Mark a test `@pytest.mark.artifact` when its assertions are about
+  committed data (`results/`, `artifacts/`, `data/`, the committed DB)
+  rather than code. A test of production code that happens to load a
+  committed input stays unmarked.
+- `tests/conftest.py` installs a repository guard (`tests/repo_guard.py`).
+  A test fails if it writes inside the repository tree or opens
+  `data/pgr_financials.db`. `config.DB_PATH` and the feature-matrix cache
+  point at `tmp_path`. An `artifact` test may open the committed DB
+  read-only (`get_connection(path, read_only=True)` or a `mode=ro` URI).
+  To run code that opens the default DB read-write on real data, use the
+  `committed_db_copy` fixture.
+- Seed random data with fixed integers, never `hash(...)`, which is salted
+  per process.
+- `scripts/checks/mutation_study.py` re-runs the F28 mutation study in a
+  scratch clone. When you move one of its production sites, update the
+  mutation.
+
 ## Generated Files
 
 Do not edit these manually unless the change is specifically about generated
