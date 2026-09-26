@@ -30,9 +30,10 @@ def test_classification_stance_thresholds() -> None:
 
 
 def test_agreement_with_live_recommendation() -> None:
-    assert agreement_with_live_recommendation("ACTIONABLE-SELL", "ACTIONABLE") is True
-    assert agreement_with_live_recommendation("NON-ACTIONABLE", "DEFER-TO-TAX-DEFAULT") is True
-    assert agreement_with_live_recommendation("ACTIONABLE-SELL", "DEFER-TO-TAX-DEFAULT") is False
+    # The live sell % now sets the direction (review 2026-09-25, F24).
+    assert agreement_with_live_recommendation("ACTIONABLE-SELL", "ACTIONABLE", 1.00) is True
+    assert agreement_with_live_recommendation("NON-ACTIONABLE", "DEFER-TO-TAX-DEFAULT", 0.50) is True
+    assert agreement_with_live_recommendation("ACTIONABLE-SELL", "DEFER-TO-TAX-DEFAULT", 0.50) is False
 
 
 def test_classification_interpretation_mentions_probability() -> None:

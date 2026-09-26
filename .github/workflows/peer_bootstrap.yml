@@ -21,6 +21,13 @@ on:
         required: false
         default: 'false'
 
+concurrency:
+  # One queue for every workflow that commits data/pgr_financials.db
+  # (review 2026-09-25, F26). GitHub keeps one pending run per group, so the
+  # schedules are spread out; see docs/workflows.md.
+  group: db-writer
+  cancel-in-progress: false
+
 jobs:
   peer-bootstrap:
     name: Bootstrap peer price + dividend history (8 AV calls)

@@ -42,7 +42,9 @@ ledgers, and write monthly artifacts to the gitignored
 `edgar_8k_fetcher.py --dry-run` also opens the DB read-only and skips
 migrations, but it calls SEC EDGAR (set `EDGAR_USER_AGENT`; add
 `--cache-dir data/raw/edgar_8k_cache` to reuse cached filings).
-`peer_fetch.py --dry-run` is not yet read-only; run it against a DB copy.
+`peer_fetch.py --dry-run` is read-only too. CI runs all four dry runs through
+`scripts/ci_offline_smoke.py`, which blocks the network. Every EDGAR call
+needs `EDGAR_USER_AGENT` (a name and contact e-mail); without it the call fails.
 
 Optional local dashboard check:
 

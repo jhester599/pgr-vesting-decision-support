@@ -31,14 +31,32 @@ FRED_BASE_URL: str = "https://api.stlouisfed.org/fred/series/observations"
 # Rate limit: 10 requests/second (enforced server-side).
 EDGAR_BASE_URL: str = "https://data.sec.gov"
 EDGAR_PGR_CIK: str = "CIK0000080661"
+# The old placeholder. SEC asks for a real name and contact e-mail, so it is
+# rejected rather than sent (review 2026-09-25, F26).
 EDGAR_USER_AGENT_FALLBACK: str = (
     "PGR Vesting Decision Support contact@example.com"
 )
 
 
+class EdgarUserAgentError(RuntimeError):
+    """EDGAR_USER_AGENT is unset, blank, or the placeholder."""
+
+
 def get_edgar_user_agent() -> str:
-    """Return the SEC EDGAR User-Agent from env, or a generic fallback."""
-    return os.getenv("EDGAR_USER_AGENT", EDGAR_USER_AGENT_FALLBACK)
+    """Return the SEC EDGAR User-Agent from ``EDGAR_USER_AGENT``.
+
+    Raises ``EdgarUserAgentError`` when it is unset, blank, the old
+    placeholder, or has no e-mail address: SEC requires a descriptive
+    User-Agent with contact details and may block generic ones. The workflows
+    that call EDGAR set it.
+    """
+    value = (os.getenv("EDGAR_USER_AGENT") or "").strip()
+    if not value or value == EDGAR_USER_AGENT_FALLBACK or "@" not in value:
+        raise EdgarUserAgentError(
+            "Set EDGAR_USER_AGENT to a name and contact e-mail (for example "
+            "'Jane Doe jane@example.org') before calling SEC EDGAR."
+        )
+    return value
 
 
 def build_edgar_headers(host: str | None = None) -> dict[str, str]:

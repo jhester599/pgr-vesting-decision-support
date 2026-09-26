@@ -201,9 +201,9 @@ change in the business (review F11). Property PIF is stored in
 | `pif_growth_yoy` | `pif_growth_yoy` (DB) | Stored calendar-month YoY of `pif_total`, forward-filled to month-ends |
 | `gainshare_est` | `gainshare_estimate` (DB) | Stored Gainshare estimate (see Derived Columns) |
 | `cr_acceleration` | `combined_ratio_ttm` | `.diff(3)` (3-period second difference) |
-| `pe_ratio` | `eps_basic` + price + splits | TTM EPS = 12 consecutive calendar months restated to one share basis (`src/processing/valuation_multiples.py`), filing lag applied, then split-consistent price / TTM EPS |
+| `pe_ratio` | `eps_basic` + price + splits | TTM EPS = 12 consecutive calendar months restated to one share basis (`src/processing/valuation_multiples.py`), placed on the first month-end on or after the filing date, then split-consistent price / TTM EPS |
 | `pb_ratio` | `book_value_per_share` + price | price / BVPS (already monthly) |
-| `roe` | `pgr_fundamentals_quarterly.roe` | XBRL TTM net income / average equity, forward-filled with the filing lag |
+| `roe` | `pgr_fundamentals_quarterly.roe` | XBRL TTM net income / average equity, placed on the first month-end on or after the filing date and forward-filled |
 
 ---
 
@@ -288,8 +288,9 @@ insurance sector / PGR-specific predictors. None are currently in the feature ma
 - **Revenue identity:** in a few months (e.g. 2010-07, 2013-09, 2014-09)
   total revenues include a gain or loss on extinguishment of debt, which has
   no column, so the revenue components do not add to `total_revenues`.
-- **Filing lag:** use the data with the filing lag
-  (`config.EDGAR_FILING_LAG_MONTHS`); `filing_date` gives the actual date.
+- **Timing:** a row enters the features on the first business month-end on or
+  after its `filing_date` (`feature_engineering.edgar_availability_dates`);
+  `config.EDGAR_FILING_LAG_MONTHS` is only the fallback for a missing date.
 - **Share basis:** per-share columns are on the basis of their own month
   (PGR split 4-for-1 on 2006-05-19); restate with `share_basis_factor`
   before comparing across the split.

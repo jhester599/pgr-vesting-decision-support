@@ -44,20 +44,44 @@ def test_resolve_as_of_date_matches_across_20_21_22_when_20th_is_weekday(
     assert as_of_dates == {date(2026, 7, 20)}
 
 
-def test_resolve_as_of_date_advances_when_20th_is_saturday(
+def test_resolve_as_of_date_moves_back_when_20th_is_saturday(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """When the 20th falls on a weekend, all fallback runs should agree on Monday."""
-    # Find a month where the 20th is a Saturday.
+    """When the 20th falls on a weekend, all fallback runs agree on the Friday before.
+
+    Review 2026-09-25, F26: this test used to expect Monday the 22nd, which
+    dated the Saturday run two days in the future.
+    """
     saturday_20th = date(2026, 6, 20)
     assert saturday_20th.weekday() == 5
 
-    expected = date(2026, 6, 22)  # Monday
+    expected = date(2026, 6, 19)  # Friday
     as_of_dates = set()
     for day in (20, 21, 22):
         _freeze(monkeypatch, date(2026, 6, day))
-        as_of_dates.add(monthly_decision._resolve_as_of_date(None))
+        as_of = monthly_decision._resolve_as_of_date(None)
+        assert as_of <= date(2026, 6, day)
+        as_of_dates.add(as_of)
     assert as_of_dates == {expected}
+
+
+def test_resolve_as_of_date_is_never_later_than_today(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Every day of a year resolves to an as-of on or before that day."""
+    start = date(2026, 1, 1)
+    for offset in range(366):
+        today = start + timedelta(days=offset)
+        _freeze(monkeypatch, today)
+        assert monthly_decision._resolve_as_of_date(None) <= today
+
+
+def test_resolve_as_of_date_rejects_a_future_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _freeze(monkeypatch, date(2026, 9, 20))
+    with pytest.raises(ValueError, match="later than today"):
+        monthly_decision._resolve_as_of_date("2026-09-22")
 
 
 def test_resolve_as_of_date_before_20th_uses_today(

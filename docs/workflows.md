@@ -45,7 +45,10 @@ Outputs:
 Purpose:
 
 - refresh monthly PGR 8-K operating metrics
-- support a primary and fallback schedule each month
+- scheduled on the 20th (primary) and 25th (fallback) at 14:00 UTC; its
+  completion triggers `monthly_decision.yml`
+- sets `EDGAR_USER_AGENT` (name and contact e-mail); the fetcher fails if it
+  is unset or the old placeholder (review 2026-09-25, F26)
 
 Outputs:
 
@@ -59,6 +62,21 @@ Purpose:
 - generate the monthly recommendation and diagnostic artifacts
 - update the decision log
 - optionally send the decision email
+
+Triggers (review 2026-09-25, F26):
+
+- `workflow_run` on completion of `monthly_8k_fetch.yml`, so the decision
+  runs after that month's 8-K data is in the DB;
+- crons on the 21st and 22nd (15:00 UTC) as fallbacks;
+- `workflow_dispatch` (and the drift retrain trigger).
+
+`scripts/monthly_decision.py` writes `generated=true` to the step output only
+when it produced a new production report. Verify, charts, commit and email
+run only then, so the fallback runs (which find the month's report and exit
+with `generated=false`) no longer re-send the email or recommit the charts.
+From the 20th the as-of date is the last business day on or before the 20th,
+never later than the run date; an unknown `RECOMMENDATION_LAYER_MODE` fails
+the run.
 
 Outputs:
 
@@ -101,15 +119,16 @@ Notes:
 
 ## Historical / Manual Workflows
 
-The repository also retains one-off bootstrap workflows such as:
+The repository also retains one-off bootstrap workflows:
 
 - `initial_fetch_prices.yml`
 - `initial_fetch_dividends.yml`
 - `peer_bootstrap.yml`
 - `post_initial_bootstrap.yml`
 
-These are retained for historical recovery and manual bootstrap scenarios, but
-they are not part of the normal steady-state operating loop.
+They are dispatch-only (review 2026-09-25, F26): their old yearly crons would
+have fired again every March. They are retained for historical recovery and
+manual bootstrap scenarios, not the steady-state operating loop.
 
 ## CI Workflow
 
@@ -117,11 +136,22 @@ they are not part of the normal steady-state operating loop.
 
 - lint checks
 - unit and integration tests
-- smoke runs for major production entrypoints
+- smoke runs for major production entrypoints, each through
+  `scripts/ci_offline_smoke.py`: every socket connection is refused and the
+  SEC submissions index is served from a canned empty response, so no smoke
+  run reaches Alpha Vantage, FRED or EDGAR
 - migration and fresh-temp-DB checks
 
 ## Concurrency Policy
 
-Production workflows that can mutate the committed database or monthly artifacts
-use workflow-level concurrency groups so overlapping runs do not step on each
-other.
+Every workflow that commits `data/pgr_financials.db` uses one concurrency
+group, `db-writer`, with `cancel-in-progress: false` (review 2026-09-25, F26):
+`weekly_data_fetch`, `peer_data_fetch`, `monthly_8k_fetch`,
+`monthly_decision` and the four bootstrap workflows. Runs queue instead of
+racing to push a binary DB. `tests/test_ops_wp8.py` checks the list.
+
+GitHub keeps at most one *pending* run per group: if a third writer queues
+while one runs and one waits, the waiting run is cancelled. The schedules are
+spread to keep that rare (weekly Friday 22:00 and Wednesday 16:00 UTC, peers
+Sunday 04:00 UTC, 8-K on the 20th/25th at 14:00 UTC, the decision after the
+8-K run). Re-run a cancelled job by hand.

@@ -174,4 +174,4 @@ def test_build_vest_decision_lines_uses_provisional_winner_label_when_actionable
     )
     combined = "\n".join(lines)
     assert "Provisional scenario winner" in combined
-    assert "aligns with the current point forecast" in combined
+    assert "ranks scenarios by expected after-tax proceeds" in combined

@@ -33,3 +33,14 @@ def pytest_collection_modifyitems(
     for item in items:
         if "slow" in item.keywords:
             item.add_marker(skip_slow)
+
+
+@pytest.fixture(autouse=True)
+def _edgar_user_agent(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Give every test an EDGAR User-Agent (review 2026-09-25, F26).
+
+    EDGAR calls now fail without one. Tests never reach EDGAR (requests are
+    mocked); tests of the missing-agent error delete it themselves.
+    """
+    if not os.getenv("EDGAR_USER_AGENT"):
+        monkeypatch.setenv("EDGAR_USER_AGENT", "pytest suite pytest@example.invalid")

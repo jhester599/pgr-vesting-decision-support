@@ -106,14 +106,28 @@ def compute_shadow_gate_overlay(
     reason = "classifier neutral"
 
     if gate_style == "veto_regression_sell":
-        if live_mode == "ACTIONABLE" and classifier_prob_actionable_sell < threshold:
+        # Direction-aware (review 2026-09-25, F24): the classifier estimates
+        # P(actionable sell), so a low value contradicts a sell-leaning action
+        # and a high value contradicts a hold-leaning one. The old rule vetoed
+        # every ACTIONABLE month below the threshold, which pushed bullish
+        # (hold-leaning) months up to the 50 % default on classifier agreement.
+        live_actionable = live_mode == "ACTIONABLE"
+        sells_more = live_actionable and float(live_sell_pct) > 0.50 + 1e-12
+        holds_more = live_actionable and float(live_sell_pct) < 0.50 - 1e-12
+        if sells_more and classifier_prob_actionable_sell < threshold:
             overlay_mode = "DEFER-TO-TAX-DEFAULT"
             overlay_sell_pct = 0.50
             reason = "classifier vetoed weak regression sell"
-        elif classifier_prob_actionable_sell >= threshold and actionable_health:
+        elif holds_more and classifier_prob_actionable_sell >= threshold:
+            overlay_mode = "DEFER-TO-TAX-DEFAULT"
+            overlay_sell_pct = 0.50
+            reason = "classifier vetoed regression hold"
+        elif sells_more:
             reason = "classifier confirmed actionable sell"
+        elif holds_more:
+            reason = "classifier agrees with regression hold"
         else:
-            reason = "no regression sell to veto"
+            reason = "no regression deviation to veto"
     else:
         if classifier_prob_actionable_sell >= threshold and actionable_health:
             overlay_mode = "ACTIONABLE"

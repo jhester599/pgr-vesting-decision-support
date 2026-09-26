@@ -60,7 +60,16 @@ input fails its gate.
   AGENTS.md prohibits), so its verdict is reported in `diagnostic.md` and
   never gates. Only a run where it fails to produce paths is held back from
   `ACTIONABLE` (fail closed).
-- The `ACTIONABLE` sell-percentage mapping is unchanged (step 6 reviews it).
+- The `ACTIONABLE` mapping (step 6) never sells more than the 50 % default on
+  an OUTPERFORM consensus: 25 % above a 15 % forecast, otherwise 50 %.
+  UNDERPERFORM sells 100 %. A missing IC maps to 50 %.
+- The Tax Context section reports the absolute PGR return at which holding a
+  lot to its LTCG date ties selling now, `-g × (STCG − LTCG) / (1 − LTCG)`
+  (−21.25 % for a lot that is all gain). The model forecast is relative to the
+  benchmarks and is not compared with it. The scenario table and Monte Carlo
+  assume `TAX_SCENARIO_PGR_ANNUAL_RETURN` (0 %) for PGR's price, count vested
+  lots only, and move a loss sale out of the 30-day wash-sale window of every
+  vest.
 
 All health numbers are realised-only: every OOS month's ensemble weights,
 shrinkage, calibrator and conformal interval use only targets whose 6-month

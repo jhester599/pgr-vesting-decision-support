@@ -239,7 +239,7 @@ def _build_existing_shares_guidance(
     if as_of is None or current_price is None:
         return None
 
-    lots = load_position_lots(str(lots_path))
+    lots = load_position_lots(str(lots_path), as_of=as_of)
     if not lots:
         return None
 

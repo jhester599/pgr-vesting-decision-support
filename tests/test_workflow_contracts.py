@@ -26,8 +26,12 @@ def test_ci_workflow_runs_lint_tests_and_smokes() -> None:
     text = _read(".github/workflows/ci.yml")
     assert "ruff check ." in text
     assert "python -m pytest -q" in text
-    assert "python scripts/weekly_fetch.py --dry-run --skip-fred" in text
-    assert "python scripts/monthly_decision.py --as-of 2026-04-02 --dry-run --skip-fred" in text
+    # Smoke runs go through the network-blocking wrapper (review 2026-09-25, F26).
+    assert "python scripts/ci_offline_smoke.py scripts/weekly_fetch.py --dry-run --skip-fred" in text
+    assert (
+        "python scripts/ci_offline_smoke.py scripts/monthly_decision.py "
+        "--as-of 2026-04-02 --dry-run --skip-fred"
+    ) in text
 
 
 def test_monthly_decision_workflow_verifies_manifest() -> None:

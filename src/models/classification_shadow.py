@@ -36,6 +36,7 @@ from src.models.path_b_classifier import (
     apply_prequential_temperature_scaling,
     build_composite_return_series,
     fit_path_b_classifier,
+    make_path_b_model,
     PATH_B_THRESHOLD,
     _apply_temperature as _path_b_apply_temperature,
     _fit_temperature_grid as _path_b_fit_temperature_grid,
@@ -198,11 +199,22 @@ def classification_interpretation(
 def agreement_with_live_recommendation(
     stance: str,
     live_recommendation_mode: str,
+    live_sell_pct: float,
 ) -> bool:
-    """Return whether the shadow stance agrees with the live recommendation mode."""
+    """Return whether the shadow stance agrees with the live action's direction.
+
+    The classifier estimates P(actionable sell). An ACTIONABLE month that sells
+    more than the 50 % default agrees with an ACTIONABLE-SELL stance; one that
+    sells less (a hold-leaning, bullish action) or sells the default agrees
+    with any stance except ACTIONABLE-SELL. The old rule compared only the
+    modes, so a bullish ACTIONABLE month counted as "Aligned" with a sell
+    stance (review 2026-09-25, F24).
+    """
+    classifier_sells = stance == "ACTIONABLE-SELL"
     live_is_actionable = str(live_recommendation_mode).upper() == "ACTIONABLE"
-    classifier_is_actionable = stance == "ACTIONABLE-SELL"
-    return live_is_actionable == classifier_is_actionable
+    if live_is_actionable and float(live_sell_pct) > 0.50 + 1e-12:
+        return classifier_sells
+    return not classifier_sells
 
 
 def _portfolio_weighted_aggregate(
@@ -607,8 +619,13 @@ def build_classification_shadow_summary(
     *,
     live_recommendation_mode: str,
     benchmark_quality_df: pd.DataFrame | None,
+    live_sell_pct: float = 0.50,
 ) -> tuple[ClassificationShadowSummary, pd.DataFrame]:
-    """Build the shadow classifier summary and per-benchmark detail table."""
+    """Build the shadow classifier summary and per-benchmark detail table.
+
+    ``live_sell_pct`` is the live recommendation's sell percentage; agreement
+    is judged on its direction (F24).
+    """
     feature_df = build_feature_matrix_from_db(conn, force_refresh=True)
     feature_df = feature_df.loc[feature_df.index <= pd.Timestamp(as_of)].sort_index()
     if feature_df.empty:
@@ -712,7 +729,9 @@ def build_classification_shadow_summary(
     aggregated_probability = float(detail_df["classifier_weighted_contribution"].sum())
     tier = classification_confidence_tier(aggregated_probability)
     stance = classification_stance(aggregated_probability)
-    agreement = agreement_with_live_recommendation(stance, live_recommendation_mode)
+    agreement = agreement_with_live_recommendation(
+        stance, live_recommendation_mode, live_sell_pct
+    )
     top_row = detail_df.sort_values(
         "classifier_weighted_contribution",
         ascending=False,
@@ -796,12 +815,7 @@ def build_classification_shadow_summary(
             for _tr, _te in _tscv.split(_X_b):
                 if len(_tr) < 30:
                     continue
-                _m = LogisticRegression(
-                    C=0.5,
-                    class_weight="balanced",
-                    solver="lbfgs",
-                    max_iter=1000,
-                )
+                _m = make_path_b_model()
                 try:
                     _m.fit(_X_b.iloc[_tr], _y_b.iloc[_tr])
                     _oos_probs_list.extend(
@@ -813,9 +827,9 @@ def build_classification_shadow_summary(
             if len(_oos_probs_list) >= 10:
                 _oos_probs_arr = np.array(_oos_probs_list, dtype=float)
                 _oos_labels_arr = np.array(_oos_labels_list, dtype=int)
-                # Train on all data, get current-month raw probability
+                # Train on all labelled rows; score the decision row (F24).
                 _path_b_prob_raw = fit_path_b_classifier(
-                    _X_b, _y_b, feature_cols=_lean_cols
+                    _X_b, _y_b, feature_cols=_lean_cols, X_current=current_features
                 )
                 if _path_b_prob_raw is not None:
                     # Fit temperature using all available OOS history

@@ -47,8 +47,13 @@ def main(dry_run: bool = False) -> None:
     logger.info("%sPGR v6.0 Peer Data Fetch - %s", "[DRY RUN] " if dry_run else "", today)
     logger.info("Database: %s", config.DB_PATH)
 
-    conn = db_client.get_connection(config.DB_PATH)
-    db_client.initialize_schema(conn)
+    if dry_run:
+        # Read-only, like the weekly and monthly dry runs (review F14/F26):
+        # no schema migration and no journal-mode change.
+        conn = db_client.get_connection(config.DB_PATH, read_only=True)
+    else:
+        conn = db_client.get_connection(config.DB_PATH)
+        db_client.initialize_schema(conn)
 
     peer_tickers = get_peer_price_tickers()
     peer_div_tickers = get_peer_dividend_tickers()

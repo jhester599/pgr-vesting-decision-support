@@ -201,6 +201,75 @@ def _apply_edgar_lag(edgar_df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
+def edgar_availability_dates(
+    report_periods: pd.Index,
+    filing_dates: pd.Series | None,
+    fallback_lag_months: int | None = None,
+) -> pd.DatetimeIndex:
+    """First decision date (business month-end) on or after each row's filing date.
+
+    Review 2026-09-25, F23: the fixed 2-month lag placed every monthly 8-K
+    one month later than it was public (filed 9-29 days after month end), and
+    several 10-Ks later than their filing (e.g. FY2024 filed 2025-03-03 but
+    placed on 2025-02-28). A row whose ``filing_date`` is missing falls back
+    to the fixed lag (``config.EDGAR_FILING_LAG_MONTHS``). No row is placed
+    before its own report period's month end.
+
+    Args:
+        report_periods: Report-period dates (month or quarter ends).
+        filing_dates: Filing dates aligned to ``report_periods`` (or None).
+        fallback_lag_months: Lag for rows without a filing date.
+
+    Returns:
+        One business month-end per row.
+    """
+    if fallback_lag_months is None:
+        fallback_lag_months = config.EDGAR_FILING_LAG_MONTHS
+    periods = pd.DatetimeIndex(pd.to_datetime(report_periods))
+    period_end = _snap_to_business_month_end_index(periods)
+    fallback = _snap_to_business_month_end_index(
+        (periods.to_period("M") + fallback_lag_months).to_timestamp(how="start")
+    )
+    if filing_dates is None:
+        filed = pd.DatetimeIndex([pd.NaT] * len(periods))
+    else:
+        filed = pd.DatetimeIndex(pd.to_datetime(pd.Series(filing_dates).to_numpy(), errors="coerce"))
+    rollforward = pd.offsets.BMonthEnd().rollforward
+    placed = [
+        max(rollforward(f.normalize()) if not pd.isna(f) else fb, pe)
+        for f, fb, pe in zip(filed, fallback, period_end)
+    ]
+    return pd.DatetimeIndex(placed, name=periods.name)
+
+
+def place_edgar_rows_by_filing_date(
+    values: pd.DataFrame | pd.Series,
+    filing_dates: pd.Series | None,
+) -> pd.DataFrame | pd.Series:
+    """Re-index EDGAR report-period rows to the decision date they became public.
+
+    See ``edgar_availability_dates``. When two report periods become public
+    in the same month the later period wins (it carries the newer data).
+    """
+    if len(values) == 0:
+        return values
+    order = pd.DatetimeIndex(pd.to_datetime(values.index)).argsort(kind="mergesort")
+    ordered = values.iloc[order]
+    aligned_filing = None
+    if filing_dates is not None:
+        aligned_filing = pd.Series(filing_dates).iloc[order] if len(filing_dates) == len(values) else None
+    placed = ordered.copy()
+    placed.index = edgar_availability_dates(ordered.index, aligned_filing)
+    duplicated = placed.index.duplicated(keep="last")
+    if duplicated.any():
+        logger.info(
+            "[EDGAR timing] %d report period(s) superseded by a later period "
+            "filed in the same month.",
+            int(duplicated.sum()),
+        )
+    return placed[~duplicated]
+
+
 # Momentum lookbacks in calendar months (month-end closes).
 _MOMENTUM_MONTHS: dict[str, int] = {
     "mom_3m": 3,
@@ -1194,8 +1263,11 @@ def build_feature_matrix_from_db(
         # share basis while rows are still on report periods, so the factor
         # is the one in effect when each value was measured (review F15).
         edgar_raw = restate_to_latest_share_basis(edgar_raw, splits)
-        # Apply filing lag to prevent EDGAR period-end vs filing date look-ahead bias (v4.1)
-        edgar_raw = _apply_edgar_lag(edgar_raw)
+        # Place each row at the first decision date on or after its filing
+        # date (review F23; was a fixed 2-month lag).
+        edgar_raw = place_edgar_rows_by_filing_date(
+            edgar_raw, edgar_raw.get("filing_date")
+        )
     pgr_monthly = edgar_raw if not edgar_raw.empty else None
 
     # --- Derive pe_ratio, pb_ratio, and roe from EDGAR data (v6.x) ---
@@ -1228,20 +1300,30 @@ def build_feature_matrix_from_db(
             and not edgar_by_period["eps_basic"].isna().all()
         ):
             eps_ttm = trailing_eps_latest_basis(edgar_by_period["eps_basic"], splits)
-            eps_ttm = _apply_edgar_lag(eps_ttm)
+            eps_ttm = place_edgar_rows_by_filing_date(
+                eps_ttm,
+                edgar_by_period["filing_date"].reindex(eps_ttm.index)
+                if "filing_date" in edgar_by_period.columns
+                else None,
+            )
             eps_aligned = eps_ttm.reindex(monthly_fundamentals.index, method="ffill")
             # Avoid division by zero or negative TTM EPS
             valid_eps = eps_aligned.where(eps_aligned > 0)
             monthly_fundamentals["pe_ratio"] = close_latest_basis / valid_eps
 
-        # roe from quarterly XBRL (forward-filled to monthly, EDGAR lag applied)
+        # roe from quarterly XBRL, placed on the first decision date on or
+        # after each filing (F23), then forward-filled to monthly.
         if not fundamentals_raw.empty and "roe" in fundamentals_raw.columns:
             roe_q = fundamentals_raw["roe"].copy()
             roe_q.index = pd.to_datetime(roe_q.index)
-            roe_monthly = _resample_last_business_month_end(roe_q).ffill()
-            roe_monthly = roe_monthly.shift(config.EDGAR_FILING_LAG_MONTHS, freq="MS")
-            roe_monthly.index = _snap_to_business_month_end_index(roe_monthly.index)
-            monthly_fundamentals["roe"] = roe_monthly.reindex(
+            roe_q = roe_q.dropna()
+            roe_placed = place_edgar_rows_by_filing_date(
+                roe_q,
+                fundamentals_raw["filing_date"].reindex(roe_q.index)
+                if "filing_date" in fundamentals_raw.columns
+                else None,
+            )
+            monthly_fundamentals["roe"] = roe_placed.reindex(
                 monthly_fundamentals.index, method="ffill"
             )
 

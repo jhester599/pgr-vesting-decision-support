@@ -11,9 +11,9 @@ name: Initial Fetch — Day 1 (Prices)
 # fetches stay within the 25 calls/day free-tier limit.
 
 on:
-  schedule:
-    # 10:00 AM ET = 14:00 UTC  |  date: Wed 2026-03-25
-    - cron: '0 14 25 3 *'
+  # Dispatch-only (review 2026-09-25, F26): the old yearly cron ("one-time" on
+  # 2026-03-25) would fire again every March, collide with the 8-K job and
+  # overrun the Alpha Vantage budget.
   workflow_dispatch:
     inputs:
       dry_run:
@@ -24,6 +24,13 @@ on:
         description: 'Force re-fetch even if already run today'
         required: false
         default: 'false'
+
+concurrency:
+  # One queue for every workflow that commits data/pgr_financials.db
+  # (review 2026-09-25, F26). GitHub keeps one pending run per group, so the
+  # schedules are spread out; see docs/workflows.md.
+  group: db-writer
+  cancel-in-progress: false
 
 jobs:
   fetch-prices:

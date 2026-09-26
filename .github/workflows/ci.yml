@@ -49,9 +49,16 @@ jobs:
       - name: Run unit and integration tests
         run: python -m pytest -q
 
-      - name: Smoke test production entrypoints
+      - name: Smoke test production entrypoints (network mocked)
+        # ci_offline_smoke.py refuses every socket connection and serves a
+        # canned, empty EDGAR submissions index, so no smoke run reaches
+        # Alpha Vantage, FRED or EDGAR (review 2026-09-25, F26).
+        env:
+          AV_API_KEY: ""
+          FRED_API_KEY: ""
+          EDGAR_USER_AGENT: "CI smoke test ci@example.invalid"
         run: |
-          python scripts/weekly_fetch.py --dry-run --skip-fred
-          python scripts/peer_fetch.py --dry-run
-          python scripts/edgar_8k_fetcher.py --dry-run
-          python scripts/monthly_decision.py --as-of 2026-04-02 --dry-run --skip-fred
+          python scripts/ci_offline_smoke.py scripts/weekly_fetch.py --dry-run --skip-fred
+          python scripts/ci_offline_smoke.py scripts/peer_fetch.py --dry-run
+          python scripts/ci_offline_smoke.py scripts/edgar_8k_fetcher.py --dry-run
+          python scripts/ci_offline_smoke.py scripts/monthly_decision.py --as-of 2026-04-02 --dry-run --skip-fred
