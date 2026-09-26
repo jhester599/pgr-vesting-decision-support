@@ -184,6 +184,10 @@ Existing tests changed because they encoded the old behaviour:
 - `test_classification_shadow.py`, `test_path_b_classifier.py`: the new
   `live_sell_pct` / `X_current` arguments.
 - `test_v813_recommendation_mode.py`: the scenario note's wording.
+- `test_workflow_contracts.py`: the CI smoke commands run through
+  `ci_offline_smoke.py`.
+- `tests/conftest.py` gives every test a dummy `EDGAR_USER_AGENT` (no test
+  reaches EDGAR); the missing-agent tests delete it.
 
 ## 7. September 2026 before and after
 
