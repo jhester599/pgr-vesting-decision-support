@@ -41,7 +41,12 @@ def apply_prediction_shrinkage(
     prediction: float | np.ndarray,
     alpha: float | None = None,
 ) -> float | np.ndarray:
-    """Apply the promoted v38 calibration shrinkage to ensemble predictions."""
+    """Scale ensemble predictions by ``alpha``.
+
+    ``None`` uses the research-only v38 constant
+    (``config.ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA``). The monthly workflow
+    passes the prequential alpha (``src.models.prequential``).
+    """
     if alpha is None:
         alpha = config.ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA
     if isinstance(prediction, np.ndarray):
@@ -70,6 +75,9 @@ class EnsembleWFOResult:
         mean_hit_rate:  Equal-weight mean directional hit rate.
         mean_mae:       Equal-weight mean absolute error.
         model_results:  Individual WFOResult per model type key.
+        target_history: The full target series the models were trained and
+                        tested on (training history included). The naive
+                        OOS-R^2 benchmark is its prevailing mean (F04).
     """
     benchmark: str
     target_horizon: int
@@ -77,6 +85,7 @@ class EnsembleWFOResult:
     mean_hit_rate: float
     mean_mae: float
     model_results: dict[str, WFOResult] = field(default_factory=dict)
+    target_history: pd.Series | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -252,6 +261,7 @@ def run_ensemble_benchmarks(
             mean_hit_rate=mean_hit_rate,
             mean_mae=mean_mae,
             model_results=per_model,
+            target_history=y_aligned.copy(),
         )
 
     return ensemble_results
@@ -263,20 +273,25 @@ def get_ensemble_signals(
     ensemble_results: dict[str, EnsembleWFOResult],
     X_current: pd.DataFrame,
     train_window_months: int | None = None,
+    shrinkage_alpha: float | None = None,
 ) -> pd.DataFrame:
     """
     Generate live predictions from each ensemble model per benchmark.
 
-    v5.0: Predictions are combined using **inverse-variance weighting** (1/MAE²)
-    rather than equal weights.  A model whose OOS MAE is half that of another
-    receives 4× the weight, naturally down-weighting poorly-calibrated members.
-    BayesianRidge posterior std is still used for ``prediction_std`` and the
-    P(outperform) confidence tier.
+    Each member (Ridge, GBT) is refit on the most recent window and scored on
+    ``X_current``. Members are combined with inverse-variance weights
+    ``1 / MAE^2`` from their OOS errors (all realised by the as-of date), and
+    the combination ``z`` is scaled by the shrinkage alpha.
 
-    For each ETF, calls ``predict_current()`` on each of the four model types
-    (ElasticNet, Ridge, BayesianRidge, GBT), computes per-model weights from
-    ``1 / MAE²`` where MAE is the OOS mean absolute error from the WFO folds,
-    and returns the weighted average point prediction.
+    ``shrinkage_alpha=None`` computes the prequential alpha from the OOS
+    records of all ``ensemble_results`` (``src.models.prequential``). The fixed
+    v38 alpha of 0.50 was chosen on the same OOS history (review 2026-09-25,
+    F13) and is no longer used live.
+
+    P(outperform) and the confidence tier are left uncalibrated here (0.5 and
+    LOW); the monthly workflow replaces them with per-benchmark calibrated
+    probabilities. The retired BayesianRidge posterior no longer feeds them
+    (F21: it made every tier LOW).
 
     Args:
         X_full:                 Complete feature DataFrame.
@@ -284,13 +299,18 @@ def get_ensemble_signals(
         ensemble_results:       Output of ``run_ensemble_benchmarks()``.
         X_current:              Single-row DataFrame with current features.
         train_window_months:    Refit window size.
+        shrinkage_alpha:        Scale applied to the combined prediction.
 
     Returns:
-        DataFrame with one row per benchmark and columns:
-          ``benchmark``, ``point_prediction``, ``prediction_std``,
-          ``signal_to_noise``, ``mean_ic``, ``mean_hit_rate``, ``signal``.
+        DataFrame indexed by benchmark with columns ``point_prediction``
+        (``alpha * z``), ``raw_ensemble_prediction`` (``z``),
+        ``shrinkage_alpha``, ``mean_ic``, ``mean_hit_rate``, ``signal``,
+        ``prob_outperform`` and ``confidence_tier``.
     """
-    from src.models.regularized_models import build_bayesian_ridge_pipeline  # noqa: F401
+    if shrinkage_alpha is None:
+        from src.models.prequential import build_prequential_panel, live_shrinkage_alpha
+
+        shrinkage_alpha = live_shrinkage_alpha(build_prequential_panel(ensemble_results))
 
     rows = []
     for etf, ens_result in ensemble_results.items():
@@ -307,7 +327,6 @@ def get_ensemble_signals(
 
         # Collect (prediction, weight) pairs — weight = 1 / MAE²
         weighted_preds: list[tuple[float, float]] = []
-        prediction_std = 0.0
 
         for mtype, wfo_result in ens_result.model_results.items():
             try:
@@ -336,22 +355,13 @@ def get_ensemble_signals(
             weight = 1.0 / (mae ** 2) if mae > 1e-9 else 1.0
             weighted_preds.append((point, weight))
 
-            # Uncertainty from BayesianRidge — used for P(outperform) only
-            if mtype == "bayesian_ridge" and "prediction_std" in pred:
-                prediction_std = float(pred["prediction_std"])
-
         if not weighted_preds:
             continue
 
         # Normalised weighted average
         total_weight = sum(w for _, w in weighted_preds)
         raw_point_prediction = sum(p * w for p, w in weighted_preds) / total_weight
-        point_prediction = float(apply_prediction_shrinkage(raw_point_prediction))
-        signal_to_noise = (
-            abs(point_prediction) / prediction_std
-            if prediction_std > 0
-            else 0.0
-        )
+        point_prediction = float(apply_prediction_shrinkage(raw_point_prediction, alpha=shrinkage_alpha))
 
         ic = ens_result.mean_ic
         if ic < _IC_THRESHOLD or abs(point_prediction) < _RETURN_THRESHOLD:
@@ -361,26 +371,22 @@ def get_ensemble_signals(
         else:
             signal = _SIGNAL_UNDERPERFORM
 
-        confidence_tier, prob_outperform = get_confidence_tier(
-            point_prediction, prediction_std
-        )
-
         rows.append({
-            "benchmark":        etf,
-            "point_prediction": point_prediction,
-            "prediction_std":   prediction_std,
-            "signal_to_noise":  signal_to_noise,
-            "mean_ic":          ens_result.mean_ic,
-            "mean_hit_rate":    ens_result.mean_hit_rate,
-            "signal":           signal,
-            "prob_outperform":  prob_outperform,
-            "confidence_tier":  confidence_tier,
+            "benchmark":               etf,
+            "point_prediction":        point_prediction,
+            "raw_ensemble_prediction": float(raw_point_prediction),
+            "shrinkage_alpha":         float(shrinkage_alpha),
+            "mean_ic":                 ens_result.mean_ic,
+            "mean_hit_rate":           ens_result.mean_hit_rate,
+            "signal":                  signal,
+            "prob_outperform":         0.5,
+            "confidence_tier":         "LOW",
         })
 
     if not rows:
         return pd.DataFrame(columns=[
-            "benchmark", "point_prediction", "prediction_std",
-            "signal_to_noise", "mean_ic", "mean_hit_rate", "signal",
+            "benchmark", "point_prediction", "raw_ensemble_prediction",
+            "shrinkage_alpha", "mean_ic", "mean_hit_rate", "signal",
             "prob_outperform", "confidence_tier",
         ])
 
@@ -394,6 +400,11 @@ def get_ensemble_signals(
 def get_confidence_tier(y_hat: float, y_std: float) -> tuple[str, float]:
     """
     Compute a confidence tier and P(outperform) from a BayesianRidge prediction.
+
+    Not used by the live signals since review 2026-09-25 (F21): BayesianRidge
+    left the ensemble in v11, so ``y_std`` was always 0 and every tier LOW.
+    Live tiers come from calibrated probabilities
+    (``src.models.calibration.confidence_tier_from_probability``).
 
     Uses the standard-normal CDF to convert the signal-to-noise ratio into a
     probability that the predicted relative return is positive.  This is the

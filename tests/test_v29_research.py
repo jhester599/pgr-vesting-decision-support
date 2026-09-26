@@ -18,6 +18,7 @@ def test_benchmark_role_for_ticker_distinguishes_buyable_and_contextual() -> Non
 
 
 def test_build_confidence_snapshot_counts_pass_fail() -> None:
+    """The snapshot rows are the WP7 gates (review 2026-09-25)."""
     snapshot = build_confidence_snapshot(
         mean_ic=0.10,
         mean_hr=0.56,
@@ -27,10 +28,15 @@ def test_build_confidence_snapshot_counts_pass_fail() -> None:
     assert snapshot["pass_count"] == 2
     assert snapshot["fail_count"] == 2
     statuses = {row["check"]: row["status"] for row in snapshot["rows"]}
-    assert statuses["Mean IC"] == "PASS"
-    assert statuses["Mean hit rate"] == "PASS"
+    assert statuses["Mean IC (equal-weight)"] == "PASS"
     assert statuses["Aggregate OOS R^2"] == "FAIL"
-    assert statuses["Representative CPCV"] == "FAIL"
+    # No Pesaran-Timmermann result: the directional gate fails closed.
+    assert statuses["Directional skill"] == "FAIL"
+    # CPCV ran, so the completeness gate passes; its FAIL verdict is not gated.
+    assert statuses["CPCV diagnostic ran"] == "PASS"
+    assert statuses["CPCV verdict"] == "INFO"
+    # A 56 % hit rate is shown but not gated.
+    assert statuses["Mean hit rate"] == "INFO"
 
 
 def test_executive_summary_avoids_contradictory_direction_phrase() -> None:

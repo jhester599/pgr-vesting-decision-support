@@ -36,6 +36,36 @@ Interpretation:
 - `DEFER-TO-TAX-DEFAULT`: follow the default diversification and tax-discipline
   rule rather than a prediction-led deviation
 
+### Recommendation-Mode Gates
+
+Since review 2026-09-25, step 5 (WP7), the mode comes from four gates,
+evaluated in `src/reporting/decision_rendering.py::evaluate_quality_gates`.
+`ACTIONABLE` needs all four to pass; any failure gives
+`DEFER-TO-TAX-DEFAULT`; otherwise the mode is `MONITORING-ONLY`. A missing
+input fails its gate.
+
+| Gate | Pass | Fail |
+|------|------|------|
+| Aggregate OOS R² against each benchmark's prevailing mean of the targets realised by each forecast date (training history included) | ≥ 2 % | < 0 % |
+| Equal-weight mean of the per-benchmark OOS ICs | ≥ 0.07 | < 0.03 |
+| Directional skill: one-sided Pesaran–Timmermann test that the up/down calls track the realised sign, clustered by date | p < 0.05 | p ≥ 0.10 or undefined |
+| The representative CPCV diagnostic ran | ran | missing or UNKNOWN |
+
+- The plain hit rate is reported but not gated: PGR beat the benchmarks in
+  about 68 % of windows, so a 55 % hit-rate gate passed without skill.
+- The quality-weighted consensus still sets the direction and the mean
+  forecast, but the IC gate uses equal weights: the quality weights are fitted
+  on the same OOS record, which inflates a weighted IC.
+- CPCV trains on folds after its test folds (a combinatorial K-fold, which
+  AGENTS.md prohibits), so its verdict is reported in `diagnostic.md` and
+  never gates. Only a run where it fails to produce paths is held back from
+  `ACTIONABLE` (fail closed).
+- The `ACTIONABLE` sell-percentage mapping is unchanged (step 6 reviews it).
+
+All health numbers are realised-only: every OOS month's ensemble weights,
+shrinkage, calibrator and conformal interval use only targets whose 6-month
+window had ended by that month (`src/models/prequential.py`).
+
 ## Structured Monthly Summary
 
 `monthly_summary.json` is now the machine-readable top-level summary artifact.
@@ -56,6 +86,15 @@ The structured summary now carries top-level values such as:
 - actionability label
 - classifier shadow summary
 - shadow gate overlay summary
+- `model_health`: each gate's status and value, the equal-weight and
+  quality-weighted mean IC, OOS R², the date-clustered pooled IC p-value, the
+  hit rate against the base rate, the Pesaran–Timmermann p-value, the
+  prequential shrinkage alpha, the prequential ECE, trailing conformal
+  coverage and the CPCV diagnostic (`gates_recommendation: false`)
+
+`recommendation.prob_outperform_raw` is null since step 5: it came from the
+retired BayesianRidge posterior and was a constant 50 %. Use
+`recommendation.prob_outperform_calibrated`.
 
 ## Consensus Shadow Diagnostic
 
@@ -157,9 +196,11 @@ destinations for sold exposure.
 
 It currently contains metrics such as:
 
-- `oos_r2`
-- `nw_ic`
-- `hit_rate`
+- `oos_r2` (against the benchmark's prevailing mean of realised targets)
+- `nw_ic` (Spearman IC of the prequential ensemble score) and `nw_p_value`
+- `hit_rate`, `base_rate` and `hit_rate_excess` (hit rate minus the better
+  constant-sign rule)
+- `pt_p_value` (Pesaran–Timmermann directional test)
 - `cw_t_stat`
 - `cw_p_value`
 
@@ -176,10 +217,12 @@ The diagnostic report is the technical appendix. It includes:
 - aggregate model health
 - pooled Clark-West results
 - per-benchmark diagnostics
-- calibration notes
+- calibration notes (prequential ECE)
+- trailing conformal coverage (each point's interval calibrated on residuals
+  realised by then)
 - shadow gate overlay status
 - matured classifier-monitoring summary when available
-- CPCV and observation-to-feature context
+- the CPCV stability diagnostic (not a gate) and observation-to-feature context
 
 Use the diagnostic report to understand why the recommendation mode landed where
 it did.

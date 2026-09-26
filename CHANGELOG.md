@@ -5,6 +5,93 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v178 (2026-09-26) — Review 2026-09-25, step 5: validation and gating
+
+WP7 from `docs/reviews/REPO_REVIEW_2026-09-25.md` (F02, F04, F13, the
+missing-CPCV part of F20, F21). The report, the tests that failed before the
+fix and the 2026-02 … 2026-09 re-baseline are in
+`docs/reviews/2026-09-25_step5_validation_gating.md`; the replay rows are in
+`docs/reviews/2026-09-25_step5_rebaseline_rows.csv`.
+
+- **Gate (`decision_rendering.evaluate_quality_gates`).** ACTIONABLE needs all
+  four to pass; any failure gives DEFER-TO-TAX-DEFAULT; otherwise
+  MONITORING-ONLY. A missing input fails its gate.
+  - OOS R² ≥ 2 % against each benchmark's prevailing mean of the targets
+    realised by each forecast date, training history included (F04). The old
+    naive was the expanding mean of the OOS series *including the target it
+    was scored against*.
+  - Equal-weight mean of the per-benchmark ICs ≥ 0.07 (F13). The quality
+    weights are fitted on the same OOS record, so a weighted IC is inflated.
+    The quality-weighted consensus still sets the direction and the forecast.
+  - Directional skill: one-sided Pesaran–Timmermann p < 0.05, Driscoll–Kraay by
+    date (F13). A 55 % hit rate is no longer a gate: PGR beat the benchmarks in
+    about 68 % of windows.
+  - The representative CPCV diagnostic ran (F20: fail closed). A missing or
+    UNKNOWN CPCV no longer passes; its verdict does not gate (F02).
+  - The ACTIONABLE sell-% mapping is unchanged (step 6).
+- **CPCV (`wfo_engine.run_cpcv`) is diagnostic only (F02).** It trains on folds
+  after its test folds (a combinatorial K-fold, which AGENTS.md prohibits).
+  - Paths are recombined from `recombined_paths.T` with each fold taken from
+    its own split (`test_set_index`): C(8,2) gives 28 splits and 7 paths, each
+    scoring every row once. The old loop iterated folds and pooled both test
+    folds of every split.
+  - Thresholds scale to the path count (`cpcv_path_thresholds`): GOOD ≥
+    ceil(19·n/28) = 5/7, MARGINAL ≥ ceil(9·n/28) = 3/7.
+  - `embargo_size = 2` (`config.CPCV_EMBARGO_SIZE`) after the 6-row purge.
+- **Realised-only OOS record (`src/models/prequential.py`, F13).** Every OOS
+  month uses only targets whose 6-month window had ended by then:
+  - Ridge/GBT weights `1/MAE²` from realised errors (equal before any);
+  - shrinkage alpha by v38's own rule (the grid value 0.05 … 1.00 with the
+    lowest squared error), re-chosen from the realised rows of all
+    benchmarks; the live forecast uses the same rule. The fixed 0.50
+    (`ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA`) is research-only;
+  - `reconstruct_ensemble_oos_predictions` is prequential by default.
+- **Honest reporting (F13).**
+  - ECE is prequential: each OOS month is scored by the per-benchmark Platt
+    calibrator fitted on realised rows only; its CI is a date-block bootstrap.
+  - Conformal coverage is trailing and prequential: each point's interval is
+    calibrated on residuals realised by then (`backtest_conformal_coverage`
+    takes `dates` and `horizon_months`). The in-sample "empirical coverage"
+    column is gone.
+  - The pooled IC p-value is Driscoll–Kraay by date
+    (`src/models/robust_inference.py`), not Newey–West over date-sorted rows.
+    The rank IC uses the ensemble score before the time-varying shrinkage.
+  - Clark–West uses the same prevailing-mean benchmark as R².
+- **Confidence tiers (F21)** come from the calibrated P(outperform), read in
+  the signal's direction (`calibration.confidence_tier_from_probability`).
+  They used BayesianRidge's `prediction_std`, which has been 0 since v11
+  dropped that model, so every P(outperform) was 0.5 and every tier LOW.
+  `prob_outperform` is now the calibrated probability; `prediction_std` and
+  `signal_to_noise` are gone from the signals.
+- **`model_performance_log`.** New rows store the corrected R², prequential
+  ECE and trailing coverage, tagged `metrics_version =
+  prequential-2026-09-25`. Migration 008 adds the column and tags the 8
+  existing rows `pre-2026-09-25` (values unchanged). It was applied to the
+  committed DB with `scripts/apply_db_migrations.py` on a copy; only
+  `model_performance_log` and `schema_migrations` changed (per-table content
+  hash). The drift monitor uses only rows of the latest version, and a
+  back-dated run no longer summarises months after its as-of date.
+- **Reports and JSON.** `recommendation.md`, `diagnostic.md` and
+  `benchmark_quality.csv` show the gates, base rate, PT p-value, prequential ECE
+  and the CPCV note; `monthly_summary.json` gains a `model_health` block;
+  `prob_outperform_raw` is null.
+- **New:** `scripts/replay_monthly_decisions.py` runs read-only dry runs for
+  past as-of dates and collects the decision fields (checks the DB hash).
+- **Re-baseline (dry runs of 2026-02 … 2026-09, `docs/model-governance.md`).**
+  On the corrected pipeline every month sells the 50 % tax default:
+  DEFER-TO-TAX-DEFAULT in six months, MONITORING-ONLY in March and April
+  (PT p 0.095). No month reaches ACTIONABLE. Directional skill binds: the hit
+  rate is 62.7–65.4 % against a 68.1–70.0 % base rate (PT p 0.095–0.350).
+  The other gates pass every month (R² +3.8 % to +7.6 %; equal-weight IC
+  0.071–0.114). The committed runs and a replay of `master` were DEFER / 50 %
+  in every month.
+- **Tests:** new `tests/test_validation_gating_wp7.py` (30 tests). Against
+  unfixed `master` (c089124): 29 failed, 1 passed (a positive control). The
+  review's named tests fail there by assertion (for example, an oracle
+  forecaster scores R² −0.100 and an always-positive predictor on a 68 % base
+  rate is ACTIONABLE). All 30 pass on this branch. Existing tests that encoded
+  the old behaviour were updated; the review doc lists each one and why.
+
 ## v177 (2026-09-25) — Review 2026-09-25, step 4c: 2006-05 buyback cost from the 10-Q
 
 Replaces the step-4b estimate for the split month with filed values.

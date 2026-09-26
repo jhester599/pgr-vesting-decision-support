@@ -35,10 +35,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+import pandas as pd
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+
+import config
 
 
 # ---------------------------------------------------------------------------
@@ -118,13 +121,16 @@ def block_bootstrap_ece_ci(
     block_len: int = 6,
     n_bootstrap: int = 500,
     rng: np.random.Generator | None = None,
+    dates: pd.Index | np.ndarray | None = None,
 ) -> tuple[float, float]:
     """
     Compute a 95% block-bootstrap confidence interval for ECE.
 
     Uses the circular block bootstrap (Politis & Romano 1994) with
     ``block_len = prediction horizon`` to preserve autocorrelation from
-    overlapping return windows.
+    overlapping return windows. With ``dates`` (pooled rows from several
+    benchmarks), blocks are ``block_len`` consecutive months and carry every
+    row dated in them, so same-date rows are resampled together.
 
     Args:
         probs:       Predicted probabilities, shape (n,).
@@ -133,16 +139,25 @@ def block_bootstrap_ece_ci(
         block_len:   Length of each bootstrap block (= target horizon in months).
         n_bootstrap: Number of bootstrap replications.
         rng:         Optional numpy Generator for reproducibility.
+        dates:       Optional row dates for month blocks.
 
     Returns:
         ``(ci_lower, ci_upper)`` — 2.5th and 97.5th percentiles of bootstrap ECE.
+        NaN bounds when ``n_bootstrap`` is 0 (no interval requested).
     """
+    if n_bootstrap <= 0:
+        return float("nan"), float("nan")
     if rng is None:
         rng = np.random.default_rng(42)
 
     probs = np.asarray(probs, dtype=float)
     outcomes = np.asarray(outcomes, dtype=float)
     n = len(probs)
+
+    if dates is not None and n > 0:
+        return _date_block_bootstrap_ece_ci(
+            probs, outcomes, pd.DatetimeIndex(dates), n_bins, block_len, n_bootstrap, rng
+        )
 
     if n < block_len * 2:
         # Insufficient data for meaningful blocking — return degenerate CI
@@ -169,9 +184,102 @@ def block_bootstrap_ece_ci(
     return float(np.percentile(arr, 2.5)), float(np.percentile(arr, 97.5))
 
 
+def _date_block_bootstrap_ece_ci(
+    probs: np.ndarray,
+    outcomes: np.ndarray,
+    dates: pd.DatetimeIndex,
+    n_bins: int,
+    block_len: int,
+    n_bootstrap: int,
+    rng: np.random.Generator,
+) -> tuple[float, float]:
+    """Circular block bootstrap over calendar months (all rows of a month move together)."""
+    months = (dates.year * 12 + dates.month - 1).to_numpy(dtype=np.int64)
+    unique_months = np.unique(months)
+    n_months = len(unique_months)
+    if n_months < block_len * 2:
+        ece = compute_ece(probs, outcomes, n_bins)
+        return 0.0, min(1.0, ece * 2)
+    rows_by_month = [np.flatnonzero(months == month) for month in unique_months]
+    n_blocks = max(1, n_months // block_len)
+    boot_eces: list[float] = []
+    for _ in range(n_bootstrap):
+        starts = rng.integers(0, n_months, size=n_blocks)
+        month_positions = ((starts[:, None] + np.arange(block_len)[None, :]) % n_months).ravel()
+        idx = np.concatenate([rows_by_month[pos] for pos in month_positions])
+        boot_eces.append(compute_ece(probs[idx], outcomes[idx], n_bins))
+    arr = np.array(boot_eces)
+    return float(np.percentile(arr, 2.5)), float(np.percentile(arr, 97.5))
+
+
 # ---------------------------------------------------------------------------
 # Model fitting
 # ---------------------------------------------------------------------------
+
+def _build_platt_pipeline() -> Pipeline:
+    """Platt scaling: logistic regression with no regularisation.
+
+    The scaler is fit on the calibration rows only (the OOS history realised
+    by the calibration date), never on the full temporal dataset. C=1e10 makes
+    the logistic effectively unregularised — standard Platt scaling.
+    """
+    return Pipeline([
+        ("scaler", StandardScaler()),
+        (
+            "logistic",
+            LogisticRegression(
+                C=1e10,
+                solver="lbfgs",
+                max_iter=1000,
+                random_state=42,
+            ),
+        ),
+    ])
+
+
+def prequential_platt_probabilities(
+    scores: np.ndarray,
+    outcomes: np.ndarray,
+    dates: pd.Index | np.ndarray,
+    horizon_months: int,
+    min_obs: int = 20,
+) -> np.ndarray:
+    """P(outperform) for each OOS row from a Platt model fitted on realised rows.
+
+    Row t is scored by a calibrator fitted only on the rows whose 6-month
+    target had been realised by t (month(d) + horizon <= month(t)), as the
+    monthly run would have done then (review 2026-09-25, F13: the reported ECE
+    used to be measured on the calibrator's own training rows). Rows with fewer
+    than ``min_obs`` realised rows, or only one outcome class, are NaN.
+    ``dates`` must be sorted ascending.
+    """
+    from src.models.prequential import month_ordinals, realised_counts
+
+    scores = np.asarray(scores, dtype=float)
+    outcomes = np.asarray(outcomes, dtype=int)
+    months = month_ordinals(pd.Index(dates))
+    if len(months) > 1 and np.any(np.diff(months) < 0):
+        raise ValueError("dates must be sorted ascending.")
+    counts = realised_counts(months, months, horizon_months)
+    probs = np.full(len(scores), np.nan, dtype=float)
+    fitted: dict[int, Pipeline | None] = {}
+    for row, count in enumerate(counts):
+        count = int(count)
+        if count < max(int(min_obs), 1):
+            continue
+        if count not in fitted:
+            train_outcomes = outcomes[:count]
+            if len(np.unique(train_outcomes)) < 2:
+                fitted[count] = None
+            else:
+                model = _build_platt_pipeline()
+                model.fit(scores[:count].reshape(-1, 1), train_outcomes)
+                fitted[count] = model
+        model = fitted[count]
+        if model is not None:
+            probs[row] = float(model.predict_proba(scores[row : row + 1].reshape(-1, 1))[0, 1])
+    return probs
+
 
 def fit_calibration_model(
     y_hat_hist: np.ndarray,
@@ -225,21 +333,7 @@ def fit_calibration_model(
             ece_ci_upper=1.0,
         )
 
-    # --- Platt scaling: logistic regression with no regularization ---
-    # StandardScaler normalises y_hat across benchmarks (they have different scales).
-    # C=1e10 makes the logistic effectively unregularised — standard Platt scaling.
-    platt = Pipeline([
-        ("scaler", StandardScaler()),
-        (
-            "logistic",
-            LogisticRegression(
-                C=1e10,
-                solver="lbfgs",
-                max_iter=1000,
-                random_state=42,
-            ),
-        ),
-    ])
+    platt = _build_platt_pipeline()
     platt.fit(y_hat_hist.reshape(-1, 1), outcomes)
 
     if n >= min_obs_isotonic:
@@ -314,3 +408,38 @@ def calibrate_prediction(
         calibrated = float(fitted_model.predict_proba(x)[0, 1])
 
     return float(np.clip(calibrated, 0.0, 1.0))
+
+
+# ---------------------------------------------------------------------------
+# Confidence tiers (review 2026-09-25, F21)
+# ---------------------------------------------------------------------------
+
+def confidence_tier_from_probability(prob_outperform: float, signal: str) -> str:
+    """Confidence tier from a calibrated P(outperform), in the signal's direction.
+
+    The tier measures how strongly the calibrated probability supports the
+    stated signal: P(outperform) for OUTPERFORM, 1 - P for UNDERPERFORM.
+    HIGH at >= ``SHADOW_CLASSIFIER_HIGH_THRESH`` (0.70), MODERATE at
+    >= ``SHADOW_CLASSIFIER_MODERATE_HIGH_THRESH`` (0.60), otherwise LOW. A
+    NEUTRAL signal, a missing probability, or a probability that leans the
+    other way is LOW. (The old tier came from a retired BayesianRidge posterior
+    and was LOW for every benchmark in every month.)
+    """
+    try:
+        prob = float(prob_outperform)
+    except (TypeError, ValueError):
+        return "LOW"
+    if not np.isfinite(prob):
+        return "LOW"
+    direction = str(signal).upper()
+    if direction == "OUTPERFORM":
+        support = prob
+    elif direction == "UNDERPERFORM":
+        support = 1.0 - prob
+    else:
+        return "LOW"
+    if support >= config.SHADOW_CLASSIFIER_HIGH_THRESH:
+        return "HIGH"
+    if support >= config.SHADOW_CLASSIFIER_MODERATE_HIGH_THRESH:
+        return "MODERATE"
+    return "LOW"

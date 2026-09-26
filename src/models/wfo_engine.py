@@ -31,14 +31,17 @@ WFO procedure per fold:
 Final metrics are computed only from the concatenated out-of-sample folds.
 No in-sample data contaminates the performance statistics.
 
-PROHIBITED: K-Fold cross-validation. This module exclusively uses
-TimeSeriesSplit as mandated by CLAUDE.md.
+PROHIBITED: K-Fold cross-validation. Validation uses TimeSeriesSplit as
+mandated by AGENTS.md. ``run_cpcv()`` below is a combinatorial K-fold (it
+trains on folds after the test folds), so it is kept only as a reported
+stability diagnostic and never gates a recommendation (review 2026-09-25, F02).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 import logging
+import math
 from typing import Literal
 import warnings
 
@@ -456,24 +459,38 @@ def predict_current(
 
 
 # ---------------------------------------------------------------------------
-# v4.0 — Combinatorial Purged Cross-Validation (CPCV)
+# Combinatorial Purged Cross-Validation (CPCV) — diagnostic only
 # ---------------------------------------------------------------------------
+
+def cpcv_path_thresholds(n_paths: int) -> tuple[int, int]:
+    """Return the (GOOD, MARGINAL) positive-path counts for ``n_paths`` paths.
+
+    The config thresholds (19 and 9) are stated for a 28-path reference and
+    scaled with ``ceil``: C(8,2) has 7 test paths, so GOOD ≥ 5 and
+    MARGINAL ≥ 3 (review 2026-09-25, F02).
+    """
+    reference = config.DIAG_CPCV_REFERENCE_PATHS
+    good = math.ceil(config.DIAG_CPCV_MIN_POSITIVE_PATHS * n_paths / reference)
+    marginal = math.ceil(config.DIAG_CPCV_MARGINAL_POSITIVE_PATHS * n_paths / reference)
+    return good, marginal
+
 
 @dataclass
 class CPCVResult:
     """
-    Results from Combinatorial Purged Cross-Validation.
+    Results from Combinatorial Purged Cross-Validation (diagnostic only).
 
     CPCV generates C(n_folds, n_test_folds) train-test splits, then recombines
-    the test predictions into ``n_test_paths`` backtest paths.  Each path
-    contains non-overlapping test observations that together span the full
-    dataset — enabling overfitting detection via the distribution of path ICs.
+    the test predictions into ``n_paths`` backtest paths. Each path takes every
+    fold exactly once, from a different split, so it covers the whole dataset.
 
-    A wide spread in ``path_ics`` suggests the model overfit to a specific
-    market regime rather than learning a generalizable pattern.
+    CPCV trains on folds that come after its test folds, so it is a
+    combinatorial K-fold. AGENTS.md prohibits K-fold validation, so this result
+    is reported as a stability diagnostic and never gates a recommendation
+    (review 2026-09-25, F02).
 
     Attributes:
-        model_type:    Model type used (e.g. "elasticnet").
+        model_type:    Model type used (e.g. "ridge").
         benchmark:     ETF ticker this model was trained against.
         n_splits:      Total number of train-test splits (= C(n_folds, n_test_folds)).
         n_paths:       Number of recombined backtest paths.
@@ -481,6 +498,8 @@ class CPCVResult:
         mean_ic:       Mean IC across all paths (primary performance estimate).
         ic_std:        Std dev of path ICs (spread → overfitting signal).
         split_ics:     IC per raw split (length = n_splits).
+        path_row_indices: Row positions (in the aligned data) scored by each path.
+        embargo_size:  Rows embargoed after each test block (after the purge).
     """
     model_type: str
     benchmark: str
@@ -490,6 +509,8 @@ class CPCVResult:
     mean_ic: float = float("nan")
     ic_std: float = float("nan")
     split_ics: list[float] = field(default_factory=list)
+    path_row_indices: list[np.ndarray] = field(default_factory=list)
+    embargo_size: int = 0
 
     # v7.4 — Path stability properties
 
@@ -509,24 +530,49 @@ class CPCVResult:
     def stability_verdict(self) -> str:
         """Classify path stability as GOOD, MARGINAL, or FAIL.
 
-        Thresholds (from config.DIAG_CPCV_MIN_POSITIVE_PATHS = 19 for C(8,2)=28 paths):
-          GOOD:     n_positive_paths ≥ DIAG_CPCV_MIN_POSITIVE_PATHS  (≥ 67.9%)
-          MARGINAL: n_positive_paths ≥ DIAG_CPCV_MIN_POSITIVE_PATHS // 2
-                    but < DIAG_CPCV_MIN_POSITIVE_PATHS               (35–67%)
-          FAIL:     n_positive_paths < DIAG_CPCV_MIN_POSITIVE_PATHS // 2 (< 35%)
+        Thresholds scale with the number of paths (``cpcv_path_thresholds``):
+          GOOD:     n_positive_paths ≥ ceil(19 · n / 28)   (5 of 7)
+          MARGINAL: n_positive_paths ≥ ceil(9 · n / 28)    (3 of 7)
+          FAIL:     otherwise.
 
         Returns "UNKNOWN" when path_ics is empty.
         """
         if not self.path_ics:
             return "UNKNOWN"
         n_pos = self.n_positive_paths
-        good_thresh = config.DIAG_CPCV_MIN_POSITIVE_PATHS
-        marginal_thresh = good_thresh // 2
+        good_thresh, marginal_thresh = cpcv_path_thresholds(len(self.path_ics))
         if n_pos >= good_thresh:
             return "GOOD"
         if n_pos >= marginal_thresh:
             return "MARGINAL"
         return "FAIL"
+
+
+def _recombined_path_members(
+    test_set_index: np.ndarray,
+    recombined_paths: np.ndarray,
+) -> list[list[tuple[int, int]]]:
+    """Return, for each path, the (split, test-slot) pairs that make it up.
+
+    ``recombined_paths`` has shape (n_folds, n_paths): entry [i, p] is the
+    split whose test set supplies fold ``i`` to path ``p``. Within split ``s``
+    the test folds are listed in ``test_set_index[s]`` order, which is the
+    order of the test arrays that ``split()`` yields.
+    """
+    test_set_index = np.asarray(test_set_index)
+    recombined_paths = np.asarray(recombined_paths)
+    members: list[list[tuple[int, int]]] = []
+    for path in recombined_paths.T:
+        path_members: list[tuple[int, int]] = []
+        for fold_id, split_id in enumerate(path):
+            slots = np.flatnonzero(test_set_index[int(split_id)] == fold_id)
+            if len(slots) != 1:
+                raise ValueError(
+                    f"Split {int(split_id)} does not test fold {fold_id} exactly once."
+                )
+            path_members.append((int(split_id), int(slots[0])))
+        members.append(path_members)
+    return members
 
 
 def run_cpcv(
@@ -537,18 +583,25 @@ def run_cpcv(
     n_folds: int | None = None,
     n_test_folds: int | None = None,
     benchmark: str = "",
+    embargo_size: int | None = None,
 ) -> CPCVResult:
     """
-    Run Combinatorial Purged Cross-Validation (CPCV) for overfitting detection.
+    Run Combinatorial Purged Cross-Validation (CPCV) as a stability diagnostic.
 
-    CPCV is a diagnostic/validation tool that generates multiple backtest paths
-    from a single dataset.  If the spread of per-path ICs is wide, the model
-    is likely overfit to a specific sub-period.  It is NOT a replacement for
-    ``run_wfo()`` — use this alongside the primary WFO to validate that results
-    are stable across data sub-samples.
+    CPCV generates multiple backtest paths from a single dataset. If the spread
+    of per-path ICs is wide, the model is likely overfit to a specific
+    sub-period.
 
-    The purge size is set to ``target_horizon_months`` to match the WFO embargo,
-    preventing autocorrelation leakage between adjacent folds.
+    DIAGNOSTIC ONLY. Most CPCV splits train on folds that come after their test
+    folds, so CPCV is a combinatorial K-fold. AGENTS.md requires walk-forward
+    validation and prohibits K-fold, so the monthly workflow reports this
+    result but never uses it to gate a recommendation (review 2026-09-25, F02).
+    Walk-forward metrics from ``run_wfo()`` remain the validation standard.
+
+    The purge is ``target_horizon_months`` rows on both sides of each test
+    block (overlapping 6M targets), and ``embargo_size`` more rows are dropped
+    after each test block, because features such as momentum overlap the test
+    targets.
 
     Uses ``skfolio.model_selection.CombinatorialPurgedCV``.
 
@@ -557,10 +610,12 @@ def run_cpcv(
         y:                     Target Series (same index as X).
         model_type:            Model type — must match a supported builder.
         target_horizon_months: Forward return horizon; used as purge window.
-        n_folds:               Number of folds (default: config.CPCV_N_FOLDS = 6).
+        n_folds:               Number of folds (default: config.CPCV_N_FOLDS = 8).
         n_test_folds:          Test folds per split (default: config.CPCV_N_TEST_FOLDS = 2).
-                               C(n_folds, n_test_folds) = 15 splits for (6, 2).
+                               C(8, 2) = 28 splits recombine into 7 test paths.
         benchmark:             ETF ticker label for the result.
+        embargo_size:          Rows embargoed after each test block (default:
+                               config.CPCV_EMBARGO_SIZE = 2).
 
     Returns:
         CPCVResult with per-path and per-split ICs.
@@ -574,6 +629,8 @@ def run_cpcv(
         n_folds = config.CPCV_N_FOLDS
     if n_test_folds is None:
         n_test_folds = config.CPCV_N_TEST_FOLDS
+    if embargo_size is None:
+        embargo_size = config.CPCV_EMBARGO_SIZE
 
     # Drop NaN targets; align X and y
     aligned = X.join(y, how="inner").dropna(subset=[y.name])
@@ -590,7 +647,7 @@ def run_cpcv(
         n_folds=n_folds,
         n_test_folds=n_test_folds,
         purged_size=target_horizon_months,
-        embargo_size=0,
+        embargo_size=embargo_size,
     )
 
     # Collect per-split predictions
@@ -651,28 +708,33 @@ def run_cpcv(
             split_ics.append(_safe_spearman_ic(split_y_true, split_y_hat))
         split_predictions.append(split_records)
 
-    # Recombined paths: each path is a non-overlapping sequence of test observations
+    # Recombined paths. ``cv.recombined_paths`` has shape (n_folds, n_paths):
+    # column p lists, for every fold i, the split whose test set supplies fold
+    # i to path p. Each path therefore scores every row exactly once.
     path_ics: list[float] = []
-    # cv.recombined_paths is available after split() — shape (n_paths, n_test_folds)
-    # Each row gives split indices whose test sets together cover the full dataset
-    if hasattr(cv, "recombined_paths") and cv.recombined_paths is not None:
-        try:
-            for path_split_ids in cv.recombined_paths:
-                path_y_true: list[float] = []
-                path_y_hat_vals: list[float] = []
-                for sid in path_split_ids:
-                    for _, y_true_vals, y_hat_vals in split_predictions[sid]:
-                        valid = np.isfinite(y_true_vals) & np.isfinite(y_hat_vals)
-                        path_y_true.extend(y_true_vals[valid].tolist())
-                        path_y_hat_vals.extend(y_hat_vals[valid].tolist())
-                if len(path_y_true) >= 2:
-                    path_ics.append(_safe_spearman_ic(path_y_true, path_y_hat_vals))
-        except Exception as exc:  # noqa: BLE001
-            logger.exception(
-                "Could not recombine CPCV paths; returning empty path diagnostics. Error=%r",
-                exc,
-            )
-            path_ics = []
+    path_row_indices: list[np.ndarray] = []
+    try:
+        members = _recombined_path_members(cv.test_set_index, cv.recombined_paths)
+        for path_members in members:
+            path_rows: list[np.ndarray] = []
+            path_y_true: list[float] = []
+            path_y_hat_vals: list[float] = []
+            for split_id, slot in path_members:
+                test_idx, y_true_vals, y_hat_vals = split_predictions[split_id][slot]
+                path_rows.append(np.asarray(test_idx))
+                valid = np.isfinite(y_true_vals) & np.isfinite(y_hat_vals)
+                path_y_true.extend(y_true_vals[valid].tolist())
+                path_y_hat_vals.extend(y_hat_vals[valid].tolist())
+            path_row_indices.append(np.concatenate(path_rows) if path_rows else np.array([], dtype=int))
+            if len(path_y_true) >= 2:
+                path_ics.append(_safe_spearman_ic(path_y_true, path_y_hat_vals))
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "Could not recombine CPCV paths; returning empty path diagnostics. Error=%r",
+            exc,
+        )
+        path_ics = []
+        path_row_indices = []
 
     mean_ic = float(np.nanmean(path_ics)) if path_ics else float("nan")
     ic_std = float(np.nanstd(path_ics)) if len(path_ics) > 1 else float("nan")
@@ -686,4 +748,6 @@ def run_cpcv(
         mean_ic=mean_ic,
         ic_std=ic_std,
         split_ics=split_ics,
+        path_row_indices=path_row_indices,
+        embargo_size=int(embargo_size),
     )

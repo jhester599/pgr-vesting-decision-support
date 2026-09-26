@@ -73,7 +73,11 @@ from src.models.evaluation import (
     reconstruct_ensemble_oos_predictions,
     reconstruct_baseline_predictions,
 )
-from src.models.forecast_diagnostics import summarize_prediction_diagnostics
+from src.models.forecast_diagnostics import (
+    IC_P_VALUE_METHOD,
+    summarize_panel_diagnostics,
+)
+from src.models.prequential import build_prequential_panel, live_shrinkage_alpha
 from src.models.classification_gate_overlay import (
     build_decision_overlay_frame,
     resolve_overlay_policy_variant,
@@ -105,6 +109,7 @@ from src.reporting.snapshot_summary import (
     build_redeploy_markdown_lines,
     build_shadow_check_lines,
     confidence_from_hit_rate,
+    honest_prediction_frame,
     sell_pct_from_policy,
     signal_from_prediction,
 )
@@ -136,14 +141,19 @@ from src.reporting.monthly_summary import (
     build_actionability_label,
     build_decision_headline,
     build_hold_vs_sell_label,
+    build_model_health_payload,
     build_monthly_summary_payload,
     write_monthly_summary,
 )
 
 from src.models.calibration import (
     CalibrationResult,
+    block_bootstrap_ece_ci,
     calibrate_prediction,
+    compute_ece,
+    confidence_tier_from_probability,
     fit_calibration_model,
+    prequential_platt_probabilities,
 )
 from src.models.conformal import (
     ConformalCoverageBacktest,
@@ -154,10 +164,8 @@ from src.models.conformal import (
 from src.models.drift_monitor import ModelDriftSummary, summarize_latest_model_drift
 from src.models.retrain_trigger import RetainTriggerResult, evaluate_retrain_trigger
 from src.portfolio.black_litterman import BLDiagnostics, build_bl_weights
-from src.models.wfo_engine import CPCVResult, WFOResult, run_cpcv
+from src.models.wfo_engine import CPCVResult, WFOResult, cpcv_path_thresholds, run_cpcv
 from src.reporting.backtest_report import (
-    compute_newey_west_ic,
-    compute_oos_r_squared,
     export_backtest_to_csv,
     generate_rolling_ic_series,
 )
@@ -213,9 +221,10 @@ _ETF_DESCRIPTIONS: dict[str, str] = {
 _MODEL_VERSION_LABEL = (
     "v11.1 (lean 2-model ensemble: Ridge + GBT, v18 feature sets, "
     "8-benchmark PRIMARY_FORECAST_UNIVERSE, inverse-variance weighting, "
-    "v38 post-ensemble shrinkage alpha=0.50, "
-    "C(8,2)=28 CPCV paths; ElasticNet+BayesianRidge retired after v18/v20 "
-    "research showed Ridge+GBT outperforms on IC, hit rate, and obs/feature ratio)"
+    "prequential post-ensemble shrinkage and realised-only health metrics "
+    "(review 2026-09-25 WP7); C(8,2) CPCV with 7 paths is diagnostic only; "
+    "ElasticNet+BayesianRidge retired after v18/v20 research showed Ridge+GBT "
+    "outperforms on IC, hit rate, and obs/feature ratio)"
 )
 
 
@@ -345,14 +354,16 @@ def _generate_signals(
     Build feature matrix (sliced to as_of), train ensemble WFO models, return signals.
 
     Uses the production Ridge+GBT ensemble (v11.0) on the PRIMARY_FORECAST_UNIVERSE
-    with v18 lean feature sets.  Inverse-variance weighting across models drives
-    the ``confidence_tier`` and ``prob_outperform`` columns in the output.
+    with v18 lean feature sets, combined by inverse-variance weights and scaled
+    by the prequential shrinkage alpha.
 
     Returns:
-        (signals, ensemble_results, diagnostics) where signals is a DataFrame indexed by benchmark
-        with columns predicted_relative_return, ic, hit_rate, signal, prediction_std,
-        prob_outperform, confidence_tier; and ensemble_results is the dict returned by
-        ``run_ensemble_benchmarks`` (ETF ticker → EnsembleWFOResult).
+        (signals, ensemble_results, diagnostics) where signals is a DataFrame indexed by
+        benchmark with columns predicted_relative_return, raw_ensemble_prediction,
+        shrinkage_alpha, ic, hit_rate, signal, prob_outperform, confidence_tier;
+        ensemble_results is the dict returned by ``run_ensemble_benchmarks``
+        (ETF ticker → EnsembleWFOResult); diagnostics carries the representative
+        CPCV, the prequential OOS panel and the live shrinkage alpha.
     """
     as_of_ts = pd.Timestamp(as_of)
 
@@ -415,7 +426,9 @@ def _generate_signals(
     rel_matrix = pd.DataFrame(rel_matrix_cols)
 
     # v11.0: representative CPCV uses VOO + ridge (core benchmark of the primary
-    # universe; matches the promoted model type replacing the former VTI+elasticnet).
+    # universe). Diagnostic only (review 2026-09-25, F02): CPCV is a
+    # combinatorial K-fold, so its verdict never gates the recommendation; a
+    # run where it fails to produce paths fails closed (F20).
     if "VOO" in rel_matrix.columns:
         try:
             rel_series_voo = rel_matrix["VOO"].rename(f"VOO_{target_horizon_months}m")
@@ -443,12 +456,25 @@ def _generate_signals(
         model_feature_overrides=config.MODEL_FEATURE_OVERRIDES,
     )
 
-    # Generate ensemble signals (includes prob_outperform and confidence_tier)
+    # Realised-only reconstruction of every benchmark's OOS record (F04, F13):
+    # prequential ensemble weights and shrinkage, and the prevailing-mean naive.
+    prequential_panel = build_prequential_panel(ensemble_results)
+    shrinkage_alpha = live_shrinkage_alpha(prequential_panel)
+    diagnostics["prequential_panel"] = prequential_panel
+    diagnostics["shrinkage_alpha"] = shrinkage_alpha
+    logger.info(
+        "[Shrinkage] Prequential alpha %.3f from %s realised OOS rows.",
+        shrinkage_alpha,
+        f"{len(prequential_panel):,}",
+    )
+
+    # Generate ensemble signals; calibrated probabilities and tiers come later.
     signals = get_ensemble_signals(
         X_full=X_event,
         relative_return_matrix=rel_matrix,
         ensemble_results=ensemble_results,
         X_current=X_current,
+        shrinkage_alpha=shrinkage_alpha,
     )
 
     # Normalize column names for downstream consumers (consensus, report writer)
@@ -465,182 +491,197 @@ def _generate_signals(
 # Consensus signal
 # ---------------------------------------------------------------------------
 
+def _prequential_panel(
+    ensemble_results: dict,
+    panel: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """Return the realised-only OOS panel, building it when not supplied."""
+    if panel is not None:
+        return panel
+    return build_prequential_panel(ensemble_results)
+
+
+def _benchmark_rows(panel: pd.DataFrame, ticker: str) -> pd.DataFrame:
+    """One benchmark's panel rows in date order."""
+    if panel.empty:
+        return panel
+    rows = panel[panel["benchmark"] == str(ticker)]
+    return rows.sort_values("date", kind="mergesort")
+
+
 def _reconstruct_ensemble_oos(
     ens_result,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Reconstruct the inverse-variance ensemble OOS predictions for one benchmark.
+    Reconstruct the realised-only ensemble OOS predictions for one benchmark.
 
-    Combines per-model WFO fold y_hat values using the same 1/MAE² weights
-    that ``get_ensemble_signals()`` uses for live prediction, giving a faithful
-    approximation of what the ensemble would have predicted at each historical
-    OOS observation.
+    See ``reconstruct_ensemble_oos_predictions``: prequential ``1/MAE^2``
+    weights and shrinkage, no later-fold statistics.
 
     Args:
         ens_result: EnsembleWFOResult for a single benchmark.
 
     Returns:
-        ``(y_hat_ensemble, y_true)`` — aligned arrays across all folds.
+        ``(y_hat_ensemble, y_true)`` — aligned arrays in date order.
     """
     y_hat, y_true = reconstruct_ensemble_oos_predictions(ens_result)
     return y_hat.to_numpy(dtype=float), y_true.to_numpy(dtype=float)
+
+
+def _live_calibration_score(signals: pd.DataFrame, ticker: str) -> float:
+    """Score the calibrators see live: the ensemble before shrinkage."""
+    if "raw_ensemble_prediction" in signals.columns and not pd.isna(
+        signals.at[ticker, "raw_ensemble_prediction"]
+    ):
+        return float(signals.at[ticker, "raw_ensemble_prediction"])
+    return float(signals.at[ticker, "predicted_relative_return"])
 
 
 def _calibrate_signals(
     signals: pd.DataFrame,
     ensemble_results: dict,
     target_horizon_months: int = 6,
-) -> tuple[pd.DataFrame, CalibrationResult]:
+    panel: pd.DataFrame | None = None,
+) -> tuple[pd.DataFrame, CalibrationResult, np.ndarray, np.ndarray]:
     """
-    Calibrate per-benchmark P(outperform) using per-benchmark Platt scaling.
+    Calibrate per-benchmark P(outperform) and report a prequential ECE.
 
-    Fits one Platt (logistic regression) model per ETF benchmark on that
-    benchmark's own OOS fold history.  Each benchmark's current live
-    ``predicted_relative_return`` is then passed through its own sigmoid to
-    produce a calibrated probability.
+    Live: one Platt (logistic) model per benchmark, fitted on that benchmark's
+    realised OOS history of ensemble scores ``z`` (before shrinkage) against
+    1{relative return > 0}, is applied to the current score. Per-benchmark
+    calibration keeps cross-benchmark discrimination; isotonic stays disabled
+    until each benchmark has ~500 OOS rows.
 
-    Using a single global calibration model would conflate 21 asset classes
-    with very different return distributions (e.g., GLD vs BND vs VGT), causing
-    the isotonic regression to return a single plateau value for all benchmarks.
-    Per-benchmark calibration preserves cross-benchmark discrimination.
+    Reported ECE (review 2026-09-25, F13): every historical OOS month is scored
+    by the calibrator the monthly run would have had then, fitted only on
+    rows whose 6-month target had been realised. The ECE and its date-block
+    bootstrap CI are computed on those pairs; the old ECE was measured on the
+    calibrator's own training rows.
 
-    Isotonic regression is intentionally disabled here.  With n=78–260 OOS
-    observations per benchmark (as of 2026), the isotonic step function produces
-    degenerate plateaus on out-of-sample inputs.  Isotonic will be re-evaluated
-    when each benchmark accumulates ≥500 OOS observations (roughly 2028+).
-
-    Adds a ``calibrated_prob_outperform`` column to the signals DataFrame.
-    The raw ``prob_outperform`` column is preserved for diagnostic comparison.
-
-    Args:
-        signals:               Per-benchmark signals from ``_generate_signals()``.
-        ensemble_results:      Dict of ETF ticker → EnsembleWFOResult.
-        target_horizon_months: Prediction horizon (used as block_len for ECE CI).
+    The calibrated probability also sets ``prob_outperform`` and, read in the
+    direction of each benchmark's signal, ``confidence_tier`` (F21).
 
     Returns:
-        ``(updated_signals, CalibrationResult)`` where CalibrationResult is an
-        aggregate summary (pooled ECE computed after per-benchmark calibration).
+        ``(signals, CalibrationResult, probs, outcomes)`` where ``probs`` and
+        ``outcomes`` are the pooled prequential pairs (reliability diagram).
     """
-    if signals.empty:
-        return signals, CalibrationResult(
-            n_obs=0, method="uncalibrated", ece=0.0,
-            ece_ci_lower=0.0, ece_ci_upper=1.0,
-        )
+    uncalibrated = CalibrationResult(
+        n_obs=0, method="uncalibrated", ece=0.0,
+        ece_ci_lower=0.0, ece_ci_upper=1.0,
+    )
+    empty = np.array([], dtype=float)
+    if signals.empty or "predicted_relative_return" not in signals.columns:
+        return signals, uncalibrated, empty, np.array([], dtype=int)
 
-    pred_col = "predicted_relative_return"
-    if pred_col not in signals.columns:
-        return signals, CalibrationResult(
-            n_obs=0, method="uncalibrated", ece=0.0,
-            ece_ci_lower=0.0, ece_ci_upper=1.0,
-        )
-
+    panel = _prequential_panel(ensemble_results, panel)
     signals = signals.copy()
     calibrated_probs: list[float] = []
-
-    # For aggregate ECE reporting — pool calibrated probs and outcomes post-fit
-    all_cal_probs: list[float] = []
-    all_outcomes_pool: list[int] = []
-    n_total = 0
+    tiers: list[str] = []
+    pooled_probs: list[np.ndarray] = []
+    pooled_outcomes: list[np.ndarray] = []
+    pooled_dates: list[pd.DatetimeIndex] = []
     methods_used: list[str] = []
 
     for ticker in signals.index:
-        ens_result = ensemble_results.get(str(ticker))
-        if ens_result is None:
+        rows = _benchmark_rows(panel, str(ticker))
+        signal = str(signals.at[ticker, "signal"]) if "signal" in signals.columns else "NEUTRAL"
+        if rows.empty:
             calibrated_probs.append(0.5)
+            tiers.append(confidence_tier_from_probability(0.5, signal))
             continue
 
-        y_hat_bm, y_true_bm = _reconstruct_ensemble_oos(ens_result)
-        if len(y_hat_bm) == 0:
-            calibrated_probs.append(0.5)
-            continue
+        scores = rows["z"].to_numpy(dtype=float)
+        outcomes = (rows["y_true"].to_numpy(dtype=float) > 0).astype(int)
+        dates = pd.DatetimeIndex(rows["date"])
 
-        # Platt-only per benchmark (isotonic disabled — see docstring)
+        # Live calibrator: every OOS row is realised by the as-of date.
         bm_model, bm_result = fit_calibration_model(
-            y_hat_bm,
-            (y_true_bm > 0).astype(int),
+            scores,
+            outcomes,
             min_obs_platt=config.CALIBRATION_MIN_OBS_PLATT,
             min_obs_isotonic=10_000,   # effectively disables isotonic
             n_bins=config.CALIBRATION_N_BINS,
             block_len=target_horizon_months,
-            n_bootstrap=max(50, config.CALIBRATION_BOOTSTRAP_REPS // 10),
+            n_bootstrap=0,
         )
-
-        current_pred = float(signals.at[ticker, pred_col])
-        cal_prob = calibrate_prediction(bm_model, current_pred)
+        cal_prob = calibrate_prediction(bm_model, _live_calibration_score(signals, str(ticker)))
         calibrated_probs.append(cal_prob)
+        tiers.append(confidence_tier_from_probability(cal_prob, signal))
         methods_used.append(bm_result.method)
-        n_total += bm_result.n_obs
 
-        # Collect calibrated training probs for aggregate ECE
-        if bm_model is not None and len(y_hat_bm) >= config.CALIBRATION_MIN_OBS_PLATT:
-            from src.models.calibration import calibrate_prediction as _cal
-            train_cal_probs = [_cal(bm_model, float(y)) for y in y_hat_bm]
-            all_cal_probs.extend(train_cal_probs)
-            all_outcomes_pool.extend((y_true_bm > 0).astype(int).tolist())
+        # Reported calibration: realised-only calibrators, one per OOS month.
+        probs = prequential_platt_probabilities(
+            scores,
+            outcomes,
+            dates,
+            horizon_months=target_horizon_months,
+            min_obs=config.CALIBRATION_MIN_OBS_PLATT,
+        )
+        scored = np.isfinite(probs)
+        pooled_probs.append(probs[scored])
+        pooled_outcomes.append(outcomes[scored])
+        pooled_dates.append(dates[scored])
 
     signals["calibrated_prob_outperform"] = calibrated_probs
+    signals["prob_outperform"] = calibrated_probs
+    signals["confidence_tier"] = tiers
 
-    # ------------------------------------------------------------------
-    # Aggregate CalibrationResult for reporting
-    # ------------------------------------------------------------------
-    from src.models.calibration import compute_ece, block_bootstrap_ece_ci
-
-    if len(all_cal_probs) >= 4:
-        agg_probs = np.array(all_cal_probs, dtype=float)
-        agg_outcomes = np.array(all_outcomes_pool, dtype=int)
-        agg_ece = compute_ece(agg_probs, agg_outcomes, n_bins=config.CALIBRATION_N_BINS)
+    probs_arr = np.concatenate(pooled_probs) if pooled_probs else empty
+    outcomes_arr = (
+        np.concatenate(pooled_outcomes).astype(int) if pooled_outcomes else np.array([], dtype=int)
+    )
+    if len(probs_arr) >= 4:
+        dates_arr = pd.DatetimeIndex(np.concatenate([d.to_numpy() for d in pooled_dates]))
+        agg_ece = compute_ece(probs_arr, outcomes_arr, n_bins=config.CALIBRATION_N_BINS)
         ci_lo, ci_hi = block_bootstrap_ece_ci(
-            agg_probs, agg_outcomes,
+            probs_arr, outcomes_arr,
             n_bins=config.CALIBRATION_N_BINS,
             block_len=target_horizon_months,
             n_bootstrap=config.CALIBRATION_BOOTSTRAP_REPS,
+            dates=dates_arr,
         )
         dominant_method = "platt" if "platt" in methods_used else "uncalibrated"
+        result = CalibrationResult(
+            n_obs=int(len(probs_arr)),
+            method=dominant_method,
+            ece=agg_ece,
+            ece_ci_lower=ci_lo,
+            ece_ci_upper=ci_hi,
+        )
     else:
-        agg_ece, ci_lo, ci_hi = 0.0, 0.0, 1.0
-        dominant_method = "uncalibrated"
+        result = uncalibrated
+        probs_arr = empty
+        outcomes_arr = np.array([], dtype=int)
 
-    # Expose pooled arrays for the reliability diagram (P2.7)
-    cal_probs_arr = np.array(all_cal_probs, dtype=float) if len(all_cal_probs) >= 4 else np.array([], dtype=float)
-    cal_outcomes_arr = np.array(all_outcomes_pool, dtype=int) if len(all_outcomes_pool) >= 4 else np.array([], dtype=int)
-
-    return signals, CalibrationResult(
-        n_obs=n_total,
-        method=dominant_method,
-        ece=agg_ece,
-        ece_ci_lower=ci_lo,
-        ece_ci_upper=ci_hi,
-    ), cal_probs_arr, cal_outcomes_arr
+    return signals, result, probs_arr, outcomes_arr
 
 
 def _compute_conformal_intervals(
     signals: pd.DataFrame,
     ensemble_results: dict,
+    panel: pd.DataFrame | None = None,
+    target_horizon_months: int = 6,
 ) -> pd.DataFrame:
     """
-    Compute per-benchmark conformal prediction intervals for the current ensemble predictions.
+    Compute per-benchmark conformal prediction intervals for the current predictions.
 
-    Uses ACI (Adaptive Conformal Inference) by default, falling back to split conformal
-    when insufficient calibration data is available (n < 4).
+    The live interval is calibrated on every realised OOS residual of the
+    (prequential) ensemble prediction. Uses ACI by default, falling back to
+    split conformal when fewer than 4 residuals are available.
+
+    Reported coverage is trailing and prequential (review 2026-09-25, F13):
+    each of the last 12 OOS points is scored with an interval calibrated only
+    on residuals whose 6-month target had been realised by that point. The
+    in-sample share of calibration residuals inside the interval is no longer
+    reported.
 
     Coverage, method, and gamma are read from config constants:
       CONFORMAL_COVERAGE  (default 0.80 = 80% CI)
       CONFORMAL_METHOD    ("aci" or "split")
       CONFORMAL_ACI_GAMMA (default 0.05)
 
-    Adds the following columns to the signals DataFrame:
-      ci_lower              Lower bound of the prediction interval.
-      ci_upper              Upper bound of the prediction interval.
-      ci_width              Total CI width (upper − lower).
-      ci_empirical_coverage Fraction of calibration residuals inside the interval.
-      ci_n_calibration      Number of calibration residuals used.
-
-    Args:
-        signals:          Per-benchmark signals from ``_generate_signals()``.
-        ensemble_results: Dict of ETF ticker → EnsembleWFOResult.
-
-    Returns:
-        Updated signals DataFrame with CI columns added.
+    Adds the columns ci_lower, ci_upper, ci_width, ci_n_calibration,
+    ci_trailing_empirical_coverage, ci_trailing_coverage_gap, ci_trailing_n.
     """
     if signals.empty:
         return signals
@@ -649,45 +690,29 @@ def _compute_conformal_intervals(
     if pred_col not in signals.columns:
         return signals
 
+    panel = _prequential_panel(ensemble_results, panel)
     signals = signals.copy()
-    ci_lowers: list[float] = []
-    ci_uppers: list[float] = []
-    ci_widths: list[float] = []
-    ci_empirical: list[float] = []
-    ci_n_cal: list[int] = []
-    ci_trailing_empirical: list[float] = []
-    ci_trailing_gap: list[float] = []
-    ci_trailing_n: list[int] = []
+    columns: dict[str, list[float | int]] = {
+        "ci_lower": [],
+        "ci_upper": [],
+        "ci_width": [],
+        "ci_n_calibration": [],
+        "ci_trailing_empirical_coverage": [],
+        "ci_trailing_coverage_gap": [],
+        "ci_trailing_n": [],
+    }
 
     for ticker in signals.index:
-        ens_result = ensemble_results.get(str(ticker))
-        y_hat_current = float(signals.at[ticker, pred_col])
-
-        if ens_result is None:
-            ci_lowers.append(float("nan"))
-            ci_uppers.append(float("nan"))
-            ci_widths.append(float("nan"))
-            ci_empirical.append(float("nan"))
-            ci_n_cal.append(0)
-            ci_trailing_empirical.append(float("nan"))
-            ci_trailing_gap.append(float("nan"))
-            ci_trailing_n.append(0)
+        rows = _benchmark_rows(panel, str(ticker))
+        if rows.empty:
+            for key in columns:
+                columns[key].append(0 if key in {"ci_n_calibration", "ci_trailing_n"} else float("nan"))
             continue
 
-        y_hat_oos, y_true_oos = _reconstruct_ensemble_oos(ens_result)
-        if len(y_hat_oos) < 1:
-            ci_lowers.append(float("nan"))
-            ci_uppers.append(float("nan"))
-            ci_widths.append(float("nan"))
-            ci_empirical.append(float("nan"))
-            ci_n_cal.append(0)
-            ci_trailing_empirical.append(float("nan"))
-            ci_trailing_gap.append(float("nan"))
-            ci_trailing_n.append(0)
-            continue
-
+        y_hat_oos = rows["y_hat"].to_numpy(dtype=float)
+        y_true_oos = rows["y_true"].to_numpy(dtype=float)
         conf_result = conformal_interval_from_ensemble(
-            y_hat_current=y_hat_current,
+            y_hat_current=float(signals.at[ticker, pred_col]),
             y_hat_oos=y_hat_oos,
             y_true_oos=y_true_oos,
             coverage=config.CONFORMAL_COVERAGE,
@@ -701,25 +726,19 @@ def _compute_conformal_intervals(
             method=config.CONFORMAL_METHOD,
             gamma=config.CONFORMAL_ACI_GAMMA,
             trailing_window=12,
+            dates=pd.DatetimeIndex(rows["date"]),
+            horizon_months=target_horizon_months,
         )
-        ci_lowers.append(conf_result.lower)
-        ci_uppers.append(conf_result.upper)
-        ci_widths.append(conf_result.width)
-        ci_empirical.append(conf_result.empirical_coverage)
-        ci_n_cal.append(conf_result.n_calibration)
-        ci_trailing_empirical.append(coverage_backtest.trailing_empirical_coverage)
-        ci_trailing_gap.append(coverage_backtest.trailing_coverage_gap)
-        ci_trailing_n.append(coverage_backtest.trailing_n)
+        columns["ci_lower"].append(conf_result.lower)
+        columns["ci_upper"].append(conf_result.upper)
+        columns["ci_width"].append(conf_result.width)
+        columns["ci_n_calibration"].append(conf_result.n_calibration)
+        columns["ci_trailing_empirical_coverage"].append(coverage_backtest.trailing_empirical_coverage)
+        columns["ci_trailing_coverage_gap"].append(coverage_backtest.trailing_coverage_gap)
+        columns["ci_trailing_n"].append(coverage_backtest.trailing_n)
 
-    signals["ci_lower"] = ci_lowers
-    signals["ci_upper"] = ci_uppers
-    signals["ci_width"] = ci_widths
-    signals["ci_empirical_coverage"] = ci_empirical
-    signals["ci_n_calibration"] = ci_n_cal
-    signals["ci_trailing_empirical_coverage"] = ci_trailing_empirical
-    signals["ci_trailing_coverage_gap"] = ci_trailing_gap
-    signals["ci_trailing_n"] = ci_trailing_n
-
+    for key, values in columns.items():
+        signals[key] = values
     return signals
 
 
@@ -783,6 +802,12 @@ def _record_model_health_snapshot(
 ) -> ModelDriftSummary | None:
     """Persist the monthly model-health snapshot and return the latest drift summary.
 
+    Every stored value is look-ahead-free (review 2026-09-25, WP7): OOS R^2
+    against the prevailing mean of realised targets, prequential ECE and
+    trailing conformal coverage. Rows are tagged with
+    ``config.MODEL_HEALTH_METRICS_VERSION``, and the drift summary only uses
+    rows of that version.
+
     With ``dry_run`` the snapshot is merged into the stored history in memory
     only, so the drift summary matches a real run without writing to the DB.
     """
@@ -795,6 +820,7 @@ def _record_model_health_snapshot(
     records = [
         {
             "month_end": month_end,
+            "metrics_version": config.MODEL_HEALTH_METRICS_VERSION,
             "aggregate_oos_r2": float(aggregate_health["oos_r2"]),
             "aggregate_nw_ic": float(aggregate_health["nw_ic"]),
             "aggregate_hit_rate": float(aggregate_health["agg_hit"]),
@@ -838,6 +864,10 @@ def _record_model_health_snapshot(
     else:
         db_client.upsert_model_performance_log(conn, records)
         history = db_client.get_model_performance_log(conn)
+    if history.empty:
+        return None
+    # A back-dated run must not see snapshots logged after its own month.
+    history = history.loc[history.index <= pd.Timestamp(month_end)]
     if history.empty:
         return None
     return summarize_latest_model_drift(history.reset_index())
@@ -921,13 +951,8 @@ def _consensus_signal(
     else:
         consensus = "NEUTRAL"
 
-    # Composite tier mirrors get_confidence_tier thresholds
-    if mean_prob >= 0.70 or mean_prob <= 0.30:
-        confidence_tier = "HIGH"
-    elif mean_prob >= 0.60 or mean_prob <= 0.40:
-        confidence_tier = "MODERATE"
-    else:
-        confidence_tier = "LOW"
+    # Calibrated P(outperform) read in the direction of the consensus (F21).
+    confidence_tier = confidence_tier_from_probability(mean_prob, consensus)
 
     return consensus, mean_pred, mean_ic, mean_hr, mean_prob, confidence_tier
 
@@ -937,9 +962,16 @@ def _build_v74_shadow_consensus(
     aggregate_health: dict | None,
     representative_cpcv: CPCVResult | None = None,
 ) -> pd.DataFrame | None:
-    """Build the live-vs-shadow consensus comparison table."""
+    """Build the live-vs-shadow consensus comparison table.
+
+    Each variant keeps its own weighted direction and mean prediction, but the
+    recommendation mode of every variant is gated on the equal-weight mean IC
+    (review 2026-09-25, F13): the quality weights are fitted on the same OOS
+    record, so a quality-weighted IC is inflated.
+    """
     if signals.empty or aggregate_health is None:
         return None
+    gate_ic = _equal_weight_mean(signals, "ic")
 
     benchmark_quality_df = aggregate_health.get("benchmark_quality_df")
     if benchmark_quality_df is None:
@@ -964,7 +996,7 @@ def _build_v74_shadow_consensus(
         recommendation_mode = _determine_recommendation_mode(
             str(row["consensus"]),
             float(row["mean_predicted_return"]),
-            float(row["mean_ic"]),
+            gate_ic,
             float(row["mean_hit_rate"]),
             aggregate_health,
             representative_cpcv,
@@ -978,12 +1010,36 @@ def _build_v74_shadow_consensus(
     return pd.DataFrame(enriched_rows)
 
 
+def _live_variant_mean_ic(consensus_shadow_df: pd.DataFrame | None) -> float | None:
+    """Mean IC of the live (quality-weighted) consensus variant, for reporting."""
+    if consensus_shadow_df is None or consensus_shadow_df.empty:
+        return None
+    live_rows = consensus_shadow_df[consensus_shadow_df["is_live_path"]]
+    if live_rows.empty:
+        return None
+    return float(live_rows.iloc[0]["mean_ic"])
+
+
+def _equal_weight_mean(signals: pd.DataFrame, column: str) -> float:
+    """Equal-weight mean of one per-benchmark column (NaN when absent)."""
+    if signals.empty or column not in signals.columns:
+        return float("nan")
+    return float(signals[column].astype(float).mean())
+
+
 def _resolve_live_consensus(
     signals: pd.DataFrame,
     aggregate_health: dict | None,
     representative_cpcv: CPCVResult | None = None,
 ) -> tuple[tuple[str, float, float, float, float, str], pd.DataFrame | None]:
-    """Resolve the promoted live consensus tuple and the comparison table."""
+    """Resolve the promoted live consensus tuple and the comparison table.
+
+    The tuple is (consensus, mean_predicted, mean_ic, mean_hit_rate,
+    mean_prob_outperform, confidence_tier). Direction, prediction, probability
+    and tier come from the live (quality-weighted) variant; ``mean_ic`` and
+    ``mean_hit_rate`` are equal-weight, because the IC is gated and quality
+    weights inflate it (review 2026-09-25, F13).
+    """
     default = _consensus_signal(signals)
     consensus_shadow_df = _build_v74_shadow_consensus(
         signals,
@@ -1002,8 +1058,8 @@ def _resolve_live_consensus(
         (
             str(row["consensus"]),
             float(row["mean_predicted_return"]),
-            float(row["mean_ic"]),
-            float(row["mean_hit_rate"]),
+            _equal_weight_mean(signals, "ic"),
+            _equal_weight_mean(signals, "hit_rate"),
             float(row["mean_prob_outperform"]),
             str(row["confidence_tier"]),
         ),
@@ -1011,37 +1067,54 @@ def _resolve_live_consensus(
     )
 
 
+def _directional_flag(p_value: float) -> str:
+    """✅ / ⚠️ / ❌ for a one-sided Pesaran-Timmermann p-value."""
+    if p_value is None or not np.isfinite(p_value):
+        return "❌"
+    if p_value < config.DIAG_MAX_DIRECTIONAL_PVALUE:
+        return "✅"
+    if p_value < config.DIAG_MARGINAL_DIRECTIONAL_PVALUE:
+        return "⚠️"
+    return "❌"
+
+
 def _build_benchmark_quality_frame(
     ensemble_results: dict,
     target_horizon_months: int = 6,
+    panel: pd.DataFrame | None = None,
 ) -> tuple[pd.Series, pd.Series, pd.DataFrame]:
-    """Build ensemble-level pooled and per-benchmark OOS diagnostics."""
-    predicted_parts: list[pd.Series] = []
-    realized_parts: list[pd.Series] = []
-    rows: list[dict[str, float | int | str]] = []
+    """Build pooled and per-benchmark OOS diagnostics from the prequential panel.
 
-    for benchmark, ens_result in ensemble_results.items():
-        y_hat, y_true = reconstruct_ensemble_oos_predictions(ens_result)
-        if len(y_true) < 2:
-            continue
-
-        y_hat = y_hat.sort_index()
-        y_true = y_true.sort_index()
-        summary = summarize_prediction_diagnostics(
-            y_hat,
-            y_true,
-            target_horizon_months=target_horizon_months,
+    Predictions use realised-only ensemble weights and shrinkage; OOS R^2 is
+    scored against each benchmark's prevailing mean of realised targets,
+    training history included (review 2026-09-25, F04 and F13).
+    """
+    panel = _prequential_panel(ensemble_results, panel)
+    if panel.empty:
+        return (
+            pd.Series(dtype=float, name="y_hat"),
+            pd.Series(dtype=float, name="y_true"),
+            pd.DataFrame(),
         )
-        predicted_parts.append(y_hat)
-        realized_parts.append(y_true)
+
+    _, per_benchmark = summarize_panel_diagnostics(panel, target_horizon_months=target_horizon_months)
+    counts = panel.groupby("benchmark")["y_true"].count()
+    per_benchmark = per_benchmark[
+        per_benchmark["benchmark"].map(counts).fillna(0) >= 2
+    ].copy()
+    rows: list[dict[str, float | int | str]] = []
+    for summary in per_benchmark.to_dict("records"):
         rows.append(
             {
-                "benchmark": benchmark,
+                "benchmark": str(summary["benchmark"]),
                 "n_obs": int(summary["n_obs"]),
                 "oos_r2": float(summary["oos_r2"]),
                 "nw_ic": float(summary["nw_ic"]),
                 "nw_p_value": float(summary["nw_p_value"]),
                 "hit_rate": float(summary["hit_rate"]),
+                "base_rate": float(summary["base_rate"]),
+                "hit_rate_excess": float(summary["hit_rate_excess"]),
+                "pt_p_value": float(summary["pt_p_value"]),
                 "cw_t_stat": float(summary["cw_t_stat"]),
                 "cw_p_value": float(summary["cw_p_value"]),
                 "cw_mean_adjusted_differential": float(
@@ -1049,17 +1122,13 @@ def _build_benchmark_quality_frame(
                 ),
                 "r2_flag": _flag(float(summary["oos_r2"]), config.DIAG_MIN_OOS_R2, 0.005),
                 "ic_flag": _flag(float(summary["nw_ic"]), config.DIAG_MIN_IC, 0.03),
-                "hr_flag": _flag(float(summary["hit_rate"]), config.DIAG_MIN_HIT_RATE, 0.52),
+                "hr_flag": _directional_flag(float(summary["pt_p_value"])),
             }
         )
 
-    if predicted_parts:
-        agg_predicted = pd.concat(predicted_parts).sort_index()
-        agg_realized = pd.concat(realized_parts).sort_index()
-        agg_predicted, agg_realized = agg_predicted.align(agg_realized, join="inner")
-    else:
-        agg_predicted = pd.Series(dtype=float, name="y_hat")
-        agg_realized = pd.Series(dtype=float, name="y_true")
+    dates = pd.DatetimeIndex(panel["date"])
+    agg_predicted = pd.Series(panel["y_hat"].to_numpy(dtype=float), index=dates, name="y_hat")
+    agg_realized = pd.Series(panel["y_true"].to_numpy(dtype=float), index=dates, name="y_true")
 
     benchmark_quality_df = pd.DataFrame(rows)
     if not benchmark_quality_df.empty:
@@ -1074,43 +1143,62 @@ def _build_benchmark_quality_frame(
 def _compute_aggregate_health(
     ensemble_results: dict,
     target_horizon_months: int = 6,
+    panel: pd.DataFrame | None = None,
 ) -> dict | None:
-    """Compute the aggregate health metrics shared by recommendation and diagnostics."""
+    """Compute the aggregate health metrics shared by recommendation and diagnostics.
+
+    All metrics come from the prequential panel (review 2026-09-25, WP7):
+    pooled OOS R^2 against each benchmark's prevailing mean; pooled IC with a
+    Driscoll-Kraay p-value clustered by date (``nw_pval``); hit rate against
+    the base rate with the Pesaran-Timmermann test the gate uses.
+    """
+    panel = _prequential_panel(ensemble_results, panel)
     agg_predicted, agg_realized, benchmark_quality_df = _build_benchmark_quality_frame(
         ensemble_results=ensemble_results,
         target_horizon_months=target_horizon_months,
+        panel=panel,
     )
     if len(agg_realized) < 4:
         return None
 
-    summary = summarize_prediction_diagnostics(
-        agg_predicted,
-        agg_realized,
-        target_horizon_months=target_horizon_months,
-    )
+    summary, _ = summarize_panel_diagnostics(panel, target_horizon_months=target_horizon_months)
     nw_lags = target_horizon_months - 1
     oos_r2 = float(summary["oos_r2"])
     nw_ic = float(summary["nw_ic"])
     nw_pval = float(summary["nw_p_value"])
     agg_hit = float(summary["hit_rate"])
+    pt_p_value = float(summary["pt_p_value"])
 
     return {
         "n_agg": int(summary["n_obs"]),
+        "n_dates": int(summary["n_dates"]),
         "nw_lags": nw_lags,
         "oos_r2": oos_r2,
         "nw_ic": nw_ic,
         "nw_pval": nw_pval,
+        "ic_p_value_method": IC_P_VALUE_METHOD,
         "agg_hit": agg_hit,
+        "n_calls": int(summary["n_calls"]),
+        "base_rate": float(summary["base_rate"]),
+        "constant_rule_hit_rate": float(summary["constant_rule_hit_rate"]),
+        "hit_rate_excess": float(summary["hit_rate_excess"]),
+        "pt_stat": float(summary["pt_stat"]),
+        "pt_p_value": pt_p_value,
         "cw_t_stat": float(summary["cw_t_stat"]),
         "cw_p_value": float(summary["cw_p_value"]),
         "cw_mean_adjusted_differential": float(summary["cw_mean_adjusted_differential"]),
         "r2_flag": _flag(oos_r2, config.DIAG_MIN_OOS_R2, 0.005),
         "ic_flag": _flag(nw_ic, config.DIAG_MIN_IC, 0.03),
-        "hr_flag": _flag(agg_hit, config.DIAG_MIN_HIT_RATE, 0.52),
+        "hr_flag": _directional_flag(pt_p_value),
         "per_benchmark_rows": benchmark_quality_df.to_dict("records"),
         "benchmark_quality_df": benchmark_quality_df,
         "agg_predicted": agg_predicted,
+        "agg_score": pd.Series(
+            panel["z"].to_numpy(dtype=float), index=pd.DatetimeIndex(panel["date"]), name="z"
+        ),
         "agg_realized": agg_realized,
+        "panel": panel,
+        "shrinkage_alpha_last": float(panel["alpha"].iloc[-1]) if not panel.empty else float("nan"),
     }
 
 
@@ -1435,11 +1523,12 @@ def _build_shadow_baseline_summary(
             }
         )
         prediction_frames.append(
-            pd.DataFrame(
-                {
-                    "y_hat": pred_series.values,
-                    "y_true": realized.values,
-                }
+            honest_prediction_frame(
+                benchmark,
+                pred_series,
+                realized,
+                target_history=y_aligned,
+                target_horizon_months=target_horizon_months,
             )
         )
 
@@ -1650,6 +1739,7 @@ def _build_vest_decision_lines(
 
 def _compute_policy_summary(
     ensemble_results: dict,
+    panel: pd.DataFrame | None = None,
 ) -> dict[str, PolicySummary] | None:
     """Compute OOS decision-policy summaries from the monthly ensemble.
 
@@ -1660,7 +1750,7 @@ def _compute_policy_summary(
     Returns a dict of ``{policy_name: PolicySummary}`` or ``None`` if fewer
     than 4 OOS observations are available.
     """
-    predicted, realized, _ = _build_benchmark_quality_frame(ensemble_results)
+    predicted, realized, _ = _build_benchmark_quality_frame(ensemble_results, panel=panel)
     if len(realized) < 4:
         return None
 
@@ -1865,8 +1955,6 @@ def _write_recommendation_md(
         f"| Recommended Sell % | **{sell_pct:.0%}** |",
         f"| Predicted 6M Relative Return | {mean_predicted:+.2%} |",
     ]
-    if has_confidence:
-        lines.append(f"| P(Outperform, raw) | {mean_prob_outperform:.1%} |")
     if has_calibrated:
         lines.append(f"| P(Outperform, calibrated) | {mean_cal_prob:.1%} |")
 
@@ -1882,30 +1970,60 @@ def _write_recommendation_md(
                 f"| {ci_lo_med:+.2%} to {ci_hi_med:+.2%} |"
             )
 
+    directional_row = "| Directional skill (hit rate vs base rate) | n/a |"
+    if aggregate_health is not None:
+        pt_p = float(aggregate_health.get("pt_p_value", float("nan")))
+        hit = float(aggregate_health.get("agg_hit", float("nan")))
+        base = float(aggregate_health.get("constant_rule_hit_rate", float("nan")))
+        pt_label = f"p = {pt_p:.3f}" if math.isfinite(pt_p) else "undefined"
+        base_label = f"{hit:.1%} vs {base:.1%}; " if math.isfinite(hit) and math.isfinite(base) else ""
+        directional_row = (
+            "| Directional skill (hit rate vs base rate) | "
+            f"{base_label}Pesaran–Timmermann {pt_label} |"
+        )
     lines += [
-        f"| Mean IC (across benchmarks) | {mean_ic:.4f} |",
-        f"| Mean Hit Rate | {mean_hr:.1%} |",
-        f"| Aggregate OOS R^2 | {aggregate_health['oos_r2']:.2%} |" if aggregate_health is not None else "| Aggregate OOS R^2 | n/a |",
+        f"| Mean IC (equal-weight across benchmarks) | {mean_ic:.4f} |",
+        f"| Mean Hit Rate (equal-weight) | {mean_hr:.1%} |",
+        directional_row,
+        (
+            f"| Aggregate OOS R^2 (vs prevailing mean) | {aggregate_health['oos_r2']:.2%} |"
+            if aggregate_health is not None
+            else "| Aggregate OOS R^2 (vs prevailing mean) | n/a |"
+        ),
         "",
         "> **Note:** The sell % recommendation is used only at actual vesting events",
         "> (January and July).  Monthly reports are monitoring tools, not trade signals.",
     ]
+    shrinkage_values = (
+        signals["shrinkage_alpha"].dropna()
+        if "shrinkage_alpha" in signals.columns and not signals.empty
+        else pd.Series(dtype=float)
+    )
+    if not shrinkage_values.empty:
+        lines += [
+            ">",
+            f"> **Shrinkage:** the ensemble forecast is scaled by α = {float(shrinkage_values.iloc[0]):.2f}, "
+            "the v38 grid value with the lowest squared error over the realised OOS record, re-chosen "
+            "every month. Before review 2026-09-25 it was fixed at 0.50, a value chosen on the same "
+            "history it was then scored on.",
+        ]
 
     # Calibration status note
     if cal_result is None or cal_result.method == "uncalibrated":
         lines += [
             ">",
-            "> **Calibration:** Phase 1 — P(outperform) uses uncalibrated BayesianRidge posteriors.",
+            "> **Calibration:** Phase 1 — too few realised OOS observations; P(outperform) is 50%.",
             f"> Platt scaling activates at n ≥ {config.CALIBRATION_MIN_OBS_PLATT} OOS observations.",
-        ] 
+        ]
     else:
         method_label = "Platt scaling" if cal_result.method == "platt" else "Platt → Isotonic"
         lines += [
             ">",
-            f"> **Calibration:** Phase 2 — {method_label} active "
-            f"(n={cal_result.n_obs:,} OOS obs).  "
-            f"ECE = {cal_result.ece:.1%} "
-            f"[95% CI: {cal_result.ece_ci_lower:.1%}–{cal_result.ece_ci_upper:.1%}].",
+            f"> **Calibration:** Phase 2 — {method_label} per benchmark.  "
+            f"Prequential ECE = {cal_result.ece:.1%} "
+            f"[95% CI: {cal_result.ece_ci_lower:.1%}–{cal_result.ece_ci_upper:.1%}] over "
+            f"{cal_result.n_obs:,} OOS benchmark-months, each scored by a calibrator fitted only on "
+            "outcomes known at the time.",
         ]
 
     if (
@@ -2211,13 +2329,13 @@ def _write_recommendation_md(
 
     if has_confidence and show_cal_col and show_ci_col:
         lines += [
-            "| Benchmark | Benchmark Role | Description | Predicted Return | CI Lower | CI Upper | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |",
-            "|-----------|----------------|-------------|----------------|----------|----------|----|----------|--------|--------|------------|--------|",
+            "| Benchmark | Benchmark Role | Description | Predicted Return | CI Lower | CI Upper | IC | Hit Rate | P(cal) | Confidence | Signal |",
+            "|-----------|----------------|-------------|----------------|----------|----------|----|----------|--------|------------|--------|",
         ]
     elif has_confidence and show_cal_col:
         lines += [
-            "| Benchmark | Benchmark Role | Description | Predicted Return | IC | Hit Rate | P(raw) | P(cal) | Confidence | Signal |",
-            "|-----------|----------------|-------------|----------------|----|----------|--------|--------|------------|--------|",
+            "| Benchmark | Benchmark Role | Description | Predicted Return | IC | Hit Rate | P(cal) | Confidence | Signal |",
+            "|-----------|----------------|-------------|----------------|----|----------|--------|------------|--------|",
         ]
     elif has_confidence and show_ci_col:
         lines += [
@@ -2246,15 +2364,13 @@ def _write_recommendation_md(
             ci_lo_str = f"{row['ci_lower']:+.2%}" if show_ci_col and not pd.isna(row.get("ci_lower")) else "n/a"
             ci_hi_str = f"{row['ci_upper']:+.2%}" if show_ci_col and not pd.isna(row.get("ci_upper")) else "n/a"
             if has_confidence and show_cal_col and show_ci_col:
-                prob_raw = f"{row['prob_outperform']:.1%}" if not pd.isna(row.get("prob_outperform")) else "n/a"
                 prob_cal = f"{row['calibrated_prob_outperform']:.1%}" if not pd.isna(row.get("calibrated_prob_outperform")) else "n/a"
                 tier = row.get("confidence_tier", "n/a")
-                lines.append(f"| {ticker} | {role} | {desc} | {pred} | {ci_lo_str} | {ci_hi_str} | {ic_val} | {hr_val} | {prob_raw} | {prob_cal} | {tier} | {sig} |")
+                lines.append(f"| {ticker} | {role} | {desc} | {pred} | {ci_lo_str} | {ci_hi_str} | {ic_val} | {hr_val} | {prob_cal} | {tier} | {sig} |")
             elif has_confidence and show_cal_col:
-                prob_raw = f"{row['prob_outperform']:.1%}" if not pd.isna(row.get("prob_outperform")) else "n/a"
                 prob_cal = f"{row['calibrated_prob_outperform']:.1%}" if not pd.isna(row.get("calibrated_prob_outperform")) else "n/a"
                 tier = row.get("confidence_tier", "n/a")
-                lines.append(f"| {ticker} | {role} | {desc} | {pred} | {ic_val} | {hr_val} | {prob_raw} | {prob_cal} | {tier} | {sig} |")
+                lines.append(f"| {ticker} | {role} | {desc} | {pred} | {ic_val} | {hr_val} | {prob_cal} | {tier} | {sig} |")
             elif has_confidence and show_ci_col:
                 prob = f"{row['prob_outperform']:.1%}" if not pd.isna(row.get("prob_outperform")) else "n/a"
                 tier = row.get("confidence_tier", "n/a")
@@ -2599,16 +2715,23 @@ def _write_diagnostic_report(
     benchmark_quality_df: pd.DataFrame | None = None,
     shadow_gate_overlay: dict[str, object] | None = None,
     classifier_monitoring_summary: dict[str, object] | None = None,
+    aggregate_health: dict | None = None,
+    shrinkage_alpha: float | None = None,
+    panel: pd.DataFrame | None = None,
 ) -> None:
     """
     Write diagnostic.md alongside recommendation.md.
 
-    Aggregates OOS predictions and realized returns across all benchmarks from
-    the deployed inverse-variance ensemble, then computes:
+    Aggregates the realised-only (prequential) ensemble OOS record across all
+    benchmarks (review 2026-09-25, WP7), then reports:
 
-    - Campbell-Thompson OOS R² (model vs. naive historical mean)
-    - Newey-West HAC-adjusted Spearman IC (accounts for overlapping return windows)
-    - Clark-West adjusted predictive-value diagnostics
+    - Campbell-Thompson OOS R² against each benchmark's prevailing mean of
+      the targets realised by each forecast date
+    - pooled Spearman IC with a Driscoll-Kraay p-value clustered by date
+    - hit rate against the base rate, with the Pesaran-Timmermann test
+    - Clark-West against the same naive benchmark
+    - the representative CPCV as a diagnostic that does not gate
+    - prequential ECE and trailing conformal coverage
     - Per-benchmark health table from ensemble OOS predictions
 
     Args:
@@ -2620,23 +2743,35 @@ def _write_diagnostic_report(
         obs_feature_report:     Output of ``compute_obs_feature_ratio()`` for the
                                 feature matrix used in this monthly run.
         representative_cpcv:    Optional representative CPCV diagnostic
-                                (currently VTI + elasticnet).
+                                (VOO + ridge).
+        aggregate_health:       ``_compute_aggregate_health`` output; computed
+                                here when omitted.
+        shrinkage_alpha:        Live prequential shrinkage alpha.
+        panel:                  Prequential OOS panel; built when omitted.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / "diagnostic.md"
 
-    nw_lags = target_horizon_months - 1  # Newey-West overlap lags (5 for 6M)
-    agg_predicted, agg_realized, computed_quality_df = _build_benchmark_quality_frame(
-        ensemble_results=ensemble_results,
-        target_horizon_months=target_horizon_months,
-    )
+    nw_lags = target_horizon_months - 1  # HAC lags over months (5 for 6M)
+    if aggregate_health is None:
+        aggregate_health = _compute_aggregate_health(
+            ensemble_results,
+            target_horizon_months=target_horizon_months,
+            panel=panel,
+        )
+    if aggregate_health is not None:
+        agg_realized = aggregate_health["agg_realized"]
+        computed_quality_df = aggregate_health["benchmark_quality_df"]
+    else:
+        agg_realized = pd.Series(dtype=float)
+        computed_quality_df = pd.DataFrame()
     if benchmark_quality_df is None:
         benchmark_quality_df = computed_quality_df
 
     # ------------------------------------------------------------------
     # Aggregate metrics
     # ------------------------------------------------------------------
-    if len(agg_realized) < 4:
+    if aggregate_health is None or len(agg_realized) < 4:
         # Not enough data — write a minimal report
         lines = [
             f"# PGR Diagnostic Report — {as_of.strftime('%B %Y')}",
@@ -2650,28 +2785,24 @@ def _write_diagnostic_report(
         print(f"  Wrote {path} (insufficient data)")
         return
 
-    aggregate_summary = summarize_prediction_diagnostics(
-        agg_predicted,
-        agg_realized,
-        target_horizon_months=target_horizon_months,
-    )
-    oos_r2 = float(aggregate_summary["oos_r2"])
-    nw_ic = float(aggregate_summary["nw_ic"])
-    nw_pval = float(aggregate_summary["nw_p_value"])
-    agg_hit = float(aggregate_summary["hit_rate"])
-    cw_t_stat = float(aggregate_summary["cw_t_stat"])
-    cw_p_value = float(aggregate_summary["cw_p_value"])
-    n_agg = int(aggregate_summary["n_obs"])
+    oos_r2 = float(aggregate_health["oos_r2"])
+    nw_ic = float(aggregate_health["nw_ic"])
+    nw_pval = float(aggregate_health["nw_pval"])
+    agg_hit = float(aggregate_health["agg_hit"])
+    base_rate = float(aggregate_health["base_rate"])
+    constant_rule = float(aggregate_health["constant_rule_hit_rate"])
+    hit_excess = float(aggregate_health["hit_rate_excess"])
+    pt_p_value = float(aggregate_health["pt_p_value"])
+    cw_t_stat = float(aggregate_health["cw_t_stat"])
+    cw_p_value = float(aggregate_health["cw_p_value"])
+    n_agg = int(aggregate_health["n_agg"])
+    n_calls = int(aggregate_health.get("n_calls", n_agg))
+    n_dates = int(aggregate_health.get("n_dates", 0))
 
     r2_flag = _flag(oos_r2, config.DIAG_MIN_OOS_R2, 0.005)
     ic_flag_agg = _flag(nw_ic, config.DIAG_MIN_IC, 0.03)
-    hr_flag_agg = _flag(agg_hit, config.DIAG_MIN_HIT_RATE, 0.52)
-    sig_marker = "✅ p < 0.05" if (not np.isnan(nw_pval) and nw_pval < 0.05) else (
-        "⚠️ p < 0.10" if (not np.isnan(nw_pval) and nw_pval < 0.10) else "❌ not sig."
-    )
-    cw_marker = "? p < 0.05" if (not np.isnan(cw_p_value) and cw_p_value < 0.05) else (
-        "?? p < 0.10" if (not np.isnan(cw_p_value) and cw_p_value < 0.10) else "? not sig."
-    )
+    pt_flag = _directional_flag(pt_p_value)
+    pt_text = f"{pt_p_value:.4f}" if np.isfinite(pt_p_value) else "undefined"
 
     sig_marker = "\u2705 p < 0.05" if (not np.isnan(nw_pval) and nw_pval < 0.05) else (
         "\u26a0\ufe0f p < 0.10" if (not np.isnan(nw_pval) and nw_pval < 0.10) else "\u274c not sig."
@@ -2683,36 +2814,44 @@ def _write_diagnostic_report(
     # ------------------------------------------------------------------
     # Build markdown
     # ------------------------------------------------------------------
-    cpcv_value = "N/A"
-    cpcv_status = "—"
-    cpcv_threshold = f"≥ {config.DIAG_CPCV_MIN_POSITIVE_PATHS}/28"
+    cpcv_value = "not run"
+    cpcv_status = "❌ missing (fail closed)"
+    good_7, marginal_7 = cpcv_path_thresholds(7)
+    cpcv_threshold = f"diagnostic only (GOOD ≥ {good_7}/7)"
     cpcv_note_lines = [
-        "> **CPCV note (v5.0/v7.4):** Representative CPCV uses ElasticNet vs VTI",
-        "> as a monthly stability check. Full 4-model × 20-benchmark CPCV remains",
-        "> available on demand via `run_cpcv()` in `wfo_engine.py`.",
+        "> **CPCV (diagnostic only):** the representative CPCV did not produce paths this run,",
+        "> so ACTIONABLE is withheld (fail closed). CPCV trains on folds after its test folds,",
+        "> i.e. it is a combinatorial K-fold; AGENTS.md prohibits K-fold validation, so its",
+        "> verdict is reported but never gates the recommendation.",
     ]
-    if representative_cpcv is not None and representative_cpcv.n_paths > 0:
+    if representative_cpcv is not None and representative_cpcv.path_ics:
+        good_thresh, marginal_thresh = cpcv_path_thresholds(len(representative_cpcv.path_ics))
         cpcv_value = (
             f"{representative_cpcv.n_positive_paths}/{representative_cpcv.n_paths} "
             f"({representative_cpcv.positive_path_fraction:.1%})"
         )
         cpcv_status = {
-            "GOOD": "✅",
-            "MARGINAL": "⚠️",
-            "FAIL": "❌",
-            "UNKNOWN": "⚠️",
-        }.get(representative_cpcv.stability_verdict, "⚠️")
-        scaled_positive_threshold = math.ceil(
-            config.DIAG_CPCV_MIN_POSITIVE_PATHS * representative_cpcv.n_paths / 28
+            "GOOD": "✅ (diagnostic)",
+            "MARGINAL": "⚠️ (diagnostic)",
+            "FAIL": "❌ (diagnostic)",
+        }.get(representative_cpcv.stability_verdict, "⚠️ (diagnostic)")
+        cpcv_threshold = (
+            f"diagnostic only (GOOD ≥ {good_thresh}/{representative_cpcv.n_paths}, "
+            f"MARGINAL ≥ {marginal_thresh})"
         )
-        cpcv_threshold = f"≥ {scaled_positive_threshold}/{representative_cpcv.n_paths}"
         cpcv_note_lines = [
-            f"> **Representative CPCV:** benchmark={representative_cpcv.benchmark}, "
-            f"model={representative_cpcv.model_type}, paths={representative_cpcv.n_paths}, "
-            f"mean IC={representative_cpcv.mean_ic:.4f}, IC std={representative_cpcv.ic_std:.4f}.",
-            f"> Stability verdict: {representative_cpcv.stability_verdict}. "
-            f"Scaled monthly threshold: ≥ {scaled_positive_threshold}/{representative_cpcv.n_paths} "
-            f"(maps from the full C(8,2) standard of ≥ {config.DIAG_CPCV_MIN_POSITIVE_PATHS}/28 positive paths).",
+            f"> **Representative CPCV (diagnostic only):** benchmark={representative_cpcv.benchmark}, "
+            f"model={representative_cpcv.model_type}, {representative_cpcv.n_splits} splits recombined "
+            f"into {representative_cpcv.n_paths} test paths (each path scores every row once), "
+            f"purge {target_horizon_months} rows, embargo {representative_cpcv.embargo_size} rows; "
+            f"mean path IC={representative_cpcv.mean_ic:.4f}, IC std={representative_cpcv.ic_std:.4f}.",
+            f"> Stability verdict: {representative_cpcv.stability_verdict} (GOOD ≥ {good_thresh}/"
+            f"{representative_cpcv.n_paths} and MARGINAL ≥ {marginal_thresh}, scaled from "
+            f"≥ {config.DIAG_CPCV_MIN_POSITIVE_PATHS}/{config.DIAG_CPCV_REFERENCE_PATHS} and "
+            f"≥ {config.DIAG_CPCV_MARGINAL_POSITIVE_PATHS}/{config.DIAG_CPCV_REFERENCE_PATHS}).",
+            "> CPCV trains on folds after its test folds (a combinatorial K-fold), which AGENTS.md "
+            "prohibits for validation, so the verdict does not gate the recommendation "
+            "(review 2026-09-25, F02).",
         ]
 
     obs_feature_lines: list[str] = []
@@ -2823,9 +2962,20 @@ def _write_diagnostic_report(
         "",
         f"**As-of Date:** {as_of}  ",
         f"**Horizon:** {target_horizon_months}M  ",
-        f"**OOS observations (aggregate):** {n_agg}  ",
-        f"**Newey-West lags:** {nw_lags} (accounts for {target_horizon_months - 1}-month "
-        "return-window overlap)  ",
+        f"**OOS observations (aggregate):** {n_agg} over {n_dates} months  ",
+        f"**HAC lags:** {nw_lags} months (accounts for the {target_horizon_months - 1}-month "
+        "return-window overlap). Pooled p-values are Driscoll-Kraay: Newey-West on the monthly "
+        "sums of the scores, i.e. clustered by date. Per-benchmark p-values are Newey-West.  ",
+        (
+            f"**Prequential shrinkage alpha (live):** {float(shrinkage_alpha):.3f}  "
+            if shrinkage_alpha is not None and np.isfinite(float(shrinkage_alpha))
+            else "**Prequential shrinkage alpha (live):** n/a  "
+        ),
+        "",
+        "> All metrics below are realised-only (review 2026-09-25, WP7): every OOS month uses",
+        "> ensemble weights, shrinkage and calibration fitted on targets realised by that month,",
+        "> and OOS R² / Clark-West compare with each benchmark's prevailing mean of the targets",
+        "> realised by then (training history included).",
         "",
         "---",
         "",
@@ -2833,13 +2983,23 @@ def _write_diagnostic_report(
         "",
         "| Metric | Value | Status | Threshold (Good) |",
         "|--------|-------|--------|-----------------|",
-        f"| OOS R² (Campbell-Thompson) | {oos_r2:.4f} ({oos_r2:.2%}) | {r2_flag} | ≥ 2.00% |",
-        f"| IC (Newey-West HAC) | {nw_ic:.4f} | {ic_flag_agg} | ≥ 0.07 |",
-        f"| IC significance | {nw_pval:.4f} | {sig_marker} | p < 0.05 |",
+        f"| OOS R² vs prevailing mean (gate) | {oos_r2:.4f} ({oos_r2:.2%}) | {r2_flag} | ≥ {config.DIAG_MIN_OOS_R2:.2%} |",
+        f"| Pooled IC (Spearman) | {nw_ic:.4f} | {ic_flag_agg} | ≥ {config.DIAG_MIN_IC:.2f} |",
+        f"| IC significance (clustered by date) | {nw_pval:.4f} | {sig_marker} | p < 0.05 |",
         f"| Clark-West t-stat | {cw_t_stat:.4f} | {cw_marker} | p < 0.05 |",
         f"| Clark-West p-value | {cw_p_value:.4f} | {cw_marker} | p < 0.05 |",
-        f"| Hit Rate | {agg_hit:.1%} | {hr_flag_agg} | ≥ 55.0% |",
+        (
+            f"| Hit Rate ({n_calls:,} calls; {n_agg - n_calls:,} zero forecasts make no call) | {agg_hit:.1%} | — | not gated |"
+            if n_calls < n_agg
+            else f"| Hit Rate | {agg_hit:.1%} | — | not gated |"
+        ),
+        f"| Base rate P(PGR outperforms), same rows | {base_rate:.1%} | — | constant-sign rule hits {constant_rule:.1%} |",
+        f"| Hit rate − base rate | {hit_excess:+.1%} | — | > 0 |",
+        f"| Directional skill (Pesaran–Timmermann p, gate) | {pt_text} | {pt_flag} | p < {config.DIAG_MAX_DIRECTIONAL_PVALUE:.2f} |",
         f"| CPCV Positive Paths | {cpcv_value} | {cpcv_status} | {cpcv_threshold} |",
+        "",
+        "> The recommendation gate uses the equal-weight mean of the per-benchmark ICs",
+        "> (see recommendation.md), not the pooled IC above.",
         "",
         *cpcv_note_lines,
         "",
@@ -2860,8 +3020,9 @@ def _write_diagnostic_report(
     elif cal_result.method == "platt":
         phase1_status = "⬛ Superseded"
         phase2_status = (
-            f"✅ Active (n={cal_result.n_obs:,}  ECE={cal_result.ece:.1%} "
-            f"[{cal_result.ece_ci_lower:.1%}–{cal_result.ece_ci_upper:.1%}])"
+            f"✅ Active (prequential ECE={cal_result.ece:.1%} "
+            f"[{cal_result.ece_ci_lower:.1%}–{cal_result.ece_ci_upper:.1%}] "
+            f"over n={cal_result.n_obs:,} OOS benchmark-months)"
         )
         phase3_status = f"⏳ Activates at n ≥ {config.CALIBRATION_MIN_OBS_ISOTONIC}"
     else:  # isotonic
@@ -2873,9 +3034,13 @@ def _write_diagnostic_report(
         )
 
     lines += [
-        f"| Phase 1 | Raw BayesianRidge posterior (uncalibrated) | {phase1_status} |",
+        f"| Phase 1 | Uncalibrated (P = 50%; too few realised OOS rows) | {phase1_status} |",
         f"| Phase 2 | Platt scaling (logistic regression on OOS scores → binary) | {phase2_status} |",
         f"| Phase 3 | Platt → Isotonic (non-parametric; monotone reliability) | {phase3_status} |",
+        "",
+        "> ECE is prequential: each OOS month is scored by the per-benchmark calibrator fitted only",
+        "> on months whose 6-month outcome was already known, as the monthly run would have done.",
+        "> Confidence tiers read the calibrated P(outperform) in the direction of each signal.",
         "",
         "---",
         "",
@@ -2885,25 +3050,21 @@ def _write_diagnostic_report(
         f"({'Adaptive Conformal Inference — adjusts α_t for distribution shift' if config.CONFORMAL_METHOD == 'aci' else 'Split Conformal — finite-sample corrected quantile of absolute residuals'})  ",
         f"**Nominal Coverage:** {config.CONFORMAL_COVERAGE:.0%}  ",
         "",
+        "> Coverage is trailing and prequential: each of the last 12 OOS months per benchmark is",
+        "> scored with an interval calibrated only on residuals realised by that month.",
+        "",
     ]
 
     # Build per-benchmark coverage table from signals CI columns
     has_ci_data = (
         signals is not None
         and not signals.empty
-        and "ci_empirical_coverage" in signals.columns
+        and "ci_trailing_empirical_coverage" in signals.columns
         and "ci_n_calibration" in signals.columns
     )
     if has_ci_data:
         valid_rows = signals[signals["ci_n_calibration"] > 0]
         if not valid_rows.empty:
-            mean_emp_cov = float(valid_rows["ci_empirical_coverage"].mean())
-            cov_flag = _flag(mean_emp_cov, config.CONFORMAL_COVERAGE, config.CONFORMAL_COVERAGE - 0.05)
-            lines += [
-                f"**Mean empirical coverage:** {mean_emp_cov:.1%} "
-                f"(target ≥ {config.CONFORMAL_COVERAGE:.0%}) {cov_flag}  ",
-                "",
-            ]
             if conformal_coverage_summary is not None:
                 trailing_cov_flag = _flag(
                     abs(conformal_coverage_summary.trailing_coverage_gap),
@@ -2919,8 +3080,8 @@ def _write_diagnostic_report(
                     "",
                 ]
             lines += [
-                "| Benchmark | Description | Predicted Return | CI Lower | CI Upper | CI Width | Emp. Coverage | Trailing 12 Coverage | N Cal |",
-                "|-----------|-------------|----------------|----------|----------|----------|---------------|----------------------|-------|",
+                "| Benchmark | Description | Predicted Return | CI Lower | CI Upper | CI Width | Trailing 12 Coverage | N Cal |",
+                "|-----------|-------------|----------------|----------|----------|----------|----------------------|-------|",
             ]
             for ticker, row in signals.iterrows():
                 if pd.isna(row.get("ci_lower")):
@@ -2930,17 +3091,21 @@ def _write_diagnostic_report(
                 ci_lo = f"{row['ci_lower']:+.2%}"
                 ci_hi = f"{row['ci_upper']:+.2%}"
                 ci_w = f"{row['ci_width']:.2%}"
-                emp_cov = f"{row['ci_empirical_coverage']:.1%}"
-                trailing_cov = (
-                    f"{row['ci_trailing_empirical_coverage']:.1%}"
-                    if not pd.isna(row.get("ci_trailing_empirical_coverage"))
-                    else "n/a"
-                )
+                trailing_value = row.get("ci_trailing_empirical_coverage")
+                if pd.isna(trailing_value):
+                    trailing_cov = "n/a"
+                else:
+                    trailing_flag = _flag(
+                        abs(float(trailing_value) - config.CONFORMAL_COVERAGE),
+                        good=0.05,
+                        marginal=0.10,
+                        higher_is_better=False,
+                    )
+                    trailing_cov = f"{float(trailing_value):.1%} {trailing_flag}"
                 n_cal = int(row["ci_n_calibration"])
-                emp_flag = "✅" if row["ci_empirical_coverage"] >= config.CONFORMAL_COVERAGE else "⚠️"
                 lines.append(
                     f"| {ticker} | {desc} | {pred_str} | {ci_lo} | {ci_hi} | {ci_w} | "
-                    f"{emp_cov} {emp_flag} | {trailing_cov} | {n_cal} |"
+                    f"{trailing_cov} | {n_cal} |"
                 )
         else:
             lines.append("> ⚠️ No benchmarks had sufficient calibration data for conformal intervals.")
@@ -2957,8 +3122,8 @@ def _write_diagnostic_report(
         "",
         "## Per-Benchmark Health",
         "",
-        "| Benchmark | Description | N OOS | OOS R² | NW IC | Hit Rate | CW t | CW p |",
-        "|-----------|-------------|-------|--------|-------|----------|------|------|",
+        "| Benchmark | Description | N OOS | OOS R² | IC | NW p | Hit Rate | Base Rate | PT p | CW t | CW p |",
+        "|-----------|-------------|-------|--------|----|------|----------|-----------|------|------|------|",
     ]
 
     benchmark_rows = (
@@ -2968,10 +3133,13 @@ def _write_diagnostic_report(
     )
     for row in benchmark_rows:
         desc = _ETF_DESCRIPTIONS.get(str(row["benchmark"]), str(row["benchmark"]))
+        base = row.get("base_rate", float("nan"))
+        pt_p = row.get("pt_p_value", float("nan"))
         lines.append(
             f"| {row['benchmark']} | {desc} | {row['n_obs']} "
-            f"| {row['oos_r2']:.2%} | {row['nw_ic']:.4f} "
-            f"| {row['hit_rate']:.1%} | {row['cw_t_stat']:.4f} | {row['cw_p_value']:.4f} |"
+            f"| {row['oos_r2']:.2%} | {row['nw_ic']:.4f} | {row.get('nw_p_value', float('nan')):.4f} "
+            f"| {row['hit_rate']:.1%} | {float(base):.1%} | {float(pt_p):.4f} "
+            f"| {row['cw_t_stat']:.4f} | {row['cw_p_value']:.4f} |"
         )
 
     # Summary counts
@@ -2985,7 +3153,8 @@ def _write_diagnostic_report(
         "",
         f"**IC summary:** {n_ok_ic} ✅  {n_warn_ic} ⚠️  {n_fail_ic} ❌  "
         f"(of {len(benchmark_rows)} benchmarks)  ",
-        f"**Hit rate ✅:** {n_ok_hr}/{len(benchmark_rows)} benchmarks above 55% threshold  ",
+        f"**Directional skill ✅:** {n_ok_hr}/{len(benchmark_rows)} benchmarks with "
+        f"Pesaran–Timmermann p < {config.DIAG_MAX_DIRECTIONAL_PVALUE:.2f}  ",
         f"**Clark-West ✅:** {n_ok_cw}/{len(benchmark_rows)} benchmarks with p < 0.05  ",
         "",
         "---",
@@ -3064,12 +3233,14 @@ def _write_diagnostic_report(
         "",
         "| Metric | Good | Marginal | Failing | Source |",
         "|--------|------|----------|---------|--------|",
-        "| OOS R² | > 2% | 0.5–2% | < 0% | Campbell & Thompson (2008) |",
-        "| Mean IC | > 0.07 | 0.03–0.07 | < 0.03 | Harvey et al. (2016) |",
+        "| OOS R² vs prevailing mean (gate) | > 2% | 0–2% | < 0% | Campbell & Thompson (2008) |",
+        "| Mean IC, equal-weight (gate) | > 0.07 | 0.03–0.07 | < 0.03 | Harvey et al. (2016) |",
+        "| Directional skill, PT p (gate) | < 0.05 | 0.05–0.10 | ≥ 0.10 | Pesaran & Timmermann (1992, 2009) |",
         "| Clark-West | p < 0.05 | p < 0.10 | ≥ 0.10 | Clark & West (2007) |",
-        "| Hit Rate | > 55% | 52–55% | < 52% | Industry consensus |",
-        "| CPCV +paths | ≥ 19/28 | 14–18/28 | < 14/28 | López de Prado (2018) |",
+        f"| CPCV +paths (diagnostic, not a gate) | ≥ {good_7}/7 | {marginal_7}–{good_7 - 1}/7 | < {marginal_7}/7 | López de Prado (2018) |",
         "| PBO | < 15% | 15–40% | > 40% | Bailey et al. (2014) |",
+        "",
+        "> A missing CPCV diagnostic withholds ACTIONABLE (fail closed); its verdict does not gate.",
         "",
         "---",
         "",
@@ -3142,13 +3313,15 @@ def main(
             len(convergence_warnings),
         )
 
-    # Step 2.5: Calibrate P(outperform) using Platt / isotonic on OOS fold history
+    prequential_panel = diagnostics.get("prequential_panel")
+
+    # Step 2.5: Calibrate P(outperform) per benchmark (Platt); prequential ECE
     logger.info("Calibrating probabilities...")
     signals, cal_result, cal_probs, cal_outcomes = _calibrate_signals(
-        signals, ensemble_results, target_horizon_months=6
+        signals, ensemble_results, target_horizon_months=6, panel=prequential_panel
     )
     logger.info(
-        "Calibration: %s (n=%s OOS obs, ECE=%s)",
+        "Calibration: %s (n=%s prequential OOS obs, ECE=%s)",
         cal_result.method,
         f"{cal_result.n_obs:,}",
         f"{cal_result.ece:.1%}",
@@ -3156,7 +3329,7 @@ def main(
 
     # Step 2.7: Compute conformal prediction intervals (ACI / split conformal)
     logger.info("Computing conformal prediction intervals...")
-    signals = _compute_conformal_intervals(signals, ensemble_results)
+    signals = _compute_conformal_intervals(signals, ensemble_results, panel=prequential_panel)
     conformal_coverage_summary = _summarize_conformal_coverage(signals)
     if "ci_lower" in signals.columns and not signals.empty:
         valid_ci = signals[["ci_lower", "ci_upper"]].dropna()
@@ -3170,7 +3343,9 @@ def main(
                 f"{ci_hi_med:+.2%}",
             )
 
-    aggregate_health = _compute_aggregate_health(ensemble_results, target_horizon_months=6)
+    aggregate_health = _compute_aggregate_health(
+        ensemble_results, target_horizon_months=6, panel=prequential_panel
+    )
     # Step 3: Compute consensus
     (
         consensus,
@@ -3399,12 +3574,17 @@ def main(
 
     print(f"\n  Consensus signal: {consensus} ({confidence_tier} CONFIDENCE)")
     print(f"  Predicted 6M relative return: {mean_pred:+.2%}")
-    print(f"  P(outperform, raw): {mean_prob:.1%}")
     if "calibrated_prob_outperform" in signals.columns and not signals.empty:
         print(f"  P(outperform, calibrated): {mean_cal:.1%}")
-    print(f"  Mean IC: {mean_ic:.4f}  |  Mean hit rate: {mean_hr:.1%}")
+    print(f"  Mean IC (equal-weight): {mean_ic:.4f}  |  Mean hit rate: {mean_hr:.1%}")
     if aggregate_health is not None:
-        print(f"  Aggregate OOS R^2: {aggregate_health['oos_r2']:.2%}")
+        print(f"  Aggregate OOS R^2 (vs prevailing mean): {aggregate_health['oos_r2']:.2%}")
+        print(
+            "  Directional skill: hit "
+            f"{float(aggregate_health.get('agg_hit', float('nan'))):.1%} vs base rate "
+            f"{float(aggregate_health.get('constant_rule_hit_rate', float('nan'))):.1%}; "
+            f"Pesaran-Timmermann p={float(aggregate_health.get('pt_p_value', float('nan'))):.3f}"
+        )
     print(f"  Recommendation mode: {active_recommendation_mode['label']}")
     print(f"  Sell %: {sell_pct:.0%}")
     if consensus_shadow_df is not None and not consensus_shadow_df.empty:
@@ -3446,7 +3626,7 @@ def main(
     # v32.2 + v32.3 — compute policy backtest summary for recommendation.md
     policy_summary: dict[str, PolicySummary] | None = None
     try:
-        policy_summary = _compute_policy_summary(ensemble_results)
+        policy_summary = _compute_policy_summary(ensemble_results, panel=prequential_panel)
     except Exception:
         logger.warning(
             "Could not compute policy summary; Decision Policy Backtest section will be omitted",
@@ -3612,6 +3792,8 @@ def main(
         ),
         shadow_gate_overlay=shadow_gate_overlay,
         classifier_monitoring_summary=classifier_monitoring_summary,
+        aggregate_health=aggregate_health,
+        shrinkage_alpha=diagnostics.get("shrinkage_alpha"),
     )
     _write_benchmark_quality_csv(
         out_dir,
@@ -3628,10 +3810,15 @@ def main(
         manifest_warnings.append(
             f"Aggregate OOS R^2 below threshold: {aggregate_health['oos_r2']:.2%} < {config.DIAG_MIN_OOS_R2:.2%}."
         )
-    if diagnostics.get("representative_cpcv") is not None:
-        verdict = diagnostics["representative_cpcv"].stability_verdict
-        if verdict == "FAIL":
-            manifest_warnings.append("Representative CPCV verdict is FAIL.")
+    representative_cpcv = diagnostics.get("representative_cpcv")
+    if representative_cpcv is None or representative_cpcv.stability_verdict == "UNKNOWN":
+        manifest_warnings.append(
+            "Representative CPCV diagnostic did not produce paths; ACTIONABLE is withheld (fail closed)."
+        )
+    elif representative_cpcv.stability_verdict == "FAIL":
+        manifest_warnings.append(
+            "Representative CPCV verdict is FAIL (diagnostic only; it does not gate the recommendation)."
+        )
     if diagnostics.get("obs_feature_report") is not None:
         obs_report = diagnostics["obs_feature_report"]
         if obs_report.get("verdict") != "OK":
@@ -3725,7 +3912,9 @@ def main(
         mean_predicted=float(mean_pred),
         mean_ic=float(mean_ic),
         mean_hit_rate=float(mean_hr),
-        mean_prob_outperform=float(mean_prob),
+        # The raw BayesianRidge probability was retired (it was a constant
+        # 0.5); only the calibrated probability is reported (F21).
+        mean_prob_outperform=None,
         calibrated_prob_outperform=mean_cal,
         aggregate_oos_r2=(
             float(aggregate_health["oos_r2"]) if aggregate_health is not None else None
@@ -3744,6 +3933,19 @@ def main(
         shadow_gate_overlay=shadow_gate_overlay,
         classification_shadow_variants=classification_shadow_variants,
         decision_overlay_variants=decision_overlay_variants,
+        model_health=build_model_health_payload(
+            mean_ic=float(mean_ic),
+            aggregate_health=aggregate_health,
+            representative_cpcv=diagnostics.get("representative_cpcv"),
+            cal_result=cal_result,
+            conformal_trailing_coverage=(
+                conformal_coverage_summary.trailing_empirical_coverage
+                if conformal_coverage_summary is not None
+                else None
+            ),
+            shrinkage_alpha=diagnostics.get("shrinkage_alpha"),
+            quality_weighted_ic=_live_variant_mean_ic(consensus_shadow_df),
+        ),
     )
     monthly_summary_path = write_monthly_summary(out_dir, monthly_summary)
     print(f"  Wrote {monthly_summary_path}")

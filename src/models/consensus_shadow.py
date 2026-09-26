@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import config
 import pandas as pd
+
+from src.models.calibration import confidence_tier_from_probability
 
 
 def build_quality_weights(
@@ -116,18 +117,9 @@ def summarize_consensus_variant(
     else:
         consensus = "NEUTRAL"
 
-    if (
-        mean_prob_outperform >= config.SHADOW_CLASSIFIER_HIGH_THRESH
-        or mean_prob_outperform <= config.SHADOW_CLASSIFIER_LOW_THRESH
-    ):
-        confidence_tier = "HIGH"
-    elif (
-        mean_prob_outperform >= config.SHADOW_CLASSIFIER_MODERATE_HIGH_THRESH
-        or mean_prob_outperform <= config.SHADOW_CLASSIFIER_MODERATE_LOW_THRESH
-    ):
-        confidence_tier = "MODERATE"
-    else:
-        confidence_tier = "LOW"
+    # The tier is the weighted calibrated P(outperform) read in the direction
+    # of the consensus (review 2026-09-25, F21).
+    confidence_tier = confidence_tier_from_probability(mean_prob_outperform, consensus)
 
     top_benchmark = str(aligned_weights.idxmax()) if not aligned_weights.empty else ""
     top_benchmark_weight = float(aligned_weights.max()) if not aligned_weights.empty else 0.0

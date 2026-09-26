@@ -178,7 +178,9 @@ def summarize_predictions(
         ic=ic_value,
         hit_rate=float(np.mean(np.sign(y_true) == np.sign(y_hat))),
         mae=float(mean_absolute_error(y_true, y_hat)),
-        oos_r2=float(compute_oos_r_squared(y_hat, y_true)),
+        oos_r2=float(
+            compute_oos_r_squared(y_hat, y_true, horizon_months=target_horizon_months)
+        ),
         nw_ic=float(nw_ic),
         nw_p_value=float(nw_p_value),
     )
@@ -452,50 +454,32 @@ def reconstruct_ensemble_oos_predictions(
     ens_result: EnsembleWFOResult,
     shrinkage_alpha: float | None = None,
 ) -> tuple[pd.Series, pd.Series]:
-    """Rebuild inverse-variance ensemble OOS predictions from component folds."""
-    model_results = ens_result.model_results
-    if not model_results:
+    """Rebuild one benchmark's ensemble OOS predictions without look-ahead.
+
+    Each OOS row combines the members with ``1 / MAE^2`` weights computed from
+    the errors realised by that row's date (review 2026-09-25, F13; they used
+    to come from the whole OOS history, later folds included). With
+    ``shrinkage_alpha=None`` the shrinkage is also prequential, pooled over
+    this benchmark's realised rows; production pools it across benchmarks
+    (``src.models.prequential.build_prequential_panel``). A float applies that
+    fixed alpha instead (research sweeps).
+    """
+    from src.models.prequential import build_prequential_panel
+
+    panel = build_prequential_panel({ens_result.benchmark or "benchmark": ens_result})
+    if panel.empty:
         empty = pd.Series(dtype=float)
         return empty, empty
-
-    weights: dict[str, float] = {}
-    for model_type, result in model_results.items():
-        mae = result.mean_absolute_error
-        weights[model_type] = 1.0 / (mae**2) if mae > 1e-9 else 1.0
-    total_weight = sum(weights.values())
-
-    ref = next(iter(model_results.values()))
-    predictions: list[float] = []
-    realized: list[float] = []
-    dates: list[pd.Timestamp] = []
-
-    for fold_idx in range(len(ref.folds)):
-        fold_y_true: np.ndarray | None = None
-        fold_y_hat: np.ndarray | None = None
-        fold_dates: list[pd.Timestamp] = []
-
-        for model_type, result in model_results.items():
-            if fold_idx >= len(result.folds):
-                continue
-            fold = result.folds[fold_idx]
-            weight = weights[model_type] / total_weight
-            if fold_y_true is None:
-                fold_y_true = fold.y_true.copy()
-                fold_y_hat = np.zeros(len(fold.y_true), dtype=float)
-                fold_dates = list(fold._test_dates)
-            fold_y_hat = fold_y_hat + weight * fold.y_hat  # type: ignore[operator]
-
-        if fold_y_true is not None and fold_y_hat is not None:
-            fold_y_hat = np.asarray(
-                apply_prediction_shrinkage(fold_y_hat, alpha=shrinkage_alpha),
-                dtype=float,
-            )
-            predictions.extend(fold_y_hat.tolist())
-            realized.extend(fold_y_true.tolist())
-            dates.extend(fold_dates)
-
-    pred_series = pd.Series(predictions, index=pd.DatetimeIndex(dates), name="y_hat")
-    realized_series = pd.Series(realized, index=pd.DatetimeIndex(dates), name="y_true")
+    dates = pd.DatetimeIndex(panel["date"])
+    if shrinkage_alpha is None:
+        y_hat_values = panel["y_hat"].to_numpy(dtype=float)
+    else:
+        y_hat_values = np.asarray(
+            apply_prediction_shrinkage(panel["z"].to_numpy(dtype=float), alpha=shrinkage_alpha),
+            dtype=float,
+        )
+    pred_series = pd.Series(y_hat_values, index=dates, name="y_hat")
+    realized_series = pd.Series(panel["y_true"].to_numpy(dtype=float), index=dates, name="y_true")
     return pred_series, realized_series
 
 

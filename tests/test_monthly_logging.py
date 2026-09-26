@@ -85,7 +85,7 @@ def test_main_logs_cross_check_fallback_and_completes(
     monkeypatch.setattr(
         monthly_decision,
         "_calibrate_signals",
-        lambda signals, ensemble_results, target_horizon_months=6: (
+        lambda signals, ensemble_results, target_horizon_months=6, panel=None: (
             signals.copy(),
             cal_result,
             pd.Series([0.41, 0.46], dtype=float).to_numpy(),
@@ -95,7 +95,7 @@ def test_main_logs_cross_check_fallback_and_completes(
     monkeypatch.setattr(
         monthly_decision,
         "_compute_conformal_intervals",
-        lambda signals, ensemble_results: signals.copy(),
+        lambda signals, ensemble_results, panel=None: signals.copy(),
     )
     monkeypatch.setattr(
         monthly_decision,
@@ -207,11 +207,15 @@ def test_main_logs_cross_check_fallback_and_completes(
         benchmark_quality_df=None,
         shadow_gate_overlay=None,
         classifier_monitoring_summary=None,
+        aggregate_health=None,
+        shrinkage_alpha=None,
+        panel=None,
     ) -> None:
         del as_of, ensemble_results, target_horizon_months, cal_result, signals
         del obs_feature_report, representative_cpcv, conformal_coverage_summary
         del importance_stability, vif_series, benchmark_quality_df
         del shadow_gate_overlay, classifier_monitoring_summary
+        del aggregate_health, shrinkage_alpha, panel
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "diagnostic.md").write_text("# Diagnostic Stub\n", encoding="utf-8")
 

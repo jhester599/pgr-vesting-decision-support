@@ -54,13 +54,37 @@ def add_rolling_model_health(
     return enriched
 
 
+def current_metrics_history(history: pd.DataFrame) -> pd.DataFrame:
+    """Keep the rows computed under the same metric definitions as the latest row.
+
+    ``metrics_version`` (migration 008) changes when the definitions change,
+    e.g. at review 2026-09-25 step 5, when OOS R^2, ECE and conformal coverage
+    became prequential. Rolling averages must not mix versions.
+    """
+    if history.empty or "metrics_version" not in history.columns:
+        return history
+    ordered = history.copy()
+    ordered["_month"] = pd.to_datetime(ordered["month_end"])
+    ordered = ordered.sort_values("_month")
+    latest = ordered["metrics_version"].iloc[-1]
+    if pd.isna(latest):
+        keep = ordered["metrics_version"].isna()
+    else:
+        keep = ordered["metrics_version"] == latest
+    return ordered.loc[keep].drop(columns="_month")
+
+
 def summarize_latest_model_drift(
     history: pd.DataFrame,
     window_months: int = 12,
     ic_threshold: float = config.DIAG_MIN_IC,
     min_consecutive_breaches: int = 3,
 ) -> ModelDriftSummary | None:
-    """Summarize the latest rolling drift state from monthly performance history."""
+    """Summarize the latest rolling drift state from monthly performance history.
+
+    Only rows sharing the latest row's ``metrics_version`` are used.
+    """
+    history = current_metrics_history(history)
     if history.empty:
         return None
 
