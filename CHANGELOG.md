@@ -5,6 +5,58 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v183 (2026-09-26) — Review 2026-09-25, step 10: restructure phase 3 (one folder per study)
+
+WP13 phase 3 from section 5 of `docs/reviews/REPO_REVIEW_2026-09-25.md`
+(F32, and the research-output part of F30). No production behaviour
+changes: the September 2026 replay is identical before and after. Report,
+before/after tests and the replay diff:
+`docs/reviews/2026-09-25_step10_restructure_phase3.md`.
+
+- **One folder per study** (`git mv`, 705 renames). Every study now lives in
+  `research/studies/<id>_<slug>/`: its script(s) from `results/research/`,
+  `scripts/research/` or the five root `scripts/*experiments*.py` (now
+  `v9_experiments/`), a README, and `outputs/` from
+  `results/research/<id>_*`. 113 studies: v37–v165, x1–x24, bl01, v9,
+  `pb_vs_pe`, `test_runtime`. Their 118 tests moved to `tests/research/`
+  (names unchanged). `results/research/` (and its `__init__.py`) is gone;
+  `results/` has no `.py` files.
+- **Paths.** New `src/research/study_paths.py`:
+  `study_output_path(name)` finds a study's `outputs/` folder from the id
+  prefix of the file name. `v37_utils.save_results`, `v102_utils` and every
+  cross-study read use it; `v37_utils.RESULTS_DIR` is removed. Study
+  scripts resolve the repo root with `parents[3]` and write to their own
+  `outputs/`.
+- **Production reads** of study outputs are named paths:
+  `config.V128_BENCHMARK_FEATURE_MAP_PATH` (v128),
+  `classification_gate_overlay.DEFAULT_OVERLAY_RESULTS_PATH` (v113, new)
+  and `shadow_followon.FOLLOWON_CANDIDATE_PATHS` (v141–v150, new).
+- **Registry.** `research/registry.yaml` (id, slug, date, question, status,
+  promoted_to, closeout, notes) lists every study; 3 promoted, 7 retained,
+  13 shadow, 90 closed. `research/tools/registry.py` validates it, checks
+  that every study folder is registered, and generates `research/README.md`
+  (`--write`). CI runs the check. New dev dependency: PyYAML
+  (`pyyaml==6.0.2` in `constraints-dev.txt`).
+- **Legacy.** `results/v9..v28/` → `research/legacy/` unchanged (214 files),
+  with a README.
+- **Detail files.** `research/studies/*/outputs/detail/` is gitignored;
+  studies write `*_detail.csv` files over 1 MB there
+  (`study_output_path(name, detail=True)`). The two committed ones outside
+  the legacy folders leave the tree (history kept):
+  `v128_regularized_selection_detail.csv` (2.7 MB) and
+  `v162_ta_broad_screen_detail.csv` (2.2 MB); their study READMEs give the
+  regenerate command and a `git show` line for the last committed copy.
+- **Docs.** The link checker also covers the research READMEs (151 files,
+  0 broken). `CONTRIBUTING.md` has a Research Studies section;
+  `docs/architecture.md`, `docs/artifact-policy.md`,
+  `docs/model-governance.md`, `docs/README.md`, `docs/results/README.md`
+  and `docs/research/` point at the new layout.
+- **Tests.** New `tests/test_restructure_phase3.py` (59 tests): 59 failed on
+  `master`, 59 pass. `test_restructure_phase2.py` and `test_docs_hygiene.py`
+  updated for the new layout.
+- **Full suite:** `2510 passed, 1 skipped, 111 warnings in 617.51s`
+  (`master`: 2451 passed, 1 skipped).
+
 ## v182 (2026-09-26) — WFO minimum row count
 
 Found by the step 9 property tests (`docs/reviews/2026-09-25_step9_test_hardening.md`,

@@ -119,10 +119,10 @@ research steps.
 
 ## Peer Review / Deep Research Prompts
 
-- Dividend lane prompt: [x23 peer review](../../results/research/x23_peer_review_prompt.md)
-- Holistic bundle prompt: [x24 bundle peer review](../../results/research/x24_bundle_peer_review_prompt.md)
-- Structural P/B prompt: [x24 structural peer review](../../results/research/x24_structural_peer_review_prompt.md)
-- Earlier structural prompt: [x16 peer review](../../results/research/x16_peer_review_prompt.md)
+- Dividend lane prompt: [x23 peer review](../../research/studies/x23_dividend_lane_package/outputs/x23_peer_review_prompt.md)
+- Holistic bundle prompt: [x24 bundle peer review](../../research/studies/x24_indicator_contract/outputs/x24_bundle_peer_review_prompt.md)
+- Structural P/B prompt: [x24 structural peer review](../../research/studies/x24_indicator_contract/outputs/x24_structural_peer_review_prompt.md)
+- Earlier structural prompt: [x16 peer review](../../research/studies/x16_indicator_package/outputs/x16_peer_review_prompt.md)
 
 ## Resume Advice
 

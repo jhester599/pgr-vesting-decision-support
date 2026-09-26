@@ -8,12 +8,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.research.v37_utils import RESULTS_DIR
 from src.research.v102_utils import (
     build_overlay_alignment_frame,
     permission_overlay_hold_fraction,
     veto_overlay_hold_fraction,
 )
+from src.research.study_paths import study_output_path
 
 
 @dataclass(frozen=True)
@@ -31,7 +31,7 @@ def load_selected_shadow_candidate(
 ) -> SelectedShadowCandidate:
     """Load the top v113 candidate or fall back to the default shadow overlay."""
     if results_path is None:
-        results_path = RESULTS_DIR / "v113_constrained_candidate_selection_results.csv"
+        results_path = study_output_path("v113_constrained_candidate_selection_results.csv")
     if not results_path.exists():
         return SelectedShadowCandidate(
             variant="gemini_veto_0.50",

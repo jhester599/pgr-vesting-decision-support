@@ -28,7 +28,7 @@ def load_v128_feature_map(path: Path | str) -> dict[str, list[str]]:
     except FileNotFoundError as exc:
         raise DualTrackFeatureMapError(
             f"v128 feature map not found at {path!r}. "
-            "Run results/research/v128_benchmark_feature_search.py first."
+            "Run research/studies/v128_benchmark_feature_search/v128_benchmark_feature_search.py first."
         ) from exc
     except Exception as exc:
         raise DualTrackFeatureMapError(f"Failed to parse v128 feature map: {exc}") from exc

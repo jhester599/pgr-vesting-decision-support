@@ -11,6 +11,26 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 FOLLOWON_VARIANT_NAME = "autoresearch_followon_v150"
 FOLLOWON_VARIANT_LABEL = "Autoresearch Follow-On"
 
+# Candidate files written by the v141-v150 studies (research/studies/, review
+# 2026-09-25 phase 3).
+_STUDIES_DIR = PROJECT_ROOT / "research" / "studies"
+
+
+def _study_output(folder: str, filename: str) -> Path:
+    """Return the path of one committed study output."""
+    return _STUDIES_DIR / folder / "outputs" / filename
+
+
+FOLLOWON_CANDIDATE_PATHS: dict[str, Path] = {
+    "v141_blend_weight": _study_output("v141_blend_eval", "v141_blend_weight_candidate.txt"),
+    "v143_corr_prune": _study_output("v143_corr_prune_eval", "v143_corr_prune_candidate.txt"),
+    "v144_conformal": _study_output("v144_conformal_eval", "v144_conformal_candidate.json"),
+    "v149_kelly": _study_output("v149_kelly_eval", "v149_kelly_candidate.json"),
+    "v150_neutral_band": _study_output(
+        "v150_neutral_band_eval", "v150_neutral_band_candidate.txt"
+    ),
+}
+
 
 def _read_text(path: Path) -> str:
     """Read one small UTF-8 candidate file."""
@@ -19,13 +39,12 @@ def _read_text(path: Path) -> str:
 
 def load_followon_candidate_bundle() -> dict[str, Any]:
     """Load the surviving v139-v150 research candidates for shadow reporting."""
-    research_dir = PROJECT_ROOT / "results" / "research"
     return {
-        "v141_blend_weight": float(_read_text(research_dir / "v141_blend_weight_candidate.txt")),
-        "v143_corr_prune": float(_read_text(research_dir / "v143_corr_prune_candidate.txt")),
-        "v144_conformal": json.loads(_read_text(research_dir / "v144_conformal_candidate.json")),
-        "v149_kelly": json.loads(_read_text(research_dir / "v149_kelly_candidate.json")),
-        "v150_neutral_band": float(_read_text(research_dir / "v150_neutral_band_candidate.txt")),
+        "v141_blend_weight": float(_read_text(FOLLOWON_CANDIDATE_PATHS["v141_blend_weight"])),
+        "v143_corr_prune": float(_read_text(FOLLOWON_CANDIDATE_PATHS["v143_corr_prune"])),
+        "v144_conformal": json.loads(_read_text(FOLLOWON_CANDIDATE_PATHS["v144_conformal"])),
+        "v149_kelly": json.loads(_read_text(FOLLOWON_CANDIDATE_PATHS["v149_kelly"])),
+        "v150_neutral_band": float(_read_text(FOLLOWON_CANDIDATE_PATHS["v150_neutral_band"])),
     }
 
 

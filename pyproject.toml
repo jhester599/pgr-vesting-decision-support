@@ -41,6 +41,8 @@ dev = [
     "ruff>=0.13.0",
     "mypy>=1.18.0",
     "hypothesis>=6.0.0",
+    # research/tools/registry.py reads research/registry.yaml (CI check).
+    "pyyaml>=6.0",
 ]
 dashboard = [
     "streamlit>=1.35.0",

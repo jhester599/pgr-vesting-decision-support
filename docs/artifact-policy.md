@@ -55,16 +55,26 @@ monthly artifacts.
 
 ## Research Artifacts
 
-- `results/research/`
+- `research/studies/<id>_<slug>/outputs/` (one folder per study; index in
+  `research/README.md`, generated from `research/registry.yaml`)
+- `research/legacy/` (the v9–v28 result folders, unchanged)
 
 These are committed as reproducible evidence from versioned research and
 promotion studies. They are not consumed directly by production workflows
 unless a later promotion explicitly wires them in. No production or library
-module imports Python code from `results/` (the last one,
-`v46_classification.py`, moved to `src/research/binary_classification.py`
-in v180). A few production modules still read committed research outputs
-(for example `results/research/v128_benchmark_feature_map.csv` and the
-v141–v149 candidate files); moving those is later work.
+module imports Python code from `research/studies/` or `results/` (the last
+one, `v46_classification.py`, moved to `src/research/binary_classification.py`
+in v180; `results/` holds no code since v183). Three production modules still
+read committed study outputs, from paths named in code:
+`config.V128_BENCHMARK_FEATURE_MAP_PATH` (v128),
+`classification_gate_overlay.DEFAULT_OVERLAY_RESULTS_PATH` (v113) and
+`shadow_followon.FOLLOWON_CANDIDATE_PATHS` (v141–v150).
+`tests/test_restructure_phase3.py` checks that those files exist.
+
+Per-fold `*_detail.csv` files over 1 MB are not committed: study scripts
+write them to `outputs/detail/`, which is gitignored, and the study README
+says how to regenerate them. A test fails if one over 1 MB is committed
+outside `research/legacy/`.
 
 The monthly capital-return charts used to live here as
 `results/research/pgr_*.png`; they are production outputs and now live in
@@ -94,7 +104,7 @@ back to markdown parsing.
   - production workflows
   - current docs
 - Research source of truth for promotion evidence:
-  - `results/research/`
+  - `research/studies/` (and `research/registry.yaml`)
   - current plan and summary documents under `docs/superpowers/plans/`
 
 ## What Should Not Be Committed

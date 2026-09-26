@@ -13,7 +13,6 @@ from sklearn.metrics import balanced_accuracy_score
 from src.research.v37_utils import (
     GAP_MONTHS,
     MAX_TRAIN_MONTHS,
-    RESULTS_DIR,
     RIDGE_FEATURES_12,
     TEST_SIZE_MONTHS,
     get_connection,
