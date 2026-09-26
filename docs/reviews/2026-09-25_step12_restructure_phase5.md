@@ -250,8 +250,16 @@ now also requires the package to resolve inside the checkout under test.
 `python -m pytest -o addopts="--tb=short" -q` on this branch:
 
 ```text
-FULL_SUITE_RESULT
+2494 passed, 1 skipped, 116 warnings in 543.09s (0:09:03)
 ```
+
+A first full run (on 6d9179c plus the uncommitted report) had two failures,
+both from this step's own work, not from the refactor:
+`test_one_csv_loader` searched source text for `def load_from_csv` and
+matched itself once the test file was tracked (it now looks for the
+function definition with `ast`), and `test_dry_run_read_only` saw
+`CHANGELOG.md` change because I edited it while the suite ran. The run
+above is on the final commit with nothing edited during it.
 
 `master` (step 11's report): `2536 passed, 1 skipped`. The branch deletes the
 59 tests of the deleted legacy fetcher and adds the 17 phase-5 tests

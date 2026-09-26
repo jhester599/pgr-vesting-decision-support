@@ -53,7 +53,8 @@ byte-identical output before and after. Report:
   `docs/operations-runbook.md`, `docs/artifact-policy.md`,
   `docs/data-sources.md`, `docs/troubleshooting.md`, the `artifacts/`
   READMEs and the EDGAR data dictionary name the new paths.
-- **Suite.** FULL_SUITE_RESULT
+- **Suite.** `python -m pytest -o addopts="--tb=short" -q`: 2494 passed,
+  1 skipped (2,537 on `master` − 59 legacy-fetcher tests + 17 phase-5 tests).
 
 ## v184 (2026-09-26) — Review 2026-09-25, step 11: restructure phase 4 (docs and tests layout)
 
