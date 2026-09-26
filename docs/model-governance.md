@@ -43,9 +43,9 @@ The production monthly output now tracks:
 - live-vs-equal-weight comparison in `consensus_shadow.csv`
 - per-benchmark classifier detail in `classification_shadow.csv`
 - shadow gate comparison in `decision_overlays.csv`
-- append-only classifier history in `results/monthly_decisions/classification_shadow_history.csv`
+- append-only classifier history in `artifacts/monthly_decisions/classification_shadow_history.csv`
 - reporting-only TA replacement variant history in
-  `results/monthly_decisions/ta_shadow_variant_history.csv`
+  `artifacts/monthly_decisions/ta_shadow_variant_history.csv`
 - machine-readable top-level state in `monthly_summary.json`
 
 ## Recent Promotion Record

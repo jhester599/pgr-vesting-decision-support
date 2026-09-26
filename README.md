@@ -79,8 +79,11 @@ These scripts are the operational surface area. Reusable logic belongs under
 
 ## Quick Start
 
-1. Create and activate a Python 3.10+ virtual environment.
-2. Install `requirements.txt`.
+1. Create and activate a Python 3.11+ virtual environment (pandas 3 needs
+   3.11).
+2. Install `requirements.txt`, then the package itself with
+   `pip install --no-deps -e .` (`pyproject.toml`, package `pgr_vds`), so
+   `src` and `config` import without `sys.path` edits.
 3. Configure `.env` with required API keys, SMTP settings, and EDGAR user-agent
    values.
 4. Run the dry-run checks below.
@@ -134,7 +137,7 @@ Forward-looking backlog: [ROADMAP.md](ROADMAP.md)
 
 ## Project Principles
 
-- Python 3.10+
+- Python 3.11+
 - strict time-series validation only; no K-Fold cross-validation
 - preference for simpler, regularized models under small-sample constraints
 - test-first verification for production-facing changes

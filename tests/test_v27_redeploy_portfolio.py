@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.research.v27 import (
+from src.portfolio.redeploy_portfolio import (
     portfolio_rows_to_frame,
     recommend_redeploy_portfolio,
     render_redeploy_portfolio_markdown_lines,

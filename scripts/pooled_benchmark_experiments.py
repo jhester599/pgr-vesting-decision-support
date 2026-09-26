@@ -19,8 +19,8 @@ from src.database import db_client
 from src.models.multi_benchmark_wfo import run_ensemble_benchmarks
 from src.processing.feature_engineering import build_feature_matrix_from_db, get_X_y_relative
 from src.processing.multi_total_return import load_relative_return_matrix
-from src.research.benchmark_sets import BENCHMARK_POOLS
-from src.research.evaluation import (
+from src.portfolio.benchmark_sets import BENCHMARK_POOLS
+from src.models.evaluation import (
     BASELINE_STRATEGIES,
     classify_research_gate,
     evaluate_baseline_strategy,

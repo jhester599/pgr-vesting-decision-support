@@ -4,7 +4,7 @@ Run with:
     streamlit run dashboard/app.py
 
 Reads from:
-- results/monthly_decisions/ (manifest, markdown, and CSV artifacts)
+- artifacts/monthly_decisions/ (manifest, markdown, and CSV artifacts)
 - data/pgr_financials.db     (daily_prices for the PGR price chart)
 """
 
@@ -195,7 +195,7 @@ decision_overlays = bundle["decision_overlays"]
 summary_payload = bundle["summary"]
 
 if manifest is None and signals.empty:
-    st.error("No monthly decision data found in results/monthly_decisions/.")
+    st.error("No monthly decision data found in artifacts/monthly_decisions/.")
     st.stop()
 
 health = parse_aggregate_health(rec_text)

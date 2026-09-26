@@ -2,7 +2,7 @@
 
 ## Monthly Output Files
 
-Each monthly run writes a folder under `results/monthly_decisions/<YYYY-MM>/`.
+Each monthly run writes a folder under `artifacts/monthly_decisions/<YYYY-MM>/`.
 
 Expected files:
 
@@ -145,7 +145,7 @@ Recent monthly reports may also include reporting-only TA replacement variants:
 
 These rows are monitoring-only. They do not affect the live recommendation,
 sell percentage, or shadow gate overlay. Their prospective probabilities are
-tracked in `results/monthly_decisions/ta_shadow_variant_history.csv` for later
+tracked in `artifacts/monthly_decisions/ta_shadow_variant_history.csv` for later
 matured-outcome review.
 
 ## Shadow Gate Overlay
@@ -240,7 +240,7 @@ it did.
 
 The repo also includes:
 
-- a static monthly dashboard snapshot at `results/monthly_decisions/<YYYY-MM>/dashboard.html`
+- a static monthly dashboard snapshot at `artifacts/monthly_decisions/<YYYY-MM>/dashboard.html`
 - a local Streamlit dashboard:
 
 ```bash

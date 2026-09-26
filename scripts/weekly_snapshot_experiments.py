@@ -29,8 +29,8 @@ from src.models.regularized_models import (
 )
 from src.processing.feature_engineering import build_feature_matrix_from_db
 from src.processing.total_return import build_position_series, compute_total_return
-from src.research.evaluation import summarize_predictions
-from src.research.policy_metrics import evaluate_policy_series
+from src.models.evaluation import summarize_predictions
+from src.models.policy_metrics import evaluate_policy_series
 from src.reporting.backtest_report import compute_oos_r_squared
 
 

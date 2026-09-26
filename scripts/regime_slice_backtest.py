@@ -20,7 +20,7 @@ from src.database import db_client
 from src.models.multi_benchmark_wfo import run_ensemble_benchmarks
 from src.processing.feature_engineering import build_feature_matrix_from_db, get_X_y_relative
 from src.processing.multi_total_return import load_relative_return_matrix
-from src.research.evaluation import evaluate_wfo_model, reconstruct_ensemble_oos_predictions, summarize_predictions
+from src.models.evaluation import evaluate_wfo_model, reconstruct_ensemble_oos_predictions, summarize_predictions
 
 
 DEFAULT_OUTPUT_DIR = os.path.join("results", "v9")

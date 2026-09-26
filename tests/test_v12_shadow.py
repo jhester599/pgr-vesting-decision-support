@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from src.research.v12 import (
+from src.reporting.snapshot_summary import (
     SnapshotSummary,
     build_shadow_comparison_lines,
     recent_monthly_review_dates,

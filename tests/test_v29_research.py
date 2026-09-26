@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 
 from src.reporting.decision_rendering import build_executive_summary_lines
-from src.research.v29 import benchmark_role_for_ticker, build_confidence_snapshot
+from src.reporting.confidence import benchmark_role_for_ticker, build_confidence_snapshot
 
 
 class _FakeCPCV:

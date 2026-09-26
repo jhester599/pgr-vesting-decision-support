@@ -8,11 +8,23 @@ them.
 
 ## Production Artifacts
 
-- `data/pgr_financials.db`
-- `results/monthly_decisions/`
+Everything a scheduled workflow writes and commits, other than the DB, lives
+under `artifacts/` (review 2026-09-25, section 5, phase 1; moved there in
+v180 with `git mv`). The paths are constants in `config/paths.py`, and each
+folder has a README naming the script and workflow that write it.
+
+| Path | Was | Written by |
+|---|---|---|
+| `data/pgr_financials.db` | — | every DB-writing workflow |
+| `artifacts/monthly_decisions/` | `results/monthly_decisions/` | `scripts/monthly_decision.py` |
+| `artifacts/charts/pgr_*.png` | `results/research/pgr_*.png` | `scripts/repurchase_timeseries_charts.py`, `scripts/capital_return_charts.py` |
+| `artifacts/ops/fetch_status.md` | `data/fetch_status.md` | `scripts/initial_fetch.py` |
+| `artifacts/shadow_reviews/` | `results/v14/shadow_reviews/` | nothing today (v14 study record) |
 
 These are committed because the operating model relies on them as durable state
-and human-readable history.
+and human-readable history. Workflow commit steps stage these exact paths
+only; no workflow runs `git add results/`. Dry runs write to the gitignored
+`results/dry_run/`, never to `artifacts/`.
 
 Current monthly production artifacts include:
 
@@ -30,8 +42,8 @@ Current monthly production artifacts include:
 
 Shared longitudinal monitoring artifacts include:
 
-- `results/monthly_decisions/classification_shadow_history.csv`
-- `results/monthly_decisions/ta_shadow_variant_history.csv`
+- `artifacts/monthly_decisions/classification_shadow_history.csv`
+- `artifacts/monthly_decisions/ta_shadow_variant_history.csv`
 
 Monthly workflow postconditions are verified by:
 
@@ -47,11 +59,17 @@ monthly artifacts.
 
 These are committed as reproducible evidence from versioned research and
 promotion studies. They are not consumed directly by production workflows
-unless a later promotion explicitly wires them in.
+unless a later promotion explicitly wires them in. No production or library
+module imports Python code from `results/` (the last one,
+`v46_classification.py`, moved to `src/research/binary_classification.py`
+in v180). A few production modules still read committed research outputs
+(for example `results/research/v128_benchmark_feature_map.csv` and the
+v141–v149 candidate files); moving those is later work.
 
-Exception: the recurring `results/research/pgr_*.png` capital-return charts
-are production outputs. `monthly_decision.yml` regenerates and commits them
-by name (`RESEARCH_CHARTS`), and the email embeds four of them.
+The monthly capital-return charts used to live here as
+`results/research/pgr_*.png`; they are production outputs and now live in
+`artifacts/charts/`. `monthly_decision.yml` regenerates and commits them by
+name (`MONTHLY_CHARTS`), and the email embeds four of them.
 
 ## Provenance Rule
 

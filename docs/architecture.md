@@ -61,7 +61,7 @@ belongs in `src/`.
 
 ## Current Production Output Surface
 
-Each monthly run writes a folder under `results/monthly_decisions/<YYYY-MM>/`
+Each monthly run writes a folder under `artifacts/monthly_decisions/<YYYY-MM>/`
 containing:
 
 - `recommendation.md`
@@ -75,7 +75,7 @@ containing:
 
 The workflow also updates:
 
-- `results/monthly_decisions/decision_log.md`
+- `artifacts/monthly_decisions/decision_log.md`
 
 The same monthly output set feeds:
 
@@ -87,7 +87,8 @@ The same monthly output set feeds:
 - SQLite database: `data/pgr_financials.db`
 - Cached raw provider payloads: `data/raw/`
 - Processed local inputs: `data/processed/`
-- Production artifacts: `results/monthly_decisions/`
+- Production artifacts: `artifacts/` (`monthly_decisions/`, `charts/`,
+  `ops/`, `shadow_reviews/`); paths in `config/paths.py`
 - Versioned research artifacts: `results/research/`
 
 ## Research vs. Production Boundary

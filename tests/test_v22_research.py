@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from datetime import date
 
-from src.research.v12 import SnapshotSummary, build_shadow_check_lines
-from src.research.v22 import v22_promoted_cross_check_spec
+from src.reporting.snapshot_summary import SnapshotSummary, build_shadow_check_lines
+from src.reporting.cross_check import v22_promoted_cross_check_spec
 
 
 def test_v22_promoted_cross_check_spec_defaults_to_v21_winner() -> None:

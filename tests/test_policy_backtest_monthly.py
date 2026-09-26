@@ -11,7 +11,7 @@ import pytest
 import scripts.monthly_decision as md
 from src.models.wfo_engine import FoldResult, WFOResult
 from src.models.multi_benchmark_wfo import EnsembleWFOResult
-from src.research.policy_metrics import FIXED_POLICIES, SIGNAL_POLICIES
+from src.models.policy_metrics import FIXED_POLICIES, SIGNAL_POLICIES
 
 
 # ---------------------------------------------------------------------------

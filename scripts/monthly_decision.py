@@ -11,13 +11,13 @@ only executed at actual vesting dates (January and July).  Monthly runs
 answer the question: "is the model reliably predicting PGR relative returns,
 or did we get lucky on 20 coin flips?"
 
-Output per run (in results/monthly_decisions/YYYY-MM/):
+Output per run (in artifacts/monthly_decisions/YYYY-MM/):
   recommendation.md      — Human-readable sell/hold report with signal details
   signals.csv            — Per-benchmark: ticker, IC, hit_rate, predicted_return, signal
   backtest_summary.csv   — Monthly stability stats at this point in time
   plots/                 — IC time series and regime breakdown charts
 
-The decision_log.md in results/monthly_decisions/ is appended with one
+The decision_log.md in artifacts/monthly_decisions/ is appended with one
 summary row per run.
 
 Usage:
@@ -317,17 +317,17 @@ def _write_step_output(name: str, value: str) -> None:
 def _output_dir(as_of: date) -> Path:
     """Return the output directory for the given month."""
     month_str = as_of.strftime("%Y-%m")
-    return Path("results") / "monthly_decisions" / month_str
+    return Path(config.MONTHLY_DECISIONS_DIR) / month_str
 
 
 def _dry_run_output_dir(as_of: date) -> Path:
     """Return the gitignored output directory used by ``--dry-run``.
 
     Dry runs must never overwrite the committed production artifacts under
-    ``results/monthly_decisions/``.
+    ``artifacts/monthly_decisions/``.
     """
     month_str = as_of.strftime("%Y-%m")
-    return Path("results") / "dry_run" / "monthly_decisions" / month_str
+    return Path(config.DRY_RUN_MONTHLY_DECISIONS_DIR) / month_str
 
 
 def _already_ran(as_of: date) -> bool:
@@ -1257,7 +1257,7 @@ def _get_next_vest_info(as_of: date) -> tuple[date, str]:
 
 def _load_previous_decision_summary(as_of: date) -> dict | None:
     """Load the most recent prior row from decision_log.md, if available."""
-    path = Path("results/monthly_decisions/decision_log.md")
+    path = Path(config.DECISION_LOG_PATH)
     if not path.exists():
         return None
 
@@ -1783,7 +1783,7 @@ def _compute_policy_summary(
 
     Aggregates OOS predictions and realized relative returns from the deployed
     inverse-variance ensemble across all benchmarks, then evaluates every fixed
-    and signal-driven policy defined in ``src.research.policy_metrics``.
+    and signal-driven policy defined in ``src.models.policy_metrics``.
 
     Returns a dict of ``{policy_name: PolicySummary}`` or ``None`` if fewer
     than 4 OOS observations are available.
@@ -2555,12 +2555,10 @@ def _append_decision_log(
 
     Args:
         _log_path_override: If provided, write to this path instead of the
-                            default results/monthly_decisions/decision_log.md.
+                            default artifacts/monthly_decisions/decision_log.md.
                             Used in tests only.
     """
-    log_path = _log_path_override or (
-        Path("results") / "monthly_decisions" / "decision_log.md"
-    )
+    log_path = _log_path_override or Path(config.DECISION_LOG_PATH)
     if not log_path.exists():
         return
 
@@ -4043,6 +4041,11 @@ def main(
 
 
 if __name__ == "__main__":
+    # UTF-8 console output (the report text has non-ASCII symbols). This used
+    # to happen as a side effect of importing
+    # results/research/v46_classification.py (review 2026-09-25, F30).
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(
         description="PGR v3.0 monthly decision report generator."
     )

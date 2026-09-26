@@ -24,11 +24,12 @@ from email.mime.text import MIMEText
 from html import escape
 from pathlib import Path
 
+from config.paths import CHARTS_DIR, MONTHLY_DECISIONS_DIR
 from src.tax.capital_gains import load_position_lots
 
 _DEFAULT_LOTS_PATH = Path("data/processed/position_lots.csv")
 
-_RESEARCH_DIR = Path("results/research")
+_CHARTS_DIR = Path(CHARTS_DIR)
 _RESEARCH_CHART_NAMES: list[str] = [
     "pgr_share_price.png",
     "pgr_book_value_per_share.png",
@@ -1117,7 +1118,7 @@ def send_monthly_email(
                 ym = datetime.strptime(str(ym), "%B %Y").strftime("%Y-%m")
             except ValueError:
                 pass
-        report_path = Path(f"results/monthly_decisions/{ym}/recommendation.md")
+        report_path = Path(MONTHLY_DECISIONS_DIR) / str(ym) / "recommendation.md"
 
     report_path = Path(report_path)
     if not report_path.exists():
@@ -1139,9 +1140,9 @@ def send_monthly_email(
         dashboard_snapshot_label = None
 
     chart_paths = [
-        _RESEARCH_DIR / name
+        _CHARTS_DIR / name
         for name in _RESEARCH_CHART_NAMES
-        if (_RESEARCH_DIR / name).exists()
+        if (_CHARTS_DIR / name).exists()
     ]
 
     body = report_path.read_text(encoding="utf-8")

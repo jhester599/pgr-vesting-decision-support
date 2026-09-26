@@ -3,7 +3,7 @@ PGR Annual Capital Return: Share Repurchases vs. Dividends
 Chart 1 — total dollars returned ($B), stacked bar.
 Chart 2 — same dollars as % of year-end market cap, stacked bar.
 Chart 3 — combined ratio vs. capital returned, two scatter panels.
-Saves the files listed in ``CHART_FILES`` to results/research/.
+Saves the files listed in ``CHART_FILES`` to artifacts/charts/.
 
 The plotted data comes from ``build_chart_frames``, which the tests check.
 """
@@ -24,6 +24,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import config  # noqa: E402
 from src.database import db_client  # noqa: E402
 from src.reporting.capital_return_data import (  # noqa: E402
     annual_capital_return,
@@ -33,7 +34,7 @@ from src.reporting.capital_return_data import (  # noqa: E402
 )
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "pgr_financials.db")
-OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "results", "research")
+OUT_DIR = os.path.join(os.path.dirname(__file__), "..", config.CHARTS_DIR)
 
 CHART_FILES: tuple[str, ...] = (
     "pgr_repurchase_dividend_annual.png",

@@ -12,7 +12,9 @@ import pandas as pd
 
 
 BASE_DIR = Path(__file__).parent.parent
-DECISIONS_DIR = BASE_DIR / "results" / "monthly_decisions"
+# Mirrors config.MONTHLY_DECISIONS_DIR (checked by tests/test_restructure_phase1.py);
+# `streamlit run dashboard/app.py` does not put the repo root on sys.path.
+DECISIONS_DIR = BASE_DIR / "artifacts" / "monthly_decisions"
 DB_PATH = BASE_DIR / "data" / "pgr_financials.db"
 DECISION_LOG = DECISIONS_DIR / "decision_log.md"
 

@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from scripts.benchmark_suite import run_benchmark_suite, summarize_benchmark_suite
-from src.research.evaluation import evaluate_baseline_strategy, summarize_predictions
+from src.models.evaluation import evaluate_baseline_strategy, summarize_predictions
 
 
 def _sample_xy(n_rows: int = 84) -> tuple[pd.DataFrame, pd.Series]:

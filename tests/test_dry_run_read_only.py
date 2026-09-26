@@ -2,12 +2,12 @@
 
 Before the fix, ``monthly_decision.py --dry-run`` rewrote the DB's
 ``model_performance_log`` row, added a ``model_retrain_log`` row, overwrote the
-committed ``results/monthly_decisions/YYYY-MM/`` artifacts and appended to
+committed monthly decision artifacts (now ``artifacts/monthly_decisions/YYYY-MM/``) and appended to
 ``decision_log.md`` and the shadow ledgers. ``weekly_fetch.py --dry-run``
 logged API requests and seeded splits.
 
 Each test runs ``main(dry_run=True)`` in a temp copy of the repo layout (DB
-copy plus the committed ``results/monthly_decisions`` tree) and asserts that
+copy plus the committed ``artifacts/monthly_decisions`` tree) and asserts that
 the DB, every copied file, and every tracked file in the real checkout are
 byte-identical afterwards.
 """
@@ -71,8 +71,8 @@ def temp_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     (root / "data" / "processed").mkdir(parents=True)
     shutil.copy2(COMMITTED_DB, root / "data" / "pgr_financials.db")
     shutil.copytree(
-        REPO_ROOT / "results" / "monthly_decisions",
-        root / "results" / "monthly_decisions",
+        REPO_ROOT / config.MONTHLY_DECISIONS_DIR,
+        root / config.MONTHLY_DECISIONS_DIR,
     )
     monkeypatch.chdir(root)
     monkeypatch.setattr(config, "DB_PATH", str(root / "data" / "pgr_financials.db"))
@@ -126,15 +126,15 @@ def test_monthly_decision_dry_run_leaves_db_and_tracked_files_unchanged(
     db_path = temp_repo / "data" / "pgr_financials.db"
     dry_run_root = temp_repo / "results" / "dry_run"
     db_before = _sha256(db_path)
-    results_before = _hash_tree(temp_repo / "results")
+    artifacts_before = _hash_tree(temp_repo / config.ARTIFACTS_DIR)
     repo_before = _hash_tracked_repo_files()
 
     monthly_decision.main(as_of_date_str="2026-04-02", dry_run=True, skip_fred=True)
 
     assert _sha256(db_path) == db_before, "monthly_decision --dry-run modified the DB"
     changed_results = _changed(
-        results_before,
-        _hash_tree(temp_repo / "results", exclude=dry_run_root),
+        artifacts_before,
+        _hash_tree(temp_repo / config.ARTIFACTS_DIR),
     )
     assert changed_results == [], f"dry run rewrote committed artifacts: {changed_results}"
     assert _changed(repo_before, _hash_tracked_repo_files()) == []

@@ -7,11 +7,12 @@ artifacts in `results/v11/`–`results/v24/`.  They are preserved here
 for reference and auditability but will not run again as part of the
 regular workflow.
 
-The companion `src/research/v11.py`–`v24.py` modules remain in
-`src/research/` because they export utility functions and dataclasses
-that are imported by `scripts/monthly_decision.py` and other production
-scripts.  A future refactor will promote those utility functions into
-proper production modules and retire the versioned research files.
+The production helpers these scripts used were promoted out of the
+versioned research files (`src/portfolio/`, `src/models/`,
+`src/reporting/`); the remaining `from X import *` shims (`v11`, `v12`,
+`v22`, `v27`, `v29`, `evaluation`, `policy_metrics`, `benchmark_sets`,
+`diversification`) were deleted in v180 and these scripts now import the
+real modules. The other `src/research/v13.py`–`v24.py` study modules remain.
 
 ## Contents
 

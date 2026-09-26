@@ -19,7 +19,10 @@ Run the local CI-equivalent commands:
 
 ```bash
 pip install -r requirements-dev.txt -c constraints-dev.txt
+pip install --no-deps -e .
 ruff check .
+python scripts/checks/check_doc_links.py
+python scripts/checks/check_sys_path_edits.py
 python -m pytest -q
 python scripts/weekly_fetch.py --dry-run --skip-fred
 python scripts/peer_fetch.py --dry-run
@@ -28,19 +31,36 @@ python scripts/monthly_decision.py --as-of 2026-04-02 --dry-run --skip-fred
 
 The weekly and monthly dry runs are read-only (DB opened with `mode=ro`;
 monthly artifacts go to the gitignored `results/dry_run/`). They leave the
-committed DB and `results/monthly_decisions/` untouched.
+committed DB and `artifacts/monthly_decisions/` untouched.
 
 ## Generated Files
 
 Do not edit these manually unless the change is specifically about generated
 output shape or fixtures:
 
-- `results/monthly_decisions/*`
+- `artifacts/*` (production outputs written by workflows; see
+  `docs/artifact-policy.md`)
 - `results/v9/*`
 - `data/pgr_financials.db`
 
 If a code change intentionally alters a generated artifact, regenerate it and
 include both the code and artifact update in the same PR.
+
+## Packaging and Paths
+
+- `pyproject.toml` defines the package (`pgr_vds`: `src` and `config`) and
+  the pytest, mypy and ruff config. Runtime dependencies are listed there and
+  in `requirements.txt` (which the workflows install); keep the two equal.
+  pandas is pinned to the tested major version (`>=3.0,<4`).
+- New code imports `src` and `config` through `pip install -e .`, never by
+  editing `sys.path`. `scripts/checks/check_sys_path_edits.py` fails on a new
+  edit outside `tests/conftest.py`; remove a file from
+  `scripts/checks/sys_path_allowlist.txt` when you drop its edit.
+- Production output paths are constants in `config/paths.py`
+  (`artifacts/...`); do not hard-code them. Nothing in `src/`, `config/`,
+  `dashboard/` or a production script may import code from `results/`.
+- A new workflow entry point must be added to
+  `tests/test_entrypoint_imports.py` (the test fails until it is).
 
 ## Workflow Discipline
 

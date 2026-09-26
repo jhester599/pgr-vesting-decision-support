@@ -38,8 +38,8 @@ from src.processing.feature_engineering import (
     get_X_y_relative,
 )
 from src.processing.multi_total_return import load_relative_return_matrix
-from src.research.diversification import score_benchmarks_against_pgr
-from src.research.evaluation import (
+from src.portfolio.diversification import score_benchmarks_against_pgr
+from src.models.evaluation import (
     BASELINE_STRATEGIES,
     PredictionSummary,
     evaluate_baseline_strategy,
@@ -48,8 +48,8 @@ from src.research.evaluation import (
     summarize_binary_predictions,
     summarize_predictions,
 )
-from src.research.policy_metrics import evaluate_hold_fraction_series, evaluate_policy_series, hold_fraction_from_policy
-from src.research.v11 import (
+from src.models.policy_metrics import evaluate_hold_fraction_series, evaluate_policy_series, hold_fraction_from_policy
+from src.portfolio.redeploy_buckets import (
     RIDGE_CLASSIFIER_FEATURES,
     add_destination_roles,
     choose_forecast_universe,
@@ -242,7 +242,7 @@ def _evaluate_classifier_probabilities(
     X_aligned = aligned[selected]
     y_aligned = aligned[y_binary.name].astype(int)
 
-    from src.research.evaluation import iter_wfo_splits
+    from src.models.evaluation import iter_wfo_splits
 
     probabilities: list[float] = []
     realized: list[int] = []

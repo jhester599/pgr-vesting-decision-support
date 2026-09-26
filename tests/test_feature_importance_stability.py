@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from src.models.wfo_engine import FoldResult, WFOResult
-from src.research.evaluation import (
+from src.models.evaluation import (
     FeatureImportanceStability,
     compute_feature_importance_stability,
 )

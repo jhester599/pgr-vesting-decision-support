@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 
-from src.research.diversification import classify_correlation_bucket, diversification_score
+from src.portfolio.diversification import classify_correlation_bucket, diversification_score
 
 
 def test_classify_correlation_bucket_thresholds() -> None:

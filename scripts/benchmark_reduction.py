@@ -16,7 +16,7 @@ if _REPO_ROOT not in sys.path:
 
 import config
 from src.database import db_client
-from src.research.benchmark_sets import BENCHMARK_FAMILIES
+from src.portfolio.benchmark_sets import BENCHMARK_FAMILIES
 from scripts.benchmark_suite import run_benchmark_suite
 
 

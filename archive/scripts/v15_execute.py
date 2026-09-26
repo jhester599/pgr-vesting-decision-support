@@ -19,12 +19,12 @@ import config
 from src.database import db_client
 from src.processing.feature_engineering import build_feature_matrix_from_db, get_X_y_relative
 from src.processing.multi_total_return import load_relative_return_matrix
-from src.research.evaluation import (
+from src.models.evaluation import (
     evaluate_baseline_strategy,
     evaluate_wfo_model,
     reconstruct_baseline_predictions,
 )
-from src.research.policy_metrics import evaluate_policy_series
+from src.models.policy_metrics import evaluate_policy_series
 from src.research.v15 import (
     V15_FORECAST_UNIVERSE,
     apply_one_for_one_swap,

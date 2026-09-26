@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from scripts.target_experiments import _transform_target, summarize_target_experiments
-from src.research.evaluation import summarize_binary_predictions
+from src.models.evaluation import summarize_binary_predictions
 
 
 def test_transform_target_binary_outperform():

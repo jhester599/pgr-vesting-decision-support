@@ -10,6 +10,7 @@ from typing import Any
 import pandas as pd
 
 from config.features import CONTEXTUAL_CLASSIFIER_BENCHMARKS
+from config.paths import MONTHLY_DECISIONS_DIR
 
 
 CLASSIFICATION_SHADOW_COLUMNS = [
@@ -172,14 +173,14 @@ def write_decision_overlays_csv(
 def classification_history_path(base_dir: Path | None = None) -> Path:
     """Return the append-only classifier history artifact path."""
     if base_dir is None:
-        base_dir = Path("results") / "monthly_decisions"
+        base_dir = Path(MONTHLY_DECISIONS_DIR)
     return base_dir / "classification_shadow_history.csv"
 
 
 def ta_shadow_variant_history_path(base_dir: Path | None = None) -> Path:
     """Return the append-only TA shadow variant history artifact path."""
     if base_dir is None:
-        base_dir = Path("results") / "monthly_decisions"
+        base_dir = Path(MONTHLY_DECISIONS_DIR)
     return base_dir / "ta_shadow_variant_history.csv"
 
 

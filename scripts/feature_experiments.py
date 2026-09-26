@@ -18,7 +18,7 @@ import config
 from src.database import db_client
 from src.processing.feature_engineering import build_feature_matrix_from_db, get_feature_columns, get_X_y_relative
 from src.processing.multi_total_return import load_relative_return_matrix
-from src.research.evaluation import classify_research_gate, evaluate_wfo_model
+from src.models.evaluation import classify_research_gate, evaluate_wfo_model
 
 
 DEFAULT_OUTPUT_DIR = os.path.join("results", "v9")

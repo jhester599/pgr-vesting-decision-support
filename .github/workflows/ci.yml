@@ -26,10 +26,20 @@ jobs:
           cache: 'pip'
 
       - name: Install runtime and dev dependencies
-        run: pip install -r requirements-dev.txt -c constraints-dev.txt
+        run: |
+          pip install -r requirements-dev.txt -c constraints-dev.txt
+          # Installs `src` and `config` (package pgr_vds) so they import
+          # without sys.path edits (review 2026-09-25, section 5, phase 0).
+          pip install --no-deps -e .
 
       - name: Ruff syntax and fatal-lint pass
         run: ruff check .
+
+      - name: Active docs have no broken links
+        run: python scripts/checks/check_doc_links.py
+
+      - name: No new sys.path edits outside tests/conftest.py
+        run: python scripts/checks/check_sys_path_edits.py
 
       - name: mypy pass on hardened modules (v33.1 expanded to 11 modules)
         run: >
@@ -37,7 +47,7 @@ jobs:
           src/database/migration_runner.py
           src/ingestion/provider_registry.py
           src/reporting/run_manifest.py
-          src/research/evaluation.py
+          src/models/evaluation.py
           src/processing/feature_engineering.py
           src/models/drift_monitor.py
           src/models/conformal.py

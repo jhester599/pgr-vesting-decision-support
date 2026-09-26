@@ -1,10 +1,19 @@
-"""v46 - Binary classification: will PGR outperform the benchmark over 6M?"""
+"""Binary classification: will PGR outperform the benchmark over 6M? (study v46)
+
+Moved from ``results/research/v46_classification.py`` (review 2026-09-25,
+F30): production imports ``compute_binary_metrics`` through
+``src.research.v66_utils``. The study no longer edits ``sys.path``,
+reconfigures ``sys.stdout`` or installs global warning filters at import;
+``main()`` sets them for its own run only.
+
+Re-run the study with ``python -m src.research.binary_classification``
+(writes ``results/research/v46_classification_results.csv``).
+"""
 
 from __future__ import annotations
 
 import sys
 import warnings
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -12,13 +21,6 @@ from sklearn.linear_model import LogisticRegressionCV
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.metrics import log_loss
 from sklearn.model_selection import TimeSeriesSplit
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")
-warnings.filterwarnings("ignore", message="All-NaN slice encountered", category=RuntimeWarning)
-warnings.filterwarnings("ignore", category=FutureWarning, module="sklearn.linear_model._logistic")
-warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 from src.models.evaluation import summarize_binary_predictions
 from src.models.regularized_models import AdaptiveGapTimeSeriesSplit
@@ -111,6 +113,20 @@ def classification_wfo(
 
 def main() -> None:
     """Run the phase-2 binary classification experiment."""
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore", message="All-NaN slice encountered", category=RuntimeWarning
+        )
+        warnings.filterwarnings(
+            "ignore", category=FutureWarning, module="sklearn.linear_model._logistic"
+        )
+        warnings.filterwarnings("ignore", category=ConvergenceWarning)
+        _run_study()
+
+
+def _run_study() -> None:
     conn = get_connection()
     try:
         df = load_feature_matrix(conn)

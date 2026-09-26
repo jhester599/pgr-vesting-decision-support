@@ -27,8 +27,8 @@ from src.database import db_client
 from src.models.multi_benchmark_wfo import get_ensemble_signals, run_ensemble_benchmarks
 from src.processing.feature_engineering import build_feature_matrix_from_db, get_feature_columns, get_X_y_relative
 from src.processing.multi_total_return import load_relative_return_matrix
-from src.research.diversification import score_benchmarks_against_pgr
-from src.research.evaluation import (
+from src.portfolio.diversification import score_benchmarks_against_pgr
+from src.models.evaluation import (
     BASELINE_STRATEGIES,
     classify_research_gate,
     evaluate_baseline_strategy,
@@ -37,8 +37,8 @@ from src.research.evaluation import (
     reconstruct_baseline_predictions,
     reconstruct_ensemble_oos_predictions,
 )
-from src.research.policy_metrics import evaluate_policy_series, hold_fraction_from_policy
-from src.research.v11 import (
+from src.models.policy_metrics import evaluate_policy_series, hold_fraction_from_policy
+from src.portfolio.redeploy_buckets import (
     add_destination_roles,
     choose_recommendation_universe,
     diversification_adjusted_policy_utility,
@@ -47,7 +47,7 @@ from src.research.v11 import (
     recommend_redeploy_buckets,
     summarize_existing_holdings_actions,
 )
-from src.research.v12 import recent_monthly_review_dates, signal_from_prediction
+from src.reporting.snapshot_summary import recent_monthly_review_dates, signal_from_prediction
 from src.research.v14 import (
     V14_BALANCED_CORE7,
     UniverseSelection,
@@ -325,7 +325,7 @@ def _evaluate_candidate_stack(
                 )
             y_hat, y_true = _combine_prediction_frames(frames)
             if not y_hat.empty:
-                from src.research.evaluation import summarize_predictions
+                from src.models.evaluation import summarize_predictions
 
                 summary = summarize_predictions(y_hat, y_true, target_horizon_months=DEFAULT_HORIZON)
                 sign_policy = evaluate_policy_series(y_hat, y_true, "sign_hold_vs_sell")

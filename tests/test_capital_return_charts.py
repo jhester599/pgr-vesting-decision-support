@@ -118,10 +118,10 @@ def test_main_writes_every_named_chart(db_path: Path, tmp_path: Path) -> None:
 
 
 def _workflow_chart_list(text: str) -> list[str]:
-    """Names in the job-level ``RESEARCH_CHARTS: >-`` block (PyYAML is not a
+    """Names in the job-level ``MONTHLY_CHARTS: >-`` block (PyYAML is not a
     dependency, so the workflow is read as text)."""
     lines = text.splitlines()
-    start = next(i for i, line in enumerate(lines) if "RESEARCH_CHARTS: >-" in line)
+    start = next(i for i, line in enumerate(lines) if "MONTHLY_CHARTS: >-" in line)
     indent = len(lines[start]) - len(lines[start].lstrip())
     names = []
     for line in lines[start + 1:]:
@@ -143,15 +143,15 @@ def test_workflow_regenerates_and_commits_the_named_charts() -> None:
     named = _workflow_chart_list(text)
     assert sorted(named) == sorted(set(charts.CHART_FILES) | set(timeseries_charts.CHART_FILES))
 
-    chart_step = _workflow_step(text, "Regenerate research charts")
+    chart_step = _workflow_step(text, "Regenerate monthly charts")
     assert "continue-on-error" not in chart_step
     assert "set -euo pipefail" in chart_step
-    assert "for chart in $RESEARCH_CHARTS" in chart_step
+    assert "for chart in $MONTHLY_CHARTS" in chart_step
     assert "exit 1" in chart_step
 
     commit = _workflow_step(text, "Commit results")
     assert "pgr_*.png" not in commit
-    assert "for chart in $RESEARCH_CHARTS" in commit
+    assert "for chart in $MONTHLY_CHARTS" in commit
     # A chart failure must not stop the decision/DB commit or the email.
     commit_if = commit[commit.index("if:"):commit.index("env:")]
     assert "!cancelled()" in commit_if and "steps.charts" not in commit_if

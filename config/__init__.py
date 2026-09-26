@@ -18,3 +18,4 @@ from .features import *  # noqa: F401, F403  — FRED series, ETF universe, feat
 from .splits import *   # noqa: F401, F403  — canonical split registry, reviewed price jumps
 from .model import *     # noqa: F401, F403  — WFO, ML diagnostics, calibration, conformal, BLP
 from .tax import *       # noqa: F401, F403  — tax rates, RSU schedule, STCG guard, TLH
+from .paths import *     # noqa: F401, F403  — production artifact paths (artifacts/)

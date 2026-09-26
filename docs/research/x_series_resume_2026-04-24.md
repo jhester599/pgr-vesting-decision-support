@@ -119,10 +119,10 @@ research steps.
 
 ## Peer Review / Deep Research Prompts
 
-- Dividend lane prompt: [x23 peer review](/C:/Users/Jeff/Documents/pgr-vesting-decision-support/results/research/x23_peer_review_prompt.md)
-- Holistic bundle prompt: [x24 bundle peer review](/C:/Users/Jeff/Documents/pgr-vesting-decision-support/results/research/x24_bundle_peer_review_prompt.md)
-- Structural P/B prompt: [x24 structural peer review](/C:/Users/Jeff/Documents/pgr-vesting-decision-support/results/research/x24_structural_peer_review_prompt.md)
-- Earlier structural prompt: [x16 peer review](/C:/Users/Jeff/Documents/pgr-vesting-decision-support/results/research/x16_peer_review_prompt.md)
+- Dividend lane prompt: [x23 peer review](../../results/research/x23_peer_review_prompt.md)
+- Holistic bundle prompt: [x24 bundle peer review](../../results/research/x24_bundle_peer_review_prompt.md)
+- Structural P/B prompt: [x24 structural peer review](../../results/research/x24_structural_peer_review_prompt.md)
+- Earlier structural prompt: [x16 peer review](../../results/research/x16_peer_review_prompt.md)
 
 ## Resume Advice
 

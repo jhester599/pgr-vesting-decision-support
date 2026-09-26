@@ -20,8 +20,6 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = REPO_ROOT / "data" / "pgr_financials.db"
 RESULTS_DIR = REPO_ROOT / "results" / "research"
 
-RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-
 # ---------------------------------------------------------------------------
 # Holdout boundary
 # Experiments train/validate ONLY on data BEFORE this date.
@@ -248,6 +246,7 @@ def load_research_baseline_results() -> pd.DataFrame | None:
 
 def save_results(df: pd.DataFrame, filename: str) -> Path:
     """Save results DataFrame to results/research/ and return the path."""
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     out = RESULTS_DIR / filename
     df.to_csv(out, index=False)
     print(f"\nSaved: {out}")

@@ -28,7 +28,7 @@ from src.processing.feature_engineering import (
     get_X_y_relative,
 )
 from src.processing.multi_total_return import load_relative_return_matrix
-from src.research.evaluation import evaluate_wfo_model
+from src.models.evaluation import evaluate_wfo_model
 from src.research.v160_ta_features import build_ta_feature_matrix
 
 PRIMARY_BENCHMARKS: tuple[str, ...] = (

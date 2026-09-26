@@ -22,14 +22,14 @@ from src.database import db_client
 from src.processing.feature_engineering import build_feature_matrix_from_db, get_X_y_relative
 from src.processing.multi_total_return import build_etf_monthly_returns, load_relative_return_matrix
 from src.reporting.decision_rendering import determine_recommendation_mode
-from src.research.evaluation import (
+from src.models.evaluation import (
     evaluate_baseline_strategy,
     evaluate_wfo_model,
     reconstruct_baseline_predictions,
     summarize_predictions,
 )
-from src.research.policy_metrics import evaluate_policy_series
-from src.research.v12 import aggregate_health_from_prediction_frames, signal_from_prediction
+from src.models.policy_metrics import evaluate_policy_series
+from src.reporting.snapshot_summary import aggregate_health_from_prediction_frames, signal_from_prediction
 from src.research.v20 import summarize_v20_review, v20_model_specs
 from src.research.v21 import common_historical_dates
 from src.research.v23 import fit_proxy_blend_weights
