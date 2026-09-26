@@ -19,7 +19,7 @@ from src.database import db_client
 from tests.capital_return_fixture import build_fixture_db, edgar_rows, last_weekly_close
 
 _WORKFLOW = (
-    Path(__file__).resolve().parent.parent / ".github" / "workflows" / "monthly_decision.yml"
+    Path(__file__).resolve().parents[3] / ".github" / "workflows" / "monthly_decision.yml"
 )
 
 

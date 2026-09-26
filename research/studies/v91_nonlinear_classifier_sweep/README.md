@@ -8,7 +8,7 @@
 
 **Status.** `closed`.
 
-**Closeout / record.** [2026-04-11-v87-v96-classification-hybrid-research.md](../../../docs/superpowers/plans/2026-04-11-v87-v96-classification-hybrid-research.md)
+**Closeout / record.** [2026-04-11-v87-v96-classification-hybrid-research.md](../../../docs/history/superpowers/plans/2026-04-11-v87-v96-classification-hybrid-research.md)
 
 ## Run
 

@@ -18,12 +18,14 @@ layers.
 Run the local CI-equivalent commands:
 
 ```bash
-pip install -r requirements-dev.txt -c constraints-dev.txt
-pip install --no-deps -e .
+pip install -e ".[dev]"
 ruff check .
 python scripts/checks/check_doc_links.py
 python scripts/checks/check_sys_path_edits.py
-python -m pytest -q
+python research/tools/registry.py
+python -m pytest -q -m "not artifact and not research"   # CI job: test
+python -m pytest -q -m "research and not artifact"       # CI job: research
+python -m pytest -q -m artifact                          # CI job: artifacts
 python scripts/weekly_fetch.py --dry-run --skip-fred
 python scripts/peer_fetch.py --dry-run
 python scripts/monthly_decision.py --as-of 2026-04-02 --dry-run --skip-fred
@@ -35,9 +37,33 @@ committed DB and `artifacts/monthly_decisions/` untouched.
 
 ## Tests
 
-- CI runs `python -m pytest -q -m "not artifact"` in the `test` job and
-  `python -m pytest -q -m artifact` in the `artifacts` job. A plain
-  `python -m pytest -q` runs both.
+The layout mirrors the code (review 2026-09-25, section 5, phase 4):
+
+| Folder | What goes there | Marker |
+|---|---|---|
+| `tests/unit/<package>/` | Tests of one module. `<package>` mirrors the code: `backtest`, `database`, `ingestion`, `models`, `portfolio`, `processing`, `reporting`, `tax` (under `src/`), plus `config`, `dashboard` and `scripts` | `unit` |
+| `tests/integration/pipeline/` | Several layers end to end: the monthly pipeline, dry runs, entry-point imports, workflow and ops contracts, mutation kills | `integration` |
+| `tests/integration/data/` | Row-level integrity of the committed DB | `integration` |
+| `tests/integration/repo/` | Repository contracts: docs, links, layout, workflows, test-suite hygiene | `integration` |
+| `tests/research/` | Research studies (`research/studies/`) and `src/research/` | `research` |
+
+- Name a test file after the module it tests: `test_<module>.py`, or
+  `test_<module>_<aspect>.py` when a module has several (for example
+  `unit/processing/test_feature_engineering_channel_mix.py`). No version or
+  work-package numbers in new names; study ids appear only in
+  `tests/research/`.
+- `tests/conftest.py` applies the `unit`, `integration` and `research`
+  markers by folder. Helpers shared across folders (`conftest.py`,
+  `repo_guard.py`, `capital_return_fixture.py`, `guard_probe.py`) and
+  `fixtures/` stay at the top of `tests/`. Every test folder has an
+  `__init__.py`; import a helper from another test file by its full path
+  (`from tests.unit.scripts.test_edgar_8k_parser_breadth import ...`).
+- A test file that needs the repository root uses
+  `Path(__file__).resolve().parents[3]` (two folders below `tests/`), or
+  `parents[2]` in `tests/research/`.
+- CI runs three jobs: `test` (`-m "not artifact and not research"`),
+  `research` (`-m "research and not artifact"`) and `artifacts`
+  (`-m artifact`). A plain `python -m pytest -q` runs all three.
 - Mark a test `@pytest.mark.artifact` when its assertions are about
   committed data (`results/`, `artifacts/`, `data/`, the committed DB)
   rather than code. A test of production code that happens to load a
@@ -53,7 +79,8 @@ committed DB and `artifacts/monthly_decisions/` untouched.
   per process.
 - `scripts/checks/mutation_study.py` re-runs the F28 mutation study in a
   scratch clone. When you move one of its production sites, update the
-  mutation.
+  mutation; when you move or rename one of its test files, update its list
+  (the script stops on a missing file).
 
 ## Generated Files
 
@@ -72,10 +99,13 @@ include both the code and artifact update in the same PR.
 
 ## Packaging and Paths
 
-- `pyproject.toml` defines the package (`pgr_vds`: `src` and `config`) and
-  the pytest, mypy and ruff config. Runtime dependencies are listed there and
-  in `requirements.txt` (which the workflows install); keep the two equal.
-  pandas is pinned to the tested major version (`>=3.0,<4`).
+- `pyproject.toml` defines the package (`pgr_vds`: `src` and `config`), its
+  dependencies and the pytest, mypy and ruff config. It is the only
+  dependency list: there are no requirements or constraints files. Runtime
+  dependencies go in `[project] dependencies` (every workflow runs
+  `pip install -e .`), test and lint tools in the `dev` extra, pinned
+  exactly, and Streamlit in the `dashboard` extra. pandas is pinned to the
+  tested major version (`>=3.0,<4`).
 - New code imports `src` and `config` through `pip install -e .`, never by
   editing `sys.path`. `scripts/checks/check_sys_path_edits.py` fails on a new
   edit outside `tests/conftest.py`; remove a file from
@@ -84,7 +114,7 @@ include both the code and artifact update in the same PR.
   (`artifacts/...`); do not hard-code them. Nothing in `src/`, `config/`,
   `dashboard/` or a production script may import code from `results/`.
 - A new workflow entry point must be added to
-  `tests/test_entrypoint_imports.py` (the test fails until it is).
+  `tests/integration/pipeline/test_entrypoint_imports.py` (the test fails until it is).
 
 ## Workflow Discipline
 
@@ -112,7 +142,13 @@ Update docs whenever you change:
 - contributor/operator process
 - user-facing report or email behavior
 
-The top-level docs map lives in `README.md`.
+The top-level docs map lives in `README.md`; `docs/README.md` says where a
+new document goes. Finished plans, closeouts, result summaries and external
+reviews live under `docs/history/` (index: `docs/history/README.md`); do not
+edit them to match today's code. Retired code is deleted, not archived in the
+tree: list it in `docs/history/retired-code/README.md` with the commit that
+last had it. `scripts/checks/check_doc_links.py` checks every relative link
+in the docs, including all of `docs/history/`.
 
 ## Research vs. Production
 
@@ -121,8 +157,9 @@ The top-level docs map lives in `README.md`.
 - Research code supports evaluation, experimentation, and future promotion
   decisions.
 - Do not silently promote research code into production behavior.
-- Promotion decisions should be documented in `docs/model-governance.md` and in
-  a summary document for the relevant release.
+- Record each promotion decision as the next numbered file in
+  `docs/decisions/` and add a row to the Decision Record table in
+  `docs/model-governance.md`, in the same PR (see `docs/decisions/README.md`).
 
 ## Research Studies
 

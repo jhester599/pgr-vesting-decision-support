@@ -23,8 +23,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import config
 from src.models.regularized_models import (
@@ -342,7 +340,7 @@ class TestInverseVarianceWeighting:
         mbw.predict_current = _mock_pc
         try:
             # The weighting math is tested at a fixed alpha; the prequential
-            # alpha is tested in test_validation_gating_wp7.py.
+            # alpha is tested in tests/integration/pipeline/test_validation_gating.py.
             signals = get_ensemble_signals(
                 X_full=X,
                 relative_return_matrix=rel_matrix,

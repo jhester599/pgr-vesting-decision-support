@@ -10,7 +10,7 @@
 
 **Notes.** Path B calibration (shadow).
 
-**Closeout / record.** [2026-04-12-v123-v128-classification-enhancement-plan.md](../../../docs/superpowers/plans/2026-04-12-v123-v128-classification-enhancement-plan.md)
+**Closeout / record.** [2026-04-12-v123-v128-classification-enhancement-plan.md](../../../docs/history/superpowers/plans/2026-04-12-v123-v128-classification-enhancement-plan.md)
 
 ## Run
 

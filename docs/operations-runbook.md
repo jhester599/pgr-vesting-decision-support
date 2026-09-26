@@ -49,7 +49,7 @@ needs `EDGAR_USER_AGENT` (a name and contact e-mail); without it the call fails.
 Optional local dashboard check:
 
 ```bash
-pip install -r requirements-dashboard.txt
+pip install -e ".[dashboard]"
 streamlit run dashboard/app.py
 ```
 
@@ -122,7 +122,7 @@ EDGAR_USER_AGENT="Name email@example.com" python scripts/repair_edgar_history.py
     --db /tmp/repair.db --diff-csv /tmp/edgar_cell_diff.csv \
     --export-csv data/processed/pgr_edgar_cache.csv
 python scripts/generate_edgar_data_dictionary.py --db /tmp/repair.db
-PGR_EDGAR_INTEGRITY_DB=/tmp/repair.db python -m pytest tests/test_pgr_edgar_integrity.py
+PGR_EDGAR_INTEGRITY_DB=/tmp/repair.db python -m pytest tests/integration/data/test_pgr_edgar_integrity.py
 ```
 
 The script re-fetches every monthly release since August 2004 (cached in

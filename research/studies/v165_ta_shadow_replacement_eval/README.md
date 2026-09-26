@@ -10,7 +10,7 @@
 
 **Notes.** Reporting-only TA replacement variants (ta_shadow_variant_history.csv).
 
-**Closeout / record.** [V165_CLOSEOUT_AND_HANDOFF.md](../../../docs/closeouts/V165_CLOSEOUT_AND_HANDOFF.md)
+**Closeout / record.** [V165_CLOSEOUT_AND_HANDOFF.md](../../../docs/history/closeouts/V165_CLOSEOUT_AND_HANDOFF.md)
 
 ## Run
 

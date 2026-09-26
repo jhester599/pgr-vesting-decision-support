@@ -20,8 +20,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import config
 from src.processing.feature_engineering import (

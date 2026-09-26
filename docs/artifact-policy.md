@@ -69,7 +69,7 @@ read committed study outputs, from paths named in code:
 `config.V128_BENCHMARK_FEATURE_MAP_PATH` (v128),
 `classification_gate_overlay.DEFAULT_OVERLAY_RESULTS_PATH` (v113) and
 `shadow_followon.FOLLOWON_CANDIDATE_PATHS` (v141–v150).
-`tests/test_restructure_phase3.py` checks that those files exist.
+`tests/integration/repo/test_restructure_phase3.py` checks that those files exist.
 
 Per-fold `*_detail.csv` files over 1 MB are not committed: study scripts
 write them to `outputs/detail/`, which is gitignored, and the study README
@@ -105,7 +105,7 @@ back to markdown parsing.
   - current docs
 - Research source of truth for promotion evidence:
   - `research/studies/` (and `research/registry.yaml`)
-  - current plan and summary documents under `docs/superpowers/plans/`
+  - current plan and summary documents under `docs/history/superpowers/plans/`
 
 ## What Should Not Be Committed
 

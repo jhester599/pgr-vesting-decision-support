@@ -21,7 +21,7 @@ from types import ModuleType
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 CHECKS = REPO_ROOT / "scripts" / "checks"
 
 
@@ -67,13 +67,14 @@ def test_pyproject_pins_pandas_to_tested_major() -> None:
     assert deps["pandas"] == "pandas>=3.0,<4"
 
 
-def test_requirements_txt_matches_pyproject_dependencies() -> None:
-    """The workflows install requirements.txt; it must equal the package deps."""
-    pyproject = _requirement_names(_pyproject()["project"]["dependencies"])
-    requirements = _requirement_names(
-        (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines()
-    )
-    assert requirements == pyproject
+def test_pyproject_is_the_only_dependency_list() -> None:
+    """Phase 4 folded requirements.txt into pyproject.toml; workflows install the package.
+
+    (Until phase 4 this test kept requirements.txt equal to the package deps.)
+    """
+    assert not (REPO_ROOT / "requirements.txt").exists()
+    deps = _requirement_names(_pyproject()["project"]["dependencies"])
+    assert {"pandas", "numpy", "scikit-learn", "xgboost", "requests"} <= set(deps)
 
 
 def test_tool_config_lives_in_pyproject_only() -> None:
@@ -185,6 +186,6 @@ def test_sys_path_rule_flags_new_file_and_stale_entry(tmp_path: Path) -> None:
 
 def test_ci_installs_package_and_runs_repository_checks() -> None:
     ci = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    assert re.search(r"pip install (--no-deps )?-e \.", ci)
+    assert re.search(r"pip install (--no-deps )?-e \"?\.", ci)
     assert "python scripts/checks/check_doc_links.py" in ci
     assert "python scripts/checks/check_sys_path_edits.py" in ci

@@ -8,7 +8,7 @@
 
 **Status.** `closed`.
 
-**Closeout / record.** [2026-04-10-v37-v60-results-summary.md](../../../docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md)
+**Closeout / record.** [2026-04-10-v37-v60-results-summary.md](../../../docs/history/superpowers/plans/2026-04-10-v37-v60-results-summary.md)
 
 ## Run
 

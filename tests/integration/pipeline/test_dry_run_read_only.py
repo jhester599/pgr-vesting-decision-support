@@ -24,7 +24,7 @@ import pytest
 
 import config
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 COMMITTED_DB = REPO_ROOT / "data" / "pgr_financials.db"
 
 

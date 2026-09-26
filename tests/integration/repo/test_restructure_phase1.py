@@ -25,7 +25,7 @@ import pytest
 import config
 from src.reporting import classification_artifacts, email_sender
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 
 MONTHLY_CHARTS: tuple[str, ...] = (

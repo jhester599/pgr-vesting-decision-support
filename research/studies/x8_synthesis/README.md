@@ -10,7 +10,7 @@
 
 **Notes.** x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md).
 
-**Closeout / record.** [2026-04-23-x8-synthesis-ranking-memo.md](../../../docs/superpowers/plans/2026-04-23-x8-synthesis-ranking-memo.md)
+**Closeout / record.** [2026-04-23-x8-synthesis-ranking-memo.md](../../../docs/history/superpowers/plans/2026-04-23-x8-synthesis-ranking-memo.md)
 
 ## Run
 

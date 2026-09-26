@@ -23,7 +23,7 @@ guarantees for time-series data.  Two methods are provided:
 Both methods use symmetric intervals (±q̂ around ŷ) which are easier to
 interpret in a financial context ("predicted +3.5% ± 8.2%").
 
-MAPIE (≥1.3.0) is listed in requirements.txt and used here for the
+MAPIE (≥1.3.0) is a dependency in pyproject.toml and used here for the
 TimeSeriesRegressor validation path; the production monthly pipeline uses
 the native split/ACI implementation to avoid the latency of a full MAPIE
 refit during the monthly batch run.

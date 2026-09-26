@@ -20,7 +20,7 @@ from src.reporting.decision_rendering import (
     sell_pct_from_consensus,
 )
 
-FIXTURE = Path(__file__).parent / "fixtures" / "live_mapping_oos_panel_2026-09-21.csv"
+FIXTURE = Path(__file__).resolve().parents[2] / "fixtures" / "live_mapping_oos_panel_2026-09-21.csv"
 
 
 def _panel() -> pd.DataFrame:
@@ -128,7 +128,7 @@ def test_monthly_policy_backtest_includes_the_live_mapping() -> None:
     """The report's policy backtest scores the live mapping, not only tiered_25_50_100."""
     import scripts.monthly_decision as md
     from src.models.live_policy_backtest import LIVE_MAPPING_POLICY
-    from tests.test_policy_backtest_monthly import _make_ensemble
+    from tests.unit.scripts.test_monthly_decision_policy_backtest import _make_ensemble
 
     y_hat = [0.05, -0.02, 0.08, -0.04, 0.03, 0.01, -0.06, 0.09]
     y_true = [0.04, -0.03, 0.07, -0.05, 0.02, -0.01, 0.03, 0.06]

@@ -10,14 +10,12 @@ Covers:
 from __future__ import annotations
 
 import os
-import sys
 import tempfile
 from datetime import date
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from scripts.monthly_decision import _append_decision_log, _build_tax_context_lines
 

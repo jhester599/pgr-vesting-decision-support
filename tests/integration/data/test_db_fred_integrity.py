@@ -15,7 +15,7 @@ import pytest
 
 from src.database import db_client
 
-_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "pgr_financials.db"
+_DB_PATH = Path(__file__).resolve().parents[3] / "data" / "pgr_financials.db"
 
 # Every test reads the committed DB through a module-scoped connection, so
 # the whole module is an artifact test (review F28, step 9).

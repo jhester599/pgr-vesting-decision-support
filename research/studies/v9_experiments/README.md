@@ -8,7 +8,7 @@
 
 **Status.** `closed`.
 
-**Closeout / record.** [V9_CLOSEOUT_AND_V91_NEXT.md](../../../docs/closeouts/V9_CLOSEOUT_AND_V91_NEXT.md)
+**Closeout / record.** [V9_CLOSEOUT_AND_V91_NEXT.md](../../../docs/history/closeouts/V9_CLOSEOUT_AND_V91_NEXT.md)
 
 ## Run
 
@@ -24,7 +24,7 @@ python research/studies/v9_experiments/weekly_snapshot_experiments.py
 
 ## Outputs
 
-The committed outputs of these scripts are in [`research/legacy/v9/`](../../../research/legacy/v9/) (unchanged). New runs write to `outputs/` in this folder.
+The committed outputs of these scripts are in [`research/legacy/v9/`](../../legacy/v9/) (unchanged). New runs write to `outputs/` in this folder.
 
 ## Tests
 

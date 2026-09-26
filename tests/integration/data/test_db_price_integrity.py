@@ -27,7 +27,7 @@ from src.processing.price_integrity import (
     find_unexplained_price_jumps,
 )
 
-_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "pgr_financials.db"
+_DB_PATH = Path(__file__).resolve().parents[3] / "data" / "pgr_financials.db"
 
 pytestmark = pytest.mark.skipif(
     not _DB_PATH.exists(), reason="committed DB not present"

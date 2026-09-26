@@ -53,7 +53,7 @@ jobs:
       # Every recurring chart, by name (written to artifacts/charts/). The
       # chart step fails unless each one is rewritten by this run, and only
       # these files are committed.
-      # tests/test_capital_return_charts.py checks this list against the
+      # tests/unit/scripts/test_capital_return_charts.py checks this list against the
       # CHART_FILES of both chart scripts.
       MONTHLY_CHARTS: >-
         pgr_book_value_per_share.png
@@ -78,9 +78,10 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
+          cache-dependency-path: pyproject.toml
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -e .
 
       - name: Run monthly decision script
         id: decision

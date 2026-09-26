@@ -1,7 +1,7 @@
 """Probe tests for the repo guard (review 2026-09-25, F28, step 9).
 
 Not collected by default (the name does not match ``test_*.py``).
-``tests/test_wp12_test_hygiene.py`` runs this file in a subprocess and
+``tests/integration/repo/test_test_suite_hygiene.py`` runs this file in a subprocess and
 checks which probes the guard fails. Every probe that touches the
 repository is refused before the file is created, so nothing is written.
 """

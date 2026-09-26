@@ -40,13 +40,10 @@ The live monthly workflow currently uses:
 - a shadow-only classifier interpretation layer and shadow gate overlay for
   confidence and future promotion monitoring
 
-Recent production and research context is documented in:
-
-- [2026-04-10-v66-v73-calibration-and-decision-layer.md](docs/superpowers/plans/2026-04-10-v66-v73-calibration-and-decision-layer.md)
-- [2026-04-10-v74-v78-quality-weighted-promotion.md](docs/superpowers/plans/2026-04-10-v74-v78-quality-weighted-promotion.md)
-- [2026-04-11-v79-v80-post-promotion-stabilization.md](docs/superpowers/plans/2026-04-11-v79-v80-post-promotion-stabilization.md)
-- [2026-04-11-v81-v88-repo-review-and-adoption-plan.md](docs/superpowers/plans/2026-04-11-v81-v88-repo-review-and-adoption-plan.md)
-- [2026-04-11-v102-v117-post-review-enhancement-plan.md](docs/superpowers/plans/2026-04-11-v102-v117-post-review-enhancement-plan.md)
+Why each part is live is recorded one decision per file in
+[docs/decisions/](docs/decisions/README.md) (summary table in
+[docs/model-governance.md](docs/model-governance.md#decision-record)); the
+plans and closeouts behind them are in [docs/history/](docs/history/README.md).
 
 ## Architecture
 
@@ -81,9 +78,10 @@ These scripts are the operational surface area. Reusable logic belongs under
 
 1. Create and activate a Python 3.11+ virtual environment (pandas 3 needs
    3.11).
-2. Install `requirements.txt`, then the package itself with
-   `pip install --no-deps -e .` (`pyproject.toml`, package `pgr_vds`), so
-   `src` and `config` import without `sys.path` edits.
+2. Install the package and its dependencies with `pip install -e .`, or
+   `pip install -e ".[dev]"` to also get the pinned test and lint tools.
+   `pyproject.toml` (package `pgr_vds`) is the only dependency list; the
+   editable install lets `src` and `config` import without `sys.path` edits.
 3. Configure `.env` with required API keys, SMTP settings, and EDGAR user-agent
    values.
 4. Run the dry-run checks below.
@@ -112,7 +110,7 @@ needs `EDGAR_USER_AGENT` (a name and contact e-mail); without it the call fails.
 Optional local dashboard:
 
 ```bash
-pip install -r requirements-dashboard.txt
+pip install -e ".[dashboard]"
 streamlit run dashboard/app.py
 ```
 
@@ -124,10 +122,13 @@ Operational runbook: [docs/operations-runbook.md](docs/operations-runbook.md)
 - [docs/operations-runbook.md](docs/operations-runbook.md): dry runs, validation, recovery
 - [docs/workflows.md](docs/workflows.md): GitHub Actions behavior and artifact expectations
 - [docs/model-governance.md](docs/model-governance.md): current live baseline and promotion rules
+- [docs/decisions/](docs/decisions/README.md): one record per promotion decision
 - [docs/decision-output-guide.md](docs/decision-output-guide.md): how to read monthly outputs
 - [docs/artifact-policy.md](docs/artifact-policy.md): production vs. research artifact handling
 - [docs/data-sources.md](docs/data-sources.md): external provider inventory
 - [docs/README.md](docs/README.md): active, historical, and legacy documentation map
+- [docs/history/](docs/history/README.md): plans, closeouts, result summaries, peer reviews and retired code
+- [CONTRIBUTING.md](CONTRIBUTING.md): local checks, test layout (`tests/unit`, `tests/integration`, `tests/research`) and CI jobs
 
 ## Version History
 

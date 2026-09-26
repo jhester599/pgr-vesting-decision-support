@@ -1,16 +1,15 @@
 # Legacy Result Summaries
 
-This directory contains legacy v9-v29 result summaries and synthesis notes.
+This directory contains legacy v9-v29 result summaries and synthesis notes. It
+is part of the project history (index: [`docs/history/README.md`](../README.md)).
 
 These files are retained for auditability because older plans, closeouts, and
-archived reviews reference them. They are not the active location for new
-research result artifacts.
+archived reviews reference them.
 
-For current research outputs, use:
+For research outputs, use:
 
-- `research/studies/<id>_<slug>/outputs/` (index: `research/README.md`)
-- `research/legacy/` for the raw v9–v28 result folders these summaries describe
+- `research/studies/<id>_<slug>/outputs/` (index: [`research/README.md`](../../../research/README.md))
+- [`research/legacy/`](../../../research/legacy/README.md) for the raw v9–v28
+  result folders these summaries describe
 
-For current closeout summaries, use:
-
-- `docs/closeouts/`
+Closeout summaries are in [`../closeouts/`](../closeouts/).

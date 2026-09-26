@@ -10,7 +10,7 @@
 
 **Notes.** Kept lag 2, chosen by in-sample R2 among lags 0-3 (review F23); step 6 placed EDGAR rows by filing date. Re-run pending (WP11).
 
-**Closeout / record.** [V142_CLOSEOUT_AND_V143_NEXT.md](../../../docs/closeouts/V142_CLOSEOUT_AND_V143_NEXT.md)
+**Closeout / record.** [V142_CLOSEOUT_AND_V143_NEXT.md](../../../docs/history/closeouts/V142_CLOSEOUT_AND_V143_NEXT.md)
 
 ## Run
 

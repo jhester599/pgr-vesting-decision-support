@@ -5,7 +5,7 @@
   database, and redirects ``config.DB_PATH`` and the feature-matrix cache.
 - Stored-artifact tests carry ``@pytest.mark.artifact`` and run in their own
   CI job.
-- ``tests/test_integration.py`` uses seeds that do not depend on
+- ``tests/integration/pipeline/test_engine_smoke.py`` uses seeds that do not depend on
   ``PYTHONHASHSEED``.
 """
 
@@ -85,7 +85,7 @@ def test_guard_fails_exactly_the_probes_that_touch_the_repo(tmp_path: Path) -> N
     before = {p: p.stat().st_mtime_ns for p in repo_guard.COMMITTED_DB.parent.glob("pgr_financials.db*")}
     proc = subprocess.run(
         [
-            sys.executable, "-m", "pytest", "tests/guard_probe_wp12.py", "-rA", "-q",
+            sys.executable, "-m", "pytest", "tests/guard_probe.py", "-rA", "-q",
             "-p", "no:cacheprovider", "-o", "addopts=", f"--basetemp={tmp_path / 'probe'}",
         ],
         cwd=REPO_ROOT,
@@ -95,7 +95,7 @@ def test_guard_fails_exactly_the_probes_that_touch_the_repo(tmp_path: Path) -> N
     )
     outcomes: dict[str, str] = {}
     for line in proc.stdout.splitlines():
-        match = re.match(r"^(PASSED|FAILED|ERROR) tests/guard_probe_wp12\.py::(\w+)", line)
+        match = re.match(r"^(PASSED|FAILED|ERROR) tests/guard_probe\.py::(\w+)", line)
         if match:
             status = "passed" if match.group(1) == "PASSED" else "failed"
             # A teardown error after a pass still fails the test.
@@ -129,7 +129,7 @@ def test_hypothesis_storage_is_outside_the_repo() -> None:
 
 def test_ci_runs_artifact_tests_in_a_separate_job() -> None:
     ci = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    assert re.search(r'python -m pytest -q -m "not artifact"', ci)
+    assert re.search(r'python -m pytest -q -m "not artifact and not research"', ci)
     assert re.search(r'python -m pytest -q -m artifact', ci)
     jobs = re.findall(r"^  ([a-z_-]+):\s*$", ci, flags=re.MULTILINE)
     assert "artifacts" in jobs and "test" in jobs
@@ -144,7 +144,7 @@ def test_artifact_marker_is_registered() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Deterministic seeds in tests/test_integration.py
+# Deterministic seeds in tests/integration/pipeline/test_engine_smoke.py
 # ---------------------------------------------------------------------------
 
 def test_integration_prices_do_not_depend_on_the_hash_seed() -> None:
@@ -152,7 +152,7 @@ def test_integration_prices_do_not_depend_on_the_hash_seed() -> None:
     the WFO results on them) changed on every run."""
     code = (
         "import hashlib, json;"
-        "from tests.test_integration import _generate_prices;"
+        "from tests.integration.pipeline.test_engine_smoke import _generate_prices;"
         "rows = _generate_prices('VTI')[:50];"
         "print(hashlib.sha256(json.dumps(rows).encode()).hexdigest())"
     )

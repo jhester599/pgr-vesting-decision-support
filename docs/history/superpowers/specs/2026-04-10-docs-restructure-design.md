@@ -34,7 +34,7 @@ Renaming it `CHANGELOG.md` aligns the filename with its actual content and
 follows the GitHub convention (`CHANGELOG` = what happened, `ROADMAP` = what's next).
 
 Content changes: add a one-line forward reference at the top:
-> For active development direction, see [ROADMAP.md](ROADMAP.md).
+> For active development direction, see [ROADMAP.md](../../../../ROADMAP.md).
 
 All existing version entries, granular file-level detail, and test counts are
 preserved exactly as written.
@@ -81,7 +81,7 @@ current state (matches what is on master + active branch).
 
 **"Version History"** — replace the three-bullet list pointing to
 `docs/changelog.md`, `ROADMAP.md`, and `docs/history/` with a single line:
-> Full version history: [CHANGELOG.md](CHANGELOG.md)
+> Full version history: [CHANGELOG.md](../../../../CHANGELOG.md)
 
 ### 5. Housekeeping for untracked files
 

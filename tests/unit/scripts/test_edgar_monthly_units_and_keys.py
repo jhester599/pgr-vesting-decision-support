@@ -12,19 +12,17 @@ from __future__ import annotations
 
 import os
 import sqlite3
-import sys
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from scripts.edgar_8k_fetcher import _parse_html_exhibit
 from src.database import db_client, migration_runner
-from tests.test_edgar_8k_parser_breadth import _broad_exhibit_html
+from tests.unit.scripts.test_edgar_8k_parser_breadth import _broad_exhibit_html
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 COMMITTED_DB = REPO_ROOT / "data" / "pgr_financials.db"
 
 # Parser keys whose DB column has a different name.

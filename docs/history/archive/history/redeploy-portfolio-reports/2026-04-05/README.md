@@ -25,5 +25,5 @@ How they were used:
 
 See:
 
-- [V27 results](/Users/Jeff/.codex/worktrees/3a71/pgr-vesting-decision-support/docs/results/V27_RESULTS_SUMMARY.md)
-- [V27 closeout](/Users/Jeff/.codex/worktrees/3a71/pgr-vesting-decision-support/docs/closeouts/V27_CLOSEOUT_AND_V28_NEXT.md)
+- [V27 results](../../../../results/V27_RESULTS_SUMMARY.md)
+- [V27 closeout](../../../../closeouts/V27_CLOSEOUT_AND_V28_NEXT.md)

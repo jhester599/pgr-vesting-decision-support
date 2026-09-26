@@ -24,11 +24,9 @@ from __future__ import annotations
 
 import logging
 import os
-import sys
 
 import pytest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from scripts.edgar_8k_fetcher import _validate_parsed_record
 

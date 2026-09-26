@@ -22,7 +22,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 SHIMS: dict[str, str] = {
     "benchmark_sets": "src.portfolio.benchmark_sets",

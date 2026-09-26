@@ -139,7 +139,7 @@ single navigation map, making old plans/results look current.
 cost
 **Last touched:** v170 (2026-04-19)
 **Outcome:** complete. Added `docs/README.md`, legacy directory labels,
-current archive guidance, and `docs/repo-hygiene-review-2026-04-19.md`.
+current archive guidance, and `docs/history/repo-hygiene-review-2026-04-19.md`.
 
 ### BL-01 — Black-Litterman Tau/View Tuning
 **Status:** complete

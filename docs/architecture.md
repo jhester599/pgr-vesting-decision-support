@@ -48,6 +48,15 @@ High-level flow:
   - research helper modules and promotion-gate tooling
 - `dashboard/`
   - local Streamlit dashboard for viewing current outputs
+- `tests/`
+  - `unit/<package>/` mirrors `src/` (plus `config`, `dashboard`, `scripts`)
+  - `integration/` (`pipeline/`, `data/`, `repo/`) for cross-layer,
+    committed-DB and repository-contract tests
+  - `research/` for study tests; CI runs them in a separate job
+- `docs/`
+  - operator docs at the top level, `decisions/` (one file per promotion
+    decision), `reviews/` (audits) and `history/` (finished plans,
+    closeouts, result summaries, peer reviews, retired-code index)
 
 ## Production Entry Points
 

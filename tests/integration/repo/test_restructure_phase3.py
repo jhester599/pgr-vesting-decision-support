@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 STUDIES_DIR = REPO_ROOT / "research" / "studies"
 ONE_MB = 1024 * 1024
 
@@ -142,7 +142,7 @@ def test_code_no_longer_points_at_old_study_locations() -> None:
     for rel in _tracked("*.py", "*.yml", "*.toml", "*.sh"):
         if rel.startswith(("archive/", "research/legacy/")) or "/outputs/" in rel:
             continue
-        if rel.startswith("tests/test_restructure_phase"):
+        if rel.startswith("tests/integration/repo/test_restructure_phase"):
             continue  # these assert that the old locations are gone
         tree_text = (REPO_ROOT / rel).read_text(encoding="utf-8")
         if rel.endswith(".py"):

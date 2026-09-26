@@ -22,8 +22,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import config
 from src.portfolio.rebalancer import (

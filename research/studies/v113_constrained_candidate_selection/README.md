@@ -10,7 +10,7 @@
 
 **Notes.** The monthly run reads v113_constrained_candidate_selection_results.csv to pick the shadow gate overlay.
 
-**Closeout / record.** [2026-04-11-v102-v117-post-review-enhancement-plan.md](../../../docs/superpowers/plans/2026-04-11-v102-v117-post-review-enhancement-plan.md)
+**Closeout / record.** [2026-04-11-v102-v117-post-review-enhancement-plan.md](../../../docs/history/superpowers/plans/2026-04-11-v102-v117-post-review-enhancement-plan.md)
 
 ## Run
 

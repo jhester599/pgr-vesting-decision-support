@@ -26,7 +26,6 @@ compute_obs_feature_ratio() (8 tests):
 from __future__ import annotations
 
 import os
-import sys
 import warnings
 from dataclasses import field
 
@@ -34,7 +33,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import config
 from src.models.wfo_engine import CPCVResult

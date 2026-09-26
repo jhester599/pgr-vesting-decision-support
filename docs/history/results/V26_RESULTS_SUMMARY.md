@@ -12,7 +12,7 @@ Created: 2026-04-05
 
 ## What Changed
 
-- [backtest_report.py](/Users/Jeff/.codex/worktrees/3a71/pgr-vesting-decision-support/src/reporting/backtest_report.py)
+- [backtest_report.py](../../../src/reporting/backtest_report.py)
   now handles constant ranked series safely when computing Newey-West-style IC
   summaries.
 - That removes the repeated numpy `invalid value encountered in divide` warning

@@ -13,7 +13,7 @@ import pytest
 
 import config
 
-WORKFLOWS = Path(__file__).resolve().parent.parent / ".github" / "workflows"
+WORKFLOWS = Path(__file__).resolve().parents[3] / ".github" / "workflows"
 DB_WRITERS = (
     "initial_fetch_dividends",
     "initial_fetch_prices",

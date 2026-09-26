@@ -8,7 +8,7 @@
 
 **Status.** `closed`.
 
-**Closeout / record.** [2026-04-11-v81-v88-repo-review-and-adoption-plan.md](../../../docs/superpowers/plans/2026-04-11-v81-v88-repo-review-and-adoption-plan.md)
+**Closeout / record.** [2026-04-11-v81-v88-repo-review-and-adoption-plan.md](../../../docs/history/superpowers/plans/2026-04-11-v81-v88-repo-review-and-adoption-plan.md)
 
 ## Run
 

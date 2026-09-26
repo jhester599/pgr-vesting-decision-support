@@ -24,7 +24,7 @@ from src.processing import pgr_edgar_validation as v
 _DB_PATH = Path(
     os.environ.get(
         "PGR_EDGAR_INTEGRITY_DB",
-        Path(__file__).resolve().parents[1] / "data" / "pgr_financials.db",
+        Path(__file__).resolve().parents[3] / "data" / "pgr_financials.db",
     )
 )
 

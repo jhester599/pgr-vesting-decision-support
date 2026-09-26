@@ -10,7 +10,7 @@
 
 **Notes.** Temporal hold-out: DO NOT ADOPT; the thresholds stay at (0.30, 0.70).
 
-**Closeout / record.** [2026-04-13-threshold-constants-and-v132-validation.md](../../../docs/superpowers/plans/2026-04-13-threshold-constants-and-v132-validation.md)
+**Closeout / record.** [2026-04-13-threshold-constants-and-v132-validation.md](../../../docs/history/superpowers/plans/2026-04-13-threshold-constants-and-v132-validation.md)
 
 ## Run
 

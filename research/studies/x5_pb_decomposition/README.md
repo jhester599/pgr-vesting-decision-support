@@ -10,7 +10,7 @@
 
 **Notes.** x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md).
 
-**Closeout / record.** [2026-04-22-x5-pb-decomposition-benchmark.md](../../../docs/superpowers/plans/2026-04-22-x5-pb-decomposition-benchmark.md)
+**Closeout / record.** [2026-04-22-x5-pb-decomposition-benchmark.md](../../../docs/history/superpowers/plans/2026-04-22-x5-pb-decomposition-benchmark.md)
 
 ## Run
 

@@ -10,7 +10,7 @@
 
 **Notes.** v38's shrinkage rule. Since review 2026-09-25 (F13) production applies it prequentially; the fixed alpha 0.50 (ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA) is research-only. Re-run pending (WP11).
 
-**Closeout / record.** [2026-04-10-v37-v60-results-summary.md](../../../docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md)
+**Closeout / record.** [2026-04-10-v37-v60-results-summary.md](../../../docs/history/superpowers/plans/2026-04-10-v37-v60-results-summary.md)
 
 ## Run
 

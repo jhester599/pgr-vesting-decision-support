@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from datetime import date
 from pathlib import Path
-import sys
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scripts.monthly_decision import (
     _build_executive_summary_lines,

@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 from datetime import date
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import config
 from scripts import monthly_decision

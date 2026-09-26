@@ -10,7 +10,7 @@
 
 **Notes.** Quality-weighted consensus, promoted to the live path in v76 after the v74 shadow period and the v75 hold-out replay.
 
-**Closeout / record.** [2026-04-10-v66-v73-calibration-and-decision-layer.md](../../../docs/superpowers/plans/2026-04-10-v66-v73-calibration-and-decision-layer.md)
+**Closeout / record.** [2026-04-10-v66-v73-calibration-and-decision-layer.md](../../../docs/history/superpowers/plans/2026-04-10-v66-v73-calibration-and-decision-layer.md)
 
 ## Run
 

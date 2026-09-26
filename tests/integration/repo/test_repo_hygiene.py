@@ -11,7 +11,7 @@ import pytest
 
 from src.database import db_client
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 COMMITTED_DB = REPO_ROOT / "data" / "pgr_financials.db"
 

@@ -31,7 +31,6 @@ import pandas as pd
 import pytest
 
 # Ensure repo root is on path.
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from scripts.feature_ablation import (
     FEATURE_GROUPS,
@@ -274,7 +273,7 @@ class TestCLI:
     def test_cli_help_exits_zero(self):
         """feature_ablation.py --help exits with code 0."""
         script = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
             "scripts",
             "feature_ablation.py",
         )

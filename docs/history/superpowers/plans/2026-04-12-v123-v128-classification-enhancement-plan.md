@@ -6,8 +6,8 @@ Created: 2026-04-12
 
 This plan synthesizes two independent deep research reports commissioned on 2026-04-12:
 
-- [`docs/archive/history/peer-reviews/2026-04-12/claude_opus_peerreview_20260412.md`](../archive/history/peer-reviews/2026-04-12/claude_opus_peerreview_20260412.md)
-- [`docs/archive/history/peer-reviews/2026-04-12/chatgpt_peerreview_20260412.md`](../archive/history/peer-reviews/2026-04-12/chatgpt_peerreview_20260412.md)
+- [`docs/archive/history/peer-reviews/2026-04-12/claude_opus_peerreview_20260412.md`](../../archive/history/peer-reviews/2026-04-12/claude_opus_peerreview_20260412.md)
+- [`docs/archive/history/peer-reviews/2026-04-12/chatgpt_peerreview_20260412.md`](../../archive/history/peer-reviews/2026-04-12/chatgpt_peerreview_20260412.md)
 
 The deep research prompt used is archived at:
 

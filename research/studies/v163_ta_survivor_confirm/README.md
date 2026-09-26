@@ -8,7 +8,7 @@
 
 **Status.** `closed`.
 
-**Closeout / record.** [V164_CLOSEOUT_AND_HANDOFF.md](../../../docs/closeouts/V164_CLOSEOUT_AND_HANDOFF.md)
+**Closeout / record.** [V164_CLOSEOUT_AND_HANDOFF.md](../../../docs/history/closeouts/V164_CLOSEOUT_AND_HANDOFF.md)
 
 ## Run
 

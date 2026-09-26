@@ -138,7 +138,7 @@ with the DB. `post_initial_bootstrap.yml` commits the DB and
 ## What Workflows Commit
 
 Every commit step stages exact production paths (review 2026-09-25,
-section 5, phase 1; checked by `tests/test_restructure_phase1.py`):
+section 5, phase 1; checked by `tests/integration/repo/test_restructure_phase1.py`):
 
 | Path | Workflows |
 |---|---|
@@ -152,24 +152,42 @@ in `config/paths.py`.
 
 ## CI Workflow
 
-`ci.yml` runs:
+Every workflow installs the package with `pip install -e .` (CI adds the
+pinned dev tools: `pip install -e ".[dev]"`). `pyproject.toml` is the only
+dependency list, and the pip cache is keyed on it
+(`cache-dependency-path: pyproject.toml`); the requirements and constraints
+files were folded into it in review 2026-09-25, section 5, phase 4.
 
-- `pip install -e .` (package `pgr_vds`, defined in `pyproject.toml`), so
-  `src` and `config` import without `sys.path` edits
+`ci.yml` has three jobs.
+
+`test` runs:
+
+- `pip install -e ".[dev]"` (package `pgr_vds`, defined in `pyproject.toml`),
+  so `src` and `config` import without `sys.path` edits
 - lint checks (`ruff check .`, config in `pyproject.toml`)
 - `scripts/checks/check_doc_links.py`: every relative link and anchor in the
   active docs resolves
 - `scripts/checks/check_sys_path_edits.py`: no new `sys.path` edit outside
   `tests/conftest.py` (existing ones are listed in
   `scripts/checks/sys_path_allowlist.txt`, which may only shrink)
-- unit and integration tests, including `tests/test_entrypoint_imports.py`,
-  which imports every script and module a workflow runs in a fresh
-  interpreter
+- `research/tools/registry.py`: every study folder is registered and
+  `research/README.md` is current
+- mypy on the hardened modules
+- `python -m pytest -q -m "not artifact and not research"`: `tests/unit/`
+  and `tests/integration/`, including
+  `tests/integration/pipeline/test_entrypoint_imports.py`, which imports every
+  script and module a workflow runs in a fresh interpreter
 - smoke runs for major production entrypoints, each through
   `scripts/ci_offline_smoke.py`: every socket connection is refused and the
   SEC submissions index is served from a canned empty response, so no smoke
   run reaches Alpha Vantage, FRED or EDGAR
 - migration and fresh-temp-DB checks
+
+`research` runs `python -m pytest -q -m "research and not artifact"`: the
+tests under `tests/research/`, marked `research` by folder in
+`tests/conftest.py`. `artifacts` runs `python -m pytest -q -m artifact`: the
+tests that check committed data rather than code. A red `research` or
+`artifacts` job does not mean production code broke.
 
 ## Concurrency Policy
 
@@ -177,7 +195,7 @@ Every workflow that commits `data/pgr_financials.db` uses one concurrency
 group, `db-writer`, with `cancel-in-progress: false` (review 2026-09-25, F26):
 `weekly_data_fetch`, `peer_data_fetch`, `monthly_8k_fetch`,
 `monthly_decision` and the four bootstrap workflows. Runs queue instead of
-racing to push a binary DB. `tests/test_ops_wp8.py` checks the list.
+racing to push a binary DB. `tests/integration/pipeline/test_ops_contracts.py` checks the list.
 
 GitHub keeps at most one *pending* run per group: if a third writer queues
 while one runs and one waits, the waiting run is cancelled. The schedules are

@@ -18,8 +18,8 @@ The v25 objective is:
 
 Archived reports:
 
-- [chatgpt_repo_peerreview_20260404-1.md](/Users/Jeff/.codex/worktrees/3a71/pgr-vesting-decision-support/docs/history/repo-peer-reviews/2026-04-05/chatgpt_repo_peerreview_20260404-1.md)
-- [claude_repo_peerreview_20260404.md](/Users/Jeff/.codex/worktrees/3a71/pgr-vesting-decision-support/docs/history/repo-peer-reviews/2026-04-05/claude_repo_peerreview_20260404.md)
+- [chatgpt_repo_peerreview_20260404-1.md](../archive/history/repo-peer-reviews/2026-04-05/chatgpt_repo_peerreview_20260404-1.md)
+- [claude_repo_peerreview_20260404.md](../archive/history/repo-peer-reviews/2026-04-05/claude_repo_peerreview_20260404.md)
 
 Current repo context:
 

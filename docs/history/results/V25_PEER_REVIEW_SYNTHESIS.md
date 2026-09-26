@@ -6,8 +6,8 @@ Created: 2026-04-05
 
 Two external repo reviews were added on 2026-04-05:
 
-- [chatgpt_repo_peerreview_20260404-1.md](/Users/Jeff/.codex/worktrees/3a71/pgr-vesting-decision-support/docs/history/repo-peer-reviews/2026-04-05/chatgpt_repo_peerreview_20260404-1.md)
-- [claude_repo_peerreview_20260404.md](/Users/Jeff/.codex/worktrees/3a71/pgr-vesting-decision-support/docs/history/repo-peer-reviews/2026-04-05/claude_repo_peerreview_20260404.md)
+- [chatgpt_repo_peerreview_20260404-1.md](../archive/history/repo-peer-reviews/2026-04-05/chatgpt_repo_peerreview_20260404-1.md)
+- [claude_repo_peerreview_20260404.md](../archive/history/repo-peer-reviews/2026-04-05/claude_repo_peerreview_20260404.md)
 
 The reports point in the same high-level direction:
 
@@ -100,6 +100,6 @@ The next enhancement program should be `v25`, with this order:
 - `v25.3`: rerun the historically important studies affected by those fixes
 - `v25.4`: governance closeout on whether prediction research should continue
 
-See the full plan in [codex-v25-plan.md](/Users/Jeff/.codex/worktrees/3a71/pgr-vesting-decision-support/docs/plans/codex-v25-plan.md).
+See the full plan in [codex-v25-plan.md](../plans/codex-v25-plan.md).
 
-Execution results are now recorded in [V25_RESULTS_SUMMARY.md](/Users/Jeff/.codex/worktrees/3a71/pgr-vesting-decision-support/docs/results/V25_RESULTS_SUMMARY.md).
+Execution results are now recorded in [V25_RESULTS_SUMMARY.md](V25_RESULTS_SUMMARY.md).

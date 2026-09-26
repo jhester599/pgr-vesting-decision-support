@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import os
-import sys
 
 import pandas as pd
 import pytest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from scripts.edgar_8k_fetcher import _parse_html_exhibit
 
@@ -158,7 +156,7 @@ class TestCsvDataIntegrity:
     """Data-integrity tests against the committed pgr_edgar_cache.csv."""
 
     CSV_PATH = os.path.join(
-        os.path.dirname(__file__), "..", "data", "processed", "pgr_edgar_cache.csv"
+        os.path.dirname(__file__), "..", "..", "..", "data", "processed", "pgr_edgar_cache.csv"
     )
 
     @pytest.fixture(scope="class")

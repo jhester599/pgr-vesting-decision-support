@@ -10,7 +10,7 @@
 
 **Notes.** Kept (60, 6).
 
-**Closeout / record.** [V145_CLOSEOUT_AND_V146_NEXT.md](../../../docs/closeouts/V145_CLOSEOUT_AND_V146_NEXT.md)
+**Closeout / record.** [V145_CLOSEOUT_AND_V146_NEXT.md](../../../docs/history/closeouts/V145_CLOSEOUT_AND_V146_NEXT.md)
 
 ## Run
 

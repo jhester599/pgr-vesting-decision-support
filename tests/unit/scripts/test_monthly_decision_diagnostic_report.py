@@ -28,9 +28,7 @@ from src.models.wfo_engine import CPCVResult
 # ---------------------------------------------------------------------------
 # Import the functions under test (path manipulation matches project layout)
 # ---------------------------------------------------------------------------
-import sys
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scripts.monthly_decision import _flag, _write_diagnostic_report
 
