@@ -29,7 +29,7 @@ def test_ci_workflow_runs_lint_tests_and_smokes() -> None:
     # Smoke runs go through the network-blocking wrapper (review 2026-09-25, F26).
     assert "python scripts/ci_offline_smoke.py scripts/weekly_fetch.py --dry-run --skip-fred" in text
     assert (
-        "python scripts/ci_offline_smoke.py scripts/monthly_decision.py "
+        "python scripts/ci_offline_smoke.py cli/monthly_decision.py "
         "--as-of 2026-04-02 --dry-run --skip-fred"
     ) in text
 

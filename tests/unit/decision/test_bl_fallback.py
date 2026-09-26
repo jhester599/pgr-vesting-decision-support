@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import scripts.monthly_decision as md
+from pgr_vds.decision import portfolio, recommendation_report
 from src.portfolio.black_litterman import BLDiagnostics
 
 
@@ -102,7 +102,7 @@ def test_load_etf_monthly_returns_returns_expected_shape():
     tickers = ["VTI", "VOO"]
     rows = pd.concat([_make_daily_prices(t, n_months=24) for t in tickers])
     conn = _stub_conn(rows)
-    result = md._load_etf_monthly_returns(conn, tickers, date(2024, 12, 31))
+    result = portfolio.load_etf_monthly_returns(conn, tickers, date(2024, 12, 31))
     assert not result.empty, "Expected non-empty return matrix"
     assert set(result.columns) == set(tickers)
     # Monthly pct_change: ~24 months of data → ~23 valid return rows (one lost to pct_change)
@@ -112,7 +112,7 @@ def test_load_etf_monthly_returns_returns_expected_shape():
 def test_load_etf_monthly_returns_empty_when_no_data():
     """Helper returns empty DataFrame when no prices exist in the DB."""
     conn = _stub_conn()
-    result = md._load_etf_monthly_returns(conn, ["VTI", "VOO"], date(2024, 12, 31))
+    result = portfolio.load_etf_monthly_returns(conn, ["VTI", "VOO"], date(2024, 12, 31))
     assert result.empty
 
 
@@ -128,7 +128,7 @@ def test_bl_section_converged_appears(tmp_path: Path):
         n_active_tickers=15,
         n_view_tickers=10,
     )
-    md._write_recommendation_md(**_minimal_md_kwargs(tmp_path, bl_diagnostics=bl))
+    recommendation_report.write_recommendation_md(**_minimal_md_kwargs(tmp_path, bl_diagnostics=bl))
     content = (tmp_path / "recommendation.md").read_text(encoding="utf-8")
     assert "## Portfolio Optimizer Status" in content
     assert "✅ Converged" in content
@@ -143,7 +143,7 @@ def test_bl_section_fallback_shows_warning(tmp_path: Path):
         n_active_tickers=15,
         n_view_tickers=0,
     )
-    md._write_recommendation_md(**_minimal_md_kwargs(tmp_path, bl_diagnostics=bl))
+    recommendation_report.write_recommendation_md(**_minimal_md_kwargs(tmp_path, bl_diagnostics=bl))
     content = (tmp_path / "recommendation.md").read_text(encoding="utf-8")
     assert "## Portfolio Optimizer Status" in content
     assert "⚠️" in content
@@ -152,7 +152,7 @@ def test_bl_section_fallback_shows_warning(tmp_path: Path):
 
 def test_bl_section_not_run_when_none(tmp_path: Path):
     """When bl_diagnostics=None, section shows 'not run' message."""
-    md._write_recommendation_md(**_minimal_md_kwargs(tmp_path, bl_diagnostics=None))
+    recommendation_report.write_recommendation_md(**_minimal_md_kwargs(tmp_path, bl_diagnostics=None))
     content = (tmp_path / "recommendation.md").read_text(encoding="utf-8")
     assert "## Portfolio Optimizer Status" in content
     assert "not run" in content
@@ -163,6 +163,6 @@ def test_bl_section_appears_when_diagnostics_omitted(tmp_path: Path):
     # Calls without bl_diagnostics — verifies backward-compat default
     kwargs = _minimal_md_kwargs(tmp_path)
     # Explicitly do NOT pass bl_diagnostics
-    md._write_recommendation_md(**kwargs)
+    recommendation_report.write_recommendation_md(**kwargs)
     content = (tmp_path / "recommendation.md").read_text(encoding="utf-8")
     assert "## Portfolio Optimizer Status" in content

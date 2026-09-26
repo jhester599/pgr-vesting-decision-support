@@ -2,8 +2,8 @@
 Tests for v7.3 — Monthly Report Tax Section + Decision Log Fix.
 
 Covers:
-  _build_tax_context_lines() — 8 tests
-  _append_decision_log() fix — 5 tests
+  build_tax_context_lines() — 8 tests
+  append_decision_log() fix — 5 tests
   Total: 13 tests
 """
 
@@ -17,11 +17,12 @@ from pathlib import Path
 import pytest
 
 
-from scripts.monthly_decision import _append_decision_log, _build_tax_context_lines
+from pgr_vds.decision.artifacts import append_decision_log
+from pgr_vds.decision.tax_lots import build_tax_context_lines
 
 
 # ---------------------------------------------------------------------------
-# _build_tax_context_lines() tests
+# build_tax_context_lines() tests
 # ---------------------------------------------------------------------------
 
 LOG_HEADER = (
@@ -34,17 +35,17 @@ LOG_SEP = "|------------|----------|-----------------|--------|-----------------
 class TestTaxContextLines:
 
     def test_returns_list_of_strings(self):
-        lines = _build_tax_context_lines(0.04, 0.58)
+        lines = build_tax_context_lines(0.04, 0.58)
         assert isinstance(lines, list)
         assert all(isinstance(l, str) for l in lines)
 
     def test_contains_tax_context_header(self):
-        lines = _build_tax_context_lines(0.04, 0.58)
+        lines = build_tax_context_lines(0.04, 0.58)
         assert "## Tax Context" in lines
 
     def test_breakeven_row_present(self):
         """The LTCG breakeven is an absolute PGR decline (review F19: sign fixed)."""
-        lines = _build_tax_context_lines(0.04, 0.58, stcg_rate=0.37, ltcg_rate=0.20)
+        lines = build_tax_context_lines(0.04, 0.58, stcg_rate=0.37, ltcg_rate=0.20)
         combined = "\n".join(lines)
         # -g (S - L) / (1 - L) with g = 1: -(0.37 - 0.20) / 0.80 = -21.25 %
         assert "-21.25%" in combined
@@ -53,20 +54,20 @@ class TestTaxContextLines:
 
     def test_hold_wins_unless_pgr_falls_verdict(self):
         """Holding to LTCG wins unless PGR's own price falls by more than the breakeven."""
-        lines = _build_tax_context_lines(0.04, 0.58, stcg_rate=0.37, ltcg_rate=0.20)
+        lines = build_tax_context_lines(0.04, 0.58, stcg_rate=0.37, ltcg_rate=0.20)
         combined = "\n".join(lines)
         assert "unless PGR's own price falls by more than 21.25%" in combined
 
     def test_relative_forecast_is_not_compared_with_the_breakeven(self):
         """A large relative forecast no longer triggers 'immediate sale may be warranted'."""
-        lines = _build_tax_context_lines(0.30, 0.75, stcg_rate=0.37, ltcg_rate=0.20)
+        lines = build_tax_context_lines(0.30, 0.75, stcg_rate=0.37, ltcg_rate=0.20)
         combined = "\n".join(lines)
         assert "EXCEEDS" not in combined
         assert "relative forecast, not a PGR price forecast" in combined
 
     def test_negative_prediction_loss_harvest_verdict(self):
         """Negative relative forecast: diversification note, not 'capital-loss harvesting'."""
-        lines = _build_tax_context_lines(-0.10, 0.30, stcg_rate=0.37, ltcg_rate=0.20)
+        lines = build_tax_context_lines(-0.10, 0.30, stcg_rate=0.37, ltcg_rate=0.20)
         combined = "\n".join(lines)
         assert "capital-loss harvesting" not in combined.lower()
         assert "not a tax loss" in combined
@@ -74,27 +75,27 @@ class TestTaxContextLines:
 
     def test_custom_rates_reflected(self):
         """Custom STCG/LTCG rates appear in the table."""
-        lines = _build_tax_context_lines(0.04, 0.58, stcg_rate=0.40, ltcg_rate=0.15)
+        lines = build_tax_context_lines(0.04, 0.58, stcg_rate=0.40, ltcg_rate=0.15)
         combined = "\n".join(lines)
         assert "40%" in combined
         assert "15%" in combined
 
     def test_next_vest_dates_present(self):
         """Next vest dates (from config) appear in the output."""
-        lines = _build_tax_context_lines(0.04, 0.58)
+        lines = build_tax_context_lines(0.04, 0.58)
         combined = "\n".join(lines)
         assert "Next time-based vest" in combined
         assert "Next performance vest" in combined
 
     def test_prob_outperform_in_table(self):
         """P(outperform) value appears in the output table."""
-        lines = _build_tax_context_lines(0.04, 0.62)
+        lines = build_tax_context_lines(0.04, 0.62)
         combined = "\n".join(lines)
         assert "62.0%" in combined or "62%" in combined
 
 
 # ---------------------------------------------------------------------------
-# _append_decision_log() fix tests
+# append_decision_log() fix tests
 # ---------------------------------------------------------------------------
 
 def _make_log_file(tmp_path: Path, extra_rows: list[str] | None = None) -> Path:
@@ -132,7 +133,7 @@ Some text here.
 
 
 def _append(log_path: Path, as_of: date | None = None, **kwargs) -> None:
-    """Test helper: call _append_decision_log with a path override."""
+    """Test helper: call append_decision_log with a path override."""
     defaults = dict(
         as_of=as_of or date(2026, 4, 20),
         run_date=date(2026, 4, 20),
@@ -145,7 +146,7 @@ def _append(log_path: Path, as_of: date | None = None, **kwargs) -> None:
         _log_path_override=log_path,
     )
     defaults.update(kwargs)
-    _append_decision_log(**defaults)
+    append_decision_log(**defaults)
 
 
 class TestAppendDecisionLog:
@@ -214,7 +215,7 @@ class TestAppendDecisionLog:
         """If decision_log.md doesn't exist, no exception is raised."""
         nonexistent = tmp_path / "nonexistent_log.md"
         # Should not raise even though file doesn't exist
-        _append_decision_log(
+        append_decision_log(
             as_of=date(2026, 4, 20),
             run_date=date(2026, 4, 20),
             consensus="NEUTRAL",

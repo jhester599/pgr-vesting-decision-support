@@ -133,7 +133,6 @@ scripts/finalize_db.py
 scripts/generate_edgar_data_dictionary.py
 scripts/initial_fetch.py
 scripts/migrate_v1_to_v2.py
-scripts/monthly_decision.py
 scripts/peer_fetch.py
 scripts/policy_evaluation.py
 scripts/rebuild_fred_macro.py

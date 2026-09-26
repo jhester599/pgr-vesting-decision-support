@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import scripts.monthly_decision as md
+from pgr_vds.decision import health, recommendation_report
 from src.models.wfo_engine import FoldResult, WFOResult
 from src.models.multi_benchmark_wfo import EnsembleWFOResult
 from src.models.policy_metrics import FIXED_POLICIES, SIGNAL_POLICIES
@@ -67,7 +67,7 @@ def test_compute_policy_summary_returns_all_policies():
     y_hat = [0.05, -0.02, 0.08, -0.04, 0.03, 0.01, -0.06, 0.09]
     y_true = [0.04, -0.03, 0.07, -0.05, 0.02, -0.01, 0.03, 0.06]
     ensemble = _make_ensemble(y_hat, y_true)
-    result = md._compute_policy_summary({"VTI": ensemble})
+    result = health.compute_policy_summary({"VTI": ensemble})
     assert result is not None
     for p in list(FIXED_POLICIES) + list(SIGNAL_POLICIES):
         assert p in result, f"Missing policy: {p}"
@@ -78,7 +78,7 @@ def test_compute_policy_summary_returns_none_for_insufficient_data():
     y_hat = [0.05, -0.02, 0.08]
     y_true = [0.04, -0.03, 0.07]
     ensemble = _make_ensemble(y_hat, y_true)
-    result = md._compute_policy_summary({"VTI": ensemble})
+    result = health.compute_policy_summary({"VTI": ensemble})
     assert result is None
 
 
@@ -87,7 +87,7 @@ def test_always_sell_all_mean_return_is_zero():
     y_hat = [0.05, -0.02, 0.08, -0.04]
     y_true = [0.04, -0.03, 0.07, -0.05]
     ensemble = _make_ensemble(y_hat, y_true)
-    result = md._compute_policy_summary({"VTI": ensemble})
+    result = health.compute_policy_summary({"VTI": ensemble})
     assert result is not None
     assert abs(result["always_sell_100"].mean_policy_return) < 1e-9
 
@@ -97,7 +97,7 @@ def test_always_hold_all_mean_return_equals_mean_realized():
     y_hat = [0.05, -0.02, 0.08, -0.04, 0.03]
     y_true = [0.04, -0.03, 0.07, -0.05, 0.02]
     ensemble = _make_ensemble(y_hat, y_true)
-    result = md._compute_policy_summary({"VTI": ensemble})
+    result = health.compute_policy_summary({"VTI": ensemble})
     assert result is not None
     expected = float(np.mean(y_true))
     assert abs(result["always_hold_100"].mean_policy_return - expected) < 1e-9
@@ -108,7 +108,7 @@ def test_policy_backtest_section_appears_in_recommendation(tmp_path: Path):
     y_hat = [0.05, -0.02, 0.08, -0.04, 0.03, 0.01, -0.06, 0.09]
     y_true = [0.04, -0.03, 0.07, -0.05, 0.02, -0.01, 0.03, 0.06]
     ensemble = _make_ensemble(y_hat, y_true)
-    policy_summary = md._compute_policy_summary({"VTI": ensemble})
+    policy_summary = health.compute_policy_summary({"VTI": ensemble})
     assert policy_summary is not None
 
     # Build minimal inputs required by _write_recommendation_md
@@ -125,7 +125,7 @@ def test_policy_backtest_section_appears_in_recommendation(tmp_path: Path):
     conn.execute.return_value.fetchall.return_value = []
     conn.execute.return_value.fetchone.return_value = None
 
-    md._write_recommendation_md(
+    recommendation_report.write_recommendation_md(
         tmp_path,
         as_of=date(2026, 4, 1),
         run_date=date(2026, 4, 6),
@@ -172,7 +172,7 @@ def test_policy_backtest_section_absent_when_none(tmp_path: Path):
     conn.execute.return_value.fetchall.return_value = []
     conn.execute.return_value.fetchone.return_value = None
 
-    md._write_recommendation_md(
+    recommendation_report.write_recommendation_md(
         tmp_path,
         as_of=date(2026, 4, 1),
         run_date=date(2026, 4, 6),

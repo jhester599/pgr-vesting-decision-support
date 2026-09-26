@@ -6,11 +6,8 @@ from pathlib import Path
 import numpy as np
 
 
-from scripts.monthly_decision import (
-    _build_executive_summary_lines,
-    _build_vest_decision_lines,
-    _determine_recommendation_mode,
-)
+from pgr_vds.decision.health import determine_recommendation_mode
+from pgr_vds.decision.rendering import build_executive_summary_lines, build_vest_decision_lines
 from src.models.wfo_engine import CPCVResult
 from src.tax.capital_gains import ThreeScenarioResult, TaxScenario
 
@@ -34,7 +31,7 @@ def _cpcv(verdict: str) -> CPCVResult:
 
 
 def test_determine_recommendation_mode_defers_when_quality_is_weak() -> None:
-    mode = _determine_recommendation_mode(
+    mode = determine_recommendation_mode(
         consensus="OUTPERFORM",
         mean_predicted=0.08,
         mean_ic=0.01,
@@ -47,7 +44,7 @@ def test_determine_recommendation_mode_defers_when_quality_is_weak() -> None:
 
 
 def test_determine_recommendation_mode_actionable_when_all_quality_checks_pass() -> None:
-    mode = _determine_recommendation_mode(
+    mode = determine_recommendation_mode(
         consensus="OUTPERFORM",
         mean_predicted=0.18,
         mean_ic=0.08,
@@ -61,7 +58,7 @@ def test_determine_recommendation_mode_actionable_when_all_quality_checks_pass()
 
 def test_determine_recommendation_mode_needs_directional_skill() -> None:
     """Review 2026-09-25 F13: a hit rate above 55 % is not enough on its own."""
-    mode = _determine_recommendation_mode(
+    mode = determine_recommendation_mode(
         consensus="OUTPERFORM",
         mean_predicted=0.18,
         mean_ic=0.08,
@@ -73,7 +70,7 @@ def test_determine_recommendation_mode_needs_directional_skill() -> None:
 
 
 def test_build_executive_summary_lines_mentions_quality_and_change_trigger() -> None:
-    lines = _build_executive_summary_lines(
+    lines = build_executive_summary_lines(
         as_of=date(2026, 4, 2),
         consensus="NEUTRAL",
         confidence_tier="LOW",
@@ -116,7 +113,7 @@ def test_build_vest_decision_lines_renders_scenario_table() -> None:
             TaxScenario("HOLD_FOR_LOSS", date(2027, 1, 17), 0.37, 184, -0.10, 189.0, 1512.0, -62.16, 1574.16, 0.0, 0.45, "harvest"),
         ],
     )
-    lines = _build_vest_decision_lines(
+    lines = build_vest_decision_lines(
         {
             "vest_date": date(2026, 7, 17),
             "rsu_type": "performance",
@@ -154,7 +151,7 @@ def test_build_vest_decision_lines_uses_provisional_winner_label_when_actionable
             TaxScenario("HOLD_FOR_LOSS", date(2027, 1, 17), 0.37, 184, -0.10, 189.0, 1512.0, -62.16, 1574.16, 0.0, 0.45, "harvest"),
         ],
     )
-    lines = _build_vest_decision_lines(
+    lines = build_vest_decision_lines(
         {
             "vest_date": date(2026, 7, 17),
             "rsu_type": "performance",

@@ -9,7 +9,7 @@ name: Post-Initial Bootstrap
 # Why not Day 3?
 # --------------
 # This workflow makes ZERO Alpha Vantage API calls — it only reads from the already-
-# populated DB, computes derived tables, and runs monthly_decision.py. The only real
+# populated DB, computes derived tables, and runs the monthly decision. The only real
 # prerequisite is that Day 2's git push has completed. A same-day 18:00 UTC slot
 # satisfies that constraint without burning an extra 24-hour calendar day.
 #
@@ -25,7 +25,7 @@ name: Post-Initial Bootstrap
 #    to the DB. The bootstrap script reads it from the DB; no live FRED fetch
 #    is needed here.
 #
-# 3. Run monthly_decision.py to produce the first recommendation report in
+# 3. Run the monthly decision (pgr_vds.decision) to produce the first recommendation report in
 #    artifacts/monthly_decisions/YYYY-MM/.
 #
 # Prerequisites

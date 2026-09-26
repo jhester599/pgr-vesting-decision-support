@@ -14,7 +14,7 @@ from datetime import date, timedelta
 
 import pytest
 
-from scripts import monthly_decision
+from pgr_vds.decision import artifacts, schedule
 
 
 class _FrozenDate(date):
@@ -29,7 +29,7 @@ class _FrozenDate(date):
 
 def _freeze(monkeypatch: pytest.MonkeyPatch, frozen: date) -> None:
     frozen_cls = type("_FrozenDate", (_FrozenDate,), {"_frozen": frozen})
-    monkeypatch.setattr(monthly_decision, "date", frozen_cls)
+    monkeypatch.setattr(schedule, "date", frozen_cls)
 
 
 def test_resolve_as_of_date_matches_across_20_21_22_when_20th_is_weekday(
@@ -40,7 +40,7 @@ def test_resolve_as_of_date_matches_across_20_21_22_when_20th_is_weekday(
     as_of_dates = set()
     for day in (20, 21, 22):
         _freeze(monkeypatch, date(2026, 7, day))
-        as_of_dates.add(monthly_decision._resolve_as_of_date(None))
+        as_of_dates.add(schedule.resolve_as_of_date(None))
     assert as_of_dates == {date(2026, 7, 20)}
 
 
@@ -59,7 +59,7 @@ def test_resolve_as_of_date_moves_back_when_20th_is_saturday(
     as_of_dates = set()
     for day in (20, 21, 22):
         _freeze(monkeypatch, date(2026, 6, day))
-        as_of = monthly_decision._resolve_as_of_date(None)
+        as_of = schedule.resolve_as_of_date(None)
         assert as_of <= date(2026, 6, day)
         as_of_dates.add(as_of)
     assert as_of_dates == {expected}
@@ -73,7 +73,7 @@ def test_resolve_as_of_date_is_never_later_than_today(
     for offset in range(366):
         today = start + timedelta(days=offset)
         _freeze(monkeypatch, today)
-        assert monthly_decision._resolve_as_of_date(None) <= today
+        assert schedule.resolve_as_of_date(None) <= today
 
 
 def test_resolve_as_of_date_rejects_a_future_override(
@@ -81,7 +81,7 @@ def test_resolve_as_of_date_rejects_a_future_override(
 ) -> None:
     _freeze(monkeypatch, date(2026, 9, 20))
     with pytest.raises(ValueError, match="later than today"):
-        monthly_decision._resolve_as_of_date("2026-09-22")
+        schedule.resolve_as_of_date("2026-09-22")
 
 
 def test_resolve_as_of_date_before_20th_uses_today(
@@ -89,14 +89,14 @@ def test_resolve_as_of_date_before_20th_uses_today(
 ) -> None:
     """Manual/testing runs earlier in the month aren't anchored to the 20th."""
     _freeze(monkeypatch, date(2026, 7, 5))
-    assert monthly_decision._resolve_as_of_date(None) == date(2026, 7, 5)
+    assert schedule.resolve_as_of_date(None) == date(2026, 7, 5)
 
 
 def test_resolve_as_of_date_explicit_override_takes_precedence(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _freeze(monkeypatch, date(2026, 7, 21))
-    assert monthly_decision._resolve_as_of_date("2026-07-15") == date(2026, 7, 15)
+    assert schedule.resolve_as_of_date("2026-07-15") == date(2026, 7, 15)
 
 
 def test_already_ran_skips_fallback_runs_once_report_exists(
@@ -105,12 +105,12 @@ def test_already_ran_skips_fallback_runs_once_report_exists(
     """End-to-end check that the fallback runs no-op once a report exists."""
     out_dir = tmp_path / "2026-07"
     out_dir.mkdir()
-    monkeypatch.setattr(monthly_decision, "_output_dir", lambda as_of: out_dir)
+    monkeypatch.setattr(artifacts, "output_dir", lambda as_of: out_dir)
 
     # First (20th) run: no manifest yet.
     _freeze(monkeypatch, date(2026, 7, 20))
-    as_of_20 = monthly_decision._resolve_as_of_date(None)
-    assert monthly_decision._already_ran(as_of_20) is False
+    as_of_20 = schedule.resolve_as_of_date(None)
+    assert artifacts.already_ran(as_of_20) is False
 
     # Simulate the report having been written for the 20th.
     (out_dir / "run_manifest.json").write_text(
@@ -120,5 +120,5 @@ def test_already_ran_skips_fallback_runs_once_report_exists(
     # 21st and 22nd fallback runs must now see the report as already done.
     for day in (21, 22):
         _freeze(monkeypatch, date(2026, 7, day))
-        as_of = monthly_decision._resolve_as_of_date(None)
-        assert monthly_decision._already_ran(as_of) is True
+        as_of = schedule.resolve_as_of_date(None)
+        assert artifacts.already_ran(as_of) is True

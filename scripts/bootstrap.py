@@ -60,11 +60,11 @@ def _run_monthly_decision(
     dry_run: bool = False,
     skip_fred: bool = True,
 ) -> int:
-    """Invoke monthly_decision.main() and return its exit code."""
-    from scripts import monthly_decision
+    """Invoke the monthly decision (``pgr_vds.decision.pipeline.main``); return its exit code."""
+    from pgr_vds.decision import pipeline
 
     try:
-        monthly_decision.main(
+        pipeline.main(
             as_of_date_str=as_of,
             dry_run=dry_run,
             skip_fred=skip_fred,

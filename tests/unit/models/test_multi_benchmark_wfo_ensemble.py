@@ -505,8 +505,8 @@ class TestProductionEnsemble:
 
 class TestEtfDescriptions:
     def _get_desc(self) -> dict[str, str]:
-        import scripts.monthly_decision as md
-        return md._ETF_DESCRIPTIONS
+        from pgr_vds.decision import rendering
+        return rendering.ETF_DESCRIPTIONS
 
     def test_all_benchmark_etfs_have_description(self) -> None:
         desc = self._get_desc()

@@ -1,8 +1,8 @@
-"""Tests for the calibration reliability diagram in scripts/monthly_decision.py (v6.5, P2.7).
+"""Tests for the calibration reliability diagram in pgr_vds/decision/diagnostic_report.py (v6.5, P2.7).
 
- 1.  _plot_calibration_curve returns None when fewer than 4 observations
- 2.  _plot_calibration_curve returns None when method is "uncalibrated"
- 3.  _plot_calibration_curve writes a PNG file when data is sufficient
+ 1.  plot_calibration_curve returns None when fewer than 4 observations
+ 2.  plot_calibration_curve returns None when method is "uncalibrated"
+ 3.  plot_calibration_curve writes a PNG file when data is sufficient
 
 Split out of the old ``tests/test_v65_p26_p27_p28.py`` (review 2026-09-25, step 11).
 """
@@ -16,16 +16,16 @@ import numpy as np
 
 
 class TestPlotCalibrationCurve:
-    """Tests for _plot_calibration_curve in monthly_decision.py."""
+    """Tests for plot_calibration_curve in pgr_vds.decision.diagnostic_report."""
 
     def _import(self):
-        """Import _plot_calibration_curve lazily (avoids matplotlib import at collection time)."""
+        """Import plot_calibration_curve lazily (avoids matplotlib import at collection time)."""
         import importlib
-        # monthly_decision imports config and src modules; mock heavy dependencies
+        # diagnostic_report imports config and src modules; mock heavy dependencies
         with patch.dict("os.environ", {"AV_API_KEY": "test", "FMP_API_KEY": "test",
                                         "FRED_API_KEY": "test"}):
-            mod = importlib.import_module("scripts.monthly_decision")
-        return mod._plot_calibration_curve
+            mod = importlib.import_module("pgr_vds.decision.diagnostic_report")
+        return mod.plot_calibration_curve
 
     def test_returns_none_when_fewer_than_4_obs(self, tmp_path):
         plot_fn = self._import()

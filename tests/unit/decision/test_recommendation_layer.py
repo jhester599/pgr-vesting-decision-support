@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from scripts import monthly_decision
+from pgr_vds.decision import artifacts, recommendation_report, tax_lots
 from src.reporting.snapshot_summary import SnapshotSummary
 
 
@@ -15,10 +15,10 @@ def test_recommendation_report_includes_v13_sections(monkeypatch, tmp_path: Path
     # shadow rendering path still works when the mode is explicitly enabled.
     import config as _cfg
     monkeypatch.setattr(_cfg, "RECOMMENDATION_LAYER_MODE", "live_with_shadow")
-    monkeypatch.setattr(monthly_decision, "_load_previous_decision_summary", lambda as_of: None)
+    monkeypatch.setattr(artifacts, "load_previous_decision_summary", lambda as_of: None)
     monkeypatch.setattr(
-        monthly_decision,
-        "_build_provisional_vest_scenario",
+        tax_lots,
+        "build_provisional_vest_scenario",
         lambda conn, as_of, mean_predicted, prob_outperform: {
             "vest_date": date(2026, 7, 17),
             "rsu_type": "performance",
@@ -86,7 +86,7 @@ def test_recommendation_report_includes_v13_sections(monkeypatch, tmp_path: Path
         aggregate_nw_ic=-0.01,
     )
 
-    monthly_decision._write_recommendation_md(  # noqa: SLF001
+    recommendation_report.write_recommendation_md(  # noqa: SLF001
         out_dir=tmp_path,
         as_of=date(2026, 4, 4),
         run_date=date(2026, 4, 4),
@@ -212,7 +212,7 @@ def test_shadow_promoted_cross_check_mentions_active_layer() -> None:
         aggregate_nw_ic=-0.01,
     )
 
-    lines = monthly_decision.build_shadow_check_lines(
+    lines = recommendation_report.build_shadow_check_lines(
         live_summary,
         shadow_summary,
         active_path="shadow",

@@ -112,11 +112,15 @@ def test_every_artifact_folder_has_a_readme() -> None:
 
 
 def test_monthly_decision_output_dirs() -> None:
-    module = _script("monthly_decision")
+    from pgr_vds import decision
+    from pgr_vds.decision import artifacts
+
     as_of = date(2026, 9, 21)
-    assert _posix(module._output_dir(as_of)) == "artifacts/monthly_decisions/2026-09"
-    assert _posix(module._dry_run_output_dir(as_of)) == "results/dry_run/monthly_decisions/2026-09"
-    source = inspect.getsource(module)
+    assert _posix(artifacts.output_dir(as_of)) == "artifacts/monthly_decisions/2026-09"
+    assert _posix(artifacts.dry_run_output_dir(as_of)) == "results/dry_run/monthly_decisions/2026-09"
+    source = "".join(
+        path.read_text(encoding="utf-8") for path in Path(decision.__file__).parent.glob("*.py")
+    )
     assert 'Path("results") / "monthly_decisions"' not in source
     assert "results/monthly_decisions/decision_log.md" not in source
 

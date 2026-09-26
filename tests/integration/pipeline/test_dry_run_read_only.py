@@ -124,7 +124,7 @@ def test_monthly_decision_dry_run_leaves_db_and_tracked_files_unchanged(
     temp_repo: Path,
 ) -> None:
     """Full ``main(dry_run=True)`` on a DB copy: nothing tracked may change."""
-    from scripts import monthly_decision
+    from pgr_vds.decision import pipeline
 
     db_path = temp_repo / "data" / "pgr_financials.db"
     dry_run_root = temp_repo / "results" / "dry_run"
@@ -132,7 +132,7 @@ def test_monthly_decision_dry_run_leaves_db_and_tracked_files_unchanged(
     artifacts_before = _hash_tree(temp_repo / config.ARTIFACTS_DIR)
     repo_before = _hash_tracked_repo_files()
 
-    monthly_decision.main(as_of_date_str="2026-04-02", dry_run=True, skip_fred=True)
+    pipeline.main(as_of_date_str="2026-04-02", dry_run=True, skip_fred=True)
 
     assert _sha256(db_path) == db_before, "monthly_decision --dry-run modified the DB"
     changed_results = _changed(

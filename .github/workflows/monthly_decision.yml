@@ -104,7 +104,7 @@ jobs:
             FRED_FLAG="--skip-fred"
           fi
 
-          python scripts/monthly_decision.py $AS_OF_FLAG $DRY_FLAG $FRED_FLAG
+          python cli/monthly_decision.py $AS_OF_FLAG $DRY_FLAG $FRED_FLAG
 
       - name: Verify monthly artifacts and write summary
         id: verify

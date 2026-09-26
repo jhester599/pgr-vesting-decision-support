@@ -27,6 +27,7 @@ WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 
 # Every script a workflow runs (directly or through ci_offline_smoke.py).
 PRODUCTION_SCRIPTS: tuple[str, ...] = (
+    "cli/monthly_decision.py",
     "scripts/bootstrap.py",
     "scripts/capital_return_charts.py",
     "scripts/check_data_integrity.py",
@@ -36,7 +37,6 @@ PRODUCTION_SCRIPTS: tuple[str, ...] = (
     "scripts/edgar_8k_fetcher.py",
     "scripts/finalize_db.py",
     "scripts/initial_fetch.py",
-    "scripts/monthly_decision.py",
     "scripts/peer_fetch.py",
     "scripts/repurchase_timeseries_charts.py",
     "scripts/verify_monthly_outputs.py",
@@ -51,7 +51,7 @@ PRODUCTION_MODULES: tuple[str, ...] = (
     "src.reporting.email_sender",
 )
 
-_WORKFLOW_SCRIPT = re.compile(r"\bpython3?\s+(?:-u\s+)?(scripts/[\w/]+\.py)")
+_WORKFLOW_SCRIPT = re.compile(r"\bpython3?\s+(?:-u\s+)?((?:scripts|cli)/[\w/]+\.py)")
 _WORKFLOW_MODULE = re.compile(
     r"^\s*from\s+((?:src|config)(?:\.\w+)*)\s+import\s+(\w+)", re.MULTILINE
 )
@@ -175,7 +175,7 @@ def test_monthly_decision_import_loads_nothing_from_results(tmp_path: Path) -> N
         imports=(
             "import importlib.util\n"
             "spec = importlib.util.spec_from_file_location('entry_smoke', "
-            f"{str(REPO_ROOT / 'scripts' / 'monthly_decision.py')!r})\n"
+            f"{str(REPO_ROOT / 'cli' / 'monthly_decision.py')!r})\n"
             "module = importlib.util.module_from_spec(spec)\n"
             "sys.modules['entry_smoke'] = module\n"
             "spec.loader.exec_module(module)"
@@ -186,5 +186,5 @@ def test_monthly_decision_import_loads_nothing_from_results(tmp_path: Path) -> N
     probe = json.loads(result.stdout.strip().splitlines()[-1])
     assert probe["results_modules"] == []
     assert probe["blanket_filters"] == []
-    # Reconfiguring stdout is the entry point's job, in its __main__ block.
+    # Reconfiguring stdout is the entry point's job, in its main().
     assert probe["stdout_encoding"] == "ascii"

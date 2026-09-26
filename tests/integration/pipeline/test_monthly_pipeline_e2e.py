@@ -10,7 +10,16 @@ import pytest
 
 
 import config
-from scripts import monthly_decision
+from pgr_vds.decision import (
+    artifacts,
+    diagnostic_report,
+    health,
+    pipeline,
+    portfolio,
+    refresh,
+    signal_generation,
+    tax_lots,
+)
 from src.database import db_client
 from src.models.calibration import CalibrationResult
 
@@ -64,12 +73,12 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
 
     monkeypatch.setattr(config, "DB_PATH", str(db_path))
     monkeypatch.setattr(config, "RECOMMENDATION_LAYER_MODE", "live_only")
-    monkeypatch.setattr(monthly_decision, "_output_dir", lambda as_of: out_dir)
-    monkeypatch.setattr(monthly_decision, "_already_ran", lambda as_of: False)
-    monkeypatch.setattr(monthly_decision, "_fetch_fred_step", lambda *args, **kwargs: None)
+    monkeypatch.setattr(artifacts, "output_dir", lambda as_of: out_dir)
+    monkeypatch.setattr(artifacts, "already_ran", lambda as_of: False)
+    monkeypatch.setattr(refresh, "fetch_fred_step", lambda *args, **kwargs: None)
     monkeypatch.setattr(
-        monthly_decision,
-        "_generate_signals",
+        signal_generation,
+        "generate_signals",
         lambda *args, **kwargs: (
             signals.copy(),
             {"VOO": object(), "BND": object()},
@@ -81,8 +90,8 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
         ),
     )
     monkeypatch.setattr(
-        monthly_decision,
-        "_calibrate_signals",
+        signal_generation,
+        "calibrate_signals",
         lambda signals, ensemble_results, target_horizon_months=6, panel=None: (
             signals.copy(),
             cal_result,
@@ -91,18 +100,18 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
         ),
     )
     monkeypatch.setattr(
-        monthly_decision,
-        "_compute_conformal_intervals",
+        signal_generation,
+        "compute_conformal_intervals",
         lambda signals, ensemble_results, panel=None: signals.copy(),
     )
     monkeypatch.setattr(
-        monthly_decision,
-        "_consensus_signal",
+        signal_generation,
+        "consensus_signal",
         lambda signals: ("UNDERPERFORM", -0.03, 0.0775, 0.57, 0.415, "MODERATE"),
     )
     monkeypatch.setattr(
-        monthly_decision,
-        "_compute_aggregate_health",
+        health,
+        "compute_aggregate_health",
         lambda *args, **kwargs: {
             "oos_r2": 0.031,
             "nw_ic": 0.081,
@@ -127,15 +136,15 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
             ),
         },
     )
-    monkeypatch.setattr(monthly_decision, "_build_provisional_vest_scenario", lambda *args, **kwargs: None)
-    monkeypatch.setattr(monthly_decision, "_load_previous_decision_summary", lambda *args, **kwargs: None)
-    monkeypatch.setattr(monthly_decision, "_append_decision_log", lambda *args, **kwargs: None)
-    monkeypatch.setattr(monthly_decision, "_plot_calibration_curve", lambda *args, **kwargs: None)
-    monkeypatch.setattr(monthly_decision, "_build_existing_holdings_guidance", lambda *args, **kwargs: [])
-    monkeypatch.setattr(monthly_decision, "_build_redeploy_guidance", lambda *args, **kwargs: [])
-    monkeypatch.setattr(monthly_decision, "_build_redeploy_portfolio", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tax_lots, "build_provisional_vest_scenario", lambda *args, **kwargs: None)
+    monkeypatch.setattr(artifacts, "load_previous_decision_summary", lambda *args, **kwargs: None)
+    monkeypatch.setattr(artifacts, "append_decision_log", lambda *args, **kwargs: None)
+    monkeypatch.setattr(diagnostic_report, "plot_calibration_curve", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tax_lots, "build_existing_holdings_guidance", lambda *args, **kwargs: [])
+    monkeypatch.setattr(portfolio, "build_redeploy_guidance", lambda *args, **kwargs: [])
+    monkeypatch.setattr(portfolio, "build_redeploy_portfolio", lambda *args, **kwargs: None)
     monkeypatch.setattr(
-        monthly_decision,
+        pipeline,
         "build_classification_shadow_summary",
         lambda *args, **kwargs: (
             type(
@@ -167,12 +176,12 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
         ),
     )
     monkeypatch.setattr(
-        monthly_decision.db_client,
+        db_client,
         "warn_if_db_behind",
         lambda *args, **kwargs: [],
     )
     monkeypatch.setattr(
-        monthly_decision.db_client,
+        db_client,
         "check_data_freshness",
         lambda conn, reference_date: {
             "reference_date": reference_date.isoformat(),
@@ -217,9 +226,9 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "diagnostic.md").write_text("# Diagnostic Stub\n", encoding="utf-8")
 
-    monkeypatch.setattr(monthly_decision, "_write_diagnostic_report", _write_stub_diagnostic)
+    monkeypatch.setattr(diagnostic_report, "write_diagnostic_report", _write_stub_diagnostic)
 
-    monthly_decision.main(as_of_date_str="2026-04-05", dry_run=False, skip_fred=True)
+    pipeline.main(as_of_date_str="2026-04-05", dry_run=False, skip_fred=True)
 
     recommendation_path = out_dir / "recommendation.md"
     signals_path = out_dir / "signals.csv"

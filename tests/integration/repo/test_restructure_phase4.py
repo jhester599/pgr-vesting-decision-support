@@ -226,8 +226,12 @@ def test_unit_tests_mirror_the_code() -> None:
     for extra in ("config", "dashboard", "scripts"):
         assert list((unit / extra).glob("test_*.py")), extra
     for folder in (unit, *[p for p in unit.iterdir() if p.is_dir() and p.name != "__pycache__"]):
-        assert folder.name == "unit" or (REPO_ROOT / "src" / folder.name).is_dir() or folder.name in (
-            "config", "dashboard", "scripts",
+        assert (
+            folder.name == "unit"
+            or (REPO_ROOT / "src" / folder.name).is_dir()
+            # Phase 5: packages that moved under src/pgr_vds/ (e.g. decision).
+            or (REPO_ROOT / "src" / "pgr_vds" / folder.name).is_dir()
+            or folder.name in ("config", "dashboard", "scripts")
         ), folder.name
 
 

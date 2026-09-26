@@ -154,36 +154,36 @@ def test_offline_guard_blocks_requests_and_serves_the_edgar_index(monkeypatch: p
 
 def test_unknown_recommendation_layer_mode_fails_fast(monkeypatch: pytest.MonkeyPatch) -> None:
     """The typo `live-only` used to fall back to the retired shadow_promoted mode."""
-    import scripts.monthly_decision as md
+    from pgr_vds.decision import artifacts, pipeline
 
     monkeypatch.setattr(config, "RECOMMENDATION_LAYER_MODE", "live-only")
-    monkeypatch.setattr(md, "_already_ran", lambda as_of: pytest.fail("must fail before any work"))
+    monkeypatch.setattr(artifacts, "already_ran", lambda as_of: pytest.fail("must fail before any work"))
     with pytest.raises(ValueError, match="Unknown RECOMMENDATION_LAYER_MODE 'live-only'"):
-        md.main(as_of_date_str="2026-04-02", dry_run=True, skip_fred=True)
+        pipeline.main(as_of_date_str="2026-04-02", dry_run=True, skip_fred=True)
 
 
 @pytest.mark.parametrize("mode", list(config.RECOMMENDATION_LAYER_VALID_MODES))
 def test_valid_modes_pass_validation(mode: str) -> None:
-    import scripts.monthly_decision as md
+    from pgr_vds.decision import schedule
 
-    assert md._validate_layer_mode(mode) == mode
+    assert schedule.validate_layer_mode(mode) == mode
 
 
 def test_skipped_run_writes_generated_false(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    import scripts.monthly_decision as md
+    from pgr_vds.decision import artifacts, pipeline
 
     output = tmp_path / "github_output"
     monkeypatch.setenv("GITHUB_OUTPUT", str(output))
-    monkeypatch.setattr(md, "_already_ran", lambda as_of: True)
-    md.main(as_of_date_str="2026-04-02", dry_run=False, skip_fred=True)
+    monkeypatch.setattr(artifacts, "already_ran", lambda as_of: True)
+    pipeline.main(as_of_date_str="2026-04-02", dry_run=False, skip_fred=True)
     assert output.read_text(encoding="utf-8").strip() == "generated=false"
 
 
 def test_step_output_is_a_no_op_outside_actions(monkeypatch: pytest.MonkeyPatch) -> None:
-    import scripts.monthly_decision as md
+    from pgr_vds.decision import artifacts
 
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
-    md._write_step_output("generated", "true")  # must not raise
+    artifacts.write_step_output("generated", "true")  # must not raise
 
 
 def test_weekly_fetch_reraises_a_missing_edgar_user_agent() -> None:

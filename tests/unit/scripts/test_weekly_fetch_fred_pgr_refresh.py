@@ -21,7 +21,8 @@ import pandas as pd
 import pytest
 
 import config
-from scripts import monthly_decision, weekly_fetch
+from pgr_vds.decision import refresh, signal_generation
+from scripts import weekly_fetch
 
 
 def test_production_fred_series_includes_macro_and_pgr_series() -> None:
@@ -56,7 +57,7 @@ def test_monthly_decision_requests_pgr_fred_series(
     mock_fetch: MagicMock,
     mock_upsert: MagicMock,
 ) -> None:
-    monthly_decision._fetch_fred_step(MagicMock(), dry_run=False, skip_fred=False)
+    refresh.fetch_fred_step(MagicMock(), dry_run=False, skip_fred=False)
     mock_fetch.assert_called_once()
     requested = list(mock_fetch.call_args.args[0])
     missing = [sid for sid in config.FRED_SERIES_PGR if sid not in requested]
@@ -85,10 +86,10 @@ def test_find_nan_live_features_flags_only_nan_live_columns() -> None:
     df = _live_feature_matrix("rate_adequacy_gap_yoy")
     df["not_a_live_feature"] = np.nan
     x_current = df.drop(columns=["target_6m_return"]).iloc[[-1]]
-    assert monthly_decision._find_nan_live_features(x_current) == ["rate_adequacy_gap_yoy"]
+    assert signal_generation.find_nan_live_features(x_current) == ["rate_adequacy_gap_yoy"]
 
     clean = _live_feature_matrix(None).drop(columns=["target_6m_return"]).iloc[[-1]]
-    assert monthly_decision._find_nan_live_features(clean) == []
+    assert signal_generation.find_nan_live_features(clean) == []
 
 
 @pytest.mark.parametrize("nan_feature", ["rate_adequacy_gap_yoy", None])
@@ -99,17 +100,17 @@ def test_generate_signals_warns_on_nan_live_feature(
 ) -> None:
     assert "rate_adequacy_gap_yoy" in config.MODEL_FEATURE_OVERRIDES["gbt"]
     df = _live_feature_matrix(nan_feature)
-    monkeypatch.setattr(monthly_decision, "build_feature_matrix_from_db", lambda conn, force_refresh: df)
-    monkeypatch.setattr(monthly_decision, "compute_vif", lambda *a, **k: pd.Series(dtype=float))
-    # No targets: _generate_signals returns right after building diagnostics.
+    monkeypatch.setattr(signal_generation, "build_feature_matrix_from_db", lambda conn, force_refresh: df)
+    monkeypatch.setattr(signal_generation, "compute_vif", lambda *a, **k: pd.Series(dtype=float))
+    # No targets: generate_signals returns right after building diagnostics.
     monkeypatch.setattr(
-        monthly_decision,
+        signal_generation,
         "load_relative_return_matrix",
         lambda *a, **k: pd.Series(dtype=float),
     )
 
-    with caplog.at_level(logging.WARNING, logger=monthly_decision.logger.name):
-        signals, ensemble_results, diagnostics = monthly_decision._generate_signals(
+    with caplog.at_level(logging.WARNING, logger=signal_generation.logger.name):
+        signals, ensemble_results, diagnostics = signal_generation.generate_signals(
             MagicMock(), df.index[-1].date()
         )
 

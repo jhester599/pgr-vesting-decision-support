@@ -2,8 +2,8 @@
 Tests for the v4.3.1 diagnostic OOS evaluation report.
 
 Validates:
-  - _flag() threshold logic (✅ / ⚠️ / ❌)
-  - _write_diagnostic_report() file creation and content
+  - flag() threshold logic (✅ / ⚠️ / ❌)
+  - write_diagnostic_report() file creation and content
   - Aggregate OOS R² and Newey-West IC integration
   - Empty / insufficient-data guard paths
   - config.py diagnostic threshold constants
@@ -30,7 +30,8 @@ from src.models.wfo_engine import CPCVResult
 # ---------------------------------------------------------------------------
 
 
-from scripts.monthly_decision import _flag, _write_diagnostic_report
+from pgr_vds.decision.diagnostic_report import write_diagnostic_report
+from pgr_vds.decision.health import flag
 
 
 # ---------------------------------------------------------------------------
@@ -115,53 +116,53 @@ def _make_ensemble_results(
 
 
 # ===========================================================================
-# Tests for _flag()
+# Tests for flag()
 # ===========================================================================
 
 class TestFlag:
-    """_flag(value, good, marginal, higher_is_better) → ✅ / ⚠️ / ❌"""
+    """flag(value, good, marginal, higher_is_better) → ✅ / ⚠️ / ❌"""
 
     def test_higher_is_better_good(self) -> None:
-        assert _flag(0.10, good=0.07, marginal=0.03) == "✅"
+        assert flag(0.10, good=0.07, marginal=0.03) == "✅"
 
     def test_higher_is_better_marginal(self) -> None:
-        assert _flag(0.05, good=0.07, marginal=0.03) == "⚠️"
+        assert flag(0.05, good=0.07, marginal=0.03) == "⚠️"
 
     def test_higher_is_better_fail(self) -> None:
-        assert _flag(0.01, good=0.07, marginal=0.03) == "❌"
+        assert flag(0.01, good=0.07, marginal=0.03) == "❌"
 
     def test_higher_is_better_exactly_good_threshold(self) -> None:
-        assert _flag(0.07, good=0.07, marginal=0.03) == "✅"
+        assert flag(0.07, good=0.07, marginal=0.03) == "✅"
 
     def test_higher_is_better_exactly_marginal_threshold(self) -> None:
-        assert _flag(0.03, good=0.07, marginal=0.03) == "⚠️"
+        assert flag(0.03, good=0.07, marginal=0.03) == "⚠️"
 
     def test_lower_is_better_good(self) -> None:
-        assert _flag(0.01, good=0.05, marginal=0.10, higher_is_better=False) == "✅"
+        assert flag(0.01, good=0.05, marginal=0.10, higher_is_better=False) == "✅"
 
     def test_lower_is_better_marginal(self) -> None:
-        assert _flag(0.07, good=0.05, marginal=0.10, higher_is_better=False) == "⚠️"
+        assert flag(0.07, good=0.05, marginal=0.10, higher_is_better=False) == "⚠️"
 
     def test_lower_is_better_fail(self) -> None:
-        assert _flag(0.15, good=0.05, marginal=0.10, higher_is_better=False) == "❌"
+        assert flag(0.15, good=0.05, marginal=0.10, higher_is_better=False) == "❌"
 
     def test_oos_r2_good(self) -> None:
         """OOS R² of 3% exceeds the 2% good threshold."""
-        assert _flag(0.03, good=config.DIAG_MIN_OOS_R2, marginal=0.005) == "✅"
+        assert flag(0.03, good=config.DIAG_MIN_OOS_R2, marginal=0.005) == "✅"
 
     def test_oos_r2_marginal(self) -> None:
         """OOS R² of 1% is between 0.5% marginal and 2% good."""
-        assert _flag(0.01, good=config.DIAG_MIN_OOS_R2, marginal=0.005) == "⚠️"
+        assert flag(0.01, good=config.DIAG_MIN_OOS_R2, marginal=0.005) == "⚠️"
 
     def test_oos_r2_fail(self) -> None:
         """Negative OOS R² is failing."""
-        assert _flag(-0.01, good=config.DIAG_MIN_OOS_R2, marginal=0.005) == "❌"
+        assert flag(-0.01, good=config.DIAG_MIN_OOS_R2, marginal=0.005) == "❌"
 
     def test_hit_rate_good(self) -> None:
-        assert _flag(0.60, good=config.DIAG_MIN_HIT_RATE, marginal=0.52) == "✅"
+        assert flag(0.60, good=config.DIAG_MIN_HIT_RATE, marginal=0.52) == "✅"
 
     def test_hit_rate_fail(self) -> None:
-        assert _flag(0.48, good=config.DIAG_MIN_HIT_RATE, marginal=0.52) == "❌"
+        assert flag(0.48, good=config.DIAG_MIN_HIT_RATE, marginal=0.52) == "❌"
 
 
 # ===========================================================================
@@ -197,7 +198,7 @@ class TestConfigConstants:
 
 
 # ===========================================================================
-# Tests for _write_diagnostic_report()
+# Tests for write_diagnostic_report()
 # ===========================================================================
 
 class TestWriteDiagnosticReport:
@@ -206,36 +207,36 @@ class TestWriteDiagnosticReport:
     def test_creates_diagnostic_md(self, tmp_path: Path) -> None:
         """Report file is created when ensemble_results contains valid data."""
         ensemble = _make_ensemble_results(n_obs=40)
-        _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
+        write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
         assert (tmp_path / "diagnostic.md").exists()
 
     def test_report_contains_month_header(self, tmp_path: Path) -> None:
         ensemble = _make_ensemble_results(n_obs=40)
-        _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
+        write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
         assert "March 2026" in content
 
     def test_report_contains_oos_r2(self, tmp_path: Path) -> None:
         ensemble = _make_ensemble_results(n_obs=40)
-        _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
+        write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
         assert "OOS R²" in content
 
     def test_report_contains_newey_west_ic(self, tmp_path: Path) -> None:
         ensemble = _make_ensemble_results(n_obs=40)
-        _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
+        write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
         assert "Newey-West" in content
 
     def test_report_contains_clark_west(self, tmp_path: Path) -> None:
         ensemble = _make_ensemble_results(n_obs=40)
-        _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
+        write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
         assert "Clark-West" in content
 
     def test_report_contains_per_benchmark_table(self, tmp_path: Path) -> None:
         ensemble = _make_ensemble_results(n_obs=40, benchmarks=["VOO", "VTI", "VGT"])
-        _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
+        write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
         assert "VOO" in content
         assert "VTI" in content
@@ -243,7 +244,7 @@ class TestWriteDiagnosticReport:
 
     def test_report_mentions_cpcv_deferred(self, tmp_path: Path) -> None:
         ensemble = _make_ensemble_results(n_obs=40)
-        _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
+        write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
         assert "Phase 1" in content or "N/A" in content
 
@@ -267,7 +268,7 @@ class TestWriteDiagnosticReport:
             "verdict": "OK",
             "message": "obs/feature ratio healthy.",
         }
-        _write_diagnostic_report(
+        write_diagnostic_report(
             tmp_path,
             date(2026, 3, 26),
             ensemble,
@@ -292,7 +293,7 @@ class TestWriteDiagnosticReport:
             ic_std=0.041,
             split_ics=[],
         )
-        _write_diagnostic_report(
+        write_diagnostic_report(
             tmp_path,
             date(2026, 3, 26),
             ensemble,
@@ -304,28 +305,28 @@ class TestWriteDiagnosticReport:
 
     def test_report_contains_threshold_reference(self, tmp_path: Path) -> None:
         ensemble = _make_ensemble_results(n_obs=40)
-        _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
+        write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
         assert "Campbell" in content
 
     def test_good_signal_shows_green_flag(self, tmp_path: Path) -> None:
         """High ic_level should produce ✅ flags in the per-benchmark table."""
         ensemble = _make_ensemble_results(n_obs=80, ic_level=0.9)
-        _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
+        write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
         assert "✅" in content
 
     def test_poor_signal_shows_red_flag(self, tmp_path: Path) -> None:
         """Near-zero ic_level should produce ❌ flags in the per-benchmark table."""
         ensemble = _make_ensemble_results(n_obs=40, ic_level=0.0)
-        _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
+        write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
         assert "❌" in content
 
     def test_insufficient_data_guard(self, tmp_path: Path) -> None:
         """With only 2 OOS observations the function writes a minimal report."""
         ensemble = _make_ensemble_results(n_obs=2)
-        _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
+        write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
         path = tmp_path / "diagnostic.md"
         assert path.exists()
         content = path.read_text(encoding="utf-8")
@@ -334,20 +335,20 @@ class TestWriteDiagnosticReport:
 
     def test_empty_ensemble_results(self, tmp_path: Path) -> None:
         """Empty ensemble dict writes a minimal report without crashing."""
-        _write_diagnostic_report(tmp_path, date(2026, 3, 26), {})
+        write_diagnostic_report(tmp_path, date(2026, 3, 26), {})
         assert (tmp_path / "diagnostic.md").exists()
 
     def test_creates_parent_directory(self, tmp_path: Path) -> None:
         """Output dir is created if it doesn't exist."""
         nested = tmp_path / "nested" / "dir"
         ensemble = _make_ensemble_results(n_obs=20)
-        _write_diagnostic_report(nested, date(2026, 3, 26), ensemble)
+        write_diagnostic_report(nested, date(2026, 3, 26), ensemble)
         assert (nested / "diagnostic.md").exists()
 
     def test_horizon_affects_nw_lags(self, tmp_path: Path) -> None:
         """12M horizon should show 11 Newey-West lags in the report."""
         ensemble = _make_ensemble_results(n_obs=50)
-        _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble, target_horizon_months=12)
+        write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble, target_horizon_months=12)
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
         assert "11" in content  # 12 - 1 = 11 lags
 
@@ -363,7 +364,7 @@ class TestWriteDiagnosticReport:
             "ridge":      _WFOResultStub(folds=[fold_ri], benchmark="VOO"),
         })
         ensemble = {"VOO": ens}
-        _write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
+        write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
         assert "VOO" in content
 
@@ -393,7 +394,7 @@ class TestWriteDiagnosticReport:
             method=config.CONFORMAL_METHOD,
         )
 
-        _write_diagnostic_report(
+        write_diagnostic_report(
             tmp_path,
             date(2026, 3, 26),
             ensemble,

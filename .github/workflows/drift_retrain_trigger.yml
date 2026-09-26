@@ -79,7 +79,7 @@ jobs:
           if not history.empty:
               drift_summary = summarize_latest_model_drift(history.reset_index())
 
-          # Evaluate trigger (read-only — recording happens in monthly_decision.py)
+          # Evaluate trigger (read-only — recording happens in the monthly decision run)
           last_date = db_client.get_last_retrain_trigger_date(conn)
           result = evaluate_retrain_trigger(
               drift_summary=drift_summary,
