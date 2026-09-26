@@ -5,6 +5,80 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v179 (2026-09-26) — Review 2026-09-25, step 6: decision and tax layer, timing, ops
+
+WP8 and WP10 from `docs/reviews/REPO_REVIEW_2026-09-25.md` (F19, the mapping
+part of F20, F23, F24, and the email, mode, concurrency, bootstrap, EDGAR and
+CI parts of F26). The report, the before/after tests and the September 2026
+replay are in `docs/reviews/2026-09-25_step6_decision_tax_timing_ops.md`.
+
+- **ACTIONABLE mapping (F20).** A bullish (OUTPERFORM) consensus never sells
+  more than the 50 % default: > 15 % forecast → 25 %, otherwise 50 % (≤ 5 %
+  sold 75 %). A missing IC maps to 50 %.
+  - `src/models/live_policy_backtest.py` replays the live per-benchmark
+    signal, quality-weighted consensus and mapping at every date of the
+    realised-only OOS record. On the 2026-09-21 record (186 dates, fixture
+    `tests/fixtures/live_mapping_oos_panel_2026-09-21.csv`, exported
+    read-only by `scripts/export_oos_panel.py`), the uplift over always-50 %
+    is +0.17 pp per decision (was −0.11 pp). A policy-regression test
+    requires it to stay ≥ 0.
+  - The monthly "Decision Policy Backtest" now scores the live mapping.
+  - No 2026 month is ACTIONABLE, so no committed recommendation changes.
+- **Tax (F19).**
+  - Breakeven on PGR's absolute return: `−g (S − L)/(1 − L)`, g = gain /
+    price (−21.25 % for an all-gain lot); it was `+(S − L)/(1 − L)`.
+  - LTCG iff sold after `vest + relativedelta(years=1)`; the hold-to-LTCG
+    date is the day after the anniversary (was vest + 366 days, a day early
+    across 29 February).
+  - Wash sales: the loss scenario sells six months after the vest, moved past
+    the ±30-day window of every scheduled vest; `optimize_sale` marks a loss
+    lot inside the window `WASH_SALE` (tax 0) and sells it last.
+  - Lots ordered by gain or loss per share; unvested lots excluded
+    (`load_position_lots(as_of=)`, `optimize_sale`, position summary,
+    holdings guidance, email).
+  - Scenarios ranked by expected after-tax proceeds (probability × proceeds
+    chose SELL_NOW on a +30 % forecast). Scenarios and the Monte Carlo use
+    `TAX_SCENARIO_PGR_ANNUAL_RETURN` (default 0 %), not the relative
+    forecast.
+  - The Tax Context section no longer compares the relative forecast with the
+    breakeven or suggests "capital-loss harvesting" on a negative relative
+    forecast.
+- **Shadow layer (F24).** Path B scores the decision row through an impute →
+  `StandardScaler` → logistic pipeline (it scored the last labelled month
+  with no scaler). Classifier maturity is recomputed whenever outcomes are
+  attached, and outcomes are cleared on rows not matured by the as-of date.
+  The `veto_regression_sell` overlay and the "Aligned" label read the live
+  sell % direction.
+- **Timing (F23).** EDGAR rows (monthly 8-K and quarterly XBRL) enter the
+  features on the first business month-end on or after their `filing_date`;
+  the fixed 2-month lag is only a fallback. Monthly rows now enter one month
+  earlier, and 10-Ks filed after the 2-month mark are no longer used early.
+  **Live inputs change** (combined ratio, NPW/PIF growth, investment income,
+  book yield, BVPS growth); see the report for September.
+- **As-of (F26).** Never later than today: from the 20th it is the last
+  business day on or before the 20th (a weekend 20th used to move forward to
+  Monday); a future `--as-of` raises.
+- **Ops (F26).**
+  - An unknown `RECOMMENDATION_LAYER_MODE` raises (it fell back to the
+    retired `shadow_promoted`).
+  - `monthly_decision.py` writes `generated=true|false` to `$GITHUB_OUTPUT`;
+    verify, charts, commit and email run only on `true`.
+  - All DB-writing workflows share the `db-writer` concurrency group; the
+    monthly decision runs on completion of the 8-K fetch (`workflow_run`),
+    with 21st/22nd fallback crons.
+  - `initial_fetch_prices.yml`, `initial_fetch_dividends.yml` and
+    `post_initial_bootstrap.yml` are dispatch-only.
+  - `EDGAR_USER_AGENT` is set in the 8-K and weekly workflows;
+    `config.get_edgar_user_agent()` raises `EdgarUserAgentError` when it is
+    unset, blank, the placeholder, or has no e-mail.
+  - CI smoke runs use `scripts/ci_offline_smoke.py` (sockets refused, canned
+    empty EDGAR index). `peer_fetch.py --dry-run` is read-only.
+- **Tests:** new `test_live_mapping_wp8.py`, `test_tax_wp8.py`,
+  `test_shadow_layer_wp8.py`, `test_edgar_filing_timing_wp10.py` and
+  `test_ops_wp8.py` (108 tests). Against unfixed `master`: 89 failed,
+  19 passed (positive controls). Existing tests that encoded the old
+  behaviour were updated; the report lists each.
+
 ## v178 (2026-09-26) — Review 2026-09-25, step 5: validation and gating
 
 WP7 from `docs/reviews/REPO_REVIEW_2026-09-25.md` (F02, F04, F13, the
