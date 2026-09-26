@@ -86,7 +86,8 @@ def pytest_runtest_teardown(item: pytest.Item, nextitem: pytest.Item | None) -> 
 
 @pytest.fixture(autouse=True)
 def _isolate_repo_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Point the default DB and the feature-matrix cache at ``tmp_path``.
+    """Point the default DB, the raw-response cache and the feature-matrix
+    cache at ``tmp_path``.
 
     ``config.DB_PATH`` names a file that does not exist, so code that falls
     back to the default database gets an empty one instead of the committed
@@ -97,6 +98,10 @@ def _isolate_repo_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     from src.processing import feature_engineering
 
     monkeypatch.setattr(config, "DB_PATH", str(tmp_path / "pgr_financials.db"))
+    # API clients create ``data/raw`` before writing their caches.
+    raw_dir = tmp_path / "raw"
+    monkeypatch.setattr(config, "DATA_RAW_DIR", str(raw_dir))
+    monkeypatch.setattr(config, "REQUEST_COUNTS_FILE", str(raw_dir / ".request_counts.json"))
     monkeypatch.setattr(
         feature_engineering, "_PROCESSED_PATH", str(tmp_path / "feature_matrix.parquet")
     )

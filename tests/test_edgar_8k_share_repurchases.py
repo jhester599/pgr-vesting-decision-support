@@ -153,6 +153,7 @@ class TestSmallIntegerThousandsFormat:
         assert parsed["shares_repurchased"] == pytest.approx(0.0, abs=1e-9)
 
 
+@pytest.mark.artifact
 class TestCsvDataIntegrity:
     """Data-integrity tests against the committed pgr_edgar_cache.csv."""
 
@@ -164,7 +165,6 @@ class TestCsvDataIntegrity:
     def df(self):
         return pd.read_csv(self.CSV_PATH)
 
-    @pytest.mark.artifact
     def test_confirmed_bad_rows_corrected(self, df: pd.DataFrame):
         """The three task-confirmed bad rows must now have the right values."""
         row_oct = df[df["report_period"] == "2024-10"].iloc[0]

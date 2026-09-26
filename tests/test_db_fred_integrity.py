@@ -17,9 +17,12 @@ from src.database import db_client
 
 _DB_PATH = Path(__file__).resolve().parents[1] / "data" / "pgr_financials.db"
 
-pytestmark = pytest.mark.skipif(
-    not _DB_PATH.exists(), reason="committed DB not present"
-)
+# Every test reads the committed DB through a module-scoped connection, so
+# the whole module is an artifact test (review F28, step 9).
+pytestmark = [
+    pytest.mark.skipif(not _DB_PATH.exists(), reason="committed DB not present"),
+    pytest.mark.artifact,
+]
 
 
 @pytest.fixture(scope="module")
@@ -29,7 +32,6 @@ def ro_conn():
     conn.close()
 
 
-@pytest.mark.artifact
 def test_no_duplicate_series_month_rows(ro_conn) -> None:
     duplicates = ro_conn.execute(
         """

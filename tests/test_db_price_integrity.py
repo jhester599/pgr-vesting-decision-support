@@ -50,6 +50,7 @@ def test_no_unexplained_weekly_price_jumps(ro_conn) -> None:
     )
 
 
+@pytest.mark.artifact
 def test_split_history_contains_every_canonical_split(ro_conn) -> None:
     stored = {
         (r[0], r[1], round(float(r[2]), 6))
@@ -62,12 +63,14 @@ def test_split_history_contains_every_canonical_split(ro_conn) -> None:
         assert key in stored, f"split_history is missing {key}"
 
 
+@pytest.mark.artifact
 def test_one_price_bar_per_ticker_per_iso_week(ro_conn) -> None:
     dupes = find_duplicate_week_bars(ro_conn)
     assert dupes.empty, "Duplicate ticker-ISO-week bars:\n" + dupes.to_string()
 
 
 @pytest.mark.slow
+@pytest.mark.artifact
 def test_stored_targets_match_fresh_rebuild(ro_conn) -> None:
     from src.processing.multi_total_return import build_relative_return_targets
 
