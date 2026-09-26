@@ -123,8 +123,11 @@ def test_one_csv_loader() -> None:
     """``load_from_csv`` is the only function that seeds pgr_edgar_monthly from the CSV."""
     definitions = []
     for path in _tracked_python():
-        text = path.read_text(encoding="utf-8")
-        if "def load_from_csv" in text:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        if any(
+            isinstance(node, ast.FunctionDef) and node.name == "load_from_csv"
+            for node in ast.walk(tree)
+        ):
             definitions.append(path.relative_to(REPO_ROOT).as_posix())
     assert definitions == ["src/pgr_vds/ingestion/edgar_monthly/load.py"]
 
