@@ -25,6 +25,7 @@ from __future__ import annotations
 import os
 import sqlite3
 import tempfile
+import zlib
 from datetime import date, timedelta
 
 import numpy as np
@@ -56,8 +57,12 @@ _N_DAYS = 365 * 15   # ~15 years of daily prices
 
 
 def _generate_prices(ticker: str, start: str = "2005-01-03") -> list[dict]:
-    """Generate synthetic daily price rows for a ticker."""
-    rng = np.random.default_rng(hash(ticker) % (2**32))
+    """Generate synthetic daily price rows for a ticker.
+
+    The seed is a CRC32 of the ticker: ``hash(str)`` is salted per process
+    (PYTHONHASHSEED), so every run used different prices (review F28).
+    """
+    rng = np.random.default_rng(zlib.crc32(ticker.encode("utf-8")))
     dates = pd.bdate_range(start, periods=_N_DAYS, freq="B")
     prices = 100 * np.cumprod(1 + rng.normal(0.0003, 0.012, _N_DAYS))
     return [

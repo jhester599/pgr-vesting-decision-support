@@ -66,6 +66,8 @@ def test_thin_benchmarks_threshold() -> None:
     assert FIRTH_THIN_THRESHOLD == 30
 
 
+@pytest.mark.artifact
+@pytest.mark.usefixtures("committed_db_copy")
 @pytest.mark.slow
 def test_evaluate_classifier_wfo_returns_expected_keys() -> None:
     from src.research.v154_utils import (
@@ -87,6 +89,8 @@ def test_evaluate_classifier_wfo_returns_expected_keys() -> None:
     assert "avg_train_positives" in result
 
 
+@pytest.mark.artifact
+@pytest.mark.usefixtures("committed_db_copy")
 @pytest.mark.slow
 def test_run_firth_evaluation_writes_candidate(tmp_path: Path) -> None:
     from results.research.v154_firth_logistic_eval import run_firth_evaluation
@@ -101,6 +105,7 @@ def test_run_firth_evaluation_writes_candidate(tmp_path: Path) -> None:
     assert len(result["rows"]) == 2
 
 
+@pytest.mark.artifact
 def test_candidate_file_schema() -> None:
     import json
     try:

@@ -32,6 +32,7 @@ class TestAuditCSVSchema:
         assert RESULTS_CSV.exists(), f"Audit results CSV not found: {RESULTS_CSV}"
         return pd.read_csv(RESULTS_CSV)
 
+    @pytest.mark.artifact
     def test_expected_columns_present(self, results_df: pd.DataFrame) -> None:
         required = [
             "as_of_date",
@@ -43,17 +44,20 @@ class TestAuditCSVSchema:
         for col in required:
             assert col in results_df.columns, f"Missing column: {col}"
 
+    @pytest.mark.artifact
     def test_has_both_models(self, results_df: pd.DataFrame) -> None:
         models = set(results_df["model"].unique())
         assert "vgt_2feature" in models
         assert "lean_baseline" in models
 
+    @pytest.mark.artifact
     def test_has_all_as_of_dates(self, results_df: pd.DataFrame) -> None:
         dates = set(results_df["as_of_date"].unique())
         assert "2022-03-31" in dates
         assert "2023-03-31" in dates
         assert "2024-03-31" in dates
 
+    @pytest.mark.artifact
     def test_n_covered_non_negative(self, results_df: pd.DataFrame) -> None:
         assert (results_df["n_covered"] >= 0).all()
 
@@ -176,6 +180,7 @@ class TestSummaryArtifact:
     def test_summary_exists(self) -> None:
         assert SUMMARY_MD.exists(), f"Summary MD not found: {SUMMARY_MD}"
 
+    @pytest.mark.artifact
     def test_summary_contains_verdict(self) -> None:
         text = SUMMARY_MD.read_text(encoding="utf-8")
         assert "STABLE" in text or "UNSTABLE" in text

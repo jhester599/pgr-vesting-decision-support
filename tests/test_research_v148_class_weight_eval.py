@@ -18,11 +18,13 @@ def test_weight_below_floor_raises() -> None:
         evaluate_class_weight_proxy(0.10)
 
 
+@pytest.mark.artifact
 def test_candidate_file_is_bounded() -> None:
     value = float(DEFAULT_CANDIDATE_PATH.read_text(encoding="utf-8").strip())
     assert 0.25 <= value <= 4.0
 
 
+@pytest.mark.artifact
 def test_default_weight_produces_reasonable_metrics() -> None:
     metrics = evaluate_class_weight_proxy(1.0)
     assert 0.0 <= metrics["covered_ba"] <= 1.0

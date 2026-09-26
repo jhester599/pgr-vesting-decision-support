@@ -13,6 +13,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from results.research.v141_blend_eval import DEFAULT_CANDIDATE_PATH, evaluate_blend_weight
 
 
+@pytest.mark.artifact
+@pytest.mark.usefixtures("committed_db_copy")
 @pytest.mark.slow
 def test_default_blend_weight_produces_reasonable_metrics() -> None:
     metrics = evaluate_blend_weight(0.50, benchmarks=["VOO", "BND"])
@@ -25,6 +27,7 @@ def test_weight_above_one_raises() -> None:
         evaluate_blend_weight(1.1)
 
 
+@pytest.mark.artifact
 def test_candidate_file_is_bounded() -> None:
     value = float(DEFAULT_CANDIDATE_PATH.read_text(encoding="utf-8").strip())
     assert 0.0 <= value <= 1.0

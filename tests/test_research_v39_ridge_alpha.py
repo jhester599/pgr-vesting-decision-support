@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 
 CSV = Path("results/research/v39_ridge_alpha_results.csv")
@@ -14,6 +15,7 @@ def test_csv_exists() -> None:
     assert CSV.exists()
 
 
+@pytest.mark.artifact
 def test_all_grids_present() -> None:
     df = pd.read_csv(CSV)
     assert set(df["grid"].unique()) == {
@@ -23,12 +25,14 @@ def test_all_grids_present() -> None:
     }
 
 
+@pytest.mark.artifact
 def test_each_grid_has_pooled_row() -> None:
     df = pd.read_csv(CSV)
     pooled = df.loc[df["benchmark"] == "POOLED"]
     assert len(pooled) == 3
 
 
+@pytest.mark.artifact
 def test_aggressive_grid_is_best_pooled_variant() -> None:
     df = pd.read_csv(CSV)
     pooled = df.loc[df["benchmark"] == "POOLED"].set_index("grid")
@@ -36,6 +40,7 @@ def test_aggressive_grid_is_best_pooled_variant() -> None:
     assert best_grid == "aggressive_logspace(2,6)"
 
 
+@pytest.mark.artifact
 def test_aggressive_grid_beats_current_grid() -> None:
     df = pd.read_csv(CSV)
     pooled = df.loc[df["benchmark"] == "POOLED"].set_index("grid")

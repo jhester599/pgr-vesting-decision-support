@@ -14,6 +14,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from results.research.v144_conformal_eval import DEFAULT_CANDIDATE_PATH, evaluate_conformal_config
 
 
+@pytest.mark.artifact
+@pytest.mark.usefixtures("committed_db_copy")
 @pytest.mark.slow
 def test_default_conformal_config_produces_reasonable_coverage() -> None:
     metrics = evaluate_conformal_config(0.80, 0.05, benchmarks=["VOO", "BND"])
@@ -26,6 +28,7 @@ def test_gamma_out_of_range_raises() -> None:
         evaluate_conformal_config(0.80, 1.20)
 
 
+@pytest.mark.artifact
 def test_candidate_file_has_expected_keys() -> None:
     payload = json.loads(DEFAULT_CANDIDATE_PATH.read_text(encoding="utf-8"))
     assert set(payload) == {"coverage", "aci_gamma"}

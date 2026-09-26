@@ -51,7 +51,7 @@ def _make_split_history() -> pd.DataFrame:
 
 def _make_fred_pgr(n_months: int = 24) -> pd.DataFrame:
     """Synthetic FRED macro + PGR series."""
-    idx = pd.date_range("2018-01-31", periods=n_months, freq="ME")
+    idx = pd.date_range("2018-01-31", periods=n_months, freq="BME")  # production FRED rows are business month-ends
     rng = np.random.default_rng(0)
     return pd.DataFrame(
         {
@@ -130,7 +130,7 @@ class TestPgrFredFeatures:
         """When only macro columns are present (no PGR-specific), features absent."""
         prices = _make_price_history()
         # Fred with only macro columns, no PGR-specific
-        idx = pd.date_range("2018-01-31", periods=24, freq="ME")
+        idx = pd.date_range("2018-01-31", periods=24, freq="BME")  # production FRED rows are business month-ends
         rng = np.random.default_rng(1)
         fred_macro_only = pd.DataFrame(
             {
@@ -159,7 +159,7 @@ class TestPgrFredFeatures:
         """insurance_cpi_mom3m = pct_change over 3 months."""
         prices = _make_price_history()
         # Use constant CPI growth to get predictable values
-        idx = pd.date_range("2018-01-31", periods=24, freq="ME")
+        idx = pd.date_range("2018-01-31", periods=24, freq="BME")  # production FRED rows are business month-ends
         ins_cpi = pd.Series(range(200, 224), index=idx, dtype=float)
         rng = np.random.default_rng(2)
         fred = pd.DataFrame(
@@ -184,11 +184,14 @@ class TestPgrFredFeatures:
             fred_macro=fred,
             force_refresh=True,
         )
-        if "insurance_cpi_mom3m" in df.columns:
-            # With linearly increasing CPI, 3M pct_change = 3/200 at first point
-            # All valid values should be positive (CPI rising)
-            valid = df["insurance_cpi_mom3m"].dropna()
-            assert (valid > 0).all(), "CPI increasing → positive 3M momentum"
+        # CPI rises by 1 a month from 200, so the 3M change at the month
+        # whose CPI is c is 3 / (c - 3). The old ``if col in df.columns``
+        # guard let this pass vacuously (review F28).
+        assert "insurance_cpi_mom3m" in df.columns
+        valid = df["insurance_cpi_mom3m"].dropna()
+        assert len(valid) >= 12
+        cpi = ins_cpi.reindex(valid.index, method="ffill")
+        np.testing.assert_allclose(valid.to_numpy(), 3.0 / (cpi.to_numpy() - 3.0), rtol=1e-12)
 
     def test_vmt_yoy_is_finite(self):
         prices = _make_price_history()
@@ -200,7 +203,12 @@ class TestPgrFredFeatures:
             fred_macro=fred,
             force_refresh=True,
         )
-        if "vmt_yoy" in df.columns:
-            valid = df["vmt_yoy"].dropna()
-            if not valid.empty:
-                assert valid.apply(lambda x: np.isfinite(x)).all()
+        assert "vmt_yoy" in df.columns
+        valid = df["vmt_yoy"].dropna()
+        assert len(valid) >= 6
+        assert valid.apply(lambda x: np.isfinite(x)).all()
+        vmt = fred["TRFVOLUSM227NFWA"]
+        for t, value in valid.items():
+            # 12-month change of the last observation on or before t.
+            level = vmt[vmt.index <= t]
+            assert value == pytest.approx(level.iloc[-1] / level.iloc[-13] - 1.0)

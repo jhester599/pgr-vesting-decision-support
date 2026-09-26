@@ -41,6 +41,7 @@ def ro_conn():
     conn.close()
 
 
+@pytest.mark.artifact
 def test_no_unexplained_weekly_price_jumps(ro_conn) -> None:
     jumps = find_unexplained_price_jumps(ro_conn)
     assert jumps.empty, (

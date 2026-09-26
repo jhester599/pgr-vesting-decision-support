@@ -29,6 +29,7 @@ def ro_conn():
     conn.close()
 
 
+@pytest.mark.artifact
 def test_no_duplicate_series_month_rows(ro_conn) -> None:
     duplicates = ro_conn.execute(
         """

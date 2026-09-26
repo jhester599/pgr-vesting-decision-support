@@ -43,7 +43,7 @@ def _make_split_history() -> pd.DataFrame:
 
 def _make_fred_macro(n_months: int = 14) -> pd.DataFrame:
     """Synthetic FRED macro DataFrame with all 6 required series."""
-    idx = pd.date_range("2020-01-31", periods=n_months, freq="ME")
+    idx = pd.date_range("2020-01-31", periods=n_months, freq="BME")  # production FRED rows are business month-ends
     rng = np.random.default_rng(0)
     return pd.DataFrame(
         {
@@ -107,7 +107,7 @@ class TestFredFeaturesInMatrix:
         dividends = _make_dividend_history()
         splits = _make_split_history()
 
-        idx = pd.date_range("2020-01-31", periods=12, freq="ME")
+        idx = pd.date_range("2020-01-31", periods=12, freq="BME")  # production FRED rows are business month-ends
         gs5 = np.ones(12) * 3.0
         gs2 = np.ones(12) * 2.0
         gs10 = np.ones(12) * 4.0
@@ -126,11 +126,15 @@ class TestFredFeaturesInMatrix:
             force_refresh=True,
         )
 
-        # Expected: 2*3.0 - 2.0 - 4.0 = 0.0
-        if "yield_curvature" in df.columns:
-            curvature_vals = df["yield_curvature"].dropna()
-            assert (curvature_vals.abs() < 1e-9).all(), \
-                "yield_curvature should be 0.0 for flat yield curve"
+        # Expected: 2*3.0 - 2.0 - 4.0 = 0.0 (a wrong combination such as
+        # GS5 - GS2 - GS10 would give -3.0). The column must exist and hold
+        # values; the old ``if col in df.columns`` guard let this pass
+        # vacuously (review F28).
+        assert "yield_curvature" in df.columns
+        curvature_vals = df["yield_curvature"].dropna()
+        assert len(curvature_vals) >= 10
+        assert (curvature_vals.abs() < 1e-9).all(), \
+            "yield_curvature should be 0.0 for flat yield curve"
 
     def test_real_rate_formula(self):
         """real_rate_10y = GS10 − T10YIE."""
@@ -138,7 +142,7 @@ class TestFredFeaturesInMatrix:
         dividends = _make_dividend_history()
         splits = _make_split_history()
 
-        idx = pd.date_range("2020-01-31", periods=12, freq="ME")
+        idx = pd.date_range("2020-01-31", periods=12, freq="BME")  # production FRED rows are business month-ends
         fred = pd.DataFrame(
             {"T10Y2Y": np.zeros(12), "GS5": np.ones(12) * 3,
              "GS2": np.ones(12) * 2, "GS10": np.ones(12) * 4.5,
@@ -156,10 +160,11 @@ class TestFredFeaturesInMatrix:
         )
 
         # Expected real rate: 4.5 - 2.0 = 2.5
-        if "real_rate_10y" in df.columns:
-            real_rate_vals = df["real_rate_10y"].dropna()
-            assert (abs(real_rate_vals - 2.5) < 1e-9).all(), \
-                "real_rate_10y should equal GS10 - T10YIE = 2.5"
+        assert "real_rate_10y" in df.columns
+        real_rate_vals = df["real_rate_10y"].dropna()
+        assert len(real_rate_vals) >= 10
+        assert (abs(real_rate_vals - 2.5) < 1e-9).all(), \
+            "real_rate_10y should equal GS10 - T10YIE = 2.5"
 
     def test_fred_features_use_only_past_data(self):
         """Verify no future leakage: FRED features at month T use only data ≤ T."""
@@ -177,8 +182,27 @@ class TestFredFeaturesInMatrix:
         )
 
         # The FRED data is forward-filled (not shifted forward), so the value
-        # at month T should match the FRED observation at or before T.
-        # A simple structural check: yield_slope values should be finite floats.
-        if "yield_slope" in df.columns:
-            slope = df["yield_slope"].dropna()
-            assert slope.apply(lambda x: np.isfinite(x)).all()
+        # at month T must match the FRED observation at or before T, and
+        # changing FRED rows after T must not change any FRED feature at or
+        # before T. (The old check only asserted finiteness, inside an
+        # ``if col in df.columns`` guard; review F28.)
+        assert "yield_slope" in df.columns
+        slope = df["yield_slope"].dropna()
+        assert len(slope) >= 12
+        for t, value in slope.items():
+            expected = fred.loc[fred.index <= t, "T10Y2Y"].iloc[-1]
+            assert value == pytest.approx(expected)
+
+        cut = fred.index[9]
+        changed = fred.copy()
+        changed.loc[changed.index > cut] = changed.loc[changed.index > cut] * 3.0 + 1.0
+        moved = build_feature_matrix(
+            price_history=prices,
+            dividend_history=dividends,
+            split_history=splits,
+            fred_macro=changed,
+            force_refresh=True,
+        )
+        fred_cols = ["yield_slope", "yield_curvature", "real_rate_10y", "credit_spread_hy", "nfci"]
+        pd.testing.assert_frame_equal(df.loc[:cut, fred_cols], moved.loc[:cut, fred_cols])
+        assert not df.loc[df.index > cut, "yield_slope"].equals(moved.loc[moved.index > cut, "yield_slope"])

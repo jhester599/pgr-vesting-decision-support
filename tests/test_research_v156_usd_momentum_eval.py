@@ -36,6 +36,8 @@ def test_build_usd_augmented_cols_no_duplicates() -> None:
     assert "usd_momentum_6m" in result
 
 
+@pytest.mark.artifact
+@pytest.mark.usefixtures("committed_db_copy")
 @pytest.mark.slow
 def test_run_usd_evaluation_writes_candidate(tmp_path: Path) -> None:
     from results.research.v156_usd_momentum_eval import run_usd_evaluation
@@ -45,6 +47,7 @@ def test_run_usd_evaluation_writes_candidate(tmp_path: Path) -> None:
     assert "usd_winners" in result
 
 
+@pytest.mark.artifact
 def test_candidate_file_schema() -> None:
     import json
     from results.research.v156_usd_momentum_eval import DEFAULT_CANDIDATE_PATH

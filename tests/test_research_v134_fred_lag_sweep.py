@@ -17,6 +17,8 @@ from results.research.v134_fred_lag_sweep import (
 )
 
 
+@pytest.mark.artifact
+@pytest.mark.usefixtures("committed_db_copy")
 @pytest.mark.slow
 def test_default_no_override_recovers_v38_style_baseline() -> None:
     """The default config should reproduce the current research-frame baseline."""
@@ -38,6 +40,7 @@ def test_unknown_series_raises_key_error() -> None:
         run_lag_sweep({"NONEXISTENT_SERIES": 1})
 
 
+@pytest.mark.artifact
 def test_candidate_json_parses_to_expected_object() -> None:
     """The candidate file should be parseable through the CLI helper."""
     payload = _parse_lag_overrides(None, str(DEFAULT_CANDIDATE_PATH))

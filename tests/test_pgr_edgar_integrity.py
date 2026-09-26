@@ -57,6 +57,7 @@ def _fmt(df: pd.DataFrame) -> str:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.artifact
 def test_revenue_minus_expenses_equals_pretax(monthly) -> None:
     bad = v.income_identity_violations(monthly)
     assert bad.empty, _fmt(bad)

@@ -37,6 +37,8 @@ def test_build_augmented_features_preserves_order() -> None:
     assert result == ["a", "b", "c", "d"]
 
 
+@pytest.mark.artifact
+@pytest.mark.usefixtures("committed_db_copy")
 @pytest.mark.slow
 def test_run_wti_evaluation_writes_candidate(tmp_path: Path) -> None:
     from results.research.v155_wti_momentum_eval import run_wti_evaluation
@@ -50,6 +52,7 @@ def test_run_wti_evaluation_writes_candidate(tmp_path: Path) -> None:
     assert len(result["rows"]) >= 1
 
 
+@pytest.mark.artifact
 def test_candidate_file_schema() -> None:
     import json
     from results.research.v155_wti_momentum_eval import DEFAULT_CANDIDATE_PATH

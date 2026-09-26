@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from src.research.v15 import (
     apply_one_for_one_swap,
@@ -47,6 +48,7 @@ def test_normalize_inventory_standardizes_target_model() -> None:
     assert normalized.iloc[0]["target_model"] == "both"
 
 
+@pytest.mark.artifact
 def test_build_swap_queue_expands_replacements_by_model() -> None:
     specs = base_model_specs()
     inventory = pd.DataFrame(
@@ -75,6 +77,7 @@ def test_build_swap_queue_expands_replacements_by_model() -> None:
     assert queue["candidate_available_now"].all()
 
 
+@pytest.mark.artifact
 def test_apply_one_for_one_swap_replaces_only_target_feature() -> None:
     spec = base_model_specs()["gbt_lean_plus_two"]
     swapped = apply_one_for_one_swap(spec, "mom_3m", "candidate_feature")
@@ -83,6 +86,7 @@ def test_apply_one_for_one_swap_replaces_only_target_feature() -> None:
     assert len(swapped) == len(spec.features)
 
 
+@pytest.mark.artifact
 def test_deployed_model_specs_include_all_deployed_models() -> None:
     specs = deployed_model_specs()
     assert set(specs) == {
@@ -132,6 +136,7 @@ def test_choose_phase0_winners_returns_top_rows_per_model() -> None:
     assert set(winners["candidate_feature"]) == {"feature_a", "feature_c"}
 
 
+@pytest.mark.artifact
 def test_build_confirmation_queue_expands_winners_to_other_models() -> None:
     winners = pd.DataFrame(
         [

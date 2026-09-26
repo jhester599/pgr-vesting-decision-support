@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.research.v118_utils import disagreement_label, recommendation_mode_from_hold_fraction
+import pytest
 
 
 RESULTS_DIR = Path("results") / "research"
@@ -21,6 +22,7 @@ def test_disagreement_label_identifies_veto_sell_to_defer() -> None:
     assert disagreement_label(0.5, 0.5) == "no_change"
 
 
+@pytest.mark.artifact
 def test_v118_results_have_expected_columns() -> None:
     df = pd.read_csv(RESULTS_DIR / "v118_prospective_shadow_replay_results.csv")
     assert {
@@ -34,6 +36,7 @@ def test_v118_results_have_expected_columns() -> None:
     }.issubset(df.columns)
 
 
+@pytest.mark.artifact
 def test_v119_v121_outputs_have_expected_columns() -> None:
     v119 = pd.read_csv(RESULTS_DIR / "v119_disagreement_scorecard_results.csv")
     assert {

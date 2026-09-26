@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 
 CSV_PATH = Path("results/research/v95_policy_replay_results.csv")
@@ -10,11 +11,13 @@ def test_csv_exists() -> None:
     assert CSV_PATH.exists()
 
 
+@pytest.mark.artifact
 def test_regression_reference_present() -> None:
     df = pd.read_csv(CSV_PATH)
     assert "regression_only_quality_weighted" in set(df["variant"])
 
 
+@pytest.mark.artifact
 def test_agreement_columns_present() -> None:
     df = pd.read_csv(CSV_PATH)
     assert {

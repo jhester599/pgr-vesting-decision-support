@@ -83,6 +83,7 @@ def temp_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return root
 
 
+@pytest.mark.artifact
 def test_weekly_fetch_dry_run_leaves_db_and_files_unchanged(temp_repo: Path) -> None:
     from scripts import weekly_fetch
 
@@ -96,6 +97,7 @@ def test_weekly_fetch_dry_run_leaves_db_and_files_unchanged(temp_repo: Path) -> 
     assert _changed(repo_before, _hash_tracked_repo_files()) == []
 
 
+@pytest.mark.artifact
 def test_weekly_fetch_dry_run_uses_read_only_connection(
     temp_repo: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -115,6 +117,7 @@ def test_weekly_fetch_dry_run_uses_read_only_connection(
     assert calls == [True]
 
 
+@pytest.mark.artifact
 @pytest.mark.slow
 @pytest.mark.integration
 def test_monthly_decision_dry_run_leaves_db_and_tracked_files_unchanged(

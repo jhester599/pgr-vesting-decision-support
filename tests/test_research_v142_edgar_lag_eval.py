@@ -13,6 +13,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from results.research.v142_edgar_lag_eval import DEFAULT_CANDIDATE_PATH, evaluate_edgar_lag
 
 
+@pytest.mark.artifact
+@pytest.mark.usefixtures("committed_db_copy")
 @pytest.mark.slow
 def test_default_edgar_lag_produces_reasonable_metrics() -> None:
     metrics = evaluate_edgar_lag(2, benchmarks=["VOO", "BND"])
@@ -25,6 +27,7 @@ def test_negative_lag_raises() -> None:
         evaluate_edgar_lag(-1)
 
 
+@pytest.mark.artifact
 def test_candidate_file_is_bounded() -> None:
     value = int(DEFAULT_CANDIDATE_PATH.read_text(encoding="utf-8").strip())
     assert 0 <= value <= 3

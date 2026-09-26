@@ -1,16 +1,32 @@
-"""v36 — Property-based tests: tax-boundary logic invariants.
+"""Tax invariants: config sanity checks and properties over ``optimize_sale``.
 
-Verifies that the STCG boundary guard constants and tax-rate ordering
-satisfy their documented contracts for arbitrary (but realistic) inputs.
+Review 2026-09-25, F28: three of the v36 properties here were tautologies
+(a zone predicate compared with its own complement, ``g(1-L) >= g(1-S)``
+recomputed from the constants, and ``x >= t`` versus ``x < t``). They are
+replaced by properties of the production optimiser, ``optimize_sale``, and
+of ``TaxLot.is_ltcg_eligible``:
+
+- the sale conserves shares and dollars, and each lot's tax is gain x rate;
+- only vested lots are sold, none beyond its remaining shares, and only the
+  last lot used can be partly sold;
+- lots are used loss first, then LTCG gains, then STCG gains;
+- each lot's holding type matches an independent calendar rule: long-term
+  iff sold after the one-year anniversary (29 February vests have their
+  anniversary on 28 February);
+- with one rate for every lot, the tax is the minimum over all allocations
+  (sell the highest-basis shares first);
+- asking for more than the vested shares raises.
 """
 
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 import pytest
-from hypothesis import given, settings
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
-import config
+from src.tax.capital_gains import TaxLot, optimize_sale
 from config.tax import (
     LTCG_RATE,
     STCG_RATE,
@@ -70,42 +86,7 @@ def test_stcg_breakeven_threshold_reasonable() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 5. STCG zone membership is exclusive of LTCG qualification day
-# ---------------------------------------------------------------------------
-
-@given(st.integers(min_value=0, max_value=730))
-@settings(max_examples=500)
-def test_stcg_zone_membership_disjoint_from_ltcg(holding_days: int) -> None:
-    """A lot cannot simultaneously be in the STCG zone and LTCG-qualified."""
-    in_stcg_zone = STCG_ZONE_MIN_DAYS < holding_days <= STCG_ZONE_MAX_DAYS
-    is_ltcg = holding_days > STCG_ZONE_MAX_DAYS
-    # These two conditions must be mutually exclusive.
-    assert not (in_stcg_zone and is_ltcg), (
-        f"holding_days={holding_days} cannot be both STCG-zone and LTCG"
-    )
-
-
-# ---------------------------------------------------------------------------
-# 6. After-tax gain ordering: LTCG lot always yields >= after-tax proceeds
-#    than STCG lot for any positive gain
-# ---------------------------------------------------------------------------
-
-@given(
-    st.floats(min_value=0.0, max_value=10_000.0, allow_nan=False, allow_infinity=False),  # gain
-)
-@settings(max_examples=300)
-def test_ltcg_after_tax_dominates_stcg_for_positive_gains(gain: float) -> None:
-    """For any non-negative gain, LTCG after-tax proceeds >= STCG after-tax proceeds."""
-    after_tax_ltcg = gain * (1.0 - LTCG_RATE)
-    after_tax_stcg = gain * (1.0 - STCG_RATE)
-    assert after_tax_ltcg >= after_tax_stcg - 1e-12, (
-        f"LTCG after-tax={after_tax_ltcg:.4f} < STCG after-tax={after_tax_stcg:.4f}"
-        f" for gain={gain}"
-    )
-
-
-# ---------------------------------------------------------------------------
-# 7. TLH parameters are internally consistent
+# 5. TLH parameters are internally consistent
 # ---------------------------------------------------------------------------
 
 def test_tlh_loss_threshold_is_negative() -> None:
@@ -121,27 +102,125 @@ def test_tlh_wash_sale_window_positive() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 8. Tax differential determines whether waiting is worthwhile
-#    (breakeven derivation: hold if alpha < (STCG_RATE - LTCG_RATE))
+# Properties of optimize_sale and the LTCG boundary
 # ---------------------------------------------------------------------------
 
+_SELL_DATE = date(2026, 6, 15)
+_RATES = {"ltcg_rate": 0.20, "stcg_rate": 0.37}
+
+
+def _anniversary(vest: date) -> date:
+    """One year after ``vest`` on the calendar (29 Feb -> 28 Feb)."""
+    try:
+        return vest.replace(year=vest.year + 1)
+    except ValueError:
+        return date(vest.year + 1, 2, 28)
+
+
+def _is_long_term(vest: date, sold: date) -> bool:
+    return sold > _anniversary(vest)
+
+
+_vest_dates = st.dates(min_value=date(2020, 1, 1), max_value=date(2026, 5, 1))
+
+
+@st.composite
+def _lots(draw: st.DrawFn, max_lots: int = 6) -> list[TaxLot]:
+    n = draw(st.integers(min_value=1, max_value=max_lots))
+    lots = []
+    for _ in range(n):
+        lots.append(
+            TaxLot(
+                vest_date=draw(_vest_dates),
+                rsu_type="time",
+                shares=draw(st.floats(min_value=1.0, max_value=500.0)),
+                cost_basis_per_share=draw(st.floats(min_value=20.0, max_value=300.0)),
+            )
+        )
+    return lots
+
+
+@given(_lots(), st.floats(min_value=20.0, max_value=300.0), st.floats(min_value=0.0, max_value=1.0))
+@settings(max_examples=300, deadline=None)
+def test_optimize_sale_conserves_shares_and_dollars(
+    lots: list[TaxLot], price: float, fraction: float
+) -> None:
+    available = sum(lot.shares for lot in lots)
+    to_sell = available * fraction
+    result = optimize_sale(lots, to_sell, price, _SELL_DATE, acquisition_dates=[], **_RATES)
+
+    sold = sum(r.shares_sold for r in result.lots)
+    assert sold == pytest.approx(to_sell, rel=1e-9, abs=1e-9)
+    assert result.total_gross == pytest.approx(to_sell * price, rel=1e-9, abs=1e-6)
+    assert result.total_net == pytest.approx(result.total_gross - result.total_tax, abs=1e-6)
+    for r in result.lots:
+        assert r.shares_sold <= r.lot.shares_remaining + 1e-9
+        assert r.lot.vest_date <= _SELL_DATE
+        assert r.taxable_gain == pytest.approx(r.shares_sold * (price - r.lot.cost_basis_per_share))
+        assert r.tax_liability == pytest.approx(r.taxable_gain * r.tax_rate)
+    # Only the last lot used may be partly sold.
+    for r in result.lots[:-1]:
+        assert r.shares_sold == pytest.approx(r.lot.shares_remaining)
+
+
+@given(_lots(), st.floats(min_value=20.0, max_value=300.0))
+@settings(max_examples=300, deadline=None)
+def test_optimize_sale_orders_losses_then_ltcg_then_stcg(lots: list[TaxLot], price: float) -> None:
+    total = sum(lot.shares for lot in lots)
+    result = optimize_sale(lots, total, price, _SELL_DATE, acquisition_dates=[], **_RATES)
+    rank = {"LOSS": 0, "LTCG": 1, "STCG": 2}
+    ranks = [rank[r.holding_type] for r in result.lots]
+    assert ranks == sorted(ranks)
+    for r in result.lots:
+        long_term = _is_long_term(r.lot.vest_date, _SELL_DATE)
+        if r.holding_type == "LOSS":
+            assert r.lot.cost_basis_per_share > price
+            assert r.tax_rate == (_RATES["ltcg_rate"] if long_term else _RATES["stcg_rate"])
+        else:
+            assert r.lot.cost_basis_per_share <= price
+            assert r.holding_type == ("LTCG" if long_term else "STCG")
+
+
+@given(_vest_dates, st.integers(min_value=-3, max_value=3))
+@settings(max_examples=500)
+def test_ltcg_boundary_is_the_day_after_the_calendar_anniversary(vest: date, offset: int) -> None:
+    lot = TaxLot(vest_date=vest, rsu_type="time", shares=1.0, cost_basis_per_share=1.0)
+    sold = _anniversary(vest) + timedelta(days=offset)
+    assert lot.is_ltcg_eligible(sold) is (offset >= 1)
+
+
 @given(
-    st.floats(min_value=-0.5, max_value=2.0, allow_nan=False, allow_infinity=False),  # predicted alpha
+    st.lists(
+        st.tuples(st.floats(min_value=1.0, max_value=200.0), st.floats(min_value=10.0, max_value=99.0)),
+        min_size=1,
+        max_size=6,
+    ),
+    st.floats(min_value=0.0, max_value=1.0),
 )
-@settings(max_examples=300)
-def test_breakeven_logic_direction(predicted_alpha: float) -> None:
-    """If predicted alpha > STCG breakeven, selling STCG-classified lots is justified."""
-    rate_differential = STCG_RATE - LTCG_RATE
-    # The breakeven threshold should be in the plausible neighbourhood of the
-    # rate differential (within ±25 percentage points).
-    assert abs(STCG_BREAKEVEN_THRESHOLD - rate_differential) <= 0.25, (
-        "Breakeven threshold should be near the STCG−LTCG rate differential"
-    )
-    # Property: if we decide to sell (alpha >= threshold), the alpha justifies
-    # paying the higher tax rate — no assertion on alpha itself, just verify
-    # the threshold membership predicate is deterministic.
-    should_sell = predicted_alpha >= STCG_BREAKEVEN_THRESHOLD
-    should_wait = predicted_alpha < STCG_BREAKEVEN_THRESHOLD
-    assert should_sell != should_wait or predicted_alpha == STCG_BREAKEVEN_THRESHOLD, (
-        "sell/wait decision must be deterministic"
-    )
+@settings(max_examples=300, deadline=None)
+def test_single_rate_sale_pays_the_minimum_tax(lot_specs: list[tuple[float, float]], fraction: float) -> None:
+    """All lots long-term with a gain at price 100: the cheapest allocation
+    sells the highest-basis shares first."""
+    price = 100.0
+    lots = [
+        TaxLot(vest_date=date(2022, 1, 3), rsu_type="time", shares=shares, cost_basis_per_share=basis)
+        for shares, basis in lot_specs
+    ]
+    to_sell = fraction * sum(shares for shares, _ in lot_specs)
+    result = optimize_sale(lots, to_sell, price, _SELL_DATE, acquisition_dates=[], **_RATES)
+
+    remaining, minimum_gain = to_sell, 0.0
+    for shares, basis in sorted(lot_specs, key=lambda spec: -spec[1]):
+        take = min(shares, remaining)
+        minimum_gain += take * (price - basis)
+        remaining -= take
+    assert result.total_tax == pytest.approx(_RATES["ltcg_rate"] * minimum_gain, rel=1e-9, abs=1e-6)
+
+
+@given(_lots(), st.floats(min_value=1.01, max_value=3.0))
+@settings(max_examples=100, deadline=None)
+def test_selling_more_than_the_vested_shares_raises(lots: list[TaxLot], excess: float) -> None:
+    vested = sum(lot.shares for lot in lots if lot.vest_date <= _SELL_DATE)
+    assume(vested > 0)
+    with pytest.raises(ValueError):
+        optimize_sale(lots, vested * excess, 100.0, _SELL_DATE, acquisition_dates=[], **_RATES)

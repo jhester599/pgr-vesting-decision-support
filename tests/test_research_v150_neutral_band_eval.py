@@ -18,11 +18,13 @@ def test_band_above_ceiling_raises() -> None:
         evaluate_neutral_band(0.20)
 
 
+@pytest.mark.artifact
 def test_candidate_file_is_bounded() -> None:
     value = float(DEFAULT_CANDIDATE_PATH.read_text(encoding="utf-8").strip())
     assert 0.0 <= value <= 0.10
 
 
+@pytest.mark.artifact
 def test_default_band_produces_reasonable_metrics() -> None:
     metrics = evaluate_neutral_band(0.015)
     assert -1.0 <= metrics["utility_score"] <= 1.0

@@ -128,6 +128,7 @@ def test_finalize_for_commit_checkpoints_wal_and_sets_delete_mode(tmp_path: Path
         check.close()
 
 
+@pytest.mark.artifact
 def test_committed_db_is_not_in_wal_mode() -> None:
     """The committed DB must be self-contained (checkpointed, DELETE journal)."""
     assert _journal_header_bytes(COMMITTED_DB) == (1, 1)

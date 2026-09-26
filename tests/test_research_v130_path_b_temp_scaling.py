@@ -117,6 +117,7 @@ def test_adoption_criteria_boundary_ece() -> None:
     assert result["criterion_c"] is True, "ECE 0.18 == 0.12 * 1.5 exactly should pass"
 
 
+@pytest.mark.artifact
 def test_output_csv_has_required_columns() -> None:
     """Output CSV must have model, balanced_accuracy_covered, brier_score, ece_10, adopt."""
     p = PROJECT_ROOT / "results" / "research" / "v130_path_b_temp_scaling_results.csv"
@@ -127,6 +128,7 @@ def test_output_csv_has_required_columns() -> None:
         assert col in df.columns, f"Missing column: {col}"
 
 
+@pytest.mark.artifact
 def test_output_csv_has_three_models() -> None:
     """Output CSV must have exactly three model rows."""
     p = PROJECT_ROOT / "results" / "research" / "v130_path_b_temp_scaling_results.csv"
@@ -136,6 +138,7 @@ def test_output_csv_has_three_models() -> None:
     assert len(df) == 3, f"Expected 3 model rows, got {len(df)}"
 
 
+@pytest.mark.artifact
 def test_summary_md_exists() -> None:
     """Summary markdown must exist after script runs."""
     p = PROJECT_ROOT / "results" / "research" / "v130_path_b_temp_scaling_summary.md"
