@@ -27,7 +27,7 @@ section 2).
   the new minimum, and the evaluation and x2 splitters.
   `test_property_wfo_temporal.py` now generates from the minimum
   (`extra_rows` from 0) and requires exactly 60 training rows in every fold.
-- **Full suite:** SUITE_LINE
+- **Full suite:** `2451 passed, 1 skipped, 127 warnings in 593.20s`.
 
 ## v181 (2026-09-26) — Review 2026-09-25, step 9: test hardening sweep
 
