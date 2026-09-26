@@ -54,7 +54,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             DRY_FLAG="--dry-run"
           fi
-          python scripts/edgar_8k_fetcher.py --backfill-years "$BACKFILL" $DRY_FLAG
+          python cli/edgar_monthly_fetch.py --backfill-years "$BACKFILL" $DRY_FLAG
 
       - name: Verify EDGAR latest row and write summary
         if: ${{ !(github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true') }}

@@ -1,6 +1,6 @@
 """Run a production entry point with the network mocked (CI smoke tests).
 
-Review 2026-09-25, F26: CI's "dry run" of ``edgar_8k_fetcher.py`` still
+Review 2026-09-25, F26: CI's "dry run" of the EDGAR 8-K fetcher still
 downloaded the EDGAR submissions list and filings, and the other smoke runs
 could reach Alpha Vantage or FRED. This wrapper runs one script with:
 
@@ -11,7 +11,7 @@ could reach Alpha Vantage or FRED. This wrapper runs one script with:
   without a download. Any other URL raises ``NetworkBlockedError``.
 
 Usage:
-    python scripts/ci_offline_smoke.py scripts/edgar_8k_fetcher.py --dry-run
+    python scripts/ci_offline_smoke.py cli/edgar_monthly_fetch.py --dry-run
 """
 
 from __future__ import annotations

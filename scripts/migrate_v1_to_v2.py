@@ -175,34 +175,26 @@ def _migrate_fundamentals(conn: db_client.sqlite3.Connection) -> int:
 
 
 def _migrate_edgar_monthly(conn: db_client.sqlite3.Connection) -> int:
-    """Migrate PGR monthly EDGAR data via the v1 pgr_monthly_loader."""
-    try:
-        from src.ingestion.pgr_monthly_loader import load as load_edgar
+    """Seed PGR monthly EDGAR data from the committed CSV cache.
 
-        df = load_edgar(force_refresh=True)
+    Review 2026-09-25, section 5, phase 5: the v1 ``pgr_monthly_loader`` is
+    deleted; the one CSV loader is
+    ``pgr_vds.ingestion.edgar_monthly.load.load_from_csv``, which inserts the
+    months missing from ``pgr_edgar_monthly`` and recomputes derived fields.
+    """
+    try:
+        from pgr_vds.ingestion.edgar_monthly import load
+
+        n = load.load_from_csv(conn, load.DEFAULT_CSV_PATH)
     except Exception as exc:  # noqa: BLE001
         logger.exception(
-            "Could not load EDGAR cache via v1 loader; skipping. Error=%r",
+            "Could not load the EDGAR cache CSV; skipping. Error=%r",
             exc,
         )
         return 0
 
-    if df.empty:
-        logger.info("[SKIP] EDGAR cache is empty.")
-        return 0
-
-    df = df.reset_index()
-    date_col = df.columns[0]
-    df = df.rename(columns={date_col: "month_end"})
-    df["month_end"] = pd.to_datetime(df["month_end"]).dt.strftime("%Y-%m-%d")
-
-    records = df[
-        ["month_end", "combined_ratio", "pif_total", "pif_growth_yoy", "gainshare_estimate"]
-    ].to_dict("records")
-    n = db_client.upsert_pgr_edgar_monthly(conn, records)
     logger.info("[OK] Migrated %s PGR EDGAR monthly rows.", n)
     return n
-
 
 def main() -> None:
     """Run the one-time v1 to v2 migration."""

@@ -124,7 +124,6 @@ scripts/check_data_integrity.py
 scripts/ci_offline_smoke.py
 scripts/classifier_feature_selection.py
 scripts/detect_splits.py
-scripts/edgar_8k_fetcher.py
 scripts/export_oos_panel.py
 scripts/export_pgr_valuation_multiples.py
 scripts/feature_ablation.py

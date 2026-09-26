@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
-from scripts import edgar_8k_fetcher
+from pgr_vds.ingestion.edgar_monthly import fetch
 
 
 def test_get_uses_shared_edgar_headers(monkeypatch) -> None:
@@ -20,14 +20,14 @@ def test_get_uses_shared_edgar_headers(monkeypatch) -> None:
         response.raise_for_status = MagicMock()
         return response
 
-    monkeypatch.setattr(edgar_8k_fetcher.time, "sleep", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(fetch.time, "sleep", lambda *_args, **_kwargs: None)
 
     with patch(
-        "scripts.edgar_8k_fetcher.config.build_edgar_headers",
+        "pgr_vds.ingestion.edgar_monthly.fetch.config.build_edgar_headers",
         return_value={"User-Agent": "Unit Test"},
     ) as mock_headers:
-        with patch("scripts.edgar_8k_fetcher.requests.get", side_effect=_mock_get):
-            response = edgar_8k_fetcher._get(
+        with patch("pgr_vds.ingestion.edgar_monthly.fetch.requests.get", side_effect=_mock_get):
+            response = fetch.get(
                 "https://data.sec.gov/submissions/test.json"
             )
 
@@ -57,10 +57,10 @@ def test_get_retries_transient_http_errors(monkeypatch) -> None:
             return failing_response
         return success_response
 
-    monkeypatch.setattr(edgar_8k_fetcher.time, "sleep", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(fetch.time, "sleep", lambda *_args, **_kwargs: None)
 
-    with patch("scripts.edgar_8k_fetcher.requests.get", side_effect=_mock_get):
-        response = edgar_8k_fetcher._get(
+    with patch("pgr_vds.ingestion.edgar_monthly.fetch.requests.get", side_effect=_mock_get):
+        response = fetch.get(
             "https://data.sec.gov/submissions/test.json",
             retries=2,
         )

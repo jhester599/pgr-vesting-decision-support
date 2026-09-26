@@ -7,7 +7,7 @@
 `scripts/repair_edgar_history.py --export-csv`)
 **Coverage:** August 2004 – August 2026 (265 monthly observations, no missing months)
 **Filing types:** `monthly_results` (177 rows) and `quarterly_earnings` (88 rows)
-**Parser:** `scripts/edgar_8k_fetcher.py`, version `8k-html/2026-09-25`
+**Parser:** `pgr_vds.ingestion.edgar_monthly` (`cli/edgar_monthly_fetch.py`), version `8k-html/2026-09-25`
 **Units:** millions USD unless noted; shares in millions; PIF in thousands of policies.
 
 Every row is one monthly release (8-K Exhibit 99), re-fetched from EDGAR and
@@ -170,7 +170,7 @@ Returns and yields in percent.
 ## Derived Columns (DB only)
 
 Recomputed over the whole table after every write
-(`edgar_8k_fetcher.recompute_derived_fields`; definitions in
+(`edgar_monthly.derive.recompute_derived_fields`; definitions in
 `src/processing/pgr_edgar_derived.py`). They are not in the CSV except
 `pif_total` and `pif_total_personal_lines`.
 

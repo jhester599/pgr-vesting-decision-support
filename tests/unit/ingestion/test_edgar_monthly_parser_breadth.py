@@ -4,8 +4,7 @@ import os
 
 import pytest
 
-
-from scripts.edgar_8k_fetcher import _parse_html_exhibit, _validate_parsed_record
+from pgr_vds.ingestion.edgar_monthly.parse import parse_html_exhibit, validate_parsed_record
 
 
 def _broad_exhibit_html() -> str:
@@ -89,7 +88,7 @@ def _broad_exhibit_html() -> str:
 
 
 def test_parse_html_exhibit_extracts_broader_current_fields():
-    parsed = _parse_html_exhibit(_broad_exhibit_html(), "2023-09-15")
+    parsed = parse_html_exhibit(_broad_exhibit_html(), "2023-09-15")
 
     assert parsed is not None
     assert parsed["pif_total"] == pytest.approx(29574.9)
@@ -140,7 +139,7 @@ def _quarterly_exhibit_html() -> str:
 
 
 def test_parse_quarterly_exhibit_extracts_current_quarter_ratios():
-    parsed = _parse_html_exhibit(_quarterly_exhibit_html(), "2026-04-15", item_code="2.02")
+    parsed = parse_html_exhibit(_quarterly_exhibit_html(), "2026-04-15", item_code="2.02")
     assert parsed is not None
     # 7-value rows: nums[-2] = current-quarter total, nums[-1] = prior-year total
     assert parsed["combined_ratio"] == pytest.approx(89.9)
@@ -167,7 +166,7 @@ def test_parse_quarterly_exhibit_text_mode_cr_fallback():
       </table>
     </body></html>
     """
-    parsed = _parse_html_exhibit(html, "2026-04-15", item_code="2.02")
+    parsed = parse_html_exhibit(html, "2026-04-15", item_code="2.02")
     assert parsed is not None
     # Table scanner sees no nums in the "combined ratio" row; text-mode fallback
     # finds 7 valid values in vicinity and picks vals[-2] = 90.9
@@ -187,7 +186,7 @@ def test_validate_parsed_record_accepts_pif_in_thousands():
         "npw_commercial": 683.0,
         "npw_property": 251.5,
     }
-    validated = _validate_parsed_record(record, "2023-09-15", "000008066123000045")
+    validated = validate_parsed_record(record, "2023-09-15", "000008066123000045")
     assert validated["pif_total"] == pytest.approx(29574.9)
 
 
@@ -227,7 +226,7 @@ def _nine_column_quarterly_html() -> str:
 
 def test_parse_nine_column_quarterly_cross_validates_cr():
     """Nine-column combined ratio: cross-validation corrects nums[-2]=99.1 to 89.9."""
-    parsed = _parse_html_exhibit(_nine_column_quarterly_html(), "2026-04-15", item_code="2.02")
+    parsed = parse_html_exhibit(_nine_column_quarterly_html(), "2026-04-15", item_code="2.02")
     assert parsed is not None
     # loss_lae=73.5, expense=16.4 → sum=89.9; |99.1-89.9|>5 triggers cross-validate
     assert parsed["combined_ratio"] == pytest.approx(89.9)
@@ -237,7 +236,7 @@ def test_parse_nine_column_quarterly_cross_validates_cr():
 
 # ---------------------------------------------------------------------------
 # Cover-page 8-K: the first exhibit URL is a form cover with no operating data.
-# _parse_html_exhibit must return None for cover pages so the multi-exhibit
+# parse_html_exhibit must return None for cover pages so the multi-exhibit
 # fetcher can fall through to the actual operating supplement.
 # ---------------------------------------------------------------------------
 
@@ -258,7 +257,7 @@ def _cover_page_html() -> str:
 
 def test_parse_cover_page_returns_none():
     """A bare 8-K cover page with no data must return None so fallback logic triggers."""
-    parsed = _parse_html_exhibit(_cover_page_html(), "2026-04-15", item_code="2.02")
+    parsed = parse_html_exhibit(_cover_page_html(), "2026-04-15", item_code="2.02")
     assert parsed is None
 
 
@@ -291,7 +290,7 @@ def _narrative_cr_html() -> str:
 
 def test_parse_narrative_cr_text_fallback():
     """Near-window path: 1–2 values within 100 chars of label → first value is CR."""
-    parsed = _parse_html_exhibit(_narrative_cr_html(), "2026-04-15", item_code="2.02")
+    parsed = parse_html_exhibit(_narrative_cr_html(), "2026-04-15", item_code="2.02")
     assert parsed is not None
     # Near window finds [89.9, 97.2]; picks first = 89.9 (current period)
     assert parsed["combined_ratio"] == pytest.approx(89.9)
@@ -320,6 +319,6 @@ def _alt_label_quarterly_html() -> str:
 
 def test_parse_alt_label_combined_ratio():
     """Alternative label 'combined loss and expense ratio' is matched correctly."""
-    parsed = _parse_html_exhibit(_alt_label_quarterly_html(), "2026-04-15", item_code="2.02")
+    parsed = parse_html_exhibit(_alt_label_quarterly_html(), "2026-04-15", item_code="2.02")
     assert parsed is not None
     assert parsed["combined_ratio"] == pytest.approx(89.9)

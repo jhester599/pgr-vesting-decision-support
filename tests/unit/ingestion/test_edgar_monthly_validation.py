@@ -1,7 +1,7 @@
 """
 Tests for v7.2 EDGAR 8-K Parser Hardening.
 
-Tests _validate_parsed_record() directly (importable from edgar_8k_fetcher),
+Tests validate_parsed_record() directly (importable from pgr_vds.ingestion.edgar_monthly.parse),
 and the most-complete-wins deduplication logic via a small helper that mirrors
 the inline _completeness function.
 
@@ -27,9 +27,7 @@ import os
 
 import pytest
 
-
-from scripts.edgar_8k_fetcher import _validate_parsed_record
-
+from pgr_vds.ingestion.edgar_monthly.parse import validate_parsed_record
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -70,7 +68,7 @@ def _dedup_most_complete(records: list[dict]) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Enhancement 1: _validate_parsed_record tests (1–9)
+# Enhancement 1: validate_parsed_record tests (1–9)
 # ---------------------------------------------------------------------------
 
 class TestValidateParsedRecord:
@@ -78,49 +76,49 @@ class TestValidateParsedRecord:
     def test_validate_cr_consistent_with_components(self):
         """CR=95, LR=65, ER=30 → delta=0 ≤ 5pp → CR preserved."""
         rec = _rec(combined_ratio=95.0, loss_lae_ratio=65.0, expense_ratio=30.0)
-        result = _validate_parsed_record(rec, "2026-01-20", "ACC001")
+        result = validate_parsed_record(rec, "2026-01-20", "ACC001")
         assert result["combined_ratio"] == 95.0
 
     def test_validate_cr_inconsistent_nullifies(self):
         """CR=95, LR=65, ER=40 → delta=10 > 5pp → CR set to None."""
         rec = _rec(combined_ratio=95.0, loss_lae_ratio=65.0, expense_ratio=40.0)
-        result = _validate_parsed_record(rec, "2026-01-20", "ACC002")
+        result = validate_parsed_record(rec, "2026-01-20", "ACC002")
         assert result["combined_ratio"] is None
 
     def test_validate_cr_missing_components_no_check(self):
         """CR present but LR=None → skip ratio check, CR unchanged."""
         rec = _rec(combined_ratio=95.0, loss_lae_ratio=None, expense_ratio=30.0)
-        result = _validate_parsed_record(rec, "2026-01-20", "ACC003")
+        result = validate_parsed_record(rec, "2026-01-20", "ACC003")
         assert result["combined_ratio"] == 95.0
 
     def test_validate_pif_below_floor(self):
         """pif_total=4,000 < 5,000 floor → set to None (unit mis-parse)."""
         rec = _rec(pif_total=4_000.0)
-        result = _validate_parsed_record(rec, "2026-01-20", "ACC004")
+        result = validate_parsed_record(rec, "2026-01-20", "ACC004")
         assert result["pif_total"] is None
 
     def test_validate_pif_above_floor(self):
         """pif_total=20,000 (thousands) ≥ 5,000 floor → preserved."""
         rec = _rec(pif_total=20_000.0)
-        result = _validate_parsed_record(rec, "2026-01-20", "ACC005")
+        result = validate_parsed_record(rec, "2026-01-20", "ACC005")
         assert result["pif_total"] == 20_000.0
 
     def test_validate_eps_out_of_range_high(self):
         """eps_basic=25.0 > 15.0 → set to None."""
         rec = _rec(eps_basic=25.0)
-        result = _validate_parsed_record(rec, "2026-01-20", "ACC006")
+        result = validate_parsed_record(rec, "2026-01-20", "ACC006")
         assert result["eps_basic"] is None
 
     def test_validate_eps_out_of_range_low(self):
         """eps_basic=-10.0 < -5.0 → set to None."""
         rec = _rec(eps_basic=-10.0)
-        result = _validate_parsed_record(rec, "2026-01-20", "ACC007")
+        result = validate_parsed_record(rec, "2026-01-20", "ACC007")
         assert result["eps_basic"] is None
 
     def test_validate_eps_in_range(self):
         """eps_basic=3.50 within [-5, 15] → preserved."""
         rec = _rec(eps_basic=3.50)
-        result = _validate_parsed_record(rec, "2026-01-20", "ACC008")
+        result = validate_parsed_record(rec, "2026-01-20", "ACC008")
         assert result["eps_basic"] == 3.50
 
     def test_validate_npw_segment_warning(self, caplog):
@@ -130,8 +128,8 @@ class TestValidateParsedRecord:
             npw_agency=600.0,
             npw_direct=600.0,   # sum = 1200 → total (1000) < 1200 * 0.9 = 1080
         )
-        with caplog.at_level(logging.WARNING, logger="scripts.edgar_8k_fetcher"):
-            result = _validate_parsed_record(rec, "2026-01-20", "ACC009")
+        with caplog.at_level(logging.WARNING, logger="pgr_vds.ingestion.edgar_monthly.parse"):
+            result = validate_parsed_record(rec, "2026-01-20", "ACC009")
 
         assert result["net_premiums_written"] == 1_000.0  # not nullified
         assert any("NPW_total" in m for m in caplog.messages), (
@@ -141,19 +139,19 @@ class TestValidateParsedRecord:
     def test_validate_cr_boundary_exactly_5pp_not_nullified(self):
         """CR=95, LR=65, ER=35 → delta=5.0, not > 5 → CR preserved."""
         rec = _rec(combined_ratio=95.0, loss_lae_ratio=65.0, expense_ratio=35.0)
-        result = _validate_parsed_record(rec, "2026-01-20", "ACC010")
+        result = validate_parsed_record(rec, "2026-01-20", "ACC010")
         assert result["combined_ratio"] == 95.0
 
     def test_validate_pif_at_floor_boundary(self):
         """pif_total=5,000 exactly → not < 5,000 → preserved."""
         rec = _rec(pif_total=5_000.0)
-        result = _validate_parsed_record(rec, "2026-01-20", "ACC011")
+        result = validate_parsed_record(rec, "2026-01-20", "ACC011")
         assert result["pif_total"] == 5_000.0
 
     def test_validate_keeps_2004_pif_scale(self):
         """PGR had 9,049K policies in Sep-2004; that is not a mis-parse."""
         rec = _rec(pif_total=9_049.0)
-        result = _validate_parsed_record(rec, "2004-10-20", "ACC012")
+        result = validate_parsed_record(rec, "2004-10-20", "ACC012")
         assert result["pif_total"] == 9_049.0
 
 
@@ -213,7 +211,7 @@ class TestBothNullifiedSkip:
             expense_ratio=40.0,   # delta=10 > 5 → CR nullified
             pif_total=4_000.0,    # < 5,000 → PIF nullified
         )
-        result = _validate_parsed_record(rec, "2026-01-20", "ACC_BOTH")
+        result = validate_parsed_record(rec, "2026-01-20", "ACC_BOTH")
 
         assert result["combined_ratio"] is None, "CR should have been nullified"
         assert result["pif_total"] is None, "PIF should have been nullified"
@@ -222,7 +220,7 @@ class TestBothNullifiedSkip:
 
     def test_validate_accepts_both_legacy_and_current_pif_scales(self):
         """Legacy raw counts and current thousand-scale counts both survive after normalization."""
-        legacy = _validate_parsed_record(_rec(pif_total=18_500.0), "2026-01-20", "ACC_LEGACY")
-        current = _validate_parsed_record(_rec(pif_total=29_575.0), "2026-01-20", "ACC_CURRENT")
+        legacy = validate_parsed_record(_rec(pif_total=18_500.0), "2026-01-20", "ACC_LEGACY")
+        current = validate_parsed_record(_rec(pif_total=29_575.0), "2026-01-20", "ACC_CURRENT")
         assert legacy["pif_total"] == 18_500.0
         assert current["pif_total"] == 29_575.0

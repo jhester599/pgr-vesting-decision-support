@@ -5,11 +5,10 @@ from pathlib import Path
 
 import numpy as np
 
-
 from pgr_vds.decision.health import determine_recommendation_mode
 from pgr_vds.decision.rendering import build_executive_summary_lines, build_vest_decision_lines
 from src.models.wfo_engine import CPCVResult
-from src.tax.capital_gains import ThreeScenarioResult, TaxScenario
+from src.tax.capital_gains import TaxScenario, ThreeScenarioResult
 
 
 def _cpcv(verdict: str) -> CPCVResult:

@@ -162,7 +162,7 @@ INTRO = """\
 `scripts/repair_edgar_history.py --export-csv`)
 **Coverage:** {first} – {last} ({n} monthly observations, no missing months)
 **Filing types:** {types}
-**Parser:** `scripts/edgar_8k_fetcher.py`, version `{parser}`
+**Parser:** `pgr_vds.ingestion.edgar_monthly` (`cli/edgar_monthly_fetch.py`), version `{parser}`
 **Units:** millions USD unless noted; shares in millions; PIF in thousands of policies.
 
 Every row is one monthly release (8-K Exhibit 99), re-fetched from EDGAR and
@@ -185,7 +185,7 @@ DERIVED = """\
 ## Derived Columns (DB only)
 
 Recomputed over the whole table after every write
-(`edgar_8k_fetcher.recompute_derived_fields`; definitions in
+(`edgar_monthly.derive.recompute_derived_fields`; definitions in
 `src/processing/pgr_edgar_derived.py`). They are not in the CSV except
 `pif_total` and `pif_total_personal_lines`.
 
@@ -350,7 +350,7 @@ def _stats_table(df: pd.DataFrame, rows: list[tuple[str, str, str]]) -> str:
 
 def render(conn) -> str:
     """Return the dictionary markdown for the DB behind ``conn``."""
-    from scripts.edgar_8k_fetcher import PARSER_VERSION
+    from pgr_vds.ingestion.edgar_monthly.parse import PARSER_VERSION
 
     df = pd.read_sql_query("SELECT * FROM pgr_edgar_monthly ORDER BY month_end", conn)
     df["report_period"] = df["month_end"].str.slice(0, 7)

@@ -22,16 +22,18 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from scripts import edgar_8k_fetcher as fetcher
-from scripts.edgar_8k_fetcher import (
-    _compute_derived_fields,
-    _extract_balance_sheet,
-    _parse_html_exhibit,
-    _parse_number,
+from pgr_vds.ingestion.edgar_monthly import fetch
+from pgr_vds.ingestion.edgar_monthly.derive import (
     _prior_year_key,
-    _row_numbers,
-    load_from_csv,
+    compute_derived_fields,
     recompute_derived_fields,
+)
+from pgr_vds.ingestion.edgar_monthly.load import load_from_csv
+from pgr_vds.ingestion.edgar_monthly.parse import (
+    _extract_balance_sheet,
+    _parse_number,
+    _row_numbers,
+    parse_html_exhibit,
 )
 from src.database import db_client
 from src.processing import pgr_edgar_derived
@@ -120,7 +122,7 @@ def _aug_2017_income_statement() -> str:
 
 
 def test_net_loss_month_parses_negative() -> None:
-    parsed = _parse_html_exhibit(_aug_2017_income_statement(), "2017-09-20")
+    parsed = parse_html_exhibit(_aug_2017_income_statement(), "2017-09-20")
     assert parsed is not None
     assert parsed["month_end"] == "2017-08-31"
     assert parsed["net_income"] == pytest.approx(-16.8)
@@ -165,14 +167,14 @@ _FLAT_PAGE = {
 
 def test_flat_pagination_file_is_read(monkeypatch) -> None:
     pages = {None: _PRIMARY, "001": _FLAT_PAGE}
-    monkeypatch.setattr(fetcher, "_fetch_submissions_page", lambda page_id=None: pages[page_id])
-    filings = fetcher.fetch_all_8k_filings("2010-01-01")
+    monkeypatch.setattr(fetch, "_fetch_submissions_page", lambda page_id=None: pages[page_id])
+    filings = fetch.fetch_all_8k_filings("2010-01-01")
     by_acc = {f["accession_dashed"]: f for f in filings}
     assert set(by_acc) == {
         "0000080661-26-000322", "0000080661-19-000027", "0000080661-15-000034",
     }
     assert by_acc["0000080661-19-000027"]["item_code"] == "7.01"
-    assert fetcher._match_item_code("2.02,7.01,9.01") == "2.02"
+    assert fetch._match_item_code("2.02,7.01,9.01") == "2.02"
     assert by_acc["0000080661-15-000034"]["item_code"] == "9.01"
 
 
@@ -195,18 +197,18 @@ class _Resp:
 
 
 def test_9_01_only_filing_needs_an_ex99_exhibit(monkeypatch) -> None:
-    assert fetcher._match_item_code("9.01") == "9.01"
-    assert fetcher._match_item_code("5.02,9.01") is None
+    assert fetch._match_item_code("9.01") == "9.01"
+    assert fetch._match_item_code("5.02,9.01") is None
 
-    monkeypatch.setattr(fetcher, "_get", lambda url, **_: _Resp(_INDEX_HTML.format(ex99="")))
-    assert fetcher._get_all_filing_doc_urls(
+    monkeypatch.setattr(fetch, "get", lambda url, **_: _Resp(_INDEX_HTML.format(ex99="")))
+    assert fetch.get_all_filing_doc_urls(
         "000008066115000034", "0000080661-15-000034", require_ex99=True
     ) == []
 
     monkeypatch.setattr(
-        fetcher, "_get", lambda url, **_: _Resp(_INDEX_HTML.format(ex99=_EX99_ROW))
+        fetch, "get", lambda url, **_: _Resp(_INDEX_HTML.format(ex99=_EX99_ROW))
     )
-    urls = fetcher._get_all_filing_doc_urls(
+    urls = fetch.get_all_filing_doc_urls(
         "000008066115000034", "0000080661-15-000034", require_ex99=True
     )
     assert urls[0].endswith("exhibit99may2015earningsre.htm")
@@ -240,7 +242,7 @@ def test_no_equity_line_uses_bvps_times_shares() -> None:
         "<tr><td>Combined ratio</td><td>87.4</td></tr>"
         "</table></body></html>"
     )
-    parsed = _parse_html_exhibit(html, "2005-01-19")
+    parsed = parse_html_exhibit(html, "2005-01-19")
     assert parsed is not None
     assert parsed["shareholders_equity"] == pytest.approx(25.73 * 200.4, abs=0.1)
     assert parsed["shareholders_equity"] == pytest.approx(5155.4, rel=0.01)
@@ -291,7 +293,7 @@ def _pif_record(month_end: str, scale: float, property_pif: float = 3_000.0) -> 
 
 def test_february_after_leap_year_has_yoy() -> None:
     records = [_pif_record("2024-02-29", 1.0), _pif_record("2025-02-28", 1.1)]
-    _compute_derived_fields(records)
+    compute_derived_fields(records)
     assert records[1]["pif_growth_yoy"] == pytest.approx(0.1)
     assert records[1]["npw_growth_yoy"] == pytest.approx(0.1)
 
@@ -299,14 +301,14 @@ def test_february_after_leap_year_has_yoy() -> None:
 def test_pif_total_excludes_property_whatever_the_release_printed() -> None:
     # The release printed a companywide total that includes property.
     rec = _pif_record("2025-03-31", 1.0) | {"pif_total": 36_200.0}
-    _compute_derived_fields([rec])
+    compute_derived_fields([rec])
     assert rec["pif_total"] == pytest.approx(33_200.0)
     assert rec["pif_total_personal_lines"] == pytest.approx(32_000.0)
 
 
 def test_pif_total_needs_every_component() -> None:
     rec = _pif_record("2025-03-31", 1.0) | {"pif_special_lines": None, "pif_total": 30_000.0}
-    _compute_derived_fields([rec])
+    compute_derived_fields([rec])
     assert rec["pif_total"] is None
 
 
@@ -318,7 +320,7 @@ def test_yoy_is_nan_when_base_month_is_missing() -> None:
         for i, m in enumerate(months)
         if m != pd.Timestamp("2015-05-31")
     ]
-    _compute_derived_fields(records)
+    compute_derived_fields(records)
     by_month = {r["month_end"]: r for r in records}
     assert by_month["2016-05-31"]["npw_growth_yoy"] is None
     assert by_month["2016-05-31"]["pif_growth_yoy"] is None
@@ -350,11 +352,14 @@ def test_load_from_csv_missing_month_gives_nan_yoy(tmp_path: Path) -> None:
     assert got["2016-04-30"] is not None
 
 
-def test_one_gainshare_formula_everywhere(tmp_path: Path, monkeypatch) -> None:
-    """Every producer of gainshare_estimate / pif_growth_yoy gives the same values."""
-    from src.ingestion import edgar_8k_fetcher as ingestion_fetcher
-    from src.ingestion import pgr_monthly_loader
+def test_one_gainshare_formula_everywhere(tmp_path: Path) -> None:
+    """Every producer of gainshare_estimate / pif_growth_yoy gives the same values.
 
+    The producers are the shared formula, the derived-field pass and the CSV
+    loader. Phase 5 deleted the two legacy copies (``src/ingestion/
+    edgar_8k_fetcher.py`` and ``pgr_monthly_loader.py``) that this test also
+    compared; the CSV loader is now ``load_from_csv`` alone.
+    """
     months = pd.date_range("2023-01-31", periods=16, freq="ME")
     pif = [30_000.0] * 12 + [31_500.0, 33_000.0, 36_000.0, 45_000.0]
     cr = [90.0] * 12 + [86.0, 101.0, 70.0, np.nan]
@@ -369,7 +374,6 @@ def test_one_gainshare_formula_everywhere(tmp_path: Path, monkeypatch) -> None:
     shared = pgr_edgar_derived.gainshare_series(
         frame["combined_ratio"], pgr_edgar_derived.yoy_growth_series(frame["pif_total"])
     )
-    legacy = ingestion_fetcher._compute_gainshare(frame)["gainshare_estimate"]
 
     records = [
         {"month_end": m.strftime("%Y-%m-%d"), "combined_ratio": None if np.isnan(c) else c,
@@ -377,32 +381,34 @@ def test_one_gainshare_formula_everywhere(tmp_path: Path, monkeypatch) -> None:
          "pif_commercial_lines": 0.0}
         for m, c, p in zip(months, cr, pif)
     ]
-    script = [r["gainshare_estimate"] for r in _compute_derived_fields(records)]
+    script = [r["gainshare_estimate"] for r in compute_derived_fields(records)]
 
     csv_path = tmp_path / "cache.csv"
     pd.DataFrame({
         "report_period": [m.strftime("%Y-%m") for m in months],
-        "combined_ratio": cr, "pif_total": pif,
+        "combined_ratio": cr,
+        "pif_agency_auto": pif,
+        "pif_direct_auto": 0.0,
+        "pif_special_lines": 0.0,
+        "pif_commercial_lines": 0.0,
     }).to_csv(csv_path, index=False)
-    monkeypatch.setattr(pgr_monthly_loader, "_EDGAR_CACHE_PATH", str(csv_path))
-    monkeypatch.setattr(pgr_monthly_loader, "_PROCESSED_PATH", str(tmp_path / "out.parquet"))
-    loader = pgr_monthly_loader.load(force_refresh=True, apply_filing_lag=False)[
-        "gainshare_estimate"
+    conn = _fresh_db(tmp_path)
+    load_from_csv(conn, str(csv_path))
+    loader = [
+        row[0]
+        for row in conn.execute(
+            "SELECT gainshare_estimate FROM pgr_edgar_monthly ORDER BY month_end"
+        ).fetchall()
     ]
+    conn.close()
 
     for i, exp in enumerate(expected):
-        got = [shared.iloc[i], legacy.iloc[i], script[i], loader.iloc[i]]
+        got = [shared.iloc[i], script[i], loader[i]]
         got = [np.nan if g is None else g for g in got]
         if np.isnan(exp):
             assert all(np.isnan(g) for g in got), (i, got)
         else:
-            assert got == pytest.approx([exp] * 4), (i, got)
-
-
-# ---------------------------------------------------------------------------
-# F33: provenance
-# ---------------------------------------------------------------------------
-
+            assert got == pytest.approx([exp] * 3), (i, got)
 
 def _row(conn: sqlite3.Connection, month_end: str) -> dict:
     cur = conn.execute("SELECT * FROM pgr_edgar_monthly WHERE month_end = ?", (month_end,))

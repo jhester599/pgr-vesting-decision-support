@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import edgar_8k_fetcher as fetcher
+from pgr_vds.ingestion.edgar_monthly import derive
 from scripts import repair_split_month_buybacks as repair
 from src.database import db_client
 from src.ingestion import edgar_10q_repurchases as q10
@@ -165,7 +165,7 @@ def test_supplement_survives_a_rebuild_from_the_8k(tmp_path: Path) -> None:
         "accession_number": EIGHT_K_ACCESSION, "shares_repurchased": 2.3,
     }])
     db_client.apply_pgr_edgar_supplements(conn)
-    fetcher.recompute_derived_fields(conn)
+    derive.recompute_derived_fields(conn)
     row = conn.execute("SELECT * FROM pgr_edgar_monthly WHERE month_end = ?", (MAY,)).fetchone()
     conn.close()
     assert row["shares_repurchased"] == pytest.approx(3.258184)

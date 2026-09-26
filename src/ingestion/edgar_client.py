@@ -33,7 +33,7 @@ per row (Q4 = 10-K full year − 10-Q nine months), earliest-filed values:
 Monthly operating metrics (combined ratio, PIF, gainshare):
   PGR files these in monthly 8-K HTML supplements. They are NOT present in
   XBRL filings. The pgr_edgar_monthly table is populated separately by
-  scripts/edgar_8k_fetcher.py.
+  pgr_vds.ingestion.edgar_monthly.fetch.
 """
 
 from __future__ import annotations

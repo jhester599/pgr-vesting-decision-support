@@ -9,10 +9,9 @@ import pandas as pd
 import pytest
 
 from pgr_vds.decision import health, recommendation_report
-from src.models.wfo_engine import FoldResult, WFOResult
 from src.models.multi_benchmark_wfo import EnsembleWFOResult
 from src.models.policy_metrics import FIXED_POLICIES, SIGNAL_POLICIES
-
+from src.models.wfo_engine import FoldResult, WFOResult
 
 # ---------------------------------------------------------------------------
 # Helpers

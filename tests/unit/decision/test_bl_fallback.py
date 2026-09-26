@@ -14,7 +14,6 @@ import pytest
 from pgr_vds.decision import portfolio, recommendation_report
 from src.portfolio.black_litterman import BLDiagnostics
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

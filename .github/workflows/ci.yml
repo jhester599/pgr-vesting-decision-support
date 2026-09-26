@@ -87,7 +87,7 @@ jobs:
         run: |
           python scripts/ci_offline_smoke.py scripts/weekly_fetch.py --dry-run --skip-fred
           python scripts/ci_offline_smoke.py scripts/peer_fetch.py --dry-run
-          python scripts/ci_offline_smoke.py scripts/edgar_8k_fetcher.py --dry-run
+          python scripts/ci_offline_smoke.py cli/edgar_monthly_fetch.py --dry-run
           python scripts/ci_offline_smoke.py cli/monthly_decision.py --as-of 2026-04-02 --dry-run --skip-fred
 
   research:

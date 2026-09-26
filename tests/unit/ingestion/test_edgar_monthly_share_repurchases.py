@@ -5,8 +5,7 @@ import os
 import pandas as pd
 import pytest
 
-
-from scripts.edgar_8k_fetcher import _parse_html_exhibit
+from pgr_vds.ingestion.edgar_monthly.parse import parse_html_exhibit
 
 
 def _minimal_exhibit_html(repurchased_cell: str, avg_cost_cell: str) -> str:
@@ -33,7 +32,7 @@ class TestShareRepurchaseParsing:
 
     def test_decimal_millions_format_is_preserved(self):
         """Pre-2023-08 format: decimal already in millions (e.g., "0.21")."""
-        parsed = _parse_html_exhibit(
+        parsed = parse_html_exhibit(
             _minimal_exhibit_html("0.21", "123.14"),
             "2023-08-16",
         )
@@ -44,7 +43,7 @@ class TestShareRepurchaseParsing:
 
     def test_whole_share_count_is_normalized_to_millions(self):
         """Post-2023-08 large buyback: comma-formatted whole-share count."""
-        parsed = _parse_html_exhibit(
+        parsed = parse_html_exhibit(
             _minimal_exhibit_html("46,822", "130.01"),
             "2023-09-15",
         )
@@ -55,7 +54,7 @@ class TestShareRepurchaseParsing:
 
     def test_larger_whole_share_count_is_normalized_to_millions(self):
         """Post-2023-08 large buyback: six-digit comma-formatted whole-share count."""
-        parsed = _parse_html_exhibit(
+        parsed = parse_html_exhibit(
             _minimal_exhibit_html("299,855", "163.11"),
             "2023-12-15",
         )
@@ -85,7 +84,7 @@ class TestSmallIntegerThousandsFormat:
 
     def test_small_integer_51_normalized_to_thousands(self):
         """51 in post-2023-08 filing → 0.051M shares (not 0.000051 or 51.0)."""
-        parsed = _parse_html_exhibit(
+        parsed = parse_html_exhibit(
             _minimal_exhibit_html("51", "244.21"),
             "2024-12-13",  # filing for Nov-2024 month-end
         )
@@ -99,7 +98,7 @@ class TestSmallIntegerThousandsFormat:
 
     def test_small_integer_87_normalized_to_thousands(self):
         """87 in post-2023-08 filing → 0.087M shares (not 0.000087 or 87.0)."""
-        parsed = _parse_html_exhibit(
+        parsed = parse_html_exhibit(
             _minimal_exhibit_html("87", "243.31"),
             "2025-09-17",  # filing for Aug-2025 month-end
         )
@@ -110,7 +109,7 @@ class TestSmallIntegerThousandsFormat:
 
     def test_small_integer_195_normalized_to_thousands(self):
         """195 in post-2023-08 filing → 0.195M shares (not 0.000195 or 195.0)."""
-        parsed = _parse_html_exhibit(
+        parsed = parse_html_exhibit(
             _minimal_exhibit_html("195", "253.66"),
             "2024-11-15",  # filing for Oct-2024 month-end
         )
@@ -121,7 +120,7 @@ class TestSmallIntegerThousandsFormat:
 
     def test_old_format_large_decimal_not_divided_by_1000(self):
         """Pre-2023-08 large buyback in decimal millions must not be divided by 1000."""
-        parsed = _parse_html_exhibit(
+        parsed = parse_html_exhibit(
             _minimal_exhibit_html("16.9", "88.00"),
             "2004-11-15",  # filing for Oct-2004 month-end (the big ASR)
         )
@@ -132,7 +131,7 @@ class TestSmallIntegerThousandsFormat:
     def test_normalized_value_not_divided_again(self):
         """An already-correct value like 0.051 must survive round-trip unchanged."""
         # Filed under old format (pre-2023-08): "0.051" is 0.051M shares directly.
-        parsed = _parse_html_exhibit(
+        parsed = parse_html_exhibit(
             _minimal_exhibit_html("0.051", "244.00"),
             "2020-06-15",
         )
@@ -142,7 +141,7 @@ class TestSmallIntegerThousandsFormat:
 
     def test_zero_repurchases_stored_as_zero(self):
         """Zero repurchases (blackout period) must remain zero."""
-        parsed = _parse_html_exhibit(
+        parsed = parse_html_exhibit(
             _minimal_exhibit_html("0", "0.00"),
             "2022-05-15",
         )

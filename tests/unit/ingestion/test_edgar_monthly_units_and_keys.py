@@ -17,10 +17,9 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-
-from scripts.edgar_8k_fetcher import _parse_html_exhibit
+from pgr_vds.ingestion.edgar_monthly.parse import parse_html_exhibit
 from src.database import db_client, migration_runner
-from tests.unit.scripts.test_edgar_8k_parser_breadth import _broad_exhibit_html
+from tests.unit.ingestion.test_edgar_monthly_parser_breadth import _broad_exhibit_html
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 COMMITTED_DB = REPO_ROOT / "data" / "pgr_financials.db"
@@ -58,7 +57,7 @@ def _book_yield_html(yield_text: str) -> str:
 
 
 def test_parse_upsert_read_back_round_trips_every_parsed_field(tmp_path: Path) -> None:
-    parsed = _parse_html_exhibit(_broad_exhibit_html(), "2023-09-15")
+    parsed = parse_html_exhibit(_broad_exhibit_html(), "2023-09-15")
     assert parsed is not None
     assert parsed["roe_net_income_trailing_12m"] == pytest.approx(10.4)
 
@@ -89,7 +88,7 @@ def test_parse_upsert_read_back_round_trips_every_parsed_field(tmp_path: Path) -
 
 
 def test_roe_net_income_ttm_is_readable_via_get_pgr_edgar_monthly(tmp_path: Path) -> None:
-    parsed = _parse_html_exhibit(_broad_exhibit_html(), "2023-09-15")
+    parsed = parse_html_exhibit(_broad_exhibit_html(), "2023-09-15")
     assert parsed is not None
     conn = _fresh_db(tmp_path)
     db_client.upsert_pgr_edgar_monthly(conn, [parsed])
@@ -123,7 +122,7 @@ def test_explicit_roe_net_income_ttm_key_still_wins(tmp_path: Path) -> None:
 
 
 def test_parsing_book_yield_percent_stores_percent(tmp_path: Path) -> None:
-    parsed = _parse_html_exhibit(_book_yield_html("4.2%"), "2025-06-18")
+    parsed = parse_html_exhibit(_book_yield_html("4.2%"), "2025-06-18")
     assert parsed is not None
     assert parsed["investment_book_yield"] == pytest.approx(4.2)
 

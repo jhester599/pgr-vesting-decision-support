@@ -302,7 +302,7 @@ def get_db_health_report(
     if expected_csv_rows is not None and row_count < expected_csv_rows:
         warnings.append(
             f"pgr_edgar_monthly has {row_count} rows but the committed CSV contains "
-            f"{expected_csv_rows}; run scripts/edgar_8k_fetcher.py --load-from-csv."
+            f"{expected_csv_rows}; run cli/edgar_monthly_fetch.py --load-from-csv."
         )
     if min_month is None:
         warnings.append("pgr_edgar_monthly is empty; monthly features will be incomplete.")
@@ -1141,7 +1141,7 @@ def upsert_pgr_edgar_monthly(
 
     Derived fields (YoY growth, Gainshare, PIF totals, …) should be refreshed
     afterwards over the whole table with
-    ``scripts.edgar_8k_fetcher.recompute_derived_fields``.
+    ``pgr_vds.ingestion.edgar_monthly.derive.recompute_derived_fields``.
 
     Returns:
         Number of rows inserted or updated.

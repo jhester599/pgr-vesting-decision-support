@@ -16,10 +16,8 @@ from pathlib import Path
 
 import pytest
 
-
 from pgr_vds.decision.artifacts import append_decision_log
 from pgr_vds.decision.tax_lots import build_tax_context_lines
-
 
 # ---------------------------------------------------------------------------
 # build_tax_context_lines() tests

@@ -57,7 +57,7 @@ The layout mirrors the code (review 2026-09-25, section 5, phase 4):
   `repo_guard.py`, `capital_return_fixture.py`, `guard_probe.py`) and
   `fixtures/` stay at the top of `tests/`. Every test folder has an
   `__init__.py`; import a helper from another test file by its full path
-  (`from tests.unit.scripts.test_edgar_8k_parser_breadth import ...`).
+  (`from tests.unit.ingestion.test_edgar_monthly_parser_breadth import ...`).
 - A test file that needs the repository root uses
   `Path(__file__).resolve().parents[3]` (two folders below `tests/`), or
   `parents[2]` in `tests/research/`.

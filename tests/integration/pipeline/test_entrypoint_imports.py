@@ -27,6 +27,7 @@ WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 
 # Every script a workflow runs (directly or through ci_offline_smoke.py).
 PRODUCTION_SCRIPTS: tuple[str, ...] = (
+    "cli/edgar_monthly_fetch.py",
     "cli/monthly_decision.py",
     "scripts/bootstrap.py",
     "scripts/capital_return_charts.py",
@@ -34,7 +35,6 @@ PRODUCTION_SCRIPTS: tuple[str, ...] = (
     "scripts/checks/check_doc_links.py",
     "scripts/checks/check_sys_path_edits.py",
     "scripts/ci_offline_smoke.py",
-    "scripts/edgar_8k_fetcher.py",
     "scripts/finalize_db.py",
     "scripts/initial_fetch.py",
     "scripts/peer_fetch.py",
