@@ -24,7 +24,7 @@ from src.models.multi_benchmark_wfo import (
     EnsembleWFOResult,
     apply_prediction_shrinkage,
 )
-from src.models.wfo_engine import WFOResult, run_wfo
+from src.models.wfo_engine import WFOResult, _min_required_observations, run_wfo
 from src.reporting.backtest_report import compute_newey_west_ic, compute_oos_r_squared
 
 logger = logging.getLogger(__name__)
@@ -109,11 +109,8 @@ def iter_wfo_splits(
         target_horizon_months=target_horizon_months,
         purge_buffer=purge_buffer,
     )
-    min_required = (
-        config.WFO_TRAIN_WINDOW_MONTHS
-        + total_gap
-        + config.WFO_TEST_WINDOW_MONTHS
-    )
+    # Two test windows: TimeSeriesSplit needs n_splits >= 2.
+    min_required = _min_required_observations(total_gap)
     if len(X) < min_required:
         raise ValueError(
             f"Dataset has only {len(X)} observations; need at least "

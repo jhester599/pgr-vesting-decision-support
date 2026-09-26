@@ -71,10 +71,11 @@ def iter_absolute_wfo_splits(
         train_window_months=train_window_months,
         test_window_months=test_window_months,
     )
+    # Two test windows: TimeSeriesSplit needs n_splits >= 2.
     min_required = (
         split_config.train_window_months
         + split_config.gap_months
-        + split_config.test_window_months
+        + 2 * split_config.test_window_months
     )
     if n_obs < min_required:
         raise ValueError(

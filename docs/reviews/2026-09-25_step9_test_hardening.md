@@ -67,7 +67,7 @@ The four v36 property files mostly checked their own arithmetic.
 
 | File | Removed | Now checks |
 |---|---|---|
-| `test_property_wfo_temporal.py` | 6 properties on hand-built `FoldResult`s | `run_wfo`: every fold has an embargo of exactly `horizon + purge_buffer` rows, ≤ 60 training rows, contiguous rows, 6-row disjoint increasing test windows ending on the last row, and `y_true` = target on the test dates. A fold's predictions are unchanged when targets after its training window and features outside its train/test rows are scrambled. `predict_current` ignores rows older than its window. |
+| `test_property_wfo_temporal.py` | 6 properties on hand-built `FoldResult`s | `run_wfo`: every fold has an embargo of exactly `horizon + purge_buffer` rows, exactly 60 training rows, contiguous rows, 6-row disjoint increasing test windows ending on the last row, and `y_true` = target on the test dates. A fold's predictions are unchanged when targets after its training window and features outside its train/test rows are scrambled. `predict_current` ignores rows older than its window. |
 | `test_property_return_calculations.py` | 6 arithmetic identities | `build_position_series`: without corporate actions value = shares × price. A split with the matching price drop leaves value unchanged at every date. DRIP ending value equals the closed form `shares × P_T × ∏(1 + d_i/P_i)`. The share count never falls. |
 | `test_property_feature_engineering.py` | 4 inline formulas (VIF tests kept) | `calendar_momentum` against a loop over month-end closes. `trailing_52w_high` is the 364-day max, so the ratio is in (0, 1]. `weekly_realized_vol` is ≥ 0 and scale-free. `split_adjusted_close` removes a split from momentum and volatility. `build_feature_matrix` is causal: rows up to t do not move when later prices change. |
 | `test_property_tax_boundaries.py` | 3 tautologies (constant checks kept) | `optimize_sale`: shares and dollars are conserved and tax = gain × rate per lot. Only vested lots are sold, none oversold, and only the last lot used is partly sold. Lots are used loss → LTCG → STCG. Each holding type matches an independent calendar rule. With one rate, the tax is the minimum over allocations. Overselling raises. The LTCG boundary is the day after the calendar anniversary (29 Feb → 28 Feb). |
@@ -80,12 +80,16 @@ The VIF properties failed intermittently: the first example exceeded
 Hypothesis's 200 ms deadline while statsmodels was imported. Those two
 tests now have `deadline=None`.
 
-Property testing also found an edge case in `run_wfo`, which is **not
-fixed here**. At exactly `_min_required_observations` rows,
-`TimeSeriesSplit` gets `n_splits=1` and raises sklearn's "n_splits=2 or
-more" `ValueError` instead of producing one fold. Callers already treat a
-`ValueError` as "too little data", so behaviour does not change. The
-generators start at one extra test window.
+Property testing also found an edge case in `run_wfo` (fixed in v182, the
+follow-up on this branch). The documented minimum was train (60) + gap +
+one test window (6). But below train + gap + **two** test windows,
+`TimeSeriesSplit` got `n_splits=1` and raised sklearn's "n_splits=2 or
+more" `ValueError`. `_min_required_observations` is now train + gap + 2 ×
+test. Below it, `run_wfo`, `evaluation.iter_wfo_splits` and the x2
+research splitter raise their own "too small" error. Callers already
+treated any `ValueError` as "too little data", so no output changes. Every
+fold still trains on exactly 60 rows, which the WFO property now asserts.
+Its generator starts at the minimum (`extra_rows` from 0).
 
 ## 3. Repository guard (autouse)
 
@@ -259,7 +263,6 @@ Commands (on the branch, `.venv`):
 
 ## Not done here
 
-- `run_wfo` at exactly the minimum row count (section 2).
 - `apply_fracdiff`: its defaults (0.90 correlation, 1e-5 weight threshold)
   never produce output on monthly-length series. It is unused in
   production (F31).

@@ -5,6 +5,30 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v182 (2026-09-26) — WFO minimum row count
+
+Found by the step 9 property tests (`docs/reviews/2026-09-25_step9_test_hardening.md`,
+section 2).
+
+- **Bug.** `_min_required_observations` was train (60) + gap + one test
+  window (6), but `TimeSeriesSplit` needs `n_splits >= 2`. So every row
+  count from that minimum up to one test window more failed inside sklearn
+  ("n_splits=2 or more") instead of with `run_wfo`'s own error.
+  `evaluation.iter_wfo_splits`/`build_wfo_splitter` and the x2 research
+  splitter had the same gap.
+- **Fix.** The minimum is now train + gap + two test windows (80 rows for
+  6M, 87 for 12M). Below it, all three raise their own "too small"
+  `ValueError`, whose message now reads `2 x TEST_WINDOW`. Callers already
+  treated any `ValueError` as too little data, so no recommendation or
+  report changes. Datasets at or above the new minimum split exactly as
+  before.
+- **Tests.** New `tests/test_wfo_min_rows.py` (14 tests; all 14 failed
+  before) covers the old minimum and +5 rows for each horizon, two folds at
+  the new minimum, and the evaluation and x2 splitters.
+  `test_property_wfo_temporal.py` now generates from the minimum
+  (`extra_rows` from 0) and requires exactly 60 training rows in every fold.
+- **Full suite:** SUITE_LINE
+
 ## v181 (2026-09-26) — Review 2026-09-25, step 9: test hardening sweep
 
 WP12 from `docs/reviews/REPO_REVIEW_2026-09-25.md` (the parts of F28 that
@@ -62,8 +86,6 @@ mutation tables and before/after tests:
 - **Docs.** `CONTRIBUTING.md` has a Tests section: markers, the guard,
   `committed_db_copy`, seeds and the mutation study.
 - **Found, not fixed.**
-  - `run_wfo` at exactly `_min_required_observations` rows raises sklearn's
-    `n_splits` error (a `ValueError`, as callers expect).
   - `apply_fracdiff`'s defaults never produce output on monthly-length
     series; it has no production caller.
 - **Full suite:** `2437 passed, 1 skipped` (v180: 2397 passed, 2 skipped).

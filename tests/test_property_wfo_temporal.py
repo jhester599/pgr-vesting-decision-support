@@ -7,7 +7,7 @@ on generated monthly data and check the folds they actually produce:
 
 - train rows precede test rows, separated by exactly
   ``target_horizon + purge_buffer`` rows (the embargo);
-- the training window never exceeds ``WFO_TRAIN_WINDOW_MONTHS``;
+- every training window is exactly ``WFO_TRAIN_WINDOW_MONTHS`` rows;
 - test windows are ``WFO_TEST_WINDOW_MONTHS`` long, disjoint, increasing,
   and the last one ends on the last row;
 - ``y_true`` is the target on the test dates;
@@ -24,7 +24,7 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 import config
-from src.models.wfo_engine import predict_current, run_wfo
+from src.models.wfo_engine import _min_required_observations, predict_current, run_wfo
 
 _FEATURES = ["f0", "f1", "f2"]
 _SETTINGS = settings(
@@ -54,10 +54,7 @@ _wfo_case = st.fixed_dictionaries(
     {
         "horizon": st.sampled_from([6, 12]),
         "purge_buffer": st.integers(min_value=0, max_value=3),
-        # run_wfo needs two test windows: at exactly
-        # _min_required_observations rows TimeSeriesSplit gets n_splits=1
-        # and raises (a ValueError either way; see the step 9 report).
-        "extra_rows": st.integers(min_value=config.WFO_TEST_WINDOW_MONTHS, max_value=40),
+        "extra_rows": st.integers(min_value=0, max_value=40),
         "seed": st.integers(min_value=0, max_value=10_000),
         "nan_rate": st.sampled_from([0.0, 0.1]),
     }
@@ -66,7 +63,7 @@ _wfo_case = st.fixed_dictionaries(
 
 def _run(case: dict) -> tuple[pd.DataFrame, pd.Series, object, int]:
     gap = case["horizon"] + case["purge_buffer"]
-    n_rows = config.WFO_TRAIN_WINDOW_MONTHS + gap + config.WFO_TEST_WINDOW_MONTHS + case["extra_rows"]
+    n_rows = _min_required_observations(gap) + case["extra_rows"]
     X, y = _panel(n_rows, case["seed"], case["nan_rate"])
     result = run_wfo(
         X,
@@ -93,9 +90,10 @@ def test_folds_are_embargoed_bounded_and_ordered(case: dict) -> None:
         # Strict order and an embargo of exactly horizon + purge_buffer rows.
         assert fold.train_start <= fold.train_end < fold.test_start <= fold.test_end
         assert test_start_pos - train_end_pos - 1 == gap
-        # Rolling window: never more than WFO_TRAIN_WINDOW_MONTHS rows, and
-        # the rows are contiguous.
-        assert fold.n_train <= config.WFO_TRAIN_WINDOW_MONTHS
+        # Rolling window: exactly WFO_TRAIN_WINDOW_MONTHS contiguous rows in
+        # every fold (the oldest train set is train + available mod test
+        # rows before the cap).
+        assert fold.n_train == config.WFO_TRAIN_WINDOW_MONTHS
         assert train_end_pos - train_start_pos + 1 == fold.n_train
         assert fold.n_test == config.WFO_TEST_WINDOW_MONTHS
         if previous_test_end is not None:
@@ -105,9 +103,6 @@ def test_folds_are_embargoed_bounded_and_ordered(case: dict) -> None:
         np.testing.assert_allclose(fold.y_true, y.loc[fold._test_dates].to_numpy())
         assert len(fold.y_hat) == len(fold.y_true)
     assert result.folds[-1].test_end == dates[-1]
-    # The oldest fold that could train on a full window does so.
-    if len(dates) >= config.WFO_TRAIN_WINDOW_MONTHS + gap + 2 * config.WFO_TEST_WINDOW_MONTHS:
-        assert max(f.n_train for f in result.folds) == config.WFO_TRAIN_WINDOW_MONTHS
 
 
 @given(_wfo_case, st.data())
@@ -148,7 +143,7 @@ def test_fold_predictions_ignore_rows_after_training(case: dict, data: st.DataOb
 def test_live_refit_uses_only_the_recent_window(seed: int, window: int, older_rows: int) -> None:
     X, y = _panel(window + older_rows, seed)
     wfo_stub = run_wfo(
-        *_panel(config.WFO_TRAIN_WINDOW_MONTHS + 8 + 2 * config.WFO_TEST_WINDOW_MONTHS, seed),
+        *_panel(_min_required_observations(8), seed),
         model_type="ridge",
         target_horizon_months=6,
         feature_columns=_FEATURES,
