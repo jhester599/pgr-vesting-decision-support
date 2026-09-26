@@ -58,11 +58,15 @@ def _call(**overrides) -> ThreeScenarioResult:
 # ---------------------------------------------------------------------------
 
 class TestBreakeven:
+    """Review 2026-09-25, F19: the breakeven is the absolute PGR return
+    ``-g (S - L) / (1 - L)`` below which selling now wins; the old function
+    returned ``+(S - L) / (1 - L)`` as the return needed to hold."""
+
     def test_breakeven_default_rates(self):
-        """With STCG=0.37, LTCG=0.20, breakeven ≈ 0.2125."""
+        """Fully appreciated lot, STCG=0.37, LTCG=0.20: -21.25 %."""
         result = compute_stcg_ltcg_breakeven(stcg_rate=0.37, ltcg_rate=0.20)
-        assert math.isclose(result, 0.17 / 0.80, rel_tol=1e-9)
-        assert math.isclose(result, 0.2125, rel_tol=1e-4)
+        assert math.isclose(result, -0.17 / 0.80, rel_tol=1e-9)
+        assert math.isclose(result, -0.2125, rel_tol=1e-4)
 
     def test_breakeven_zero_rate_difference(self):
         """STCG == LTCG → breakeven = 0.0."""
@@ -70,16 +74,15 @@ class TestBreakeven:
         assert result == pytest.approx(0.0, abs=1e-12)
 
     def test_breakeven_custom_rates(self):
-        """STCG=0.40, LTCG=0.15 → verify formula manually."""
-        # (0.40 - 0.15) / (1.0 - 0.15) = 0.25 / 0.85
-        expected = 0.25 / 0.85
+        """STCG=0.40, LTCG=0.15 → -(0.40 - 0.15) / (1 - 0.15)."""
+        expected = -0.25 / 0.85
         result = compute_stcg_ltcg_breakeven(stcg_rate=0.40, ltcg_rate=0.15)
         assert result == pytest.approx(expected, rel=1e-9)
 
-    def test_breakeven_is_positive(self):
-        """Breakeven is always > 0 when STCG > LTCG."""
+    def test_breakeven_is_negative_for_a_gain_lot(self):
+        """Holding survives a fall: the breakeven is < 0 when STCG > LTCG."""
         result = compute_stcg_ltcg_breakeven(stcg_rate=0.37, ltcg_rate=0.20)
-        assert result > 0.0
+        assert result < 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -199,14 +202,13 @@ class TestScenarioC:
 
 class TestRecommendation:
     def test_recommended_scenario_is_highest_utility(self):
-        """recommended_scenario is the one with max prob × net_proceeds."""
+        """recommended_scenario has the highest expected net proceeds (F19:
+        no longer weighted by a probability of beating benchmarks)."""
         result = _call()
         a, b, c = result.scenarios
-        utility_a = a.probability * a.net_proceeds
-        utility_b = b.probability * b.net_proceeds
-        # C is degenerate here (positive predicted return)
+        # C is degenerate here (positive expected return)
         best_label = max(
-            [("SELL_NOW_STCG", utility_a), ("HOLD_TO_LTCG", utility_b)],
+            [("SELL_NOW_STCG", a.net_proceeds), ("HOLD_TO_LTCG", b.net_proceeds)],
             key=lambda x: x[1],
         )[0]
         assert result.recommended_scenario == best_label
@@ -218,9 +220,10 @@ class TestRecommendation:
             assert len(result.scenarios) == 3
 
     def test_stcg_ltcg_breakeven_stored(self):
-        """result.stcg_ltcg_breakeven matches compute_stcg_ltcg_breakeven()."""
+        """result.stcg_ltcg_breakeven is the lot's breakeven, g = (P - B) / P."""
         result = _call(stcg_rate=0.37, ltcg_rate=0.20)
-        expected = compute_stcg_ltcg_breakeven(0.37, 0.20)
+        g = (270.0 - 116.08) / 270.0
+        expected = compute_stcg_ltcg_breakeven(0.37, 0.20, gain_fraction=g)
         assert result.stcg_ltcg_breakeven == pytest.approx(expected, rel=1e-9)
 
 
@@ -272,5 +275,7 @@ class TestIntegration:
         c = result.scenarios[2]
         assert c.probability == pytest.approx(0.0)
 
-        # Breakeven sanity check.
-        assert result.stcg_ltcg_breakeven == pytest.approx(0.2125, rel=1e-3)
+        # Breakeven sanity check: -g * 0.2125 with g = (270 - 116.08) / 270.
+        assert result.stcg_ltcg_breakeven == pytest.approx(
+            -(270.0 - 116.08) / 270.0 * 0.2125, rel=1e-9
+        )

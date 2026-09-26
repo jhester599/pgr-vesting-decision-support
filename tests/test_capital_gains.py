@@ -28,7 +28,10 @@ from src.tax.capital_gains import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
-SELL_DATE = date(2026, 1, 15)
+# 2026-04-15 is more than 30 days from every scheduled vest (Jan 19, Jul 17),
+# so a loss sale is not a wash sale. The old 2026-01-15 was four days before
+# the January vest: its loss lot is a wash sale (review 2026-09-25, F19).
+SELL_DATE = date(2026, 4, 15)
 CURRENT_PRICE = 200.0
 
 @pytest.fixture()

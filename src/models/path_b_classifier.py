@@ -6,7 +6,8 @@ shadow output. Extracted and hardened from v125/v127/v130 research scripts.
 Public API
 ----------
 build_composite_return_series  -- weighted composite relative-return series
-fit_path_b_classifier          -- train Path B logistic on composite target
+make_path_b_model              -- impute + scale + logistic pipeline
+fit_path_b_classifier          -- train Path B on composite target, score the current row
 apply_prequential_temperature_scaling -- prequential temperature calibration
 PATH_B_THRESHOLD               -- composite return threshold (0.03)
 """
@@ -17,7 +18,10 @@ from datetime import date
 
 import numpy as np
 import pandas as pd
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 from config.features import INVESTABLE_CLASSIFIER_BASE_WEIGHTS
 from src.processing.feature_engineering import truncate_relative_target_for_asof
@@ -228,35 +232,63 @@ def build_composite_return_series(
 # ---------------------------------------------------------------------------
 
 
+def make_path_b_model() -> Pipeline:
+    """Path B estimator: median impute, standardise, then an L2 logistic (C = 0.5).
+
+    The scaler is fitted on each training window only (inside the pipeline),
+    never on the full sample. Without it the C = 0.5 penalty weighed features
+    by their units (review 2026-09-25, F24).
+    """
+    return Pipeline(
+        [
+            ("impute", SimpleImputer(strategy="median", keep_empty_features=True)),
+            ("scale", StandardScaler()),
+            (
+                "logit",
+                LogisticRegression(
+                    C=0.5,
+                    class_weight="balanced",
+                    solver="lbfgs",
+                    max_iter=1000,
+                ),
+            ),
+        ]
+    )
+
+
 def fit_path_b_classifier(
     X: pd.DataFrame,
     y: pd.Series,
     feature_cols: list[str],
+    X_current: pd.DataFrame,
 ) -> float | None:
-    """Train the Path B logistic classifier on all available history and return
-    the current-month (last-row) probability.
+    """Train Path B on the labelled history and score the current feature row.
 
-    Uses ``LogisticRegression(C=0.5, class_weight='balanced', solver='lbfgs')``
-    consistent with the Path B research specification.
+    Review 2026-09-25, F24: the classifier used to score ``X.iloc[-1]`` of the
+    target-joined frame, i.e. the last month whose 6-month outcome was already
+    known (2026-02-27 in the September 2026 run), not the decision month. The
+    current row is now an explicit argument.
 
     Parameters
     ----------
     X:
-        Feature DataFrame indexed by month-end date.
+        Training features indexed by month-end date (rows with a realised target).
     y:
         Binary target Series (1 = actionable sell, 0 = non-actionable).
     feature_cols:
         Ordered list of feature column names to use from ``X``.
+    X_current:
+        The decision row (one row; features only, no target needed).
 
     Returns
     -------
     float or None
-        Probability of the actionable-sell class for the last row of ``X``,
-        or ``None`` if training is not possible (< 30 observations or fewer
-        than 2 unique classes).
+        Probability of the actionable-sell class for ``X_current``, or
+        ``None`` if training is not possible (< 30 observations, fewer than 2
+        classes, or an empty current row).
     """
-    usable = [c for c in feature_cols if c in X.columns]
-    if not usable:
+    usable = [c for c in feature_cols if c in X.columns and c in X_current.columns]
+    if not usable or X_current.empty:
         return None
 
     X_sub = X[usable].copy()
@@ -269,23 +301,10 @@ def fit_path_b_classifier(
     if len(np.unique(y_sub.to_numpy(dtype=int))) < 2:
         return None
 
-    x_vals = X_sub.to_numpy(dtype=float).copy()  # .copy() ensures writable (pandas 3.0+)
-    medians = np.nanmedian(x_vals, axis=0)
-    medians = np.where(np.isnan(medians), 0.0, medians)
-    for col_idx in range(x_vals.shape[1]):
-        x_vals[np.isnan(x_vals[:, col_idx]), col_idx] = medians[col_idx]
-
     try:
-        model = LogisticRegression(
-            C=0.5,
-            class_weight="balanced",
-            solver="lbfgs",
-            max_iter=1000,
-        )
-        model.fit(x_vals, y_sub.to_numpy(dtype=int))
-        last_row = X.iloc[[-1]][usable].to_numpy(dtype=float).copy()  # writable
-        for col_idx in range(last_row.shape[1]):
-            last_row[np.isnan(last_row[:, col_idx]), col_idx] = medians[col_idx]
-        return float(model.predict_proba(last_row)[:, 1][0])
+        model = make_path_b_model()
+        model.fit(X_sub.to_numpy(dtype=float), y_sub.to_numpy(dtype=int))
+        current = X_current[usable].iloc[[-1]].to_numpy(dtype=float)
+        return float(model.predict_proba(current)[:, 1][0])
     except Exception:
         return None

@@ -240,9 +240,14 @@ def summarize_existing_holdings_actions(
     current_price: float,
     sell_date: date,
 ) -> list[LotAction]:
-    """Rank existing held lots by tax-aware trimming priority."""
+    """Rank existing held lots by tax-aware trimming priority.
+
+    Lots vesting after ``sell_date`` are not held yet and are skipped.
+    """
     actions: list[LotAction] = []
     for lot in lots:
+        if not lot.is_vested(sell_date):
+            continue
         shares = float(lot.shares_remaining or 0.0)
         if shares <= 0:
             continue

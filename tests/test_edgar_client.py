@@ -473,10 +473,23 @@ class TestEdgarHeaders:
         assert headers["User-Agent"] == "Unit Test qa@example.com"
         assert headers["Host"] == "data.sec.gov"
 
-    def test_build_edgar_headers_falls_back_to_generic_value(self, monkeypatch):
+    def test_build_edgar_headers_without_user_agent_fails(self, monkeypatch):
+        """Review 2026-09-25, F26: no silent placeholder User-Agent."""
         monkeypatch.delenv("EDGAR_USER_AGENT", raising=False)
+        with pytest.raises(config.EdgarUserAgentError):
+            config.build_edgar_headers()
+
+    @pytest.mark.parametrize(
+        "value", ["", "   ", "PGR Vesting Decision Support contact@example.com", "no email"]
+    )
+    def test_build_edgar_headers_rejects_placeholder_or_blank(self, monkeypatch, value):
+        monkeypatch.setenv("EDGAR_USER_AGENT", value)
+        with pytest.raises(config.EdgarUserAgentError):
+            config.build_edgar_headers()
+
+    def test_build_edgar_headers_has_no_host_by_default(self, monkeypatch):
+        monkeypatch.setenv("EDGAR_USER_AGENT", "Unit Test qa@example.com")
         headers = config.build_edgar_headers()
-        assert headers["User-Agent"] == config.EDGAR_USER_AGENT_FALLBACK
         assert "Host" not in headers
 
     def test_fetch_companyfacts_uses_configured_edgar_user_agent(

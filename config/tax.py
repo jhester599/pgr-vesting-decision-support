@@ -44,3 +44,14 @@ STCG_ZONE_MAX_DAYS: int = 365
 # ---------------------------------------------------------------------------
 TLH_LOSS_THRESHOLD: float = -0.10       # Harvest when unrealized return < -10%
 TLH_WASH_SALE_DAYS: int = 31            # Minimum days before repurchasing original
+
+# ---------------------------------------------------------------------------
+# Tax scenarios: absolute PGR return assumption (review 2026-09-25, F19)
+# ---------------------------------------------------------------------------
+# The production models forecast PGR's return *relative to benchmarks*, not
+# PGR's own price return. The hold-vs-sell tax comparison depends on the
+# absolute price, so the scenario table and the Monte Carlo use this assumed
+# annual PGR price drift instead of the relative forecast. 0.0 = no view on
+# PGR's absolute direction; the breakeven column shows how far PGR would have
+# to fall for selling now to win.
+TAX_SCENARIO_PGR_ANNUAL_RETURN: float = float(os.getenv("TAX_SCENARIO_PGR_ANNUAL_RETURN", "0.0"))

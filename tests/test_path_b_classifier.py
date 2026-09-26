@@ -46,5 +46,5 @@ def test_fit_path_b_classifier_returns_float_or_none() -> None:
     X = pd.DataFrame({"f1": np.random.default_rng(0).normal(size=100),
                       "f2": np.random.default_rng(1).normal(size=100)})
     y = pd.Series((np.random.default_rng(2).normal(size=100) < -0.03).astype(int))
-    result = fit_path_b_classifier(X, y, feature_cols=["f1", "f2"])
+    result = fit_path_b_classifier(X, y, feature_cols=["f1", "f2"], X_current=X.iloc[[-1]])
     assert result is None or isinstance(result, float)

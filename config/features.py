@@ -273,11 +273,13 @@ FRED_FEATURE_SOURCES: dict[str, tuple[str, ...]] = {
     "equity_risk_premium": ("SP500_EARNINGS_YIELD_MULTPL", "GS10"),
 }
 
-# EDGAR filing lag (months from period-end to public availability).
-# PGR 10-Q is filed ~45 days after quarter end; 10-K ~60 days.
-# Using 2 months as a conservative guard across all EDGAR quarterly data.
-# Monthly 8-K data (combined ratio, PIF) is filed within the same month —
-# however, applying the same lag is conservative and prevents any edge case.
+# EDGAR timing (review 2026-09-25, F23). Each EDGAR row enters the feature
+# matrix on the first decision date (business month-end) on or after its
+# filing_date (feature_engineering.edgar_availability_dates). Monthly 8-Ks
+# are filed 9-29 days after the month they report (the following month, not
+# the same month); 10-Ks can come after the 2-month mark (FY2024: 2025-03-03).
+# This fixed lag is only the fallback for a row without a filing_date, and
+# the lag research scripts still use.
 EDGAR_FILING_LAG_MONTHS: int = 2
 
 # ---------------------------------------------------------------------------

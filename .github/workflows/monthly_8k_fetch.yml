@@ -16,7 +16,10 @@ on:
         default: 'false'
 
 concurrency:
-  group: monthly-8k-fetch
+  # One queue for every workflow that commits data/pgr_financials.db
+  # (review 2026-09-25, F26). GitHub keeps one pending run per group, so the
+  # schedules are spread out; see docs/workflows.md.
+  group: db-writer
   cancel-in-progress: false
 
 jobs:
@@ -40,6 +43,10 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Fetch PGR 8-K operating metrics
+        env:
+          # SEC requires a name and contact e-mail; the fetcher fails without
+          # one instead of sending a placeholder (review 2026-09-25, F26).
+          EDGAR_USER_AGENT: "Jeff Hester jeffrey.r.hester@gmail.com"
         run: |
           BACKFILL="${{ github.event.inputs.backfill_years || '2' }}"
           DRY_FLAG=""

@@ -18,15 +18,22 @@ def sell_pct_from_consensus(
     mean_predicted: float,
     mean_ic: float,
 ) -> float:
-    """Map consensus signal + IC to a sell percentage."""
-    if mean_ic < 0.05:
+    """Map the consensus signal to the ACTIONABLE sell percentage.
+
+    Review 2026-09-25, F20: a bullish (OUTPERFORM) consensus never sells more
+    than the 50 % default. The old mapping sold 75 % when an OUTPERFORM
+    forecast was at most 5 %; replayed on the realised-only OOS record
+    (``src.models.live_policy_backtest``, 186 dates to 2026-02) that bucket
+    cost 2.4 pp per decision on 22 dates, and the whole mapping lost 0.11 pp
+    per decision to always selling 50 %. A missing or non-finite IC counts as
+    weak (fail closed).
+    """
+    if not math.isfinite(mean_ic) or mean_ic < 0.05:
         return 0.50
     if consensus == "OUTPERFORM":
         if mean_predicted > 0.15:
             return 0.25
-        if mean_predicted > 0.05:
-            return 0.50
-        return 0.75
+        return 0.50
     if consensus == "UNDERPERFORM":
         return 1.00
     return 0.50
@@ -179,7 +186,7 @@ def determine_recommendation_mode(
     Pesaran-Timmermann result in ``aggregate_health`` (``pt_p_value``). See
     ``evaluate_quality_gates``. ACTIONABLE needs every gate to PASS; any FAIL
     gives DEFER-TO-TAX-DEFAULT; otherwise MONITORING-ONLY. The ACTIONABLE sell
-    percentage mapping (``sell_pct_from_consensus``) is unchanged.
+    percentage comes from ``sell_pct_from_consensus``.
     """
     del mean_hr  # reported elsewhere; not a gate since review 2026-09-25 (F13)
     gates = evaluate_quality_gates(mean_ic, aggregate_health, representative_cpcv)
@@ -317,7 +324,7 @@ def build_vest_decision_lines(
         else "Tax-engine scenario ranking (informational only)"
     )
     scenario_note = (
-        "The tax engine's highest-utility scenario aligns with the current point forecast."
+        "The tax engine ranks scenarios by expected after-tax proceeds under the assumed PGR price return."
         if recommendation_mode["mode"] == "actionable"
         else "Because recommendation mode is not ACTIONABLE, do not treat the tax-engine ranking below as a standalone trading instruction."
     )
@@ -346,7 +353,7 @@ def build_vest_decision_lines(
         "",
         f"### {scenario_title}",
         "",
-        "| Scenario | Timing | Tax Rate | Predicted Return | Probability | Use when |",
+        "| Scenario | Timing | Tax Rate | Assumed PGR Return | Probability | Use when |",
         "|----------|--------|----------|------------------|-------------|----------|",
     ]
 
@@ -371,7 +378,15 @@ def build_vest_decision_lines(
         "",
         f"> {winner_label}: **{scenario_result.recommended_scenario}**.",
         f"> {scenario_note}",
-        f"> STCG/LTCG breakeven from the tax engine: {scenario_result.stcg_ltcg_breakeven:.2%}.",
+        (
+            f"> Holding to the LTCG date beats selling at STCG unless PGR's own price return is below "
+            f"{scenario_result.stcg_ltcg_breakeven:+.2%} (breakeven for the average basis used)."
+        ),
+        (
+            f"> Assumed PGR price return: {config.TAX_SCENARIO_PGR_ANNUAL_RETURN:+.1%}/yr "
+            "(`TAX_SCENARIO_PGR_ANNUAL_RETURN`). The model's forecast is relative to the benchmarks, "
+            "not a PGR price forecast, so it does not drive these scenarios."
+        ),
         "",
     ]
 

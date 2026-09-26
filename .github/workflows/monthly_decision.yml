@@ -1,28 +1,30 @@
 name: Monthly Decision Report
 
-# Fires on the 20th, 21st, and 22nd of each month.
-# The script itself is idempotent: it skips if a report for this month
-# already exists.  This handles the "first business day on or after the 20th"
-# requirement without needing a custom weekend-aware cron expression.
+# Runs after the monthly 8-K fetch finishes, so the decision sees that
+# month's EDGAR data (review 2026-09-25, F26). The 8-K job is scheduled on
+# the 20th (and the 25th); the 21st and 22nd crons are fallbacks in case the
+# 8-K run did not trigger this one. Every DB writer shares the `db-writer`
+# concurrency group.
 #
-# Schedule logic:
-#   - 20th fires first (primary target date).
-#   - If the 20th is a Saturday, the 21st run produces the report (Sunday → skip,
-#     Monday → 22nd fires).
-#   - If the 20th is a Sunday, the 21st (Monday) run produces the report.
-#   - Once the report exists, the 21st and 22nd runs are no-ops (idempotent).
+# The script is idempotent: from the 20th the as-of date is the last business
+# day on or before the 20th, so later runs in the month see an existing
+# report and exit with `generated=false`. The verify, chart, commit and email
+# steps run only when this run generated a new report (`generated=true`), so
+# a fallback run no longer re-sends the email or recommits the charts.
 #
 # All runs are at 15:00 UTC = 11 AM ET (after morning data settlement).
 
 on:
+  workflow_run:
+    workflows: ["Monthly 8-K Fetch (PGR Operating Metrics)"]
+    types: [completed]
   schedule:
-    - cron: '0 15 20 * *'   # 20th of each month at 15:00 UTC
-    - cron: '0 15 21 * *'   # 21st (fallback if 20th was Saturday)
-    - cron: '0 15 22 * *'   # 22nd (fallback if 20th was Sunday)
+    - cron: '0 15 21 * *'   # fallback
+    - cron: '0 15 22 * *'   # fallback
   workflow_dispatch:
     inputs:
       as_of_date:
-        description: 'Override as-of date (YYYY-MM-DD). Defaults to today.'
+        description: 'Override as-of date (YYYY-MM-DD, not later than today). Defaults to today.'
         required: false
         default: ''
       dry_run:
@@ -35,7 +37,10 @@ on:
         default: false
 
 concurrency:
-  group: monthly-decision-report
+  # One queue for every workflow that commits data/pgr_financials.db
+  # (review 2026-09-25, F26). GitHub keeps one pending run per group, so the
+  # schedules are spread out; see docs/workflows.md.
+  group: db-writer
   cancel-in-progress: false
 
 jobs:
@@ -101,7 +106,7 @@ jobs:
 
       - name: Verify monthly artifacts and write summary
         id: verify
-        if: ${{ github.event.inputs.dry_run != 'true' }}
+        if: ${{ steps.decision.outputs.generated == 'true' }}
         run: |
           python scripts/verify_monthly_outputs.py --summary-path workflow_summary.md
           cat workflow_summary.md >> "$GITHUB_STEP_SUMMARY"
@@ -113,7 +118,7 @@ jobs:
         # does not require this step), but the job ends red and the stale
         # charts are not committed.
         id: charts
-        if: ${{ github.event.inputs.dry_run != 'true' }}
+        if: ${{ steps.decision.outputs.generated == 'true' }}
         run: |
           set -euo pipefail
           started="$(mktemp)"
@@ -132,7 +137,7 @@ jobs:
         # still committed; the charts are staged only when that step passed.
         id: commit
         if: >-
-          ${{ !cancelled() && github.event.inputs.dry_run != 'true'
+          ${{ !cancelled() && steps.decision.outputs.generated == 'true'
           && steps.decision.outcome == 'success' && steps.verify.outcome == 'success' }}
         env:
           CHARTS_OUTCOME: ${{ steps.charts.outcome }}
@@ -157,11 +162,11 @@ jobs:
           git push
 
       - name: Send monthly decision email
-        # Send after a successful (non-dry-run) report.  Failure is non-fatal —
+        # Send only after this run generated and committed a new report.  Failure is non-fatal —
         # data collection and DB commit are more critical than the notification.
         # Email logic lives in src/reporting/email_sender.py (testable module).
         if: >-
-          ${{ !cancelled() && github.event.inputs.dry_run != 'true'
+          ${{ !cancelled() && steps.decision.outputs.generated == 'true'
           && steps.commit.outcome == 'success' }}
         continue-on-error: true
         env:

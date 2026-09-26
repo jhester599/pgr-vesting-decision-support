@@ -363,13 +363,7 @@ def get_ensemble_signals(
         raw_point_prediction = sum(p * w for p, w in weighted_preds) / total_weight
         point_prediction = float(apply_prediction_shrinkage(raw_point_prediction, alpha=shrinkage_alpha))
 
-        ic = ens_result.mean_ic
-        if ic < _IC_THRESHOLD or abs(point_prediction) < _RETURN_THRESHOLD:
-            signal = _SIGNAL_NEUTRAL
-        elif point_prediction > 0:
-            signal = _SIGNAL_OUTPERFORM
-        else:
-            signal = _SIGNAL_UNDERPERFORM
+        signal = classify_benchmark_signal(point_prediction, ens_result.mean_ic)
 
         rows.append({
             "benchmark":               etf,
@@ -451,6 +445,21 @@ _SIGNAL_NEUTRAL = "NEUTRAL"
 
 _IC_THRESHOLD = 0.05          # minimum IC for a signal to be non-NEUTRAL
 _RETURN_THRESHOLD = 0.01      # minimum |predicted return| for directional signal
+
+
+def classify_benchmark_signal(point_prediction: float, ic: float) -> str:
+    """Per-benchmark live signal: NEUTRAL unless IC and |prediction| clear their bars.
+
+    A missing or non-finite IC is treated as below the bar (fail closed).
+    """
+    if (
+        not np.isfinite(ic)
+        or ic < _IC_THRESHOLD
+        or not np.isfinite(point_prediction)
+        or abs(point_prediction) < _RETURN_THRESHOLD
+    ):
+        return _SIGNAL_NEUTRAL
+    return _SIGNAL_OUTPERFORM if point_prediction > 0 else _SIGNAL_UNDERPERFORM
 
 
 def get_current_signals(

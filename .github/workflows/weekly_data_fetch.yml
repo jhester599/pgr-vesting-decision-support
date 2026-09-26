@@ -19,7 +19,10 @@ on:
         default: 'false'
 
 concurrency:
-  group: weekly-data-accumulation
+  # One queue for every workflow that commits data/pgr_financials.db
+  # (review 2026-09-25, F26). GitHub keeps one pending run per group, so the
+  # schedules are spread out; see docs/workflows.md.
+  group: db-writer
   cancel-in-progress: false
 
 jobs:
@@ -46,6 +49,9 @@ jobs:
         env:
           AV_API_KEY: ${{ secrets.AV_API_KEY }}
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          # SEC EDGAR companyfacts: a name and contact e-mail are required;
+          # the fetch fails without one (review 2026-09-25, F26).
+          EDGAR_USER_AGENT: "Jeff Hester jeffrey.r.hester@gmail.com"
         run: |
           DRY_FLAG=""
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.dry_run }}" = "true" ]; then

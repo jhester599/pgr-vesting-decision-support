@@ -78,6 +78,11 @@ from src.models.forecast_diagnostics import (
     summarize_panel_diagnostics,
 )
 from src.models.prequential import build_prequential_panel, live_shrinkage_alpha
+from src.models.live_policy_backtest import (
+    LIVE_MAPPING_POLICY,
+    evaluate_live_mapping,
+    historical_live_decisions,
+)
 from src.models.classification_gate_overlay import (
     build_decision_overlay_frame,
     resolve_overlay_policy_variant,
@@ -174,6 +179,7 @@ from src.reporting.decision_rendering import (
     build_executive_summary_lines as render_executive_summary_lines,
     build_vest_decision_lines as render_vest_decision_lines,
     determine_recommendation_mode as render_determine_recommendation_mode,
+    sell_pct_from_consensus,
 )
 from src.logging_config import configure_logging
 from src.reporting.run_manifest import build_run_manifest, write_run_manifest
@@ -244,33 +250,68 @@ def _first_business_day_on_or_after(d: date) -> date:
     return d
 
 
+def _last_business_day_on_or_before(d: date) -> date:
+    """Move ``d`` back to the previous business day if it falls on a weekend."""
+    while not _is_business_day(d):
+        d -= timedelta(days=1)
+    return d
+
+
 def _resolve_as_of_date(as_of_arg: str | None) -> date:
     """
-    Determine the as-of date for this run.
+    Determine the as-of date for this run. It is never later than today.
 
-    If ``as_of_arg`` is provided, parse it.  Otherwise resolve it from
-    today's date.
+    If ``as_of_arg`` is provided, parse it; a date after today raises
+    ``ValueError``. Otherwise resolve it from today's date.
 
     On or after the 20th of the month, the target is anchored to the 20th
-    of *this* month (advanced to the next business day if the 20th falls
-    on a weekend) rather than to today's actual date. The monthly workflow
-    schedules fallback runs on the 21st and 22nd in case the 20th is a
-    weekend; anchoring to the 20th makes those fallback runs resolve to
-    the *same* as-of date as the 20th's run (when the 20th was already a
-    business day), so ``_already_ran`` correctly treats them as no-ops
-    instead of regenerating the report — and re-sending the email — on
-    each fallback day.
+    of *this* month, moved back to the previous business day if the 20th
+    falls on a weekend. The monthly workflow schedules fallback runs on the
+    21st and 22nd; anchoring makes those runs resolve to the *same* as-of
+    date as the 20th's run, so ``_already_ran`` treats them as no-ops
+    instead of regenerating the report (and re-sending the email).
+
+    Review 2026-09-25, F26: a weekend 20th used to move *forward* to Monday,
+    so a Saturday run (June and September 2026) had an as-of date later than
+    the run date. Moving back keeps the 20th/21st/22nd runs in agreement
+    without dating a run in the future.
 
     Before the 20th (e.g. a manual/testing run), there is no monthly
     target yet to anchor to, so this just resolves to today.
     """
-    if as_of_arg:
-        return date.fromisoformat(as_of_arg)
     today = date.today()
+    if as_of_arg:
+        as_of = date.fromisoformat(as_of_arg)
+        if as_of > today:
+            raise ValueError(f"--as-of {as_of} is later than today ({today}).")
+        return as_of
     if today.day < 20:
         return today
     target = date(today.year, today.month, 20)
-    return _first_business_day_on_or_after(target)
+    return _last_business_day_on_or_before(target)
+
+
+def _validate_layer_mode(mode: str) -> str:
+    """Return ``mode`` if it is a known recommendation-layer mode, else raise.
+
+    Review 2026-09-25, F26: an unknown value (e.g. the typo ``live-only``)
+    used to fall back silently to the retired ``shadow_promoted`` mode.
+    """
+    if mode not in config.RECOMMENDATION_LAYER_VALID_MODES:
+        raise ValueError(
+            f"Unknown RECOMMENDATION_LAYER_MODE {mode!r}; expected one of "
+            f"{', '.join(config.RECOMMENDATION_LAYER_VALID_MODES)}."
+        )
+    return mode
+
+
+def _write_step_output(name: str, value: str) -> None:
+    """Append ``name=value`` to ``$GITHUB_OUTPUT`` when running in Actions."""
+    output_path = os.getenv("GITHUB_OUTPUT")
+    if not output_path:
+        return
+    with open(output_path, "a", encoding="utf-8") as handle:
+        handle.write(f"{name}={value}\n")
 
 
 def _output_dir(as_of: date) -> Path:
@@ -1274,25 +1315,6 @@ def _determine_recommendation_mode(
     )
 
 
-def _sell_pct_from_consensus(
-    consensus: str,
-    mean_predicted: float,
-    mean_ic: float,
-) -> float:
-    """Map consensus signal + IC to a sell-percentage recommendation (0.0–1.0)."""
-    if mean_ic < 0.05:
-        return 0.50  # weak signal → default diversification
-    if consensus == "OUTPERFORM":
-        if mean_predicted > 0.15:
-            return 0.25  # high conviction → hold most
-        if mean_predicted > 0.05:
-            return 0.50
-        return 0.75
-    if consensus == "UNDERPERFORM":
-        return 1.00   # model predicts underperformance → diversify fully
-    return 0.50       # NEUTRAL
-
-
 # ---------------------------------------------------------------------------
 # v7.3 — Tax context section builder
 # ---------------------------------------------------------------------------
@@ -1306,14 +1328,14 @@ def _build_tax_context_lines(
 ) -> list[str]:
     """Build the ## Tax Context section for recommendation.md.
 
-    Shows the STCG/LTCG breakeven return and interprets the current model
-    prediction against it.  No lot-specific data is needed; this section
-    provides universal tax-timing context for any RSU holder.
+    Shows the absolute PGR return at which holding a lot to LTCG ties selling
+    it now at STCG, ``-g * (S - L) / (1 - L)`` for a lot whose gain is ``g``
+    of its price (``compute_stcg_ltcg_breakeven``). No lot data is needed.
 
-    The key insight (v7.1 finding): PGR's typical model prediction of 1–7%
-    is far below the ~21% breakeven required for an immediate STCG sale to
-    beat waiting 366 days for LTCG treatment.  This section makes that
-    comparison explicit every month.
+    The model forecast is PGR's return *relative to the benchmarks*. It is
+    reported for context only: it is not a PGR price forecast, so it is not
+    compared with the breakeven, and a negative value does not imply a loss
+    on the shares (review 2026-09-25, F19).
 
     Args:
         predicted_6m_return: Ensemble mean 6M relative return prediction.
@@ -1334,29 +1356,30 @@ def _build_tax_context_lines(
     if as_of is None:
         as_of = date.today()
 
-    breakeven = compute_stcg_ltcg_breakeven(stcg_rate, ltcg_rate)
+    breakeven_full = compute_stcg_ltcg_breakeven(stcg_rate, ltcg_rate, gain_fraction=1.0)
+    breakeven_half = compute_stcg_ltcg_breakeven(stcg_rate, ltcg_rate, gain_fraction=0.5)
     tax_differential = stcg_rate - ltcg_rate
 
-    # Interpret predicted return vs breakeven
-    pred_vs_breakeven_gap = predicted_6m_return - breakeven
-    if predicted_6m_return >= breakeven:
-        verdict = (
-            f"⚠️ **Model prediction ({predicted_6m_return:+.1%}) EXCEEDS the "
-            f"LTCG breakeven ({breakeven:.1%}).**  Immediate sale at STCG may be "
-            f"warranted — verify with lot-specific analysis."
-        )
-    elif predicted_6m_return > 0:
-        verdict = (
-            f"✓ **Model prediction ({predicted_6m_return:+.1%}) is below the "
-            f"LTCG breakeven ({breakeven:.1%}) by {abs(pred_vs_breakeven_gap):.1%}.**  "
-            f"Holding RSUs for 366 days post-vest to qualify for LTCG treatment "
-            f"is likely the higher after-tax outcome."
+    verdict = (
+        f"**Holding a vested lot to its LTCG date gives more after-tax cash than selling it now "
+        f"at STCG unless PGR's own price falls by more than {abs(breakeven_full):.2%} "
+        f"(a lot that is all gain) or {abs(breakeven_half):.2%} (a lot whose gain is half its "
+        f"price) before that date.** At the vest itself the shares carry no gain, so the tax rate "
+        f"does not change the proceeds of an immediate sale."
+    )
+    if predicted_6m_return < 0:
+        forecast_note = (
+            f"The model expects PGR to lag the benchmarks by {abs(predicted_6m_return):.1%} over "
+            f"6 months. That is a relative forecast, not a PGR price forecast: it is an argument "
+            f"for diversifying, not a tax loss. A lot has a harvestable loss only when PGR trades "
+            f"below its cost basis, and selling it at a loss within 30 days of a vest is a wash "
+            f"sale (the loss is disallowed)."
         )
     else:
-        verdict = (
-            f"⚠️ **Model predicts negative return ({predicted_6m_return:+.1%}).**  "
-            f"Consider capital-loss harvesting scenario — a tax loss at {stcg_rate:.0%} "
-            f"STCG rate can offset other gains.  See three-scenario analysis at vesting."
+        forecast_note = (
+            f"The model expects PGR to beat the benchmarks by {predicted_6m_return:.1%} over "
+            f"6 months. That is a relative forecast, not a PGR price forecast, so it is not "
+            f"compared with the breakeven above."
         )
 
     # Next vest dates from config
@@ -1379,18 +1402,22 @@ def _build_tax_context_lines(
         f"| STCG Rate (federal) | {stcg_rate:.0%} |",
         f"| LTCG Rate (federal) | {ltcg_rate:.0%} |",
         f"| Tax-rate differential | {tax_differential:.0%} |",
-        f"| **LTCG breakeven return** | **{breakeven:.2%}** |",
-        f"| Current model prediction (6M) | {predicted_6m_return:+.2%} |",
+        f"| **LTCG breakeven PGR return (lot all gain)** | **{breakeven_full:+.2%}** |",
+        f"| LTCG breakeven PGR return (gain = half the price) | {breakeven_half:+.2%} |",
+        f"| Model forecast, PGR vs benchmarks (6M, relative) | {predicted_6m_return:+.2%} |",
         f"| P(outperform) | {prob_outperform:.1%} |",
         f"| Next time-based vest | {next_time_vest} |",
         f"| Next performance vest | {next_perf_vest} |",
         "",
         verdict,
         "",
-        "> **Breakeven formula:** `(STCG − LTCG) / (1 − LTCG)` — the minimum",
-        "> return needed on RSUs held to LTCG eligibility (366 days post-vest) to",
-        "> produce higher after-tax proceeds than selling immediately at STCG.",
-        "> Run `compute_three_scenarios()` at each vesting event for lot-specific analysis.",
+        forecast_note,
+        "",
+        "> **Breakeven formula:** `-g × (STCG − LTCG) / (1 − LTCG)`, where `g` is the",
+        "> lot's unrealised gain as a fraction of the current price. Below this absolute",
+        "> PGR return, selling now at STCG beats holding to the LTCG date (the day after",
+        "> the one-year anniversary of the vest); above it, holding wins. It compares",
+        "> cash at the LTCG date and ignores what sale proceeds would earn meanwhile.",
     ]
 
     return lines
@@ -1402,12 +1429,18 @@ def _build_provisional_vest_scenario(
     mean_predicted: float,
     prob_outperform: float,
 ) -> dict | None:
-    """Build a provisional three-scenario view for the next vest using current lots."""
+    """Build a provisional three-scenario view for the next vest using current lots.
+
+    Only lots vested by ``as_of`` are held. ``mean_predicted`` is the relative
+    forecast and is not used as a PGR price return (review 2026-09-25, F19);
+    the scenarios and the Monte Carlo use ``config.TAX_SCENARIO_PGR_ANNUAL_RETURN``.
+    """
+    del mean_predicted
     lots_path = Path("data/processed/position_lots.csv")
     if not lots_path.exists():
         return None
 
-    lots = load_position_lots(str(lots_path))
+    lots = load_position_lots(str(lots_path), as_of=as_of)
     if not lots:
         return None
 
@@ -1426,14 +1459,18 @@ def _build_provisional_vest_scenario(
         if lot.shares_remaining and lot.shares_remaining > 0
     ) / total_shares
     vest_date, rsu_type = _get_next_vest_info(as_of)
+    # The scenarios need PGR's absolute price return. The model forecasts the
+    # return relative to benchmarks (mean_predicted), which is not a price
+    # forecast, so the configured absolute assumption is used (F19).
+    annual_return = config.TAX_SCENARIO_PGR_ANNUAL_RETURN
     scenario = compute_three_scenarios(
         vest_date=vest_date,
         rsu_type=rsu_type,
         shares=total_shares,
         cost_basis_per_share=avg_basis,
         current_price=current_price,
-        predicted_6m_return=mean_predicted,
-        predicted_12m_return=mean_predicted * 2.0,
+        predicted_6m_return=(1.0 + annual_return) ** 0.5 - 1.0,
+        predicted_12m_return=annual_return,
         prob_outperform_6m=prob_outperform,
         prob_outperform_12m=prob_outperform,
     )
@@ -1447,7 +1484,8 @@ def _build_provisional_vest_scenario(
             annual_vol = estimate_annual_vol_weekly(
                 close_prices, db_client.get_splits(conn, "PGR")
             )
-            annual_drift = mean_predicted * 2.0  # annualise 6M forecast
+            # Absolute drift assumption, not the relative forecast (F19).
+            annual_drift = math.log1p(annual_return)
             mc_analysis = run_monte_carlo_tax_analysis(
                 current_price=current_price,
                 cost_basis_per_share=avg_basis,
@@ -1576,7 +1614,7 @@ def _build_existing_holdings_guidance(conn, as_of: date) -> list[dict[str, objec
     lots_path = Path("data/processed/position_lots.csv")
     if not lots_path.exists():
         return []
-    lots = load_position_lots(str(lots_path))
+    lots = load_position_lots(str(lots_path), as_of=as_of)
     if not lots:
         return []
     prices = db_client.get_prices(conn, "PGR", end_date=str(as_of))
@@ -1768,6 +1806,20 @@ def _compute_policy_summary(
                 policy,
                 exc_info=True,
             )
+
+    # The live ACTIONABLE mapping itself (review 2026-09-25, F20): the live
+    # consensus and sell-% function replayed at every OOS date, scored on the
+    # equal-weight mean relative return of that date.
+    try:
+        live_panel = _prequential_panel(ensemble_results, panel)
+        decisions = historical_live_decisions(live_panel, sell_pct_from_consensus)
+        if not decisions.empty:
+            summaries[LIVE_MAPPING_POLICY] = evaluate_live_mapping(decisions)
+    except Exception:
+        logger.warning(
+            "_compute_policy_summary: failed to backtest the live mapping; skipping",
+            exc_info=True,
+        )
 
     return summaries if summaries else None
 
@@ -2154,6 +2206,7 @@ def _write_recommendation_md(
             "tiered_25_50_100": "Model: tiered 25/50/100",
             "neutral_band_2pct": "Model: neutral band ±2%",
             "neutral_band_3pct": "Model: neutral band ±3%",
+            LIVE_MAPPING_POLICY: "**Live ACTIONABLE mapping** (consensus, per date)",
         }
 
         lines += [
@@ -2167,7 +2220,10 @@ def _write_recommendation_md(
             "\"Mean Return\" is the portfolio-weighted realized relative return per "
             "vesting event.  \"Cumulative\" is the sum across all events.  "
             "\"Capture Ratio\" is the fraction of oracle (always hold when positive) "
-            "gains captured.  N = number of OOS events.",
+            "gains captured.  N = number of OOS events.  The live ACTIONABLE "
+            "mapping is the policy used when every gate passes; it is replayed on "
+            "the realised-only record and scored once per date (the others once "
+            "per benchmark and date).",
             "",
             "### Fixed Heuristic Baselines",
             "",
@@ -2190,7 +2246,10 @@ def _write_recommendation_md(
             "| Policy | N | Mean Return | Cumul. Return | Uplift vs Sell-All | Uplift vs Hold-All | Uplift vs 50% | Capture |",
             "|--------|---|-------------|---------------|--------------------|--------------------|---------------|---------|",
         ]
-        for p in signal_policies_present:
+        model_policies_present = signal_policies_present + (
+            [LIVE_MAPPING_POLICY] if LIVE_MAPPING_POLICY in policy_summary else []
+        )
+        for p in model_policies_present:
             s = policy_summary[p]
             up_sell = f"{s.uplift_vs_sell_all:+.2%}" if not np.isnan(s.uplift_vs_sell_all) else "n/a"
             up_hold = f"{s.uplift_vs_hold_all:+.2%}" if not np.isnan(s.uplift_vs_hold_all) else "n/a"
@@ -3261,15 +3320,9 @@ def main(
     skip_fred: bool = False,
 ) -> None:
     configure_logging()
+    layer_mode = _validate_layer_mode(config.RECOMMENDATION_LAYER_MODE)
     as_of = _resolve_as_of_date(as_of_date_str)
     run_date = date.today()
-    layer_mode = config.RECOMMENDATION_LAYER_MODE
-    if layer_mode not in config.RECOMMENDATION_LAYER_VALID_MODES:
-        logger.warning(
-            "[Recommendation Layer] Unknown mode '%s', defaulting to 'shadow_promoted'.",
-            layer_mode,
-        )
-        layer_mode = "shadow_promoted"
 
     logger.info("%sPGR Monthly Decision - as-of %s", "[DRY RUN] " if dry_run else "", as_of)
     logger.info("Run date: %s", run_date)
@@ -3277,6 +3330,7 @@ def main(
     # Idempotency: skip if this month's report already exists
     if _already_ran(as_of) and not dry_run:
         logger.info("Report for %s already exists. Skipping.", as_of.strftime("%Y-%m"))
+        _write_step_output("generated", "false")
         return
 
     if dry_run:
@@ -3453,6 +3507,7 @@ def main(
                 if aggregate_health is not None
                 else None
             ),
+            live_sell_pct=float(active_recommendation_mode["sell_pct"]),
         )
         classification_shadow_summary = shadow_summary_obj.to_payload()
     except Exception as exc:  # noqa: BLE001
@@ -3673,7 +3728,9 @@ def main(
         history_df = pd.read_csv(history_path)
     else:
         history_df = pd.DataFrame()
-    history_df = attach_matured_classifier_outcomes(conn, history_df, horizon_months=6)
+    history_df = attach_matured_classifier_outcomes(
+        conn, history_df, horizon_months=6, as_of=as_of
+    )
     if not history_df.empty and not dry_run:
         history_df.to_csv(history_path, index=False)
 
@@ -3699,7 +3756,9 @@ def main(
             entry=history_entry,
         )
         history_df = pd.read_csv(history_path)
-        history_df = attach_matured_classifier_outcomes(conn, history_df, horizon_months=6)
+        history_df = attach_matured_classifier_outcomes(
+            conn, history_df, horizon_months=6, as_of=as_of
+        )
         history_df.to_csv(history_path, index=False)
 
     ta_history_entries = build_ta_shadow_variant_history_entries(
@@ -3978,6 +4037,9 @@ def main(
 
     conn.close()
     logger.info("Done. Results written to %s/", out_dir)
+    # The workflow commits the charts and sends the email only when a new
+    # production report was generated (review F26).
+    _write_step_output("generated", "false" if dry_run else "true")
 
 
 if __name__ == "__main__":
@@ -3987,7 +4049,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--as-of",
         metavar="YYYY-MM-DD",
-        help="Override the as-of date (default: today or next business day after 20th).",
+        help=(
+            "Override the as-of date; must not be later than today (default: today, "
+            "or from the 20th the last business day on or before the 20th)."
+        ),
     )
     parser.add_argument(
         "--dry-run",

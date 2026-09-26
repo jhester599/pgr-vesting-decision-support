@@ -43,8 +43,9 @@ and windows are calendar-based on weekly bars:
   `commodity_equity_momentum`): 6-month calendar returns on each ticker's
   split-adjusted closes;
 - P/B, P/E, BVPS growth and buyback yield: EDGAR per-share values are
-  restated to the latest share basis on their report period, before the
-  filing lag, and divided by the split-adjusted price;
+  restated to the latest share basis on their report period, before they
+  are placed on the first month-end on or after their filing date, and
+  divided by the split-adjusted price;
 - TA shadow features (`src/research/v160_ta_features.py`): split-adjusted
   OHLCV (volume scaled inversely) on weekly bars, with 13/26/52-bar windows;
 - Monte Carlo tax volatility: the last 52 split-adjusted weekly log returns
@@ -118,6 +119,15 @@ Operational notes:
 - the committed CSV is exported from the DB and seeds only missing months
 - freshness checks are calendar-aware: prior-month PGR monthly 8-K data is
   required only after the configured filing grace window
+- timing (review 2026-09-25, F23): each monthly and quarterly EDGAR row
+  enters the feature matrix on the first business month-end on or after its
+  `filing_date` (`feature_engineering.edgar_availability_dates`). Monthly
+  8-Ks are filed 9-29 days after the month, so they enter one month after it
+  (the fixed 2-month lag used before was a month late; for some 10-Ks, such
+  as FY2024 filed 2025-03-03, it was early). The lag remains only as the
+  fallback for a row without a filing date
+- every request sends `EDGAR_USER_AGENT` (a name and contact e-mail); calls
+  fail when it is unset, blank or the old placeholder
 
 ## Local CSV Inputs
 

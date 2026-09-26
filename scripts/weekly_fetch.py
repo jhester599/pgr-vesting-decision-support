@@ -316,6 +316,10 @@ def main(dry_run: bool = False, skip_fred: bool = False) -> None:
     try:
         n = _refresh_pgr_fundamentals(conn, dry_run=dry_run)
         logger.info("PGR fundamentals: %s rows upserted", n)
+    except config.EdgarUserAgentError:
+        # A configuration error, not a transient EDGAR failure: fail the run
+        # rather than send a placeholder User-Agent (review F26).
+        raise
     except Exception as exc:  # noqa: BLE001
         logger.exception(
             "EDGAR fundamentals fetch failed. Continuing with previously cached data. Error=%r",

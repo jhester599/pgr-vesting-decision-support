@@ -45,29 +45,34 @@ class TestTaxContextLines:
         assert "## Tax Context" in lines
 
     def test_breakeven_row_present(self):
-        """The LTCG breakeven value appears in the output."""
+        """The LTCG breakeven is an absolute PGR decline (review F19: sign fixed)."""
         lines = _build_tax_context_lines(0.04, 0.58, stcg_rate=0.37, ltcg_rate=0.20)
         combined = "\n".join(lines)
-        # breakeven = (0.37 - 0.20) / (1 - 0.20) = 0.2125 → 21.25%
-        assert "21.25%" in combined
+        # -g (S - L) / (1 - L) with g = 1: -(0.37 - 0.20) / 0.80 = -21.25 %
+        assert "-21.25%" in combined
+        # g = 0.5: -10.625 % (printed to two decimals)
+        assert "| LTCG breakeven PGR return (gain = half the price) | -10.6" in combined
 
-    def test_positive_below_breakeven_verdict(self):
-        """Prediction below breakeven → 'holding ... is likely the higher after-tax outcome'."""
+    def test_hold_wins_unless_pgr_falls_verdict(self):
+        """Holding to LTCG wins unless PGR's own price falls by more than the breakeven."""
         lines = _build_tax_context_lines(0.04, 0.58, stcg_rate=0.37, ltcg_rate=0.20)
         combined = "\n".join(lines)
-        assert "below the" in combined.lower()
+        assert "unless PGR's own price falls by more than 21.25%" in combined
 
-    def test_prediction_above_breakeven_verdict(self):
-        """Prediction >= breakeven → warning that immediate sale may be warranted."""
+    def test_relative_forecast_is_not_compared_with_the_breakeven(self):
+        """A large relative forecast no longer triggers 'immediate sale may be warranted'."""
         lines = _build_tax_context_lines(0.30, 0.75, stcg_rate=0.37, ltcg_rate=0.20)
         combined = "\n".join(lines)
-        assert "EXCEEDS" in combined or "exceeds" in combined.lower()
+        assert "EXCEEDS" not in combined
+        assert "relative forecast, not a PGR price forecast" in combined
 
     def test_negative_prediction_loss_harvest_verdict(self):
-        """Negative prediction → capital-loss harvesting note."""
+        """Negative relative forecast: diversification note, not 'capital-loss harvesting'."""
         lines = _build_tax_context_lines(-0.10, 0.30, stcg_rate=0.37, ltcg_rate=0.20)
         combined = "\n".join(lines)
-        assert "negative return" in combined.lower() or "loss" in combined.lower()
+        assert "capital-loss harvesting" not in combined.lower()
+        assert "not a tax loss" in combined
+        assert "wash sale" in combined
 
     def test_custom_rates_reflected(self):
         """Custom STCG/LTCG rates appear in the table."""
