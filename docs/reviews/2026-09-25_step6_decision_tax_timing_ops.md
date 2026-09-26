@@ -108,7 +108,8 @@ business day on or before the 20th (a Saturday 20th gives Friday the 19th for
 the 20th/21st/22nd runs alike; it used to give Monday the 22nd), and an
 explicit `--as-of` in the future raises.
 
-**Live effect (September 2026).** See section 7.
+**Live effect (September 2026):** the quality-weighted consensus flips
+NEUTRAL → UNDERPERFORM; the recommendation stays DEFER / 50 % (section 7).
 
 ## 5. Ops (F26)
 
@@ -191,7 +192,34 @@ Existing tests changed because they encoded the old behaviour:
 
 ## 7. September 2026 before and after
 
-SEPTEMBER_REPLAY_PLACEHOLDER
+`scripts/replay_monthly_decisions.py --as-of 2026-09-21` (a read-only dry
+run) in two clean worktrees, each with its own copy of the committed DB (sha256
+`7c68efbd…c35d`, unchanged after both runs): `master` (69889ad) and this
+branch. The difference is the filing-date placement of EDGAR rows (F23); the
+mapping change does not apply because the month is not ACTIONABLE.
+
+| | `master` | This branch |
+|---|---|---|
+| Recommendation | DEFER-TO-TAX-DEFAULT / 50 % | **DEFER-TO-TAX-DEFAULT / 50 %** |
+| Consensus (quality-weighted) | NEUTRAL (LOW) | **UNDERPERFORM** (LOW) |
+| Consensus (equal weight) | NEUTRAL | NEUTRAL |
+| Mean forecast | −1.93 % | −1.43 % |
+| OOS R² (gate ≥ 2 %) | +5.08 % PASS | +2.86 % PASS |
+| Equal-weight IC (gate ≥ 0.07) | 0.0707 PASS | 0.0762 PASS |
+| Pooled IC | 0.130 | 0.102 |
+| Hit rate vs base rate | 62.8 % vs 68.1 % | 62.8 % vs 68.1 % |
+| Pesaran–Timmermann p (gate < 0.05) | 0.255 FAIL | 0.391 FAIL |
+
+Per benchmark, VOO turns UNDERPERFORM (−1.26 %; was +0.26 %, NEUTRAL) and
+VWO turns UNDERPERFORM (−2.08 %; was −1.26 % with IC 0.005, NEUTRAL), as the
+review predicted ("VWO joins; 4 of 8 benchmarks"). DBC and VDE stay
+UNDERPERFORM; BND and GLD stay OUTPERFORM.
+
+Directional skill still binds, so the recommendation does not change. Using
+EDGAR data a month earlier lowers the OOS R² from +5.1 % to +2.9 %, close to
+its 2 % gate, and the pooled IC from 0.130 to 0.102. The earlier data is the
+honest timing (the old lag used information later than necessary and, for
+some 10-Ks, earlier than filed), so these are the numbers to track.
 
 ## Judgement calls
 

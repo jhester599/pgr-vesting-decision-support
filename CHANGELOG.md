@@ -54,7 +54,10 @@ replay are in `docs/reviews/2026-09-25_step6_decision_tax_timing_ops.md`.
   the fixed 2-month lag is only a fallback. Monthly rows now enter one month
   earlier, and 10-Ks filed after the 2-month mark are no longer used early.
   **Live inputs change** (combined ratio, NPW/PIF growth, investment income,
-  book yield, BVPS growth); see the report for September.
+  book yield, BVPS growth). September 2026 replay: the quality-weighted
+  consensus flips NEUTRAL → UNDERPERFORM (VOO and VWO join DBC and VDE), OOS
+  R² +5.1 % → +2.9 %, pooled IC 0.130 → 0.102; still DEFER / 50 % because
+  directional skill fails (PT p 0.39).
 - **As-of (F26).** Never later than today: from the 20th it is the last
   business day on or before the 20th (a weekend 20th used to move forward to
   Monday); a future `--as-of` raises.
