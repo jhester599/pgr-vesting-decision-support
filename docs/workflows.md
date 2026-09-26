@@ -45,6 +45,7 @@ Outputs:
 Purpose:
 
 - refresh monthly PGR 8-K operating metrics
+- runs `cli/edgar_monthly_fetch.py` (`pgr_vds.ingestion.edgar_monthly`)
 - scheduled on the 20th (primary) and 25th (fallback) at 14:00 UTC; its
   completion triggers `monthly_decision.yml`
 - sets `EDGAR_USER_AGENT` (name and contact e-mail); the fetcher fails if it
@@ -70,7 +71,7 @@ Triggers (review 2026-09-25, F26):
 - crons on the 21st and 22nd (15:00 UTC) as fallbacks;
 - `workflow_dispatch` (and the drift retrain trigger).
 
-`scripts/monthly_decision.py` writes `generated=true` to the step output only
+`cli/monthly_decision.py` writes `generated=true` to the step output only
 when it produced a new production report. Verify, charts, commit and email
 run only then, so the fallback runs (which find the month's report and exit
 with `generated=false`) no longer re-send the email or recommit the charts.
@@ -163,7 +164,7 @@ files were folded into it in review 2026-09-25, section 5, phase 4.
 `test` runs:
 
 - `pip install -e ".[dev]"` (package `pgr_vds`, defined in `pyproject.toml`),
-  so `src` and `config` import without `sys.path` edits
+  so `src`, `config` and `pgr_vds` import without `sys.path` edits
 - lint checks (`ruff check .`, config in `pyproject.toml`)
 - `scripts/checks/check_doc_links.py`: every relative link and anchor in the
   active docs resolves
@@ -172,7 +173,8 @@ files were folded into it in review 2026-09-25, section 5, phase 4.
   `scripts/checks/sys_path_allowlist.txt`, which may only shrink)
 - `research/tools/registry.py`: every study folder is registered and
   `research/README.md` is current
-- mypy on the hardened modules
+- mypy on the hardened modules, and on `src/pgr_vds` and `cli`
+  (`--follow-imports=silent`)
 - `python -m pytest -q -m "not artifact and not research"`: `tests/unit/`
   and `tests/integration/`, including
   `tests/integration/pipeline/test_entrypoint_imports.py`, which imports every

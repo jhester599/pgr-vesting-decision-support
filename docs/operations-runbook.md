@@ -30,16 +30,16 @@
 ```bash
 python scripts/weekly_fetch.py --dry-run --skip-fred
 python scripts/peer_fetch.py --dry-run
-python scripts/edgar_8k_fetcher.py --dry-run
-python scripts/monthly_decision.py --as-of 2026-04-11 --dry-run --skip-fred
+python cli/edgar_monthly_fetch.py --dry-run
+python cli/monthly_decision.py --as-of 2026-04-11 --dry-run --skip-fred
 ```
 
-`weekly_fetch.py --dry-run` and `monthly_decision.py --dry-run` are read-only:
+`weekly_fetch.py --dry-run` and `cli/monthly_decision.py --dry-run` are read-only:
 they open the DB with `mode=ro`, skip migrations, API-log rows, split seeding,
 the model-health snapshot, the retrain log, `decision_log.md` and the shadow
 ledgers, and write monthly artifacts to the gitignored
 `results/dry_run/monthly_decisions/YYYY-MM/` (manifest `dry_run: true`).
-`edgar_8k_fetcher.py --dry-run` also opens the DB read-only and skips
+`cli/edgar_monthly_fetch.py --dry-run` also opens the DB read-only and skips
 migrations, but it calls SEC EDGAR (set `EDGAR_USER_AGENT`; add
 `--cache-dir data/raw/edgar_8k_cache` to reuse cached filings).
 `peer_fetch.py --dry-run` is read-only too. CI runs all four dry runs through
@@ -105,7 +105,7 @@ PY
 Historical CSV backfill (seeds an empty or partial DB):
 
 ```bash
-python scripts/edgar_8k_fetcher.py --load-from-csv
+python cli/edgar_monthly_fetch.py --load-from-csv
 ```
 
 It inserts only months that `pgr_edgar_monthly` does not have, so it never
@@ -132,7 +132,7 @@ in the append-only `pgr_edgar_monthly_raw` table under the current
 writes a cell-level diff and prints the row-level validation results. Review the
 diff, then finalize the copy (`scripts/finalize_db.py --db /tmp/repair.db`) and
 copy it over the committed DB. Bump `PARSER_VERSION` in
-`scripts/edgar_8k_fetcher.py` whenever a parser change can change a value.
+`src/pgr_vds/ingestion/edgar_monthly/parse.py` whenever a parser change can change a value.
 
 Health check:
 

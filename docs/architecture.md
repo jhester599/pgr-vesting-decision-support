@@ -19,6 +19,18 @@ High-level flow:
 
 ## Core Directories
 
+- `src/pgr_vds/` (installed as the top-level package `pgr_vds`; it does not
+  import as `src.pgr_vds`)
+  - `decision/`: the monthly decision, one module per step: `schedule`,
+    `refresh` (FRED), `signal_generation`, `health` (OOS health, gates,
+    drift, policy backtest, manifest warnings), `tax_lots`, `portfolio`,
+    `rendering` / `recommendation_report` / `diagnostic_report`, `artifacts`
+    (CSVs, decision log, shadow ledgers, run manifest) and `pipeline` (`main`)
+  - `ingestion/edgar_monthly/`: PGR's monthly 8-K releases: `fetch` (SEC
+    EDGAR HTTP), `parse` (Exhibit 99 parser), `derive` (derived fields),
+    `load` (fetch-and-upsert, the CSV loader and export)
+- `cli/`
+  - `monthly_decision.py`, `edgar_monthly_fetch.py`: command-line wrappers
 - `src/database/`
   - schema initialization
   - migrations
@@ -26,7 +38,8 @@ High-level flow:
 - `src/ingestion/`
   - provider clients
   - fetch scheduling
-  - live EDGAR parsing
+  - EDGAR XBRL and 10-Q clients (the monthly 8-K parser is in
+    `src/pgr_vds/ingestion/edgar_monthly/`)
 - `src/processing/`
   - monthly feature engineering
   - relative-return target construction
@@ -49,7 +62,9 @@ High-level flow:
 - `dashboard/`
   - local Streamlit dashboard for viewing current outputs
 - `tests/`
-  - `unit/<package>/` mirrors `src/` (plus `config`, `dashboard`, `scripts`)
+  - `unit/<package>/` mirrors `src/` and `src/pgr_vds/` (`decision/`;
+    `ingestion/` holds the `edgar_monthly` tests), plus `config`, `dashboard`,
+    `scripts`
   - `integration/` (`pipeline/`, `data/`, `repo/`) for cross-layer,
     committed-DB and repository-contract tests
   - `research/` for study tests; CI runs them in a separate job
@@ -62,11 +77,13 @@ High-level flow:
 
 - `scripts/weekly_fetch.py`
 - `scripts/peer_fetch.py`
-- `scripts/edgar_8k_fetcher.py`
-- `scripts/monthly_decision.py`
+- `cli/edgar_monthly_fetch.py` (logic in `src/pgr_vds/ingestion/edgar_monthly/`)
+- `cli/monthly_decision.py` (logic in `src/pgr_vds/decision/`)
 
 These should remain thin orchestration entrypoints. Reusable business logic
-belongs in `src/`.
+belongs in `src/`. The files in `cli/` only parse the command line; the
+monthly decision is `pgr_vds.decision.pipeline.main` and the EDGAR job is
+`pgr_vds.ingestion.edgar_monthly` (review 2026-09-25, section 5, phase 5).
 
 ## Current Production Output Surface
 

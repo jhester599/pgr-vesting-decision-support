@@ -28,7 +28,7 @@ python -m pytest -q -m "research and not artifact"       # CI job: research
 python -m pytest -q -m artifact                          # CI job: artifacts
 python scripts/weekly_fetch.py --dry-run --skip-fred
 python scripts/peer_fetch.py --dry-run
-python scripts/monthly_decision.py --as-of 2026-04-02 --dry-run --skip-fred
+python cli/monthly_decision.py --as-of 2026-04-02 --dry-run --skip-fred
 ```
 
 The weekly and monthly dry runs are read-only (DB opened with `mode=ro`;
@@ -41,7 +41,7 @@ The layout mirrors the code (review 2026-09-25, section 5, phase 4):
 
 | Folder | What goes there | Marker |
 |---|---|---|
-| `tests/unit/<package>/` | Tests of one module. `<package>` mirrors the code: `backtest`, `database`, `ingestion`, `models`, `portfolio`, `processing`, `reporting`, `tax` (under `src/`), plus `config`, `dashboard` and `scripts` | `unit` |
+| `tests/unit/<package>/` | Tests of one module. `<package>` mirrors the code: `backtest`, `database`, `ingestion`, `models`, `portfolio`, `processing`, `reporting`, `tax` (under `src/`), `decision` and `ingestion` (`test_edgar_monthly_*.py`) under `src/pgr_vds/`, plus `config`, `dashboard` and `scripts` | `unit` |
 | `tests/integration/pipeline/` | Several layers end to end: the monthly pipeline, dry runs, entry-point imports, workflow and ops contracts, mutation kills | `integration` |
 | `tests/integration/data/` | Row-level integrity of the committed DB | `integration` |
 | `tests/integration/repo/` | Repository contracts: docs, links, layout, workflows, test-suite hygiene | `integration` |
@@ -99,7 +99,8 @@ include both the code and artifact update in the same PR.
 
 ## Packaging and Paths
 
-- `pyproject.toml` defines the package (`pgr_vds`: `src` and `config`), its
+- `pyproject.toml` defines the package (`pgr_vds`: `src`, `config` and the
+  top-level `pgr_vds` package in `src/pgr_vds/`), its
   dependencies and the pytest, mypy and ruff config. It is the only
   dependency list: there are no requirements or constraints files. Runtime
   dependencies go in `[project] dependencies` (every workflow runs
@@ -115,6 +116,17 @@ include both the code and artifact update in the same PR.
   `dashboard/` or a production script may import code from `results/`.
 - A new workflow entry point must be added to
   `tests/integration/pipeline/test_entrypoint_imports.py` (the test fails until it is).
+- `src/pgr_vds/` is the target package of the review's layout (phase 5):
+  new production logic goes in a `pgr_vds` sub-package, and an entry point
+  is a thin wrapper in `cli/` (argument parsing only). Import it as
+  `pgr_vds...`; `import src.pgr_vds` raises `ImportError`, so a module can
+  never load twice under two names. Inside `pgr_vds.decision` and
+  `pgr_vds.ingestion.edgar_monthly`, call another module's function through
+  the module (`health.compute_aggregate_health(...)`), so a test patches it
+  once, where it is defined. mypy checks `src/pgr_vds` and `cli` in CI.
+- A refactor that must not change output is checked with
+  `scripts/checks/golden_replay.py`: it runs the monthly dry run on two
+  commits with the same DB copy and compares the outputs byte for byte.
 
 ## Workflow Discipline
 

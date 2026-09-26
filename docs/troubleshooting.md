@@ -67,7 +67,7 @@ Symptoms:
 
 Action:
 
-- run `scripts/monthly_decision.py --dry-run --skip-fred` (read-only; output lands in
+- run `cli/monthly_decision.py --dry-run --skip-fred` (read-only; output lands in
   `results/dry_run/monthly_decisions/YYYY-MM/`, not the production folder)
 - run `scripts/verify_monthly_outputs.py --summary-path workflow_summary.md`
 - inspect model-quality gate output and DB health
