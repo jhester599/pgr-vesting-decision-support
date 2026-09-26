@@ -25,7 +25,7 @@ from src.research.v87_utils import (
     summarize_hold_series,
     summarize_monthly_policy_path,
 )
-from src.research.v37_utils import RESULTS_DIR
+from src.research.study_paths import study_output_path
 
 
 def regression_hold_fraction(consensus_frame: pd.DataFrame) -> pd.Series:
@@ -223,7 +223,7 @@ def write_results(
     frame: pd.DataFrame,
 ) -> Path:
     """Write one results CSV into the research artifact directory."""
-    path = RESULTS_DIR / filename
+    path = study_output_path(filename)
     frame.to_csv(path, index=False)
     return path
 
@@ -234,6 +234,6 @@ def write_summary(
     lines: list[str],
 ) -> Path:
     """Write one short markdown summary into the research artifact directory."""
-    path = RESULTS_DIR / filename
+    path = study_output_path(filename)
     path.write_text("\n".join([f"# {title}", "", *lines, ""]), encoding="utf-8")
     return path

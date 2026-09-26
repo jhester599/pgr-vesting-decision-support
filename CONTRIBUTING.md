@@ -62,7 +62,9 @@ output shape or fixtures:
 
 - `artifacts/*` (production outputs written by workflows; see
   `docs/artifact-policy.md`)
-- `results/v9/*`
+- `research/legacy/*` (the v9–v28 result folders, read-only)
+- `research/studies/*/outputs/*` (written by each study's script)
+- `research/README.md` (generated from `research/registry.yaml`)
 - `data/pgr_financials.db`
 
 If a code change intentionally alters a generated artifact, regenerate it and
@@ -121,3 +123,25 @@ The top-level docs map lives in `README.md`.
 - Do not silently promote research code into production behavior.
 - Promotion decisions should be documented in `docs/model-governance.md` and in
   a summary document for the relevant release.
+
+## Research Studies
+
+Each study is one folder, `research/studies/<id>_<slug>/`: its script(s), a
+`README.md` (question, command, conclusion, closeout link) and `outputs/`.
+Its tests go in `tests/research/`.
+
+- Name outputs with the study id prefix (`v170_…`, `x25_…`) and write them
+  with `src.research.study_paths.study_output_path(name)` (or
+  `src.research.v37_utils.save_results`), which finds the folder from the id.
+- Per-fold `*_detail.csv` files over 1 MB go to `outputs/detail/`
+  (`study_output_path(name, detail=True)`), which is gitignored; say in the
+  study README how to regenerate them. A test fails if one over 1 MB is
+  committed outside `research/legacy/`.
+- Register the study in `research/registry.yaml` and run
+  `python research/tools/registry.py --write` to regenerate
+  `research/README.md`. CI fails if a study folder is not registered or the
+  README is stale.
+- Run study scripts from the repository root. Production code must not
+  import from `research/`; if production needs a study's output, name the
+  path in `config/` or the reading module and record it in the registry's
+  `promoted_to`.

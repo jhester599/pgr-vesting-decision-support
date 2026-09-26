@@ -12,7 +12,7 @@ from src.models.v129_feature_map import (
 )
 
 _LEAN = ["f1", "f2", "f3"]
-_REAL_MAP = Path("results/research/v128_benchmark_feature_map.csv")
+_REAL_MAP = Path("research/studies/v128_benchmark_feature_search/outputs/v128_benchmark_feature_map.csv")
 
 
 def test_load_returns_dict_with_benchmarks() -> None:

@@ -79,9 +79,8 @@ def test_library_and_production_code_never_import_results() -> None:
     roots = ["src", "config", "dashboard"]
     offenders = []
     for rel in _tracked_python():
-        in_scope = rel.split("/", 1)[0] in roots or (
-            rel.startswith("scripts/") and not rel.startswith("scripts/research/")
-        )
+        # scripts/research/ moved to research/studies/ in phase 3.
+        in_scope = rel.split("/", 1)[0] in roots or rel.startswith("scripts/")
         if not in_scope or not rel.endswith(".py"):
             continue
         for module in _module_level_imports(REPO_ROOT / rel):

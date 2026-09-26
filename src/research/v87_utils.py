@@ -23,7 +23,6 @@ from src.research.v37_utils import (
     BENCHMARKS,
     GAP_MONTHS,
     MAX_TRAIN_MONTHS,
-    RESULTS_DIR,
     RIDGE_FEATURES_12,
     TEST_SIZE_MONTHS,
     compute_metrics,
@@ -36,6 +35,7 @@ from src.research.v66_utils import (
     build_consensus_frame,
     load_ensemble_oos_sequences,
 )
+from src.research.study_paths import study_output_path
 
 
 PRIMARY_BINARY_TARGET = "benchmark_underperform_0pct"
@@ -592,7 +592,7 @@ def choose_best_feature_set(results_df: pd.DataFrame) -> str:
 
 def load_v87_results() -> pd.DataFrame | None:
     """Load the v87 results CSV if present."""
-    path = RESULTS_DIR / "v87_target_taxonomy_results.csv"
+    path = study_output_path("v87_target_taxonomy_results.csv")
     if path.exists():
         return pd.read_csv(path)
     return None
@@ -600,7 +600,7 @@ def load_v87_results() -> pd.DataFrame | None:
 
 def load_v88_results() -> pd.DataFrame | None:
     """Load the v88 feature sweep CSV if present."""
-    path = RESULTS_DIR / "v88_feature_sweep_results.csv"
+    path = study_output_path("v88_feature_sweep_results.csv")
     if path.exists():
         return pd.read_csv(path)
     return None

@@ -89,7 +89,9 @@ The same monthly output set feeds:
 - Processed local inputs: `data/processed/`
 - Production artifacts: `artifacts/` (`monthly_decisions/`, `charts/`,
   `ops/`, `shadow_reviews/`); paths in `config/paths.py`
-- Versioned research artifacts: `results/research/`
+- Research studies: `research/studies/<id>_<slug>/` (script, README,
+  `outputs/`), indexed by `research/registry.yaml` → `research/README.md`;
+  v9–v28 result folders in `research/legacy/`
 
 ## Research vs. Production Boundary
 
@@ -102,7 +104,8 @@ Production code:
 Research code:
 
 - explores calibration, weighting, benchmark, and decision-layer alternatives
-- writes versioned outputs under `results/research/`
+- lives in `research/studies/<id>_<slug>/` and writes to that folder's
+  `outputs/` (large detail files to the gitignored `outputs/detail/`)
 - should not silently modify production recommendations
 
 See [model-governance.md](model-governance.md) and

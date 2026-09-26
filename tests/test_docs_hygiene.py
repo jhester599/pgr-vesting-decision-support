@@ -24,7 +24,8 @@ def test_legacy_plan_and_result_dirs_are_labeled() -> None:
     assert "Legacy" in plan_text
     assert "docs/superpowers/plans/" in plan_text
     assert "Legacy" in result_text
-    assert "results/research/" in result_text
+    assert "research/studies/" in result_text
+    assert "research/legacy/" in result_text
 
 
 def test_artifact_policy_mentions_current_shadow_ledgers() -> None:

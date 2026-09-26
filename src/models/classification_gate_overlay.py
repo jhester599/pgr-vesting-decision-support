@@ -43,16 +43,23 @@ def _actionable_health_pass(
     )
 
 
+# The v113 study's constrained ranking (research/studies/, review 2026-09-25
+# phase 3). Relative to the repository root, like config.DB_PATH.
+DEFAULT_OVERLAY_RESULTS_PATH = (
+    Path("research")
+    / "studies"
+    / "v113_constrained_candidate_selection"
+    / "outputs"
+    / "v113_constrained_candidate_selection_results.csv"
+)
+
+
 def resolve_overlay_policy_variant(
     results_path: Path | None = None,
 ) -> tuple[str, str, float]:
     """Resolve the best shadow overlay candidate from the constrained ranking."""
     if results_path is None:
-        results_path = (
-            Path("results")
-            / "research"
-            / "v113_constrained_candidate_selection_results.csv"
-        )
+        results_path = DEFAULT_OVERLAY_RESULTS_PATH
     if not results_path.exists():
         return ("permission_overlay", "permission_to_deviate", 0.70)
 

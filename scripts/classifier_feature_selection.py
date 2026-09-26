@@ -16,7 +16,7 @@ if _REPO_ROOT not in sys.path:
 
 import config
 from scripts.candidate_model_bakeoff import DEFAULT_BENCHMARKS, candidate_feature_sets
-from scripts.confirmatory_classifier_experiments import evaluate_confirmatory_classifier
+from research.studies.v9_experiments.confirmatory_classifier_experiments import evaluate_confirmatory_classifier
 from src.database import db_client
 from src.processing.feature_engineering import build_feature_matrix_from_db, get_feature_columns, get_X_y_relative
 from src.processing.multi_total_return import load_relative_return_matrix

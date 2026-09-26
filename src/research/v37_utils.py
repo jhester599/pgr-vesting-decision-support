@@ -13,12 +13,13 @@ from typing import Any, Callable
 import numpy as np
 import pandas as pd
 
+from src.research.study_paths import study_output_path
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = REPO_ROOT / "data" / "pgr_financials.db"
-RESULTS_DIR = REPO_ROOT / "results" / "research"
 
 # ---------------------------------------------------------------------------
 # Holdout boundary
@@ -225,7 +226,7 @@ def custom_wfo(
 
 def load_baseline_results() -> pd.DataFrame | None:
     """Load v37 baseline CSV for delta reporting.  Returns None if not yet run."""
-    path = RESULTS_DIR / "v37_baseline_results.csv"
+    path = study_output_path("v37_baseline_results.csv")
     if path.exists():
         return pd.read_csv(path)
     return None
@@ -238,16 +239,21 @@ def load_research_baseline_results() -> pd.DataFrame | None:
     available, it becomes the forward research baseline because later phases
     should be compared against the best low-complexity calibration result.
     """
-    preferred = RESULTS_DIR / "v38_shrinkage_best_results.csv"
+    preferred = study_output_path("v38_shrinkage_best_results.csv")
     if preferred.exists():
         return pd.read_csv(preferred)
     return load_baseline_results()
 
 
-def save_results(df: pd.DataFrame, filename: str) -> Path:
-    """Save results DataFrame to results/research/ and return the path."""
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    out = RESULTS_DIR / filename
+def save_results(df: pd.DataFrame, filename: str, *, detail: bool = False) -> Path:
+    """Save a results DataFrame to its study's ``outputs/`` folder.
+
+    The study folder is found from the id prefix of ``filename``
+    (``research/studies/<id>_<slug>/outputs/``). ``detail=True`` writes to the
+    gitignored ``outputs/detail/`` instead, for files over 1 MB.
+    """
+    out = study_output_path(filename, detail=detail)
+    out.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(out, index=False)
     print(f"\nSaved: {out}")
     return out

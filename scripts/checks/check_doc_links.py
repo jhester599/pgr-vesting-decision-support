@@ -10,7 +10,8 @@ The active docs are listed in ``ACTIVE_DOC_GLOBS``; the history trees
 (``docs/plans``, ``docs/superpowers``, ``docs/closeouts``, ``docs/results``,
 ``docs/archive``, ``archive/`` and ``results/``) are frozen records and are
 not checked, and neither are the generated reports under ``artifacts/``
-(only its READMEs).
+(only its READMEs) or the study outputs under ``research/studies/`` (only
+the index, the legacy README and each study's README).
 
 Usage:
     python scripts/checks/check_doc_links.py            # exit 1 on a broken link
@@ -37,6 +38,9 @@ ACTIVE_DOC_GLOBS: tuple[str, ...] = (
     "docs/reviews/*.md",
     "artifacts/README.md",
     "artifacts/*/README.md",
+    "research/README.md",
+    "research/legacy/README.md",
+    "research/studies/*/README.md",
 )
 
 _FENCE = re.compile(r"^\s*(```|~~~)")

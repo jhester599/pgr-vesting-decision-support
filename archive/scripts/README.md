@@ -3,7 +3,7 @@
 Completed one-time research study scripts for v11–v24.
 
 These scripts ran their respective research cycles and produced the
-artifacts in `results/v11/`–`results/v24/`.  They are preserved here
+artifacts in `results/v11/`–`results/v24/` (now `research/legacy/v11/`–`research/legacy/v24/`).  They are preserved here
 for reference and auditability but will not run again as part of the
 regular workflow.
 

@@ -345,8 +345,13 @@ CONTEXTUAL_CLASSIFIER_BENCHMARKS: list[str] = ["DBC", "GLD", "VMBS", "VDE"]
 # ---------------------------------------------------------------------------
 import os as _os
 
+# Written by the v128 study (research/studies/, review 2026-09-25 phase 3).
 V128_BENCHMARK_FEATURE_MAP_PATH: str = _os.path.join(
-    "results", "research", "v128_benchmark_feature_map.csv"
+    "research",
+    "studies",
+    "v128_benchmark_feature_search",
+    "outputs",
+    "v128_benchmark_feature_map.csv",
 )
 
 DUAL_TRACK_LEAN_BASELINE_OVERRIDES: frozenset[str] = frozenset({"VGT"})

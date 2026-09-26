@@ -207,7 +207,7 @@ A candidate should only be promoted when it demonstrates:
   - committed monthly output artifacts
 - Research:
   - `src/research/`
-  - `results/research/`
+  - `research/studies/` (registry: `research/registry.yaml`)
   - versioned plan and summary documents for candidate studies
 - Provisional:
   - live-vs-shadow observability paths kept temporarily after a promotion

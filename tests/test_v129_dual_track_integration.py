@@ -7,7 +7,7 @@ import pytest
 from config.features import DUAL_TRACK_LEAN_BASELINE_OVERRIDES, INVESTABLE_CLASSIFIER_BENCHMARKS
 from src.models.v129_feature_map import load_v128_feature_map, resolve_benchmark_features
 
-REAL_MAP = Path("results/research/v128_benchmark_feature_map.csv")
+REAL_MAP = Path("research/studies/v128_benchmark_feature_search/outputs/v128_benchmark_feature_map.csv")
 LEAN_BASELINE = ["mom_12m", "vol_63d", "yield_slope", "real_yield_change_6m",
                  "real_rate_10y", "credit_spread_hy", "nfci", "vix",
                  "combined_ratio_ttm", "investment_income_growth_yoy",

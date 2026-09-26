@@ -1,9 +1,9 @@
 ## v139-v152 Follow-On Status
 
 - `v140` through `v145` are complete, with machine-readable logs and summary
-  artifacts now recorded under `results/research/`
+  artifacts now recorded under `research/studies/`
 - `v141` produced the first new research-only winner in this follow-on cycle:
-  `results/research/v141_blend_weight_candidate.txt = 0.60`
+  `research/studies/v141_blend_eval/outputs/v141_blend_weight_candidate.txt = 0.60`
 - `v143` and `v144` added two more research-only winners:
   `v143_corr_prune_candidate.txt = 0.80` and
   `v144_conformal_candidate.json = {"coverage": 0.75, "aci_gamma": 0.03}`

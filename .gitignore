@@ -44,6 +44,10 @@ plots/
 # Output of `--dry-run` production entry points (never committed)
 results/dry_run/
 
+# Research per-fold detail files over 1 MB: regenerate them with the study
+# script (see the study README); never commit them (review 2026-09-25, phase 3).
+research/studies/*/outputs/detail/
+
 # IDE
 .vscode/
 .idea/

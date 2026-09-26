@@ -8,7 +8,8 @@ research result artifacts.
 
 For current research outputs, use:
 
-- `results/research/`
+- `research/studies/<id>_<slug>/outputs/` (index: `research/README.md`)
+- `research/legacy/` for the raw v9–v28 result folders these summaries describe
 
 For current closeout summaries, use:
 
