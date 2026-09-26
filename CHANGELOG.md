@@ -66,7 +66,8 @@ mutation tables and before/after tests:
     `n_splits` error (a `ValueError`, as callers expect).
   - `apply_fracdiff`'s defaults never produce output on monthly-length
     series; it has no production caller.
-- **Full suite:** SUITE_LINE
+- **Full suite:** `2437 passed, 1 skipped` (v180: 2397 passed, 2 skipped).
+  The skip left is the manual `test_classification_shadow` integration test.
 
 ## v180 (2026-09-26) — Review 2026-09-25, step 7: restructure phases 0–2
 

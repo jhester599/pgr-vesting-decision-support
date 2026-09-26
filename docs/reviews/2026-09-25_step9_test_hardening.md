@@ -228,7 +228,11 @@ Commands (on the branch, `.venv`):
 - `master` (clean clone): 2397 passed, 2 skipped, as in v180. In the clone,
   5 `test_entrypoint_imports` cases fail because the editable install
   points at the main checkout. They pass in the working tree.
-- Branch: see the CHANGELOG (v181) for the final line.
+- Branch: `python -m pytest -o addopts="--tb=short" -q` → `2437 passed,
+  1 skipped, 109 warnings in 591.03s`. The skip is
+  `test_classification_shadow.py:280` (manual integration test). Afterwards
+  `git status --ignored` shows no new files outside caches, and the DB hash
+  is unchanged.
 
 ## Judgement calls
 
