@@ -81,31 +81,40 @@ class TestApplyFracdiff:
         # (for d ≈ 0.0, the entire series might be non-NaN)
         assert len(diff_series) == len(series)
 
+    # Review F28: the two tests below ran on 80 monthly values, where the
+    # fixed-width window (weights down to 1e-5, about 1,000 bars at d = 0.5)
+    # leaves at most one differenced value, so every candidate d was skipped,
+    # d* fell back to max_d and the ``if len(valid) >= n`` guards skipped the
+    # assertions. On 3,000 bars a candidate qualifies. The default 0.90
+    # correlation is not reachable together with stationarity on a random
+    # walk (the fallback d = 0.5 keeps 0.45-0.58), so the threshold is 0.40.
+
+    def _make_long_random_walk(self, seed: int) -> pd.Series:
+        rng = np.random.default_rng(seed)
+        log_prices = np.cumsum(rng.normal(0.0005, 0.02, 3000)) + 5.0
+        return pd.Series(log_prices, index=pd.bdate_range("2010-01-01", periods=3000), name="log_price")
+
     def test_memory_preserved_via_correlation(self):
-        """Differenced series should retain ≥ 0.90 correlation with original."""
-        series = self._make_random_walk(n=80)
-        diff_series, _ = apply_fracdiff(series, corr_threshold=0.90)
+        """The smallest qualifying d keeps at least the requested correlation."""
+        series = self._make_long_random_walk(seed=0)
+        diff_series, d_star = apply_fracdiff(series, max_d=0.5, corr_threshold=0.40)
+        assert d_star < 0.5, "a candidate below max_d should qualify on 3,000 bars"
         valid = diff_series.dropna()
-        original_aligned = series.reindex(valid.index)
-        if len(valid) >= 5:
-            from scipy.stats import pearsonr
-            corr, _ = pearsonr(valid.values, original_aligned.values)
-            assert abs(corr) >= 0.85, (  # slight tolerance
-                f"Pearson correlation {corr:.3f} below threshold"
-            )
+        assert len(valid) >= 500
+        from scipy.stats import pearsonr
+        corr, _ = pearsonr(valid.values, series.reindex(valid.index).values)
+        assert abs(corr) >= 0.40, f"Pearson correlation {corr:.3f} below threshold"
 
     def test_stationarity_after_fracdiff(self):
-        """ADF test should reject unit root for the differenced series."""
-        series = self._make_random_walk(n=80, seed=1)
-        diff_series, _ = apply_fracdiff(series, adf_alpha=0.05)
+        """ADF rejects a unit root for the series at the chosen d."""
+        series = self._make_long_random_walk(seed=1)
+        diff_series, d_star = apply_fracdiff(series, max_d=0.5, corr_threshold=0.40, adf_alpha=0.05)
+        assert d_star < 0.5
         valid = diff_series.dropna()
-        if len(valid) >= 10:
-            from statsmodels.tsa.stattools import adfuller
-            adf_pval = adfuller(valid.values, autolag="AIC")[1]
-            # May not always achieve stationarity with short series; lenient check
-            assert adf_pval < 0.50, (
-                f"ADF p-value {adf_pval:.3f} too large; series may not be stationary"
-            )
+        assert len(valid) >= 500
+        from statsmodels.tsa.stattools import adfuller
+        adf_pval = adfuller(valid.values, autolag="AIC")[1]
+        assert adf_pval < 0.05, f"ADF p-value {adf_pval:.3f}; series is not stationary"
 
     def test_insufficient_data_raises(self):
         short_series = pd.Series(

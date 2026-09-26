@@ -44,7 +44,12 @@ def _top_level_keys(block: str) -> set[str]:
 def _steps(text: str) -> list[str]:
     """Each ``- name:`` step of the workflow, as text."""
     parts = re.split(r"\n(?=      - name: )", text)
-    return [part for part in parts if part.startswith("      - name: ")]
+    # A job's last step ends where the next job (a two-space key) starts.
+    return [
+        re.split(r"\n(?=  \S)", part, maxsplit=1)[0]
+        for part in parts
+        if part.startswith("      - name: ")
+    ]
 
 
 def _step(text: str, *, step_id: str | None = None, name: str | None = None) -> str:

@@ -104,8 +104,15 @@ def test_guard_fails_exactly_the_probes_that_touch_the_repo(tmp_path: Path) -> N
     assert outcomes == _EXPECTED_PROBES, proc.stdout[-4000:]
     assert "repo guard" in proc.stdout
     # Nothing was created and the committed DB (and its sidecars) is untouched.
-    assert not (REPO_ROOT / "results" / "guard_probe_wp12.txt").exists()
-    assert not (REPO_ROOT / "results" / "guard_probe_wp12_dir").exists()
+    # If the guard ever regresses, remove what the probes wrote before failing.
+    residue = [
+        path
+        for path in (REPO_ROOT / "results" / "guard_probe_wp12.txt", REPO_ROOT / "results" / "guard_probe_wp12_dir")
+        if path.exists()
+    ]
+    for path in residue:
+        path.rmdir() if path.is_dir() else path.unlink()
+    assert residue == []
     after = {p: p.stat().st_mtime_ns for p in repo_guard.COMMITTED_DB.parent.glob("pgr_financials.db*")}
     assert after == before
 

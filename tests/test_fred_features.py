@@ -171,7 +171,10 @@ class TestFredFeaturesInMatrix:
         prices = _make_price_history()
         dividends = _make_dividend_history()
         splits = _make_split_history()
-        fred = _make_fred_macro(n_months=20)
+        # FRED starts three months after the prices: those first months have
+        # no FRED observation yet, so their FRED features must be NaN (a
+        # backward fill would copy April 2020 into them).
+        fred = _make_fred_macro(n_months=20).iloc[3:]
 
         df = build_feature_matrix(
             price_history=prices,
@@ -187,6 +190,9 @@ class TestFredFeaturesInMatrix:
         # before T. (The old check only asserted finiteness, inside an
         # ``if col in df.columns`` guard; review F28.)
         assert "yield_slope" in df.columns
+        before_fred = df.index < fred.index[0]
+        assert before_fred.sum() == 3
+        assert df.loc[before_fred, "yield_slope"].isna().all()
         slope = df["yield_slope"].dropna()
         assert len(slope) >= 12
         for t, value in slope.items():
