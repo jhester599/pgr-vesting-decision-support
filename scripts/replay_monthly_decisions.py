@@ -16,7 +16,7 @@ Usage:
     python scripts/replay_monthly_decisions.py --as-of 2026-09-21 --out replay.csv
 
 ``--committed-dates`` replays the as-of date of every committed production
-month in ``results/monthly_decisions/`` (from its run_manifest.json).
+month in ``artifacts/monthly_decisions/`` (from its run_manifest.json).
 """
 
 from __future__ import annotations
@@ -36,8 +36,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import config  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-COMMITTED_DIR = REPO_ROOT / "results" / "monthly_decisions"
-DRY_RUN_DIR = REPO_ROOT / "results" / "dry_run" / "monthly_decisions"
+COMMITTED_DIR = REPO_ROOT / config.MONTHLY_DECISIONS_DIR
+DRY_RUN_DIR = REPO_ROOT / config.DRY_RUN_MONTHLY_DECISIONS_DIR
 
 
 def _sha256(path: Path) -> str:

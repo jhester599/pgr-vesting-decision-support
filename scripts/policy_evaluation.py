@@ -19,13 +19,13 @@ from src.database import db_client
 from src.models.multi_benchmark_wfo import run_ensemble_benchmarks
 from src.processing.feature_engineering import build_feature_matrix_from_db, get_X_y_relative
 from src.processing.multi_total_return import load_relative_return_matrix
-from src.research.evaluation import (
+from src.models.evaluation import (
     BASELINE_STRATEGIES,
     evaluate_wfo_model,
     reconstruct_baseline_predictions,
     reconstruct_ensemble_oos_predictions,
 )
-from src.research.policy_metrics import (
+from src.models.policy_metrics import (
     FIXED_POLICIES,
     SIGNAL_POLICIES,
     evaluate_policy_series,

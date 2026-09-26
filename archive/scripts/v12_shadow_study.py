@@ -32,20 +32,20 @@ from scripts.v11_autonomous_loop import (
 from src.database import db_client
 from src.processing.feature_engineering import build_feature_matrix_from_db, get_X_y_relative
 from src.processing.multi_total_return import load_relative_return_matrix
-from src.research.evaluation import (
+from src.models.evaluation import (
     evaluate_baseline_strategy,
     evaluate_wfo_model,
     reconstruct_baseline_predictions,
     summarize_predictions,
 )
-from src.research.v11 import (
+from src.portfolio.redeploy_buckets import (
     choose_forecast_universe,
     choose_recommendation_universe,
     next_vest_after,
     recommend_redeploy_buckets,
     summarize_existing_holdings_actions,
 )
-from src.research.v12 import (
+from src.reporting.snapshot_summary import (
     SnapshotSummary,
     aggregate_health_from_prediction_frames,
     build_shadow_comparison_lines,

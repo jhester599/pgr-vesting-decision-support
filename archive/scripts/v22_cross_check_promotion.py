@@ -17,7 +17,7 @@ if _REPO_ROOT not in sys.path:
 import config
 from scripts import monthly_decision
 from src.database import db_client
-from src.research.v22 import build_promoted_cross_check_summary, v22_promoted_cross_check_spec
+from src.reporting.cross_check import build_promoted_cross_check_summary, v22_promoted_cross_check_spec
 
 
 DEFAULT_OUTPUT_DIR = os.path.join("results", "v22")

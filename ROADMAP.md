@@ -142,7 +142,7 @@ and `monthly_summary.json` now include `ta_minimal_replacement` and
 sell percentage, and production recommendation path remain unchanged.
 
 v167 adds a durable TA shadow variant history ledger at
-`results/monthly_decisions/ta_shadow_variant_history.csv`. Monthly runs now
+`artifacts/monthly_decisions/ta_shadow_variant_history.csv`. Monthly runs now
 upsert reporting-only TA variant probabilities by `as_of_date` and `variant`,
 with 6M maturity dates and placeholders for eventual realized outcomes.
 
@@ -302,5 +302,5 @@ upgrade first, not an immediate promotion trigger.
 
 ## Monthly Decision Log
 
-See [`results/monthly_decisions/decision_log.md`](results/monthly_decisions/decision_log.md)
+See [`artifacts/monthly_decisions/decision_log.md`](artifacts/monthly_decisions/decision_log.md)
 for the persistent record of monthly recommendations.

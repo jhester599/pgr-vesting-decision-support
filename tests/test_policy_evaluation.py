@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from scripts.policy_evaluation import summarize_policy_evaluation
-from src.research.policy_metrics import (
+from src.models.policy_metrics import (
     evaluate_hold_fraction_series,
     evaluate_policy_series,
     hold_fraction_from_policy,

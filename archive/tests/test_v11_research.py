@@ -5,7 +5,7 @@ from datetime import date
 import pandas as pd
 
 from scripts.v11_autonomous_loop import _combine_prediction_frames
-from src.research.v11 import (
+from src.portfolio.redeploy_buckets import (
     add_destination_roles,
     choose_forecast_universe,
     choose_recommendation_universe,

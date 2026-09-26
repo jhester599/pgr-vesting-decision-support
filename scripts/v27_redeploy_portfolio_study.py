@@ -17,9 +17,9 @@ from src.database.db_client import get_connection
 from src.models.multi_benchmark_wfo import run_ensemble_benchmarks
 from src.processing.feature_engineering import build_feature_matrix_from_db
 from src.processing.multi_total_return import build_etf_monthly_returns, load_relative_return_matrix
-from src.research.diversification import score_benchmarks_against_pgr
-from src.research.evaluation import reconstruct_ensemble_oos_predictions
-from src.research.v27 import (
+from src.portfolio.diversification import score_benchmarks_against_pgr
+from src.models.evaluation import reconstruct_ensemble_oos_predictions
+from src.portfolio.redeploy_portfolio import (
     summarize_dynamic_portfolio,
     simulate_dynamic_portfolio,
     v27_benchmark_pruning_review,

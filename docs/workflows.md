@@ -80,21 +80,21 @@ the run.
 
 Outputs:
 
-- `results/monthly_decisions/<YYYY-MM>/recommendation.md`
-- `results/monthly_decisions/<YYYY-MM>/diagnostic.md`
-- `results/monthly_decisions/<YYYY-MM>/signals.csv`
-- `results/monthly_decisions/<YYYY-MM>/benchmark_quality.csv`
-- `results/monthly_decisions/<YYYY-MM>/consensus_shadow.csv`
-- `results/monthly_decisions/<YYYY-MM>/classification_shadow.csv`
-- `results/monthly_decisions/<YYYY-MM>/decision_overlays.csv`
-- `results/monthly_decisions/<YYYY-MM>/dashboard.html`
-- `results/monthly_decisions/<YYYY-MM>/monthly_summary.json`
-- `results/monthly_decisions/<YYYY-MM>/run_manifest.json`
-- `results/monthly_decisions/decision_log.md`
-- `results/monthly_decisions/classification_shadow_history.csv`
-- `results/monthly_decisions/ta_shadow_variant_history.csv`
+- `artifacts/monthly_decisions/<YYYY-MM>/recommendation.md`
+- `artifacts/monthly_decisions/<YYYY-MM>/diagnostic.md`
+- `artifacts/monthly_decisions/<YYYY-MM>/signals.csv`
+- `artifacts/monthly_decisions/<YYYY-MM>/benchmark_quality.csv`
+- `artifacts/monthly_decisions/<YYYY-MM>/consensus_shadow.csv`
+- `artifacts/monthly_decisions/<YYYY-MM>/classification_shadow.csv`
+- `artifacts/monthly_decisions/<YYYY-MM>/decision_overlays.csv`
+- `artifacts/monthly_decisions/<YYYY-MM>/dashboard.html`
+- `artifacts/monthly_decisions/<YYYY-MM>/monthly_summary.json`
+- `artifacts/monthly_decisions/<YYYY-MM>/run_manifest.json`
+- `artifacts/monthly_decisions/decision_log.md`
+- `artifacts/monthly_decisions/classification_shadow_history.csv`
+- `artifacts/monthly_decisions/ta_shadow_variant_history.csv`
 - the 12 recurring capital-return charts named in the workflow's
-  `RESEARCH_CHARTS` list, under `results/research/pgr_*.png`, from
+  `MONTHLY_CHARTS` list, under `artifacts/charts/pgr_*.png`, from
   `scripts/repurchase_timeseries_charts.py` and
   `scripts/capital_return_charts.py`
 
@@ -112,7 +112,7 @@ Notes:
   `python scripts/verify_monthly_outputs.py --summary-path workflow_summary.md`
 - the email step is non-fatal by design and should not block report generation
 - the chart step fails if either chart script errors or any chart in
-  `RESEARCH_CHARTS` is not rewritten. The decision artifacts, DB and email
+  `MONTHLY_CHARTS` is not rewritten. The decision artifacts, DB and email
   still go out (their steps run after a chart failure), but the charts are
   not committed and the job ends red. Both scripts open the DB read-only and
   take `--db-path` / `--out-dir`
@@ -130,12 +130,41 @@ They are dispatch-only (review 2026-09-25, F26): their old yearly crons would
 have fired again every March. They are retained for historical recovery and
 manual bootstrap scenarios, not the steady-state operating loop.
 
+The two initial-fetch workflows append their run log to
+`artifacts/ops/fetch_status.md` (was `data/fetch_status.md`) and commit it
+with the DB. `post_initial_bootstrap.yml` commits the DB and
+`artifacts/monthly_decisions/` (it used to run `git add results/ || true`).
+
+## What Workflows Commit
+
+Every commit step stages exact production paths (review 2026-09-25,
+section 5, phase 1; checked by `tests/test_restructure_phase1.py`):
+
+| Path | Workflows |
+|---|---|
+| `data/pgr_financials.db` | every DB writer, after `scripts/finalize_db.py` |
+| `artifacts/monthly_decisions/` | `monthly_decision.yml`, `post_initial_bootstrap.yml` |
+| `artifacts/charts/<chart>` (each name in `MONTHLY_CHARTS`) | `monthly_decision.yml` |
+| `artifacts/ops/fetch_status.md` | `initial_fetch_prices.yml`, `initial_fetch_dividends.yml` |
+
+Nothing under `results/` is committed by a workflow. The paths are constants
+in `config/paths.py`.
+
 ## CI Workflow
 
 `ci.yml` runs:
 
-- lint checks
-- unit and integration tests
+- `pip install -e .` (package `pgr_vds`, defined in `pyproject.toml`), so
+  `src` and `config` import without `sys.path` edits
+- lint checks (`ruff check .`, config in `pyproject.toml`)
+- `scripts/checks/check_doc_links.py`: every relative link and anchor in the
+  active docs resolves
+- `scripts/checks/check_sys_path_edits.py`: no new `sys.path` edit outside
+  `tests/conftest.py` (existing ones are listed in
+  `scripts/checks/sys_path_allowlist.txt`, which may only shrink)
+- unit and integration tests, including `tests/test_entrypoint_imports.py`,
+  which imports every script and module a workflow runs in a fresh
+  interpreter
 - smoke runs for major production entrypoints, each through
   `scripts/ci_offline_smoke.py`: every socket connection is refused and the
   SEC submissions index is served from a canned empty response, so no smoke

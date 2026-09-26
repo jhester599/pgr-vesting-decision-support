@@ -32,7 +32,7 @@ from src.logging_config import configure_logging
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_STATUS_FILE = os.path.join("data", "fetch_status.md")
+_DEFAULT_STATUS_FILE = config.FETCH_STATUS_PATH
 
 
 class TickerResult(NamedTuple):

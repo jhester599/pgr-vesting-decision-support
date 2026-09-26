@@ -50,11 +50,12 @@ jobs:
     permissions:
       contents: write   # required for git push back to the repo
     env:
-      # Every recurring chart, by name. The chart step fails unless each one
-      # is rewritten by this run, and only these files are committed.
+      # Every recurring chart, by name (written to artifacts/charts/). The
+      # chart step fails unless each one is rewritten by this run, and only
+      # these files are committed.
       # tests/test_capital_return_charts.py checks this list against the
       # CHART_FILES of both chart scripts.
-      RESEARCH_CHARTS: >-
+      MONTHLY_CHARTS: >-
         pgr_book_value_per_share.png
         pgr_book_value_per_share_split_adjusted.png
         pgr_share_repurchase_volume.png
@@ -111,9 +112,9 @@ jobs:
           python scripts/verify_monthly_outputs.py --summary-path workflow_summary.md
           cat workflow_summary.md >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Regenerate research charts
+      - name: Regenerate monthly charts
         # Runs after the decision script so the DB is fully up to date.
-        # Fails if either script errors or any chart in RESEARCH_CHARTS is
+        # Fails if either script errors or any chart in MONTHLY_CHARTS is
         # not rewritten. The commit and email steps still run (their `if:`
         # does not require this step), but the job ends red and the stale
         # charts are not committed.
@@ -124,9 +125,9 @@ jobs:
           started="$(mktemp)"
           python scripts/repurchase_timeseries_charts.py
           python scripts/capital_return_charts.py
-          for chart in $RESEARCH_CHARTS; do
-            if [ ! "results/research/$chart" -nt "$started" ]; then
-              echo "::error::chart not regenerated: results/research/$chart"
+          for chart in $MONTHLY_CHARTS; do
+            if [ ! "artifacts/charts/$chart" -nt "$started" ]; then
+              echo "::error::chart not regenerated: artifacts/charts/$chart"
               exit 1
             fi
           done
@@ -147,14 +148,15 @@ jobs:
           # Fold the WAL into the DB file and leave it in DELETE journal
           # mode so the committed file is self-contained (review F29).
           python scripts/finalize_db.py
-          git add results/monthly_decisions/
+          # Stage exact production paths only (review 2026-09-25, section 5).
+          git add artifacts/monthly_decisions/
           git add data/pgr_financials.db
           if [ "$CHARTS_OUTCOME" = "success" ]; then
-            for chart in $RESEARCH_CHARTS; do
-              git add "results/research/$chart"
+            for chart in $MONTHLY_CHARTS; do
+              git add "artifacts/charts/$chart"
             done
           else
-            echo "::warning::chart step did not succeed; research charts not committed"
+            echo "::warning::chart step did not succeed; monthly charts not committed"
           fi
           # Only commit if there are staged changes
           git diff --staged --quiet || git commit -m \
@@ -178,11 +180,9 @@ jobs:
           EMAIL_TO:      ${{ secrets.PREDICTION_EMAIL_TO }}
         run: |
           python - <<'PYEOF'
+          # `python -` puts the working directory (the repo root) on sys.path.
           import sys
-          from pathlib import Path
-          from datetime import datetime, timezone
 
-          sys.path.insert(0, str(Path(__file__).parent.parent))
           from src.reporting.email_sender import send_monthly_email
 
           try:

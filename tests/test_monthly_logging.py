@@ -12,7 +12,7 @@ import config
 from scripts import monthly_decision
 from src.database import db_client
 from src.models.calibration import CalibrationResult
-from src.research.v12 import SnapshotSummary
+from src.reporting.snapshot_summary import SnapshotSummary
 
 
 @patch("src.ingestion.fred_loader.fetch_all_fred_macro", side_effect=RuntimeError("boom"))

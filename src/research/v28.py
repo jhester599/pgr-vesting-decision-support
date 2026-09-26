@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import pandas as pd
 
 from src.research.v20 import V20_FORECAST_UNIVERSE
-from src.research.v27 import v27_benchmark_pruning_review, v27_investable_redeploy_universe
+from src.portfolio.redeploy_portfolio import v27_benchmark_pruning_review, v27_investable_redeploy_universe
 
 
 @dataclass(frozen=True)

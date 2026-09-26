@@ -26,7 +26,7 @@ name: Post-Initial Bootstrap
 #    is needed here.
 #
 # 3. Run monthly_decision.py to produce the first recommendation report in
-#    results/monthly_decisions/YYYY-MM/.
+#    artifacts/monthly_decisions/YYYY-MM/.
 #
 # Prerequisites
 # -------------
@@ -115,7 +115,7 @@ jobs:
           # mode so the committed file is self-contained (review F29).
           python scripts/finalize_db.py
           git add data/pgr_financials.db
-          git add results/ || true          # results/ may not exist on first run
+          git add artifacts/monthly_decisions/
           git diff --staged --quiet || git commit -m \
             "chore: bootstrap relative returns + first monthly decision $(date -u +%Y-%m-%d) [skip ci]"
           git push

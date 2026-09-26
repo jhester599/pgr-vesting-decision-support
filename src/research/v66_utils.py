@@ -12,13 +12,13 @@ from sklearn.linear_model import Ridge
 from sklearn.model_selection import TimeSeriesSplit
 
 from config.features import MODEL_FEATURE_OVERRIDES
-from results.research.v46_classification import compute_binary_metrics
 from src.models.evaluation import reconstruct_ensemble_oos_predictions
 from src.models.forecast_diagnostics import summarize_prediction_diagnostics
 from src.models.multi_benchmark_wfo import run_ensemble_benchmarks
 from src.models.policy_metrics import PolicySummary, evaluate_hold_fraction_series, evaluate_policy_series
 from src.models.regularized_models import AdaptiveGapTimeSeriesSplit
 from src.processing.feature_engineering import get_X_y_relative
+from src.research.binary_classification import compute_binary_metrics
 from src.research.v37_utils import (
     BENCHMARKS,
     GAP_MONTHS,

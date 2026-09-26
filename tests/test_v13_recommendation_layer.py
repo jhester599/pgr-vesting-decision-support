@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from scripts import monthly_decision
-from src.research.v12 import SnapshotSummary
+from src.reporting.snapshot_summary import SnapshotSummary
 
 
 def test_recommendation_report_includes_v13_sections(monkeypatch, tmp_path: Path) -> None:

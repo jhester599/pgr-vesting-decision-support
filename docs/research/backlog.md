@@ -97,7 +97,7 @@ production impact
 `as_of_date` and `variant`, preserve 6M maturity dates, and reserve realized
 outcome fields for future evaluation.
 **Outcome:** complete. Monthly runs write
-`results/monthly_decisions/ta_shadow_variant_history.csv`; production
+`artifacts/monthly_decisions/ta_shadow_variant_history.csv`; production
 recommendations and classifier gate overlays remain unchanged.
 
 ### OPS-01 - Calendar-Aware PGR Monthly EDGAR Freshness

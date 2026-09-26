@@ -14,13 +14,13 @@
 - `monthly_8k_fetch.yml`
   - should update `pgr_edgar_monthly`
 - `monthly_decision.yml`
-  - should write a new monthly folder under `results/monthly_decisions/`
+  - should write a new monthly folder under `artifacts/monthly_decisions/`
   - should append exactly one row to `decision_log.md`
   - should produce a `run_manifest.json`
   - should produce `benchmark_quality.csv`, `consensus_shadow.csv`,
     `dashboard.html`, and `monthly_summary.json`
-  - should rewrite every chart in its `RESEARCH_CHARTS` list; a red
-    "Regenerate research charts" step means the charts were not committed.
+  - should rewrite every chart in its `MONTHLY_CHARTS` list; a red
+    "Regenerate monthly charts" step means the charts were not committed.
     Reproduce locally against a DB copy with
     `python scripts/repurchase_timeseries_charts.py --db-path <copy> --out-dir <dir>`
     (and the same for `scripts/capital_return_charts.py`)

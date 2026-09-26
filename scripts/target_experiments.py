@@ -19,7 +19,7 @@ from src.database import db_client
 from src.models.multi_benchmark_wfo import run_ensemble_benchmarks
 from src.processing.feature_engineering import build_feature_matrix_from_db, get_X_y_relative
 from src.processing.multi_total_return import load_relative_return_matrix
-from src.research.evaluation import (
+from src.models.evaluation import (
     BASELINE_STRATEGIES,
     classify_research_gate,
     evaluate_binary_baseline_strategy,
@@ -99,7 +99,7 @@ def run_target_experiments(
                             target_horizon_months=horizon,
                         )
                     else:
-                        from src.research.evaluation import evaluate_baseline_strategy
+                        from src.models.evaluation import evaluate_baseline_strategy
 
                         metrics = evaluate_baseline_strategy(
                             X_aligned,
@@ -164,7 +164,7 @@ def run_target_experiments(
                             target_horizon_months=horizon,
                         )
                     else:
-                        from src.research.evaluation import evaluate_ensemble_result
+                        from src.models.evaluation import evaluate_ensemble_result
 
                         metrics = evaluate_ensemble_result(
                             ens_result,

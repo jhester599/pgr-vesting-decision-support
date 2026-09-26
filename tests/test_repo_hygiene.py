@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import configparser
 import sqlite3
 import subprocess
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -55,10 +55,10 @@ def test_committed_db_is_tracked_not_ignored() -> None:
     assert not _is_ignored("data/pgr_financials.db")
 
 
-def test_pytest_ini_does_not_add_quiet_flag() -> None:
-    parser = configparser.ConfigParser()
-    parser.read(REPO_ROOT / "pytest.ini")
-    addopts = parser.get("pytest", "addopts", fallback="").split()
+def test_pytest_config_does_not_add_quiet_flag() -> None:
+    # pytest config moved from pytest.ini to pyproject.toml (review section 5, phase 0).
+    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    addopts = pyproject["tool"]["pytest"]["ini_options"].get("addopts", "").split()
     assert "-q" not in addopts and "-qq" not in addopts
 
 

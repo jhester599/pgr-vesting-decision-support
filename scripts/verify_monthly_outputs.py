@@ -147,7 +147,7 @@ def _verify_data_freshness(db_path: Path, reference_date: date) -> str:
 
 def verify_monthly_outputs(
     *,
-    base_dir: Path = Path("results") / "monthly_decisions",
+    base_dir: Path = Path(config.MONTHLY_DECISIONS_DIR),
     db_path: Path = Path(config.DB_PATH),
     as_of_date: str | None = None,
     reference_date: str | None = None,
@@ -199,7 +199,7 @@ def verify_monthly_outputs(
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base-dir", type=Path, default=Path("results") / "monthly_decisions")
+    parser.add_argument("--base-dir", type=Path, default=Path(config.MONTHLY_DECISIONS_DIR))
     parser.add_argument("--db-path", type=Path, default=Path(config.DB_PATH))
     parser.add_argument("--as-of", default=None, help="Monthly as-of date to verify")
     parser.add_argument("--reference-date", default=None, help="Freshness reference date")

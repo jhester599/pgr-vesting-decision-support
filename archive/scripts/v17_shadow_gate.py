@@ -24,8 +24,8 @@ from src.database import db_client
 from src.processing.feature_engineering import build_feature_matrix_from_db, get_X_y_relative
 from src.processing.multi_total_return import load_relative_return_matrix
 from src.reporting.decision_rendering import determine_recommendation_mode
-from src.research.evaluation import evaluate_wfo_model, summarize_predictions
-from src.research.v12 import (
+from src.models.evaluation import evaluate_wfo_model, summarize_predictions
+from src.reporting.snapshot_summary import (
     SnapshotSummary,
     aggregate_health_from_prediction_frames,
     recent_monthly_review_dates,
