@@ -31,6 +31,9 @@ Root-level docs are also active:
 - `docs/superpowers/specs/` - design specs that fed implementation plans.
 - `docs/closeouts/` - per-version closeout and handoff notes.
 - `docs/research/` - current research backlog and scoring rubric.
+- `research/README.md` (outside `docs/`) - index of every study in
+  `research/studies/`, generated from `research/registry.yaml`;
+  `research/legacy/` holds the v9-v28 result folders.
 - `docs/archive/` - external reports, peer reviews, old session docs, and
   other historical source material.
 - `repo-hygiene-review-2026-04-19.md` - latest documentation and archive audit.
