@@ -30,9 +30,12 @@ governance, and user-facing reporting.
 The live monthly workflow currently uses:
 
 - the `v11.1` lean 2-model prediction stack (`Ridge + GBT`, v18 feature sets)
-- `v38` post-ensemble shrinkage as the prediction-layer calibration baseline
+- post-ensemble shrinkage chosen prequentially with the `v38` rule (re-chosen
+  every month from the realised OOS record; the fixed 0.50 is research-only)
 - the `v76` quality-weighted cross-benchmark consensus as the live
-  recommendation path
+  recommendation path, gated on look-ahead-free health metrics (OOS R² against
+  the prevailing mean, equal-weight IC, Pesaran–Timmermann directional skill);
+  CPCV is a diagnostic only
 - the equal-weight consensus retained in diagnostic artifacts only
 - a shadow-only classifier interpretation layer and shadow gate overlay for
   confidence and future promotion monitoring

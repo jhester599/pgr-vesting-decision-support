@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
+
+import config
 
 
 def build_hold_vs_sell_label(sell_pct: float) -> str:
@@ -138,8 +141,14 @@ def build_monthly_summary_payload(
     shadow_gate_overlay: dict[str, Any] | None = None,
     classification_shadow_variants: list[dict[str, Any]] | None = None,
     decision_overlay_variants: list[dict[str, Any]] | None = None,
+    model_health: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Build the machine-readable monthly summary payload."""
+    """Build the machine-readable monthly summary payload.
+
+    ``model_health`` (review 2026-09-25, WP7) carries the gate statuses and
+    the realised-only health metrics behind the recommendation mode; see
+    ``build_model_health_payload``.
+    """
     benchmark_count = int(len(signals)) if not signals.empty else 0
     quality_count = int(len(benchmark_quality_df)) if benchmark_quality_df is not None else 0
     cross_check = _build_cross_check_summary(
@@ -204,6 +213,81 @@ def build_monthly_summary_payload(
         "shadow_gate_overlay": shadow_gate_overlay,
         "classification_shadow_variants": classification_shadow_variants or [],
         "decision_overlay_variants": decision_overlay_variants or [],
+        "model_health": model_health or {},
+    }
+
+
+def _finite_or_none(value: Any) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
+
+
+def build_model_health_payload(
+    *,
+    mean_ic: float,
+    aggregate_health: dict[str, Any] | None,
+    representative_cpcv: Any | None,
+    cal_result: Any | None,
+    conformal_trailing_coverage: float | None,
+    shrinkage_alpha: float | None,
+    quality_weighted_ic: float | None = None,
+) -> dict[str, Any]:
+    """Machine-readable gates and health metrics (review 2026-09-25, WP7)."""
+    from src.reporting.decision_rendering import evaluate_quality_gates
+
+    gates = evaluate_quality_gates(mean_ic, aggregate_health, representative_cpcv)
+    health = aggregate_health or {}
+    cpcv: dict[str, Any] = {"available": representative_cpcv is not None}
+    if representative_cpcv is not None:
+        cpcv.update(
+            {
+                "verdict": str(getattr(representative_cpcv, "stability_verdict", "UNKNOWN")),
+                "positive_paths": int(getattr(representative_cpcv, "n_positive_paths", 0)),
+                "n_paths": int(getattr(representative_cpcv, "n_paths", 0)),
+                "mean_path_ic": _finite_or_none(getattr(representative_cpcv, "mean_ic", None)),
+                "gates_recommendation": False,
+            }
+        )
+    calibration: dict[str, Any] = {}
+    if cal_result is not None:
+        calibration = {
+            "method": str(getattr(cal_result, "method", "")),
+            "prequential_ece": _finite_or_none(getattr(cal_result, "ece", None)),
+            "ece_ci_lower": _finite_or_none(getattr(cal_result, "ece_ci_lower", None)),
+            "ece_ci_upper": _finite_or_none(getattr(cal_result, "ece_ci_upper", None)),
+            "n_obs": int(getattr(cal_result, "n_obs", 0)),
+        }
+    return {
+        "metrics_version": config.MODEL_HEALTH_METRICS_VERSION,
+        "gates": [
+            {
+                "name": gate.name,
+                "status": gate.status,
+                "value": gate.value,
+                "current": gate.current,
+                "threshold": gate.threshold,
+            }
+            for gate in gates
+        ],
+        "equal_weight_mean_ic": _finite_or_none(mean_ic),
+        "quality_weighted_mean_ic": _finite_or_none(quality_weighted_ic),
+        "aggregate_oos_r2": _finite_or_none(health.get("oos_r2")),
+        "pooled_ic": _finite_or_none(health.get("nw_ic")),
+        "pooled_ic_p_value": _finite_or_none(health.get("nw_pval")),
+        "pooled_ic_p_value_method": health.get("ic_p_value_method"),
+        "hit_rate": _finite_or_none(health.get("agg_hit")),
+        "base_rate": _finite_or_none(health.get("base_rate")),
+        "constant_rule_hit_rate": _finite_or_none(health.get("constant_rule_hit_rate")),
+        "hit_rate_excess": _finite_or_none(health.get("hit_rate_excess")),
+        "pesaran_timmermann_p_value": _finite_or_none(health.get("pt_p_value")),
+        "clark_west_p_value": _finite_or_none(health.get("cw_p_value")),
+        "shrinkage_alpha": _finite_or_none(shrinkage_alpha),
+        "conformal_trailing_coverage": _finite_or_none(conformal_trailing_coverage),
+        "calibration": calibration,
+        "cpcv": cpcv,
     }
 
 

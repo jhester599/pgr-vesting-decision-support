@@ -170,9 +170,13 @@ class TestCPCVEdgeCases:
         y.iloc[4] = 2.0
 
         class FakeCPCV:
+            # skfolio interface: test_set_index is (n_splits, n_test_folds) and
+            # recombined_paths is (n_folds, n_paths). Both splits test fold 0;
+            # path 0 takes fold 0 from split 0.
             def __init__(self, *args, **kwargs):
                 self.n_test_paths = 1
-                self.recombined_paths = [[0]]
+                self.test_set_index = np.array([[0], [0]])
+                self.recombined_paths = np.array([[0]])
 
             def split(self, X_arr):
                 return [
@@ -209,7 +213,8 @@ class TestCPCVEdgeCases:
         class FakeCPCV:
             def __init__(self, *args, **kwargs):
                 self.n_test_paths = 1
-                self.recombined_paths = [[99]]
+                self.test_set_index = np.array([[0]])
+                self.recombined_paths = np.array([[99]])  # no split 99
 
             def split(self, X_arr):
                 return [

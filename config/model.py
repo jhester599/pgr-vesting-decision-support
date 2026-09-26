@@ -40,10 +40,21 @@ KELLY_MAX_POSITION: float = 0.20      # v4.1: reduced from 0.30 (Meulbroek 2005:
 # after v18/v20 research showed Ridge+GBT with lean feature sets outperforms
 # the 4-model stack on IC, hit rate, and obs/feature ratio.)
 ENSEMBLE_MODELS: list[str] = ["ridge", "gbt"]
-# v38 promotion: post-ensemble calibration shrinkage applied to the final
-# inverse-variance weighted benchmark prediction.  Research showed alpha=0.50
-# improved pooled OOS R^2 materially without harming IC or hit rate.
+# v38 fixed post-ensemble shrinkage. Research-only since review 2026-09-25
+# (F13): 0.50 was chosen on the same OOS history it was then scored on.
+# Production chooses the shrinkage prequentially (below).
 ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA: float = 0.50
+# Review 2026-09-25 (F13), production shrinkage: v38's own rule applied
+# prequentially. For every OOS date, and for the live forecast, alpha is the
+# grid value that minimises the squared error of alpha * z (z = weighted
+# Ridge+GBT prediction) over the OOS rows of all benchmarks whose 6-month
+# target had been realised by then (v38 maximised pooled R^2 over the same
+# grid, which is the same minimisation). Below this many realised rows the
+# forecast is not shrunk (1.0).
+ENSEMBLE_SHRINKAGE_ALPHA_GRID: tuple[float, ...] = (
+    0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50, 0.75, 1.00,
+)
+ENSEMBLE_SHRINKAGE_MIN_REALIZED_OBS: int = 36
 # v133 - Ridge inner-CV alpha grid bounds for research harnesses
 RIDGE_ALPHA_MIN: float = 1e-4
 RIDGE_ALPHA_MAX: float = 1e2
@@ -58,10 +69,17 @@ V74_SHADOW_CONSENSUS_LAMBDA_MIX: float = 0.25
 CONSENSUS_WEIGHTING_MODE: str = "quality_weighted"
 
 # ---------------------------------------------------------------------------
-# v4.0 CPCV parameters — v5.0: upgraded from C(6,2)=15 paths to C(8,2)=28 paths
+# CPCV parameters — diagnostic only (review 2026-09-25, F02).
+# C(8,2) = 28 train/test splits recombine into C(7,1) = 7 test paths.
+# CPCV trains on folds after the test folds, i.e. it is a combinatorial
+# K-fold, which AGENTS.md prohibits for validation; it is reported but never
+# gates the recommendation.
 # ---------------------------------------------------------------------------
-CPCV_N_FOLDS: int = 8         # Number of folds for CombinatorialPurgedCV (v5.0: was 6)
-CPCV_N_TEST_FOLDS: int = 2    # Test folds per split; yields C(8,2)=28 paths (v5.0)
+CPCV_N_FOLDS: int = 8         # Number of folds for CombinatorialPurgedCV
+CPCV_N_TEST_FOLDS: int = 2    # Test folds per split: 28 splits, 7 test paths
+# Rows dropped from the training set after each test block, on top of the
+# purge (= target horizon). Features such as momentum overlap the test targets.
+CPCV_EMBARGO_SIZE: int = 2
 
 # ---------------------------------------------------------------------------
 # v4.0 Black-Litterman parameters
@@ -86,15 +104,31 @@ FRACDIFF_ADF_ALPHA: float = 0.05        # Stationarity significance level
 # Used in _write_diagnostic_report() to flag model health vs. peer-review
 # benchmarks (Harvey et al. 2016; Campbell & Thompson 2008; Gu et al. 2020).
 # ---------------------------------------------------------------------------
-# Campbell-Thompson OOS R²: >2% = good, 0.5–2% = marginal, <0% = failing.
+# Campbell-Thompson OOS R² against the prevailing mean of the targets realised
+# by each forecast date (review 2026-09-25, F04): >2% = good, <0% = failing.
 DIAG_MIN_OOS_R2: float = 0.02
-# Newey-West HAC-adjusted Spearman IC: >0.07 = good, 0.03–0.07 = marginal.
+# Spearman IC, equal-weight mean of the per-benchmark OOS ICs (F13):
+# >0.07 = good, 0.03–0.07 = marginal.
 DIAG_MIN_IC: float = 0.07
-# Hit rate (directional accuracy): >55% = good, 52–55% = marginal.
+# Hit rate (directional accuracy): >55% = good, 52–55% = marginal. Display
+# only since F13: a 68 % base rate clears it without skill.
 DIAG_MIN_HIT_RATE: float = 0.55
-# CPCV positive paths (out of C(8,2)=28): ≥19 = good (~67%), 14–18 = marginal.
-# v5.0: updated from C(6,2)=15 thresholds (was: ≥13/15 good, 10–12 marginal).
+# Directional-skill gate (F13): one-sided Pesaran–Timmermann test that the
+# model's up/down calls are associated with the realised sign, Driscoll–Kraay
+# by date. p < 0.05 passes, p < 0.10 is marginal, otherwise (or undefined,
+# e.g. a predictor that always calls the same sign) fails.
+DIAG_MAX_DIRECTIONAL_PVALUE: float = 0.05
+DIAG_MARGINAL_DIRECTIONAL_PVALUE: float = 0.10
+# CPCV positive paths, stated for a 28-path reference and scaled to the actual
+# path count (F02): GOOD ≥ ceil(19·n/28), MARGINAL ≥ ceil(9·n/28), else FAIL.
+# With C(8,2) there are 7 paths: GOOD ≥ 5/7, MARGINAL ≥ 3/7. Diagnostic only.
 DIAG_CPCV_MIN_POSITIVE_PATHS: int = 19
+DIAG_CPCV_MARGINAL_POSITIVE_PATHS: int = 9
+DIAG_CPCV_REFERENCE_PATHS: int = 28
+# Metric definitions behind each model_performance_log row (migration 008).
+# Rows before review 2026-09-25 step 5 are 'pre-2026-09-25'; the drift monitor
+# only compares rows that share a version.
+MODEL_HEALTH_METRICS_VERSION: str = "prequential-2026-09-25"
 # Variance Inflation Factor thresholds for multicollinearity checks (v32.1).
 # VIF > HIGH_THRESHOLD is flagged as high multicollinearity (❌).
 # VIF > WARN_THRESHOLD is flagged as moderate multicollinearity (⚠️).

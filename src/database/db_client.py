@@ -1574,42 +1574,42 @@ def upsert_fred_macro(conn: sqlite3.Connection, records: list[dict[str, Any]]) -
     return len(normalised)
 
 
+def _table_has_column(conn: sqlite3.Connection, table: str, column: str) -> bool:
+    rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    return any(str(row[1]) == column for row in rows)
+
+
 def upsert_model_performance_log(
     conn: sqlite3.Connection,
     records: list[dict[str, Any]],
 ) -> int:
-    """Bulk-insert or replace monthly model-performance monitoring rows."""
+    """Bulk-insert or replace monthly model-performance monitoring rows.
+
+    ``metrics_version`` (migration 008) records the metric definitions a row
+    was computed under; it defaults to ``config.MODEL_HEALTH_METRICS_VERSION``.
+    """
     if not records:
         return 0
 
-    sql = """
-        INSERT OR REPLACE INTO model_performance_log (
-            month_end,
-            aggregate_oos_r2,
-            aggregate_nw_ic,
-            aggregate_hit_rate,
-            ece,
-            ece_ci_lower,
-            ece_ci_upper,
-            conformal_target_coverage,
-            conformal_empirical_coverage,
-            conformal_trailing_empirical_coverage,
-            conformal_trailing_coverage_gap
-        )
-        VALUES (
-            :month_end,
-            :aggregate_oos_r2,
-            :aggregate_nw_ic,
-            :aggregate_hit_rate,
-            :ece,
-            :ece_ci_lower,
-            :ece_ci_upper,
-            :conformal_target_coverage,
-            :conformal_empirical_coverage,
-            :conformal_trailing_empirical_coverage,
-            :conformal_trailing_coverage_gap
-        )
-    """
+    columns = [
+        "month_end",
+        "aggregate_oos_r2",
+        "aggregate_nw_ic",
+        "aggregate_hit_rate",
+        "ece",
+        "ece_ci_lower",
+        "ece_ci_upper",
+        "conformal_target_coverage",
+        "conformal_empirical_coverage",
+        "conformal_trailing_empirical_coverage",
+        "conformal_trailing_coverage_gap",
+    ]
+    if _table_has_column(conn, "model_performance_log", "metrics_version"):
+        columns.append("metrics_version")
+    sql = (
+        f"INSERT OR REPLACE INTO model_performance_log ({', '.join(columns)}) "
+        f"VALUES ({', '.join(':' + column for column in columns)})"
+    )
     normalized = [
         {
             "month_end": record["month_end"],
@@ -1627,6 +1627,9 @@ def upsert_model_performance_log(
             "conformal_trailing_coverage_gap": record.get(
                 "conformal_trailing_coverage_gap"
             ),
+            "metrics_version": record.get(
+                "metrics_version", config.MODEL_HEALTH_METRICS_VERSION
+            ),
         }
         for record in records
     ]
@@ -1636,9 +1639,18 @@ def upsert_model_performance_log(
 
 
 def get_model_performance_log(conn: sqlite3.Connection) -> pd.DataFrame:
-    """Return monthly model-performance monitoring rows sorted by month."""
+    """Return monthly model-performance monitoring rows sorted by month.
+
+    ``metrics_version`` is NULL-filled as 'pre-2026-09-25' when the DB has
+    not had migration 008 (a read-only dry run skips migrations).
+    """
+    version_column = (
+        "metrics_version"
+        if _table_has_column(conn, "model_performance_log", "metrics_version")
+        else "'pre-2026-09-25' AS metrics_version"
+    )
     df = pd.read_sql_query(
-        """
+        f"""
         SELECT
             month_end,
             aggregate_oos_r2,
@@ -1651,7 +1663,8 @@ def get_model_performance_log(conn: sqlite3.Connection) -> pd.DataFrame:
             conformal_empirical_coverage,
             conformal_trailing_empirical_coverage,
             conformal_trailing_coverage_gap,
-            created_at
+            created_at,
+            {version_column}
         FROM model_performance_log
         ORDER BY month_end ASC
         """,

@@ -20,6 +20,7 @@ from src.reporting.snapshot_summary import (
     SnapshotSummary,
     aggregate_health_from_prediction_frames,
     confidence_from_hit_rate,
+    honest_prediction_frame,
     signal_from_prediction,
 )
 
@@ -262,7 +263,15 @@ def build_promoted_cross_check_summary(
                 "signal": signal_from_prediction(float(current_pred)),
             }
         )
-        prediction_frames.append(pd.DataFrame({"y_hat": pred_series.values, "y_true": realized.values}))
+        prediction_frames.append(
+            honest_prediction_frame(
+                benchmark,
+                pred_series,
+                realized,
+                target_history=y_aligned,
+                target_horizon_months=target_horizon_months,
+            )
+        )
 
     if not signal_rows:
         return None

@@ -40,6 +40,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+import pandas as pd
 
 
 # ---------------------------------------------------------------------------
@@ -72,7 +73,11 @@ class ConformalResult:
 
 @dataclass(frozen=True)
 class ConformalCoverageBacktest:
-    """Empirical interval coverage measured over historical sequential OOS points."""
+    """Empirical interval coverage measured over historical sequential OOS points.
+
+    ``covered``, ``widths`` and ``evaluated_dates`` describe each scored point
+    (dates are positions when no dates were given).
+    """
 
     n_evaluated: int
     empirical_coverage: float
@@ -82,6 +87,9 @@ class ConformalCoverageBacktest:
     trailing_empirical_coverage: float
     trailing_coverage_gap: float
     method: str
+    covered: tuple[bool, ...] = ()
+    widths: tuple[float, ...] = ()
+    evaluated_dates: tuple = ()
 
 
 # ---------------------------------------------------------------------------
@@ -301,17 +309,28 @@ def backtest_conformal_coverage(
     gamma: float = 0.05,
     trailing_window: int = 12,
     min_calibration: int | None = None,
+    dates=None,
+    horizon_months: int = 1,
 ) -> ConformalCoverageBacktest:
     """
     Evaluate realized conformal coverage over sequential historical OOS points.
 
-    For each chronological point ``t`` after an initial calibration window, this
-    reuses only prior OOS predictions/residuals to build an interval for
-    ``y_hat_oos[t]`` and checks whether ``y_true_oos[t]`` falls inside it.
-    The resulting coverage series approximates the production question:
-    "Over the most recent 12 OOS points, how often would our stated conformal
-    interval have actually covered the realized return?"
+    For each chronological point ``t`` this builds the interval for
+    ``y_hat_oos[t]`` from the residuals that had been realised by ``t`` only:
+    a residual dated ``d`` counts when month(d) + ``horizon_months`` <=
+    month(t). With 6-month targets the five preceding residuals are not yet
+    known at ``t`` (review 2026-09-25, F13: they used to be included). Points
+    with fewer than ``min_calibration`` realised residuals are skipped.
+
+    ``dates`` (sorted ascending) gives each point's date; without it, points
+    are consecutive months. ``horizon_months=1`` reproduces "all prior points".
+
+    The trailing value answers the production question: "Over the most recent
+    12 OOS points, how often would our stated conformal interval have actually
+    covered the realized return?"
     """
+    from src.models.prequential import month_ordinals, realised_counts
+
     y_hat_arr = np.asarray(y_hat_oos, dtype=float)
     y_true_arr = np.asarray(y_true_oos, dtype=float)
 
@@ -330,21 +349,40 @@ def backtest_conformal_coverage(
     if min_calibration <= 0:
         raise ValueError("min_calibration must be positive.")
 
+    if dates is None:
+        date_values = np.arange(len(y_hat_arr))
+    else:
+        date_values = np.asarray(pd.Index(dates))
+        if len(date_values) != len(y_hat_arr):
+            raise ValueError("dates must have the same length as y_hat_oos.")
+
     valid = np.isfinite(y_hat_arr) & np.isfinite(y_true_arr)
     y_hat_valid = y_hat_arr[valid]
     y_true_valid = y_true_arr[valid]
+    dates_valid = date_values[valid]
+    months = month_ordinals(pd.Index(dates_valid))
+    if len(months) > 1 and np.any(np.diff(months) < 0):
+        raise ValueError("dates must be sorted ascending.")
+    realised = realised_counts(months, months, horizon_months)
 
     covered: list[bool] = []
-    for idx in range(min_calibration, len(y_hat_valid)):
+    widths: list[float] = []
+    evaluated: list = []
+    for idx in range(len(y_hat_valid)):
+        n_known = int(realised[idx])
+        if n_known < min_calibration:
+            continue
         interval = conformal_interval_from_ensemble(
             y_hat_current=float(y_hat_valid[idx]),
-            y_hat_oos=y_hat_valid[:idx],
-            y_true_oos=y_true_valid[:idx],
+            y_hat_oos=y_hat_valid[:n_known],
+            y_true_oos=y_true_valid[:n_known],
             coverage=coverage,
             method=method,
             gamma=gamma,
         )
-        covered.append(interval.lower <= float(y_true_valid[idx]) <= interval.upper)
+        covered.append(bool(interval.lower <= float(y_true_valid[idx]) <= interval.upper))
+        widths.append(float(interval.width))
+        evaluated.append(dates_valid[idx])
 
     if not covered:
         return ConformalCoverageBacktest(
@@ -361,6 +399,8 @@ def backtest_conformal_coverage(
     empirical = float(np.mean(covered))
     trailing_slice = covered[-trailing_window:]
     trailing_empirical = float(np.mean(trailing_slice))
+    if dates is not None:
+        evaluated = [pd.Timestamp(value) for value in evaluated]
     return ConformalCoverageBacktest(
         n_evaluated=len(covered),
         empirical_coverage=empirical,
@@ -370,4 +410,7 @@ def backtest_conformal_coverage(
         trailing_empirical_coverage=trailing_empirical,
         trailing_coverage_gap=trailing_empirical - coverage,
         method=method,
+        covered=tuple(covered),
+        widths=tuple(widths),
+        evaluated_dates=tuple(evaluated),
     )

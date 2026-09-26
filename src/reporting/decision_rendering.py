@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
+import math
 from typing import TYPE_CHECKING, Any
 
 import config
@@ -30,6 +32,138 @@ def sell_pct_from_consensus(
     return 0.50
 
 
+GATE_PASS = "PASS"
+GATE_MARGINAL = "MARGINAL"
+GATE_FAIL = "FAIL"
+
+
+@dataclass(frozen=True)
+class QualityGate:
+    """One recommendation-mode gate: its value, status and threshold text."""
+
+    name: str
+    value: float | None
+    status: str
+    current: str
+    threshold: str
+    meaning: str
+
+
+def _finite(value: Any) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
+
+
+def _threshold_status(value: float | None, good: float, fail_below: float) -> str:
+    if value is None:
+        return GATE_FAIL
+    if value >= good:
+        return GATE_PASS
+    if value < fail_below:
+        return GATE_FAIL
+    return GATE_MARGINAL
+
+
+def cpcv_available(representative_cpcv: Any | None) -> bool:
+    """True when the CPCV diagnostic ran and produced paths (verdict known)."""
+    if representative_cpcv is None:
+        return False
+    verdict = getattr(representative_cpcv, "stability_verdict", "UNKNOWN")
+    return str(verdict) not in {"UNKNOWN", ""}
+
+
+def evaluate_quality_gates(
+    mean_ic: float,
+    aggregate_health: dict | None,
+    representative_cpcv: Any | None,
+) -> list[QualityGate]:
+    """Evaluate the recommendation-mode gates (review 2026-09-25, WP7).
+
+    - OOS R^2 against the prevailing mean of realised targets (F04): PASS at
+      >= ``DIAG_MIN_OOS_R2``, FAIL below 0.
+    - Equal-weight mean IC across benchmarks (F13): PASS at >= ``DIAG_MIN_IC``,
+      FAIL below 0.03. Callers pass the equal-weight mean; quality weights
+      come from the same OOS record and inflate it.
+    - Directional skill (F13): one-sided Pesaran-Timmermann p-value,
+      Driscoll-Kraay by date. PASS below ``DIAG_MAX_DIRECTIONAL_PVALUE``,
+      FAIL at or above ``DIAG_MARGINAL_DIRECTIONAL_PVALUE`` or when undefined
+      (e.g. a predictor that always calls the same sign). A raw hit rate is
+      not gated: a 68 % base rate clears 55 % without skill.
+    - CPCV completeness (F02, F20): CPCV is a combinatorial K-fold, so its
+      verdict is diagnostic only and never gates. The run fails closed when
+      the diagnostic is missing or UNKNOWN.
+
+    A missing input fails its gate (fail closed).
+    """
+    health = aggregate_health or {}
+    oos_r2 = _finite(health.get("oos_r2")) if aggregate_health is not None else None
+    ic = _finite(mean_ic)
+    pt_p = _finite(health.get("pt_p_value")) if aggregate_health is not None else None
+    hit = _finite(health.get("agg_hit"))
+    base = _finite(health.get("constant_rule_hit_rate"))
+
+    if pt_p is None:
+        pt_status = GATE_FAIL
+    elif pt_p < config.DIAG_MAX_DIRECTIONAL_PVALUE:
+        pt_status = GATE_PASS
+    elif pt_p < config.DIAG_MARGINAL_DIRECTIONAL_PVALUE:
+        pt_status = GATE_MARGINAL
+    else:
+        pt_status = GATE_FAIL
+    if hit is not None and base is not None:
+        pt_current = (
+            f"p={pt_p:.3f}; hit {hit:.1%} vs base rate {base:.1%}"
+            if pt_p is not None
+            else f"undefined; hit {hit:.1%} vs base rate {base:.1%}"
+        )
+    else:
+        pt_current = f"p={pt_p:.3f}" if pt_p is not None else "n/a"
+
+    cpcv_ok = cpcv_available(representative_cpcv)
+    cpcv_verdict = (
+        str(getattr(representative_cpcv, "stability_verdict", "UNKNOWN"))
+        if representative_cpcv is not None
+        else "missing"
+    )
+    return [
+        QualityGate(
+            name="oos_r2",
+            value=oos_r2,
+            status=_threshold_status(oos_r2, config.DIAG_MIN_OOS_R2, 0.0),
+            current=f"{oos_r2:.2%}" if oos_r2 is not None else "n/a",
+            threshold=f">= {config.DIAG_MIN_OOS_R2:.2%}",
+            meaning="Beats the prevailing mean of the targets realised by each forecast date.",
+        ),
+        QualityGate(
+            name="mean_ic",
+            value=ic,
+            status=_threshold_status(ic, config.DIAG_MIN_IC, 0.03),
+            current=f"{ic:.4f}" if ic is not None else "n/a",
+            threshold=f">= {config.DIAG_MIN_IC:.4f}",
+            meaning="Equal-weight mean of the per-benchmark OOS rank ICs.",
+        ),
+        QualityGate(
+            name="directional_skill",
+            value=pt_p,
+            status=pt_status,
+            current=pt_current,
+            threshold=f"PT p < {config.DIAG_MAX_DIRECTIONAL_PVALUE:.2f}",
+            meaning="Up/down calls beat chance given the base rate (Pesaran-Timmermann, clustered by date).",
+        ),
+        QualityGate(
+            name="cpcv_completed",
+            value=None,
+            status=GATE_PASS if cpcv_ok else GATE_FAIL,
+            current=f"ran ({cpcv_verdict}, diagnostic only)" if cpcv_ok else f"{cpcv_verdict}",
+            threshold="diagnostic ran",
+            meaning="Fail-closed completeness check; the CPCV verdict itself does not gate (K-fold).",
+        ),
+    ]
+
+
 def determine_recommendation_mode(
     consensus: str,
     mean_predicted: float,
@@ -38,17 +172,20 @@ def determine_recommendation_mode(
     aggregate_health: dict | None,
     representative_cpcv: Any | None,
 ) -> dict[str, str | float]:
-    """Downgrade weak-model months into monitoring or tax-default modes."""
-    cpcv_verdict = representative_cpcv.stability_verdict if representative_cpcv is not None else "UNKNOWN"
-    oos_r2 = aggregate_health["oos_r2"] if aggregate_health is not None else float("nan")
+    """Downgrade weak-model months into monitoring or tax-default modes.
 
-    if (
-        aggregate_health is not None
-        and oos_r2 >= config.DIAG_MIN_OOS_R2
-        and mean_ic >= config.DIAG_MIN_IC
-        and mean_hr >= config.DIAG_MIN_HIT_RATE
-        and cpcv_verdict not in {"FAIL"}
-    ):
+    ``mean_ic`` is the gated IC: the equal-weight mean of the per-benchmark
+    OOS ICs. ``mean_hr`` is reported only; directional skill is gated on the
+    Pesaran-Timmermann result in ``aggregate_health`` (``pt_p_value``). See
+    ``evaluate_quality_gates``. ACTIONABLE needs every gate to PASS; any FAIL
+    gives DEFER-TO-TAX-DEFAULT; otherwise MONITORING-ONLY. The ACTIONABLE sell
+    percentage mapping (``sell_pct_from_consensus``) is unchanged.
+    """
+    del mean_hr  # reported elsewhere; not a gate since review 2026-09-25 (F13)
+    gates = evaluate_quality_gates(mean_ic, aggregate_health, representative_cpcv)
+    statuses = {gate.name: gate.status for gate in gates}
+
+    if all(status == GATE_PASS for status in statuses.values()):
         return {
             "mode": "actionable",
             "label": "ACTIONABLE",
@@ -57,18 +194,21 @@ def determine_recommendation_mode(
             "action_note": "Prediction-led adjustment is allowed because aggregate model health is above threshold.",
         }
 
-    if (
-        aggregate_health is None
-        or oos_r2 < 0.0
-        or mean_ic < 0.03
-        or mean_hr < 0.52
-        or cpcv_verdict == "FAIL"
-    ):
+    if any(status == GATE_FAIL for status in statuses.values()):
+        if statuses["cpcv_completed"] == GATE_FAIL and all(
+            status != GATE_FAIL for name, status in statuses.items() if name != "cpcv_completed"
+        ):
+            summary = (
+                "The validation run is incomplete (the CPCV diagnostic did not run), "
+                "so the signal cannot justify a prediction-led vesting action."
+            )
+        else:
+            summary = "Model quality is too weak to justify a prediction-led vesting action."
         return {
             "mode": "defer-to-tax-default",
             "label": "DEFER-TO-TAX-DEFAULT",
             "sell_pct": 0.50,
-            "summary": "Model quality is too weak to justify a prediction-led vesting action.",
+            "summary": summary,
             "action_note": "Use the default diversification and tax-discipline rule rather than the point forecast.",
         }
 
@@ -112,12 +252,15 @@ def build_executive_summary_lines(
         )
 
     change_trigger = (
-        "A more aggressive recommendation would require aggregate OOS R^2 >= 2%, "
-        "mean IC >= 0.07, hit rate >= 55%, and a non-failing representative CPCV check."
+        f"A more aggressive recommendation would require aggregate OOS R^2 >= "
+        f"{config.DIAG_MIN_OOS_R2:.0%} against the prevailing-mean benchmark, "
+        f"equal-weight mean IC >= {config.DIAG_MIN_IC:.2f}, significant directional skill "
+        f"(Pesaran-Timmermann p < {config.DIAG_MAX_DIRECTIONAL_PVALUE:.2f}), and a completed "
+        "CPCV diagnostic."
     )
     if recommendation_mode["mode"] == "actionable":
         change_trigger = (
-            "This view would weaken if aggregate IC, hit rate, OOS R^2, or representative CPCV "
+            "This view would weaken if the equal-weight IC, directional skill, or OOS R^2 "
             "drops back below the current quality thresholds."
         )
 

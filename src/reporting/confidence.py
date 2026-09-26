@@ -6,7 +6,6 @@ from typing import Any
 
 import math
 
-import config
 from src.portfolio.redeploy_portfolio import v27_benchmark_pruning_review
 
 
@@ -41,14 +40,6 @@ def benchmark_role_for_ticker(ticker: str) -> dict[str, str]:
     )
 
 
-def _status_from_threshold(value: float, threshold: float, higher_is_better: bool = True) -> str:
-    if math.isnan(value):
-        return "UNKNOWN"
-    if higher_is_better:
-        return "PASS" if value >= threshold else "FAIL"
-    return "PASS" if value <= threshold else "FAIL"
-
-
 def build_confidence_snapshot(
     *,
     mean_ic: float,
@@ -56,65 +47,80 @@ def build_confidence_snapshot(
     aggregate_health: dict[str, Any] | None,
     representative_cpcv: Any | None,
 ) -> dict[str, Any]:
-    """Build a compact gate-style confidence snapshot."""
-    aggregate_oos_r2 = float(aggregate_health["oos_r2"]) if aggregate_health is not None else float("nan")
-    cpcv_verdict = representative_cpcv.stability_verdict if representative_cpcv is not None else "UNKNOWN"
+    """Build a compact gate-style confidence snapshot.
 
+    The rows are the recommendation-mode gates themselves
+    (``evaluate_quality_gates``), so the table always agrees with the mode.
+    Two rows are shown but not gated: the plain mean hit rate and the CPCV
+    verdict (review 2026-09-25: a hit rate below the base rate is not skill,
+    and CPCV is a K-fold).
+    """
+    from src.reporting.decision_rendering import evaluate_quality_gates
+
+    labels = {
+        "oos_r2": "Aggregate OOS R^2",
+        "mean_ic": "Mean IC (equal-weight)",
+        "directional_skill": "Directional skill",
+        "cpcv_completed": "CPCV diagnostic ran",
+    }
+    gates = evaluate_quality_gates(mean_ic, aggregate_health, representative_cpcv)
     rows = [
         {
-            "check": "Mean IC",
-            "current": f"{mean_ic:.4f}",
-            "threshold": f">= {config.DIAG_MIN_IC:.4f}",
-            "status": _status_from_threshold(mean_ic, config.DIAG_MIN_IC),
-            "meaning": "Cross-benchmark ranking signal.",
-        },
-        {
-            "check": "Mean hit rate",
-            "current": f"{mean_hr:.1%}",
-            "threshold": f">= {config.DIAG_MIN_HIT_RATE:.1%}",
-            "status": _status_from_threshold(mean_hr, config.DIAG_MIN_HIT_RATE),
-            "meaning": "Directional accuracy versus zero.",
-        },
-        {
-            "check": "Aggregate OOS R^2",
-            "current": f"{aggregate_oos_r2:.2%}" if not math.isnan(aggregate_oos_r2) else "n/a",
-            "threshold": f">= {config.DIAG_MIN_OOS_R2:.2%}",
-            "status": _status_from_threshold(aggregate_oos_r2, config.DIAG_MIN_OOS_R2),
-            "meaning": "Calibration / fit versus a naive benchmark.",
-        },
-        {
-            "check": "Representative CPCV",
-            "current": str(cpcv_verdict),
-            "threshold": "not FAIL",
-            "status": "PASS" if cpcv_verdict not in {"FAIL", "UNKNOWN"} else ("FAIL" if cpcv_verdict == "FAIL" else "UNKNOWN"),
-            "meaning": "Stability across purged cross-validation paths.",
-        },
+            "check": labels.get(gate.name, gate.name),
+            "current": gate.current,
+            "threshold": gate.threshold,
+            "status": gate.status,
+            "meaning": gate.meaning,
+        }
+        for gate in gates
     ]
 
     pass_count = sum(row["status"] == "PASS" for row in rows)
     fail_count = sum(row["status"] == "FAIL" for row in rows)
-    unknown_count = sum(row["status"] == "UNKNOWN" for row in rows)
+    marginal_count = sum(row["status"] == "MARGINAL" for row in rows)
 
     if pass_count == len(rows):
         summary = "All core quality gates pass, so the signal is eligible to influence the vest decision."
-    elif fail_count >= 2:
+    elif fail_count:
         summary = (
-            f"{pass_count}/{len(rows)} core gates pass. The signal may still be directionally interesting, "
-            "but the quality gate remains too weak for a prediction-led vest action."
+            f"{pass_count}/{len(rows)} core gates pass and {fail_count} fail, so the quality gate "
+            "is too weak for a prediction-led vest action."
         )
     else:
         summary = (
-            f"{pass_count}/{len(rows)} core gates pass. The signal is usable for monitoring, "
-            "but not strong enough to fully trust as an execution-grade edge."
+            f"{pass_count}/{len(rows)} core gates pass ({marginal_count} marginal). The signal is usable "
+            "for monitoring, but not strong enough to fully trust as an execution-grade edge."
         )
-    if unknown_count:
-        summary += " Some checks are unavailable and should be treated as unresolved rather than implicitly passing."
+
+    cpcv_verdict = (
+        str(getattr(representative_cpcv, "stability_verdict", "UNKNOWN"))
+        if representative_cpcv is not None
+        else "missing"
+    )
+    hr_value = float(mean_hr) if mean_hr is not None and math.isfinite(float(mean_hr)) else float("nan")
+    diagnostic_rows = [
+        {
+            "check": "Mean hit rate",
+            "current": f"{hr_value:.1%}" if not math.isnan(hr_value) else "n/a",
+            "threshold": "not gated",
+            "status": "INFO",
+            "meaning": "Directional accuracy versus zero; compare with the base rate above.",
+        },
+        {
+            "check": "CPCV verdict",
+            "current": cpcv_verdict,
+            "threshold": "not gated",
+            "status": "INFO",
+            "meaning": "Stability across purged combinatorial paths (a K-fold, so diagnostic only).",
+        },
+    ]
 
     return {
-        "rows": rows,
+        "rows": rows + diagnostic_rows,
+        "gate_rows": rows,
         "pass_count": pass_count,
         "fail_count": fail_count,
-        "unknown_count": unknown_count,
+        "unknown_count": 0,
         "summary": summary,
     }
 

@@ -76,12 +76,38 @@ def aggregate_health_from_prediction_frames(
     prediction_frames: list[pd.DataFrame],
     target_horizon_months: int,
 ) -> dict[str, float] | None:
-    """Aggregate pooled OOS health from benchmark-level prediction frames."""
+    """Aggregate pooled OOS health from benchmark-level prediction frames.
+
+    Frames with ``benchmark``, ``date``, ``y_hat``, ``y_true`` and ``naive``
+    columns (the naive being that benchmark's prevailing mean of realised
+    targets) get the same look-ahead-free, date-clustered metrics as the
+    production ensemble (review 2026-09-25, WP7), including the
+    Pesaran-Timmermann result the gate reads. Frames without them fall back
+    to a single pooled series.
+    """
     if not prediction_frames:
         return None
     combined = pd.concat(prediction_frames, ignore_index=True)
     if combined.empty:
         return None
+    if {"benchmark", "date", "naive"}.issubset(combined.columns):
+        from src.models.forecast_diagnostics import summarize_panel_diagnostics
+
+        pooled, _ = summarize_panel_diagnostics(
+            combined.sort_values(["date", "benchmark"], kind="mergesort"),
+            target_horizon_months=target_horizon_months,
+        )
+        return {
+            "oos_r2": float(pooled["oos_r2"]),
+            "nw_ic": float(pooled["nw_ic"]),
+            "nw_pval": float(pooled["nw_p_value"]),
+            "agg_hit": float(pooled["hit_rate"]),
+            "base_rate": float(pooled["base_rate"]),
+            "constant_rule_hit_rate": float(pooled["constant_rule_hit_rate"]),
+            "hit_rate_excess": float(pooled["hit_rate_excess"]),
+            "pt_p_value": float(pooled["pt_p_value"]),
+            "n_obs": float(pooled["n_obs"]),
+        }
     pred_col = combined["y_hat"].rename("y_hat")
     true_col = combined["y_true"].rename("y_true")
     summary = summarize_predictions(
@@ -95,6 +121,31 @@ def aggregate_health_from_prediction_frames(
         "agg_hit": summary.hit_rate,
         "n_obs": float(summary.n_obs),
     }
+
+
+def honest_prediction_frame(
+    benchmark: str,
+    predicted: pd.Series,
+    realized: pd.Series,
+    target_history: pd.Series,
+    target_horizon_months: int,
+) -> pd.DataFrame:
+    """Date-indexed OOS predictions plus the prevailing-mean naive for pooling."""
+    from src.models.prequential import prevailing_mean_forecast
+
+    aligned = pd.concat(
+        [predicted.rename("y_hat"), realized.rename("y_true")], axis=1
+    ).dropna()
+    naive = prevailing_mean_forecast(aligned.index, target_history, target_horizon_months)
+    return pd.DataFrame(
+        {
+            "benchmark": str(benchmark),
+            "date": pd.DatetimeIndex(aligned.index),
+            "y_hat": aligned["y_hat"].to_numpy(dtype=float),
+            "y_true": aligned["y_true"].to_numpy(dtype=float),
+            "naive": naive.to_numpy(dtype=float),
+        }
+    )
 
 
 def sell_pct_from_policy(

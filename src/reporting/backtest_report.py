@@ -35,42 +35,74 @@ if TYPE_CHECKING:
 def compute_oos_r_squared(
     predicted: pd.Series,
     realized: pd.Series,
+    horizon_months: int = 1,
+    benchmark_forecast: pd.Series | None = None,
+    target_history: pd.Series | None = None,
 ) -> float:
     """
     Compute the Campbell-Thompson (2008) out-of-sample R².
 
-    OOS R² = 1 - MSE_model / MSE_naive
+    OOS R² = 1 - SSE_model / SSE_naive
 
-    where MSE_naive uses the expanding historical mean return as the forecast.
-    A positive OOS R² means the model beats the naive historical-average
-    benchmark.  Values of 0.5–2.0% are economically significant for 6–12M
-    return forecasting.
+    The naive forecast at t is the prevailing mean of the targets realised by
+    t. A target labelled d (its window start) is realised ``horizon_months``
+    later, so only targets with month(d) + horizon_months <= month(t) count
+    (review 2026-09-25, F04: the old benchmark was the expanding mean of the
+    OOS series *including the current target*). Rows where nothing is
+    realised yet are left out of both sums.
+
+    A positive OOS R² means the model beats the naive benchmark. Values of
+    0.5–2.0% are economically significant for 6–12M return forecasting.
 
     Args:
-        predicted: Series of model predictions (aligned index with ``realized``).
-        realized:  Series of realized returns.
+        predicted:          Model predictions (index aligned with ``realized``).
+        realized:           Realised targets. Dates, or an integer index read as
+                            consecutive months.
+        horizon_months:     Target horizon. 1 means non-overlapping one-step
+                            targets; 6-month overlapping targets need 6.
+        benchmark_forecast: The naive forecast itself, aligned with
+                            ``realized`` (used for pooled panels, where each
+                            benchmark has its own prevailing mean).
+        target_history:     Full target history for the prevailing mean,
+                            including the training period. Defaults to
+                            ``realized`` (every non-NaN value, including rows
+                            whose prediction is missing).
 
     Returns:
-        OOS R² as a float.  Returns NaN if inputs have fewer than 2 observations.
+        OOS R² as a float. NaN when fewer than 2 rows can be scored.
     """
-    aligned = pd.concat([predicted, realized], axis=1).dropna()
-    if len(aligned) < 2:
+    frame = pd.concat(
+        [pd.Series(predicted).rename("y_hat"), pd.Series(realized).rename("y_true")],
+        axis=1,
+    )
+    if benchmark_forecast is not None:
+        naive = pd.Series(benchmark_forecast)
+        if len(naive) == len(frame):
+            frame["naive"] = naive.to_numpy(dtype=float)
+        else:
+            frame["naive"] = naive.reindex(frame.index).to_numpy(dtype=float)
+    else:
+        from src.models.prequential import prevailing_mean_forecast
+
+        history = frame["y_true"] if target_history is None else target_history
+        frame["naive"] = prevailing_mean_forecast(
+            frame.index, history, horizon_months
+        ).to_numpy(dtype=float)
+
+    scored = frame.dropna()
+    if len(scored) < 2:
         return float("nan")
 
-    y_hat = aligned.iloc[:, 0].values
-    y_true = aligned.iloc[:, 1].values
+    y_hat = scored["y_hat"].to_numpy(dtype=float)
+    y_true = scored["y_true"].to_numpy(dtype=float)
+    y_naive = scored["naive"].to_numpy(dtype=float)
 
-    # Expanding historical mean as the naive benchmark
-    y_naive = np.array([np.mean(y_true[:i]) for i in range(1, len(y_true) + 1)])
-    y_naive[0] = y_true[0]  # no prior history: use first realized value as naive
-
-    mse_model = np.mean((y_true - y_hat) ** 2)
-    mse_naive = np.mean((y_true - y_naive) ** 2)
-
-    if mse_naive == 0.0:
+    sse_model = float(np.sum((y_true - y_hat) ** 2))
+    sse_naive = float(np.sum((y_true - y_naive) ** 2))
+    if sse_naive == 0.0:
         return float("nan")
 
-    return float(1.0 - mse_model / mse_naive)
+    return float(1.0 - sse_model / sse_naive)
 
 
 def apply_bhy_correction(
@@ -297,6 +329,8 @@ def generate_regime_breakdown(
 
         rows.append({
             "regime":     quadrant,
+            "event_date": event_ts,
+            "horizon":    int(r.target_horizon),
             "correct":    float(r.correct_direction),
             "ic":         r.ic_at_event,
             "predicted":  r.predicted_relative_return,
@@ -311,9 +345,15 @@ def generate_regime_breakdown(
     df = pd.DataFrame(rows)
     output_rows = []
     for regime, group in df.groupby("regime"):
-        pred_s = pd.Series(group["predicted"].values)
-        real_s = pd.Series(group["realized"].values)
-        oos_r2 = compute_oos_r_squared(pred_s, real_s)
+        group = group.sort_values("event_date", kind="mergesort")
+        event_index = pd.DatetimeIndex(group["event_date"])
+        pred_s = pd.Series(group["predicted"].to_numpy(dtype=float), index=event_index)
+        real_s = pd.Series(group["realized"].to_numpy(dtype=float), index=event_index)
+        oos_r2 = compute_oos_r_squared(
+            pred_s,
+            real_s,
+            horizon_months=int(group["horizon"].max()),
+        )
         output_rows.append({
             "regime":    regime,
             "n_obs":     len(group),

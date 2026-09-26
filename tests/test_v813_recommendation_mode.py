@@ -54,11 +54,24 @@ def test_determine_recommendation_mode_actionable_when_all_quality_checks_pass()
         mean_predicted=0.18,
         mean_ic=0.08,
         mean_hr=0.58,
-        aggregate_health={"oos_r2": 0.03},
+        aggregate_health={"oos_r2": 0.03, "pt_p_value": 0.01},
         representative_cpcv=_cpcv("GOOD"),
     )
     assert mode["mode"] == "actionable"
     assert mode["sell_pct"] == 0.25
+
+
+def test_determine_recommendation_mode_needs_directional_skill() -> None:
+    """Review 2026-09-25 F13: a hit rate above 55 % is not enough on its own."""
+    mode = _determine_recommendation_mode(
+        consensus="OUTPERFORM",
+        mean_predicted=0.18,
+        mean_ic=0.08,
+        mean_hr=0.58,
+        aggregate_health={"oos_r2": 0.03, "pt_p_value": 0.40},
+        representative_cpcv=_cpcv("GOOD"),
+    )
+    assert mode["mode"] == "defer-to-tax-default"
 
 
 def test_build_executive_summary_lines_mentions_quality_and_change_trigger() -> None:

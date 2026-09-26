@@ -108,19 +108,24 @@ class TestConfigV50:
     def test_cpcv_n_test_folds_is_2(self) -> None:
         assert config.CPCV_N_TEST_FOLDS == 2
 
-    def test_cpcv_path_count(self) -> None:
-        """C(8, 2) = 28 paths."""
+    def test_cpcv_split_and_path_count(self) -> None:
+        """C(8, 2) = 28 splits recombine into C(7, 1) = 7 test paths (review F02)."""
         import math
-        n_paths = math.comb(config.CPCV_N_FOLDS, config.CPCV_N_TEST_FOLDS)
-        assert n_paths == 28
+        from skfolio.model_selection import CombinatorialPurgedCV
+
+        n_splits = math.comb(config.CPCV_N_FOLDS, config.CPCV_N_TEST_FOLDS)
+        cv = CombinatorialPurgedCV(
+            n_folds=config.CPCV_N_FOLDS, n_test_folds=config.CPCV_N_TEST_FOLDS
+        )
+        assert n_splits == cv.n_splits == 28
+        assert cv.n_test_paths == math.comb(config.CPCV_N_FOLDS - 1, config.CPCV_N_TEST_FOLDS - 1) == 7
 
     def test_diag_cpcv_min_positive_paths(self) -> None:
         assert config.DIAG_CPCV_MIN_POSITIVE_PATHS == 19
 
     def test_diag_threshold_fraction_consistent(self) -> None:
-        """≥19/28 ≈ 67.9% — same ballpark as the former ≥13/15 ≈ 86.7% threshold."""
-        n_paths = math.comb(config.CPCV_N_FOLDS, config.CPCV_N_TEST_FOLDS)
-        frac = config.DIAG_CPCV_MIN_POSITIVE_PATHS / n_paths
+        """≥19 of a 28-path reference ≈ 67.9%; it is scaled to the actual 7 paths."""
+        frac = config.DIAG_CPCV_MIN_POSITIVE_PATHS / config.DIAG_CPCV_REFERENCE_PATHS
         assert 0.60 <= frac <= 0.80, (
             f"Threshold fraction {frac:.1%} outside expected 60–80% range"
         )
@@ -275,6 +280,9 @@ class TestRunWfoGbt:
 # Inverse-variance weighting in get_ensemble_signals()
 # ===========================================================================
 
+_ALPHA = 0.5
+
+
 class TestInverseVarianceWeighting:
     """
     Unit-test the weighting logic by constructing controlled EnsembleWFOResult
@@ -333,11 +341,14 @@ class TestInverseVarianceWeighting:
 
         mbw.predict_current = _mock_pc
         try:
+            # The weighting math is tested at a fixed alpha; the prequential
+            # alpha is tested in test_validation_gating_wp7.py.
             signals = get_ensemble_signals(
                 X_full=X,
                 relative_return_matrix=rel_matrix,
                 ensemble_results={etf: ens},
                 X_current=X_current,
+                shrinkage_alpha=_ALPHA,
             )
         finally:
             mbw.predict_current = original_pc
@@ -351,7 +362,7 @@ class TestInverseVarianceWeighting:
         preds = {"elasticnet": 0.10, "ridge": 0.20, "bayesian_ridge": 0.30}
         signals = self._build_signals(maes, preds, X, y)
         expected = (
-            config.ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA
+            _ALPHA
             * (0.10 + 0.20 + 0.30)
             / 3
         )
@@ -370,7 +381,7 @@ class TestInverseVarianceWeighting:
         result = signals.loc["VTI", "point_prediction"]
         # Weight_A = 1/0.0001 = 10000, Weight_B = 1/0.01 = 100
         # expected ≈ (1.0 * 10000 + (-1.0) * 100) / 10100 ≈ 0.9802
-        expected = config.ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA * (
+        expected = _ALPHA * (
             (1.0 * 10000 + (-1.0) * 100) / (10000 + 100)
         )
         assert result == pytest.approx(expected, rel=1e-4)
@@ -380,7 +391,7 @@ class TestInverseVarianceWeighting:
         maes = {"elasticnet": 0.05}
         preds = {"elasticnet": 0.123}
         signals = self._build_signals(maes, preds, X, y)
-        expected = config.ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA * 0.123
+        expected = _ALPHA * 0.123
         assert signals.loc["VTI", "point_prediction"] == pytest.approx(expected, rel=1e-6)
 
     def test_zero_mae_fallback_weight_one(self) -> None:
@@ -392,7 +403,7 @@ class TestInverseVarianceWeighting:
         maes = {"elasticnet": 0.0, "ridge": 0.0}
         preds = {"elasticnet": 0.10, "ridge": 0.20}
         signals = self._build_signals(maes, preds, X, y)
-        expected = config.ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA * 0.15
+        expected = _ALPHA * 0.15
         assert signals.loc["VTI", "point_prediction"] == pytest.approx(expected, rel=1e-6)
 
 
@@ -401,23 +412,20 @@ class TestInverseVarianceWeighting:
 # ===========================================================================
 
 class TestEnsembleOosReconstruction:
-    def test_reconstruction_applies_promoted_shrinkage(self) -> None:
-        ridge_result = _make_wfo_result(mae=0.05, model_type="ridge", n_obs=3)
-        gbt_result = _make_wfo_result(mae=0.10, model_type="gbt", n_obs=3)
-
-        ridge_result.folds[0].y_hat = np.array([0.30, 0.10, -0.20], dtype=float)
-        ridge_result.folds[0].y_true = np.array([0.05, 0.05, 0.05], dtype=float)
-        ridge_result.folds[0]._test_dates = list(
-            pd.date_range("2020-01-31", periods=3, freq="ME")
-        )
-
-        gbt_result.folds[0].y_hat = np.array([0.00, 0.20, -0.10], dtype=float)
-        gbt_result.folds[0].y_true = np.array([0.05, 0.05, 0.05], dtype=float)
-        gbt_result.folds[0]._test_dates = list(
-            pd.date_range("2020-01-31", periods=3, freq="ME")
-        )
-
-        ens = EnsembleWFOResult(
+    @staticmethod
+    def _ensemble(n_obs: int) -> EnsembleWFOResult:
+        ridge_result = _make_wfo_result(mae=0.05, model_type="ridge", n_obs=n_obs)
+        gbt_result = _make_wfo_result(mae=0.10, model_type="gbt", n_obs=n_obs)
+        dates = list(pd.date_range("2020-01-31", periods=n_obs, freq="ME"))
+        rng = np.random.default_rng(0)
+        y_true = rng.normal(0.02, 0.05, n_obs)
+        ridge_result.folds[0].y_true = y_true.copy()
+        ridge_result.folds[0].y_hat = y_true + rng.normal(0.0, 0.02, n_obs)
+        ridge_result.folds[0]._test_dates = dates
+        gbt_result.folds[0].y_true = y_true.copy()
+        gbt_result.folds[0].y_hat = y_true + rng.normal(0.0, 0.08, n_obs)
+        gbt_result.folds[0]._test_dates = dates
+        return EnsembleWFOResult(
             benchmark="VTI",
             target_horizon=6,
             mean_ic=0.10,
@@ -426,18 +434,35 @@ class TestEnsembleOosReconstruction:
             model_results={"ridge": ridge_result, "gbt": gbt_result},
         )
 
+    def test_reconstruction_uses_equal_weights_before_any_error_is_realised(self) -> None:
+        """Review 2026-09-25 F13: no row may use errors realised after its date."""
+        ens = self._ensemble(n_obs=6)
         y_hat, y_true = reconstruct_ensemble_oos_predictions(ens)
+        ridge = ens.model_results["ridge"].folds[0].y_hat
+        gbt = ens.model_results["gbt"].folds[0].y_hat
+        # Within 6 months nothing is realised: equal weights, no shrinkage.
+        np.testing.assert_allclose(y_hat.to_numpy(dtype=float), (ridge + gbt) / 2.0)
+        np.testing.assert_allclose(
+            y_true.to_numpy(dtype=float), ens.model_results["ridge"].folds[0].y_true
+        )
 
-        ridge_weight = 1.0 / (ridge_result.mean_absolute_error ** 2)
-        gbt_weight = 1.0 / (gbt_result.mean_absolute_error ** 2)
-        raw_expected = (
-            ridge_result.folds[0].y_hat * ridge_weight
-            + gbt_result.folds[0].y_hat * gbt_weight
-        ) / (ridge_weight + gbt_weight)
-        expected = config.ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA * raw_expected
+    def test_reconstruction_weights_come_from_realised_errors(self) -> None:
+        ens = self._ensemble(n_obs=12)
+        y_hat, _ = reconstruct_ensemble_oos_predictions(ens, shrinkage_alpha=1.0)
+        fold_r = ens.model_results["ridge"].folds[0]
+        fold_g = ens.model_results["gbt"].folds[0]
+        # Row 8 (month 9) can use rows 0-2 (windows ended by then).
+        mae_r = np.mean(np.abs(fold_r.y_true[:3] - fold_r.y_hat[:3]))
+        mae_g = np.mean(np.abs(fold_g.y_true[:3] - fold_g.y_hat[:3]))
+        w_r, w_g = 1.0 / mae_r**2, 1.0 / mae_g**2
+        expected = (w_r * fold_r.y_hat[8] + w_g * fold_g.y_hat[8]) / (w_r + w_g)
+        assert y_hat.iloc[8] == pytest.approx(expected)
 
-        np.testing.assert_allclose(y_hat.to_numpy(dtype=float), expected)
-        np.testing.assert_allclose(y_true.to_numpy(dtype=float), np.full(3, 0.05))
+    def test_fixed_alpha_scales_the_prequential_combination(self) -> None:
+        ens = self._ensemble(n_obs=12)
+        unscaled, _ = reconstruct_ensemble_oos_predictions(ens, shrinkage_alpha=1.0)
+        scaled, _ = reconstruct_ensemble_oos_predictions(ens, shrinkage_alpha=0.5)
+        np.testing.assert_allclose(scaled.to_numpy(), 0.5 * unscaled.to_numpy())
 
 
 # ===========================================================================

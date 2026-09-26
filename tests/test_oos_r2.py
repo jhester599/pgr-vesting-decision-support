@@ -33,13 +33,42 @@ class TestComputeOosRSquared:
         assert r2 > 0.0
 
     def test_historical_mean_prediction_gives_zero(self):
-        """When predicted = expanding historical mean, OOS R² should be 0."""
+        """When predicted = mean of the targets realised before t, OOS R² is 0.
+
+        Review 2026-09-25 (F04): the old benchmark included the current target,
+        so the expanding mean *including* y_t ([1, 1.5, 2, ...]) scored about 0
+        and an honest prevailing-mean forecaster scored negative.
+        """
         realized = pd.Series([1.0, 2.0, 3.0, 4.0, 5.0])
-        # Expanding mean as the naive prediction
-        predicted = pd.Series([1.0, 1.5, 2.0, 2.5, 3.0])
+        predicted = pd.Series([np.nan, 1.0, 1.5, 2.0, 2.5])
         r2 = compute_oos_r_squared(predicted, realized)
-        # The model IS the historical mean benchmark → R² ≈ 0
-        assert abs(r2) < 0.1
+        assert r2 == pytest.approx(0.0)
+
+    def test_expanding_mean_including_current_target_beats_the_naive(self):
+        """A forecast that peeks at y_t must not look like the naive benchmark."""
+        realized = pd.Series([1.0, 2.0, 3.0, 4.0, 5.0])
+        peeking = pd.Series([1.0, 1.5, 2.0, 2.5, 3.0])
+        assert compute_oos_r_squared(peeking, realized) > 0.3
+
+    def test_overlapping_targets_ignore_unrealised_history(self):
+        """With 6M targets, the naive at t uses targets labelled t-6 or earlier."""
+        dates = pd.date_range("2020-01-31", periods=10, freq="ME")
+        realized = pd.Series(np.arange(10, dtype=float), index=dates)
+        predicted = pd.Series(
+            [np.nan] * 6 + [float(np.mean(np.arange(k - 5))) for k in range(6, 10)],
+            index=dates,
+        )
+        assert compute_oos_r_squared(predicted, realized, horizon_months=6) == pytest.approx(0.0)
+
+    def test_target_history_includes_the_training_period(self):
+        dates = pd.date_range("2020-01-31", periods=12, freq="ME")
+        history = pd.Series(np.linspace(0.0, 1.1, 12), index=dates)
+        oos = history.iloc[8:]
+        prevailing = pd.Series(
+            [float(history.iloc[: k - 5].mean()) for k in range(8, 12)], index=oos.index
+        )
+        r2 = compute_oos_r_squared(prevailing, oos, horizon_months=6, target_history=history)
+        assert r2 == pytest.approx(0.0)
 
     def test_random_prediction_gives_negative_or_low_r2(self):
         rng = np.random.default_rng(99)

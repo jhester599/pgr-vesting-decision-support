@@ -16,6 +16,10 @@ Migrations:
     005_fred_one_row_per_month         Keep one fred_macro_monthly row per
                                        series and month; add a unique index
                                        (F06/F27).
+    008_model_performance_log_metrics_version
+                                       Tag model-health rows with the metric
+                                       definitions they used; existing rows
+                                       become 'pre-2026-09-25' (WP7).
 """
 
 from __future__ import annotations
