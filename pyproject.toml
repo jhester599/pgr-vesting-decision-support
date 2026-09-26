@@ -46,6 +46,9 @@ dev = [
     "hypothesis==6.135.7",
     # research/tools/registry.py reads research/registry.yaml (CI check).
     "pyyaml==6.0.2",
+    # Stubs for `requests`, so mypy on src/pgr_vds sees the same types
+    # locally and in CI.
+    "types-requests==2.33.0.20260906",
 ]
 dashboard = [
     "streamlit>=1.35.0",

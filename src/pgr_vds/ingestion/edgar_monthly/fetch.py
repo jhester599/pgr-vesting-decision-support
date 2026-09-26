@@ -23,7 +23,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any
 
-import requests  # type: ignore[import-untyped]  # no stubs installed
+import requests
 
 import config
 
@@ -122,7 +122,7 @@ def get(url: str, retries: int = 3, use_cache: bool = True) -> Any:
     resp = _get_network(url, retries=retries)
     fetched_at = datetime.now(tz=timezone.utc).isoformat(timespec="seconds")
     try:
-        resp.fetched_at = fetched_at
+        setattr(resp, "fetched_at", fetched_at)
     except AttributeError:
         pass
     if _http_cache_dir is not None:

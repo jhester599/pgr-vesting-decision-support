@@ -86,8 +86,13 @@ all fixed without a runtime change:
 | `diagnostic_report` (7), `recommendation_report` (1), `pipeline` (4) | `float(...)` / `str \| None` arguments from payload dicts typed `dict[str, object]` | the payload parameters (`shadow_gate_overlay`, `classifier_monitoring_summary`, `classification_shadow_summary`) are `dict[str, Any]`, which is what they hold |
 | `diagnostic_report` (2) | `signals` may be `None` inside `if has_ci_data:` (mypy cannot narrow through the flag) | `if has_ci_data and signals is not None:` (`has_ci_data` already implies it) |
 
-The EDGAR modules type-checked clean apart from `requests` having no
-installed stubs (`# type: ignore[import-untyped]` on that import).
+The EDGAR modules had one error once the `requests` stubs are installed
+(CI's environment had them; the first local run did not): the fetcher sets
+`resp.fetched_at` on a `requests.Response`, an attribute the stubs do not
+declare. It is now `setattr(resp, "fetched_at", ...)` (same behaviour), and
+`types-requests==2.33.0.20260906` is pinned in the `dev` extra so local and
+CI runs check against the same stubs. The first CI run on the PR failed on
+exactly this.
 
 CI runs a new step, `python -m mypy --follow-imports=silent src/pgr_vds cli`
 (21 files, `Success: no issues found`). `--follow-imports=silent` reports

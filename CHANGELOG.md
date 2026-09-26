@@ -23,8 +23,10 @@ byte-identical output before and after. Report:
   The report footer still names `scripts/monthly_decision.py` (kept for
   byte-identical output; one constant).
 - **mypy.** The `scripts.monthly_decision` `ignore_errors` override is gone;
-  14 type errors fixed by annotation only. CI runs
-  `mypy --follow-imports=silent src/pgr_vds cli`.
+  14 type errors fixed by annotation only, plus one in the EDGAR fetcher
+  (`setattr` for the `fetched_at` attribute on a `requests.Response`). CI runs
+  `mypy --follow-imports=silent src/pgr_vds cli`; `types-requests` is pinned
+  in the `dev` extra so local and CI runs use the same stubs.
 - **EDGAR 8-K.** `scripts/edgar_8k_fetcher.py` is split into
   `src/pgr_vds/ingestion/edgar_monthly/` (`fetch`, `parse`, `derive`,
   `load`), with `load.load_from_csv` as the one CSV loader, behind
