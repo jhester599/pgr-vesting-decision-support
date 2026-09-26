@@ -1,6 +1,6 @@
 # Research re-run plan v200–v210 (after the 2026-09-25 review fixes)
 
-- **Written:** 2026-09-26, by the step-13V verification session. Read it with [`docs/reviews/VERIFICATION_2026-09-26.md`](../reviews/VERIFICATION_2026-09-26.md).
+- **Written:** 2026-09-26, by the step-13V verification session. Read it with [`docs/reviews/VERIFICATION_2026-09-26_claude.md`](../reviews/VERIFICATION_2026-09-26_claude.md). "Verification N1" … "N10" below are that report's new issues.
 - **Status:** proposal. Nothing here changes production. Each step is one new session: paste the [shared preamble](#4-shared-preamble-paste-first-in-every-session), then that step's prompt.
 - **Numbering:**
   - The series starts at v200 and runs sequentially (v200 … v210).
@@ -289,7 +289,7 @@ Total budget: 74 development candidates, plus up to 20 descriptive valuation tes
 > You are running one step of the v200 research re-run for `jhester599/pgr-vesting-decision-support`.
 >
 > **Background.**
-> - The 2026-09-25 review (`docs/reviews/REPO_REVIEW_2026-09-25.md`) found defects in the data, targets and validation. CHANGELOG v171–v185 fixed them, and `docs/reviews/VERIFICATION_2026-09-26.md` verified the fixes.
+> - The 2026-09-25 review (`docs/reviews/REPO_REVIEW_2026-09-25.md`) found defects in the data, targets and validation. CHANGELOG v171–v185 fixed them, and `docs/reviews/VERIFICATION_2026-09-26_claude.md` verified the fixes ("verification N1" … "N10" are its new issues).
 > - Every research conclusion before v200 rests on the broken data or metrics. The plan is `docs/research/RERUN_PLAN_v200_claude.md`: read its sections 2–3 and your step.
 >
 > **Rules.**
