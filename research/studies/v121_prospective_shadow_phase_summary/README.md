@@ -8,7 +8,7 @@
 
 **Status.** `closed`.
 
-**Closeout / record.** [2026-04-11-v118-v121-prospective-shadow-monitoring.md](../../../docs/superpowers/plans/2026-04-11-v118-v121-prospective-shadow-monitoring.md)
+**Closeout / record.** [2026-04-11-v118-v121-prospective-shadow-monitoring.md](../../../docs/history/superpowers/plans/2026-04-11-v118-v121-prospective-shadow-monitoring.md)
 
 ## Run
 

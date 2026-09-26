@@ -10,7 +10,7 @@
 
 **Notes.** x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md).
 
-**Closeout / record.** [2026-04-23-x7-targeted-ta-feature-followup.md](../../../docs/superpowers/plans/2026-04-23-x7-targeted-ta-feature-followup.md)
+**Closeout / record.** [2026-04-23-x7-targeted-ta-feature-followup.md](../../../docs/history/superpowers/plans/2026-04-23-x7-targeted-ta-feature-followup.md)
 
 ## Run
 

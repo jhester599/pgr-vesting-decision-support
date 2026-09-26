@@ -1,21 +1,7 @@
 # Files that already edited sys.path when the rule was added (v180, review
 # 2026-09-25 section 5, phase 0). Checked by check_sys_path_edits.py and
-# tests/test_restructure_phase0.py. The list only shrinks: do not add to it;
+# tests/integration/repo/test_restructure_phase0.py. The list only shrinks: do not add to it;
 # remove a file once it imports `src`/`config` through `pip install -e .`.
-archive/scripts/v11_autonomous_loop.py
-archive/scripts/v12_shadow_study.py
-archive/scripts/v14_prediction_layer_study.py
-archive/scripts/v15_execute.py
-archive/scripts/v15_feature_replacement_setup.py
-archive/scripts/v16_promotion_study.py
-archive/scripts/v17_shadow_gate.py
-archive/scripts/v18_bias_reduction_study.py
-archive/scripts/v19_feature_completion.py
-archive/scripts/v20_synthesis_study.py
-archive/scripts/v21_historical_comparison.py
-archive/scripts/v22_cross_check_promotion.py
-archive/scripts/v23_extended_history_proxy_study.py
-archive/scripts/v24_vti_replacement_study.py
 research/studies/bl01_tau_sweep_eval/bl01_tau_sweep_eval.py
 research/studies/pb_vs_pe_analysis/pb_vs_pe_analysis.py
 research/studies/v110_gemini_veto_gate/v110_gemini_veto_gate.py
@@ -215,17 +201,3 @@ tests/research/test_research_x6_special_dividend.py
 tests/research/test_research_x7_targeted_ta.py
 tests/research/test_research_x8_synthesis.py
 tests/research/test_research_x9_bvps_bridge.py
-tests/test_diagnostic_report.py
-tests/test_edgar_8k_parser_breadth.py
-tests/test_edgar_8k_share_repurchases.py
-tests/test_edgar_monthly_units_and_keys.py
-tests/test_edgar_validation.py
-tests/test_feature_ablation.py
-tests/test_monthly_pipeline_e2e.py
-tests/test_monthly_report_tax.py
-tests/test_stcg_boundary.py
-tests/test_v45_features.py
-tests/test_v50_ensemble.py
-tests/test_v65_p26_p27_p28.py
-tests/test_v74_guards.py
-tests/test_v813_recommendation_mode.py

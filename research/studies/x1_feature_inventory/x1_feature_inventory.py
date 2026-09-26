@@ -239,8 +239,8 @@ def build_inventory() -> dict[str, Any]:
         "feature_matrix_source": "read_existing_processed_cache",
         "feature_group_mode": "exclusive_first_match",
         "source_reports": [
-            "docs/archive/history/x1-pgr-model-reports/20260421-pgrmodels-chatgpt.md",
-            "docs/archive/history/x1-pgr-model-reports/20260421-pgrmodels-gemini.md",
+            "docs/history/archive/history/x1-pgr-model-reports/20260421-pgrmodels-chatgpt.md",
+            "docs/history/archive/history/x1-pgr-model-reports/20260421-pgrmodels-gemini.md",
         ],
         "data_frames": {
             "feature_matrix": _frame_summary(feature_df),

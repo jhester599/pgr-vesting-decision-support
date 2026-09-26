@@ -17,7 +17,7 @@ exhibit URL, the fetch time and the parser version; the
 `pgr_edgar_monthly_first_reported` view gives the first-reported value of
 every field.
 
-Row-level checks (`tests/test_pgr_edgar_integrity.py`) hold on every row:
+Row-level checks (`tests/integration/data/test_pgr_edgar_integrity.py`) hold on every row:
 total revenues − total expenses = pretax income; combined ratio = loss/LAE
 ratio + expense ratio; shareholders' equity (net of preferred stock) is
 within 6 % of book value per share × shares outstanding; monthly net income

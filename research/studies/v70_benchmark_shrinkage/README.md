@@ -8,7 +8,7 @@
 
 **Status.** `closed`.
 
-**Closeout / record.** [2026-04-10-v66-v73-calibration-and-decision-layer.md](../../../docs/superpowers/plans/2026-04-10-v66-v73-calibration-and-decision-layer.md)
+**Closeout / record.** [2026-04-10-v66-v73-calibration-and-decision-layer.md](../../../docs/history/superpowers/plans/2026-04-10-v66-v73-calibration-and-decision-layer.md)
 
 ## Run
 

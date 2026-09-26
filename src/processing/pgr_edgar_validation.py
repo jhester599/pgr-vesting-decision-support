@@ -1,7 +1,7 @@
 """Row-level validation of the PGR monthly EDGAR table (review 2026-09-25, WP5).
 
 Each check returns a DataFrame of violating rows (empty when the table is
-clean).  They are run by ``tests/test_pgr_edgar_integrity.py`` against the
+clean).  They are run by ``tests/integration/data/test_pgr_edgar_integrity.py`` against the
 committed DB and by ``scripts/repair_edgar_history.py`` after a rebuild.
 
 Checks

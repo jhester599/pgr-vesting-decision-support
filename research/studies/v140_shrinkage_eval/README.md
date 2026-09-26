@@ -10,7 +10,7 @@
 
 **Notes.** Flat across the bounded range; 0.50 kept.
 
-**Closeout / record.** [V152_CLOSEOUT_AND_HANDOFF.md](../../../docs/closeouts/V152_CLOSEOUT_AND_HANDOFF.md)
+**Closeout / record.** [V152_CLOSEOUT_AND_HANDOFF.md](../../../docs/history/closeouts/V152_CLOSEOUT_AND_HANDOFF.md)
 
 ## Run
 

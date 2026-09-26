@@ -51,9 +51,10 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
+          cache-dependency-path: pyproject.toml
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -e .
 
       - name: Check Day 1 (prices) completed successfully
         # Warn — but do NOT block — if the DB appears to have no price rows.

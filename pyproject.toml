@@ -1,10 +1,12 @@
-# Package metadata and tool configuration (review 2026-09-25, section 5,
-# phase 0). `pip install -e .` makes `src` and `config` importable without
-# `sys.path` edits; `scripts/checks/check_sys_path_edits.py` stops new ones.
+# Package metadata, dependencies and tool configuration (review 2026-09-25,
+# section 5, phases 0 and 4). `pip install -e .` makes `src` and `config`
+# importable without `sys.path` edits; `scripts/checks/check_sys_path_edits.py`
+# stops new ones.
 #
-# Runtime dependencies are listed twice: here, and in requirements.txt, which
-# the GitHub workflows install. tests/test_restructure_phase0.py keeps the two
-# lists identical.
+# This is the only dependency list: the requirements and constraints files
+# are gone (phase 4). Workflows run `pip install -e .`; CI and contributors run
+# `pip install -e ".[dev]"`, whose tools are pinned exactly (they were the
+# constraints file); the dashboard adds `.[dashboard]`.
 
 [build-system]
 requires = ["setuptools>=69", "wheel"]
@@ -12,7 +14,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pgr_vds"
-version = "0.180.0"
+version = "0.184.0"
 description = "PGR RSU vesting decision support: monthly sell/hold recommendation engine."
 readme = "README.md"
 # pandas 3 needs Python 3.11+; CI and every workflow run 3.11.
@@ -36,13 +38,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Pinned so CI and local runs lint and test with the same tool versions.
 dev = [
-    "pytest>=9.0.0",
-    "ruff>=0.13.0",
-    "mypy>=1.18.0",
-    "hypothesis>=6.0.0",
+    "pytest==9.0.2",
+    "ruff==0.13.2",
+    "mypy==1.18.2",
+    "hypothesis==6.135.7",
     # research/tools/registry.py reads research/registry.yaml (CI check).
-    "pyyaml>=6.0",
+    "pyyaml==6.0.2",
 ]
 dashboard = [
     "streamlit>=1.35.0",
@@ -59,10 +62,13 @@ include = ["src", "src.*", "config", "config.*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--tb=short"
+# unit, integration and research are applied by folder (tests/unit/,
+# tests/integration/, tests/research/) in tests/conftest.py.
 markers = [
-    "integration: marks tests as integration (slow, real I/O)",
+    "unit: tests under tests/unit/ (one module of src/, config/, dashboard/ or scripts/)",
+    "integration: tests under tests/integration/ (several layers, the committed DB, repository contracts)",
+    "research: tests under tests/research/ (research studies and src/research); runs in its own CI job",
     "slow: marks intentionally expensive tests that can be skipped with --fast",
-    "unit: fast, no I/O",
     "artifact: reads committed data (results/, artifacts/, data/, the committed DB); runs in the separate CI job",
 ]
 

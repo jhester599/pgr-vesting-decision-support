@@ -5,6 +5,65 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v184 (2026-09-26) — Review 2026-09-25, step 11: restructure phase 4 (docs and tests layout)
+
+WP13 phase 4 from section 5 of `docs/reviews/REPO_REVIEW_2026-09-25.md`
+(F32). No production code path changes; the workflows now install the
+package from `pyproject.toml` instead of `requirements.txt` (same
+dependencies). Report and before/after tests:
+`docs/reviews/2026-09-25_step11_restructure_phase4.md`.
+
+- **Docs history.** `docs/plans/`, `docs/superpowers/`, `docs/closeouts/`,
+  `docs/results/` and `docs/archive/` moved (`git mv`, sub-folders kept)
+  to `docs/history/`, with one index, `docs/history/README.md`. The
+  2026-04-19 hygiene audit and `docs/gemini-prompts.txt` (to
+  `archive/history/prompts/`, as that audit suggested) moved there too.
+  Links were rewritten by resolving each one from its old location, and the
+  link checker now covers all of `docs/history/` and `docs/decisions/`
+  (339 files, 0 broken; 13 links in the old trees that were already broken,
+  mostly absolute `/Users/...` paths, are fixed).
+- **Decisions.** The promotion record in `docs/model-governance.md` is now
+  seven files in `docs/decisions/` (0001 v38 shrinkage … 0007 ACTIONABLE
+  sell mapping) with an index; governance keeps a summary table, the gates
+  and mapping in force, and the 2026-09-21 health baseline.
+- **Root.** `claude.md` (a copy of `AGENTS.md`) → `CLAUDE.md`, which
+  imports `@AGENTS.md`. `requirements.txt`, `requirements-dev.txt`,
+  `requirements-dashboard.txt` and `constraints-dev.txt` are folded into
+  `pyproject.toml`: the `dev` extra carries the exact pins of the old
+  constraints file, `dashboard` carries Streamlit. Every workflow runs
+  `pip install -e .` (CI: `pip install -e ".[dev]"`) and keys the pip cache
+  on `pyproject.toml`. Root `archive/` (14 retired v11–v24 scripts, one
+  test) is deleted; `docs/history/retired-code/README.md` lists each file
+  and the `git show 282a6b3:…` line to get it back.
+- **Tests.** `tests/` is split into `tests/unit/<package>/` (mirroring
+  `src/`, plus `config`, `dashboard`, `scripts`), `tests/integration/`
+  (`pipeline/`, `data/`, `repo/`) and `tests/research/`; 141 files moved,
+  32 renamed after the module they test (no `vNN`/`wpN` names left outside
+  `tests/research/`), and `test_v65_p26_p27_p28.py` split into its three
+  modules' tests. `tests/conftest.py` marks tests `unit`, `integration` or
+  `research` by folder. CI has a new `research` job
+  (`-m "research and not artifact"`); the `test` job runs
+  `-m "not artifact and not research"`. The same 2,511 tests are collected
+  as on `master` (two renamed); the three CI jobs partition the suite
+  exactly (1,989 + 350 + 198).
+- **Fixes found on the way.** `scripts/checks/mutation_study.py` skipped
+  missing test files silently, and had been skipping
+  `test_research_v72_quality_weighted_consensus.py` since step 10 moved it;
+  it now names paths under `tests/` and stops on a missing file. 14 moved
+  tests dropped a redundant `sys.path` edit (allowlist 227 → 199 entries, with
+  the 14 `archive/` entries).
+- **Docs.** `CONTRIBUTING.md` (install, test layout and naming, CI jobs,
+  docs history, decisions), `docs/README.md` (rewritten: where a new
+  document goes), `README.md`, `docs/architecture.md`, `docs/workflows.md`,
+  `docs/operations-runbook.md`, `docs/model-governance.md`.
+- **Tests.** New `tests/integration/repo/test_restructure_phase4.py`
+  (26 tests): 26 failed on `master`, 26 pass. `test_docs_hygiene.py`,
+  `test_restructure_phase0.py`, `test_restructure_phase3.py` and
+  `test_test_suite_hygiene.py` updated for the new layout.
+- **Full suite:** `2536 passed, 1 skipped, 105 warnings in 730.93s (0:12:10)`
+  (`master`: 2510 passed, 1 skipped; +26 phase-4 tests). The `version`
+  in `pyproject.toml` is now `0.184.0` (it had stayed at `0.180.0` since v180).
+
 ## v183 (2026-09-26) — Review 2026-09-25, step 10: restructure phase 3 (one folder per study)
 
 WP13 phase 3 from section 5 of `docs/reviews/REPO_REVIEW_2026-09-25.md`

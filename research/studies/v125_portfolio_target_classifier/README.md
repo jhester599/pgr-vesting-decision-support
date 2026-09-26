@@ -10,7 +10,7 @@
 
 **Notes.** Path B composite portfolio-target classifier (shadow).
 
-**Closeout / record.** [2026-04-12-v123-v125-classifier-portfolio-alignment.md](../../../docs/superpowers/plans/2026-04-12-v123-v125-classifier-portfolio-alignment.md)
+**Closeout / record.** [2026-04-12-v123-v125-classifier-portfolio-alignment.md](../../../docs/history/superpowers/plans/2026-04-12-v123-v125-classifier-portfolio-alignment.md)
 
 ## Run
 

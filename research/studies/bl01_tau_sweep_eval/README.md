@@ -10,7 +10,7 @@
 
 **Notes.** keep_incumbent (tau 0.05, risk aversion 2.5).
 
-**Closeout / record.** [BL01_CLOSEOUT_AND_HANDOFF.md](../../../docs/closeouts/BL01_CLOSEOUT_AND_HANDOFF.md)
+**Closeout / record.** [BL01_CLOSEOUT_AND_HANDOFF.md](../../../docs/history/closeouts/BL01_CLOSEOUT_AND_HANDOFF.md)
 
 ## Run
 

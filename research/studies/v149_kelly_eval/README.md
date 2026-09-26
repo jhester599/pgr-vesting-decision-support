@@ -10,7 +10,7 @@
 
 **Notes.** Candidate Kelly fraction and cap feed the autoresearch_followon_v150 shadow lane.
 
-**Closeout / record.** [V152_CLOSEOUT_AND_HANDOFF.md](../../../docs/closeouts/V152_CLOSEOUT_AND_HANDOFF.md)
+**Closeout / record.** [V152_CLOSEOUT_AND_HANDOFF.md](../../../docs/history/closeouts/V152_CLOSEOUT_AND_HANDOFF.md)
 
 ## Run
 

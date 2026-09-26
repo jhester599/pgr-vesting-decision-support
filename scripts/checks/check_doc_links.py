@@ -6,12 +6,13 @@ that file moves cannot silently break them. External links (``http:``,
 tracked-or-present file or directory, and a ``#fragment`` on a Markdown target
 (or on the same file) must match one of its GitHub heading anchors.
 
-The active docs are listed in ``ACTIVE_DOC_GLOBS``; the history trees
-(``docs/plans``, ``docs/superpowers``, ``docs/closeouts``, ``docs/results``,
-``docs/archive``, ``archive/`` and ``results/``) are frozen records and are
-not checked, and neither are the generated reports under ``artifacts/``
-(only its READMEs) or the study outputs under ``research/studies/`` (only
-the index, the legacy README and each study's README).
+The checked docs are listed in ``ACTIVE_DOC_GLOBS``: the operator docs,
+``docs/decisions/``, ``docs/reviews/`` and, since phase 4, the whole of
+``docs/history/`` (the old ``docs/plans``, ``docs/superpowers``,
+``docs/closeouts``, ``docs/results`` and ``docs/archive`` trees, merged
+behind one index). The generated reports under ``artifacts/`` (only its
+READMEs) and the study outputs under ``research/studies/`` (only the index,
+the legacy README and each study's README) are not checked.
 
 Usage:
     python scripts/checks/check_doc_links.py            # exit 1 on a broken link
@@ -34,6 +35,8 @@ ACTIVE_DOC_GLOBS: tuple[str, ...] = (
     "*.md",
     "docs/*.md",
     "docs/data/*.md",
+    "docs/decisions/*.md",
+    "docs/history/**/*.md",
     "docs/research/*.md",
     "docs/reviews/*.md",
     "artifacts/README.md",

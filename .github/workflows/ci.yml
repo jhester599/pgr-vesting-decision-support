@@ -24,13 +24,13 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
+          cache-dependency-path: pyproject.toml
 
       - name: Install runtime and dev dependencies
-        run: |
-          pip install -r requirements-dev.txt -c constraints-dev.txt
-          # Installs `src` and `config` (package pgr_vds) so they import
-          # without sys.path edits (review 2026-09-25, section 5, phase 0).
-          pip install --no-deps -e .
+        # pyproject.toml is the only dependency list (review 2026-09-25,
+        # section 5, phase 4). The editable install makes `src` and `config`
+        # (package pgr_vds) import without sys.path edits (phase 0).
+        run: pip install -e ".[dev]"
 
       - name: Ruff syntax and fatal-lint pass
         run: ruff check .
@@ -63,10 +63,11 @@ jobs:
           config/tax.py
 
       - name: Run unit and integration tests
-        # Stored-artifact tests (they read committed CSVs, charts and the
-        # committed DB) run in the `artifacts` job below (review 2026-09-25,
-        # F28, step 9).
-        run: python -m pytest -q -m "not artifact"
+        # tests/unit/ and tests/integration/. Research tests (tests/research/)
+        # run in the `research` job and stored-artifact tests (they read
+        # committed CSVs, charts and the committed DB) in the `artifacts` job
+        # below (review 2026-09-25, F28 and section 5, phase 4).
+        run: python -m pytest -q -m "not artifact and not research"
 
       - name: Smoke test production entrypoints (network mocked)
         # ci_offline_smoke.py refuses every socket connection and serves a
@@ -81,6 +82,30 @@ jobs:
           python scripts/ci_offline_smoke.py scripts/peer_fetch.py --dry-run
           python scripts/ci_offline_smoke.py scripts/edgar_8k_fetcher.py --dry-run
           python scripts/ci_offline_smoke.py scripts/monthly_decision.py --as-of 2026-04-02 --dry-run --skip-fred
+
+  research:
+    # Tests under tests/research/ (marker `research`, applied by folder in
+    # tests/conftest.py) cover the research studies and src/research. They
+    # are the slowest tests and never gate a production path, so they run
+    # on their own (review 2026-09-25, section 5, phase 4).
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: pyproject.toml
+
+      - name: Install runtime and dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run research tests
+        run: python -m pytest -q -m "research and not artifact"
 
   artifacts:
     # Tests marked `artifact` check committed data (results/, artifacts/,
@@ -97,11 +122,10 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
+          cache-dependency-path: pyproject.toml
 
       - name: Install runtime and dev dependencies
-        run: |
-          pip install -r requirements-dev.txt -c constraints-dev.txt
-          pip install --no-deps -e .
+        run: pip install -e ".[dev]"
 
       - name: Run stored-artifact tests
         run: python -m pytest -q -m artifact

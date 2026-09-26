@@ -33,11 +33,39 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
+# The top-level test folder decides the layer marker (review 2026-09-25,
+# section 5, phase 4): CI runs ``-m research`` in its own job.
+_LAYER_MARKERS: dict[str, str] = {
+    "unit": "unit",
+    "integration": "integration",
+    "research": "research",
+}
+_TESTS_DIR = Path(__file__).resolve().parent
+
+
+def layer_marker(path: Path) -> str | None:
+    """The layer marker for a test file: its first folder under ``tests/``."""
+    try:
+        parts = path.resolve().relative_to(_TESTS_DIR).parts
+    except ValueError:
+        return None
+    return _LAYER_MARKERS.get(parts[0]) if len(parts) > 1 else None
+
+
+@pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(
     config: pytest.Config,
     items: list[pytest.Item],
 ) -> None:
-    """Skip slow tests when the caller explicitly opts into fast mode."""
+    """Mark each test with its layer; skip slow tests under ``--fast``.
+
+    ``tryfirst`` so the layer markers exist before ``-m`` deselects.
+    """
+    for item in items:
+        marker = layer_marker(Path(str(item.path)))
+        if marker is not None:
+            item.add_marker(marker)
+
     if not config.getoption("--fast"):
         return
 

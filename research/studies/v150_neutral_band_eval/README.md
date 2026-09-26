@@ -10,7 +10,7 @@
 
 **Notes.** Candidate neutral band feeds the autoresearch_followon_v150 shadow lane.
 
-**Closeout / record.** [V150_CLOSEOUT_AND_V151_NEXT.md](../../../docs/closeouts/V150_CLOSEOUT_AND_V151_NEXT.md)
+**Closeout / record.** [V150_CLOSEOUT_AND_V151_NEXT.md](../../../docs/history/closeouts/V150_CLOSEOUT_AND_V151_NEXT.md)
 
 ## Run
 

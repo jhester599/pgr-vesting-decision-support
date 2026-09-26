@@ -18,8 +18,10 @@ Usage (never on your working tree; the script refuses to):
     git clone --no-hardlinks . /tmp/mutation-clone
     python scripts/checks/mutation_study.py /tmp/mutation-clone [ID ...]
 
-Set ``ONLY_TESTS=a.py,b.py`` to run only those test files for every
-mutation (used to compare the old and new property tests).
+Set ``ONLY_TESTS=unit/models/a.py,unit/tax/b.py`` (paths under ``tests/``)
+to run only those test files for every mutation (used to compare the old
+and new property tests). A listed test file that does not exist stops the
+run; before the phase 4 test move such files were skipped silently.
 """
 from __future__ import annotations
 
@@ -32,28 +34,74 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 FE = "src/processing/feature_engineering.py"
-FE_TESTS = ["test_feature_engineering.py", "test_edgar_filing_timing_wp10.py",
-            "test_price_features_wp2.py", "test_fred_pipeline_wp3.py",
-            "test_v45_features.py", "test_integration.py", "test_v63_channel_mix_features.py",
-            "test_fred_pgr_refresh_and_nan_live_features.py", "test_property_feature_engineering.py",
-            "test_mutation_kills_wp12.py"]
-WFO_TESTS = ["test_wfo_engine.py", "test_embargo_fix.py", "test_multi_benchmark_wfo.py",
-             "test_property_wfo_temporal.py", "test_v74_guards.py", "test_elasticnet.py",
-             "test_validation_gating_wp7.py", "test_integration.py", "test_mutation_kills_wp12.py"]
-TR_TESTS = ["test_total_return.py", "test_drip_closed_form.py", "test_multi_total_return.py",
-            "test_target_windows.py", "test_db_price_integrity.py", "test_integration.py",
-            "test_property_return_calculations.py", "test_split_registry.py",
-            "test_mutation_kills_wp12.py"]
-CONS_TESTS = ["test_consensus_shadow.py", "test_monthly_summary.py", "test_monthly_pipeline_e2e.py",
-              "test_research_v72_quality_weighted_consensus.py", "test_mutation_kills_wp12.py"]
-DEC_TESTS = ["test_live_mapping_wp8.py", "test_validation_gating_wp7.py", "test_v813_recommendation_mode.py",
-             "test_monthly_pipeline_e2e.py", "test_monte_carlo_tax.py", "test_data_freshness.py",
-             "test_mutation_kills_wp12.py"]
-CONF_TESTS = ["test_conformal.py", "test_validation_gating_wp7.py", "test_shadow_followon.py",
-              "test_mutation_kills_wp12.py"]
-TAX_TESTS = ["test_capital_gains.py", "test_stcg_boundary.py", "test_tax_wp8.py", "test_three_scenario_tax.py",
-             "test_tlh.py", "test_property_tax_boundaries.py", "test_monte_carlo_tax.py",
-             "test_mutation_kills_wp12.py"]
+# Test files, relative to tests/ (review 2026-09-25, section 5, phase 4
+# layout). main() refuses to run if one is missing.
+FE_TESTS = [
+    "unit/processing/test_feature_engineering.py",
+    "unit/processing/test_edgar_filing_timing.py",
+    "unit/processing/test_price_features.py",
+    "integration/pipeline/test_fred_pipeline.py",
+    "unit/processing/test_feature_engineering_macro_predictors.py",
+    "integration/pipeline/test_engine_smoke.py",
+    "unit/processing/test_feature_engineering_channel_mix.py",
+    "unit/scripts/test_weekly_fetch_fred_pgr_refresh.py",
+    "unit/processing/test_property_feature_engineering.py",
+    "integration/pipeline/test_mutation_kills.py",
+]
+WFO_TESTS = [
+    "unit/models/test_wfo_engine.py",
+    "unit/models/test_embargo_fix.py",
+    "unit/models/test_multi_benchmark_wfo.py",
+    "unit/models/test_property_wfo_temporal.py",
+    "unit/models/test_cpcv_and_obs_ratio_guards.py",
+    "unit/models/test_elasticnet.py",
+    "integration/pipeline/test_validation_gating.py",
+    "integration/pipeline/test_engine_smoke.py",
+    "integration/pipeline/test_mutation_kills.py",
+]
+TR_TESTS = [
+    "unit/processing/test_total_return.py",
+    "unit/processing/test_drip_closed_form.py",
+    "unit/processing/test_multi_total_return.py",
+    "unit/processing/test_target_windows.py",
+    "integration/data/test_db_price_integrity.py",
+    "integration/pipeline/test_engine_smoke.py",
+    "unit/processing/test_property_return_calculations.py",
+    "unit/ingestion/test_split_registry.py",
+    "integration/pipeline/test_mutation_kills.py",
+]
+CONS_TESTS = [
+    "unit/models/test_consensus_shadow.py",
+    "unit/reporting/test_monthly_summary.py",
+    "integration/pipeline/test_monthly_pipeline_e2e.py",
+    "research/test_research_v72_quality_weighted_consensus.py",
+    "integration/pipeline/test_mutation_kills.py",
+]
+DEC_TESTS = [
+    "unit/models/test_live_policy_backtest.py",
+    "integration/pipeline/test_validation_gating.py",
+    "unit/scripts/test_monthly_decision_recommendation_mode.py",
+    "integration/pipeline/test_monthly_pipeline_e2e.py",
+    "unit/tax/test_monte_carlo_tax.py",
+    "unit/reporting/test_data_freshness.py",
+    "integration/pipeline/test_mutation_kills.py",
+]
+CONF_TESTS = [
+    "unit/models/test_conformal.py",
+    "integration/pipeline/test_validation_gating.py",
+    "unit/reporting/test_shadow_followon.py",
+    "integration/pipeline/test_mutation_kills.py",
+]
+TAX_TESTS = [
+    "unit/tax/test_capital_gains.py",
+    "unit/tax/test_stcg_boundary.py",
+    "unit/tax/test_tax_hand_computed.py",
+    "unit/tax/test_three_scenario_tax.py",
+    "unit/tax/test_tlh.py",
+    "unit/tax/test_property_tax_boundaries.py",
+    "unit/tax/test_monte_carlo_tax.py",
+    "integration/pipeline/test_mutation_kills.py",
+]
 
 MUTATIONS = [
     ("M01_edgar_placement_removed", FE,
@@ -82,7 +130,7 @@ MUTATIONS = [
      "recent = aligned", WFO_TESTS),
     ("M09_cpcv_purged_size_0", "src/models/wfo_engine.py",
      "purged_size=target_horizon_months,",
-     "purged_size=0,", WFO_TESTS + ["test_cpcv.py"]),
+     "purged_size=0,", WFO_TESTS + ["unit/models/test_cpcv.py"]),
     ("M10_consensus_lambda_swap", "src/models/consensus_shadow.py",
      "return ((1.0 - lambda_mix) * equal_weight + lambda_mix * normalized).rename(\"weight\")",
      "return (lambda_mix * equal_weight + (1.0 - lambda_mix) * normalized).rename(\"weight\")", CONS_TESTS),
@@ -114,27 +162,27 @@ MUTATIONS = [
     ("X19_fred_ffill_to_bfill_lookahead", FE,
      'fred_aligned = fred_macro.reindex(monthly_dates, method="ffill")',
      'fred_aligned = fred_macro.reindex(monthly_dates, method="bfill")',
-     ["test_fred_features.py", "test_pgr_fred_features.py"]),
+     ["unit/processing/test_fred_features.py", "unit/processing/test_pgr_fred_features.py"]),
     ("X20_insurance_cpi_mom_1m", FE,
      'df["insurance_cpi_mom3m"] = ins_cpi.pct_change(\n                periods=3,',
      'df["insurance_cpi_mom3m"] = ins_cpi.pct_change(\n                periods=1,',
-     ["test_fred_features.py", "test_pgr_fred_features.py"]),
+     ["unit/processing/test_fred_features.py", "unit/processing/test_pgr_fred_features.py"]),
     ("X21_vmt_yoy_1m", FE,
      'df["vmt_yoy"] = vmt.pct_change(periods=12, fill_method=None)',
      'df["vmt_yoy"] = vmt.pct_change(periods=1, fill_method=None)',
-     ["test_fred_features.py", "test_pgr_fred_features.py"]),
+     ["unit/processing/test_fred_features.py", "unit/processing/test_pgr_fred_features.py"]),
     ("X22_cr_acceleration_diff_1", FE,
      'df["cr_acceleration"] = df["combined_ratio_ttm"].diff(3)',
      'df["cr_acceleration"] = df["combined_ratio_ttm"].diff(1)',
-     ["test_v45_features.py"]),
+     ["unit/processing/test_feature_engineering_macro_predictors.py"]),
     ("X23_valuation_ttm_avail_no_rolling_max", "src/processing/valuation_multiples.py",
      'ttm_avail = pd.to_datetime(\n        eps_avail_ns.rolling(12, min_periods=12).max(), unit="ns"\n    )',
      'ttm_avail = pd.to_datetime(eps_avail_ns, unit="ns")',
-     ["test_valuation_multiples.py"]),
+     ["unit/processing/test_valuation_multiples.py"]),
     ("X24_fracdiff_never_qualifies", FE,
      "if adf_pval < adf_alpha and abs(corr_val) >= corr_threshold:",
      "if False and adf_pval < adf_alpha and abs(corr_val) >= corr_threshold:",
-     ["test_fracdiff.py"]),
+     ["unit/processing/test_fracdiff.py"]),
 ]
 
 
@@ -159,7 +207,10 @@ def main() -> None:
         path.write_text(src.replace(old, new))
         try:
             chosen = only_tests or list(dict.fromkeys(tests))
-            files = [f"tests/{t}" for t in chosen if (clone / "tests" / t).exists()]
+            missing = [t for t in chosen if not (clone / "tests" / t).exists()]
+            if missing:
+                raise SystemExit(f"{mid}: test files not found under tests/: {missing}")
+            files = [f"tests/{t}" for t in chosen]
             proc = subprocess.run(
                 [sys.executable, "-m", "pytest", "-x", "-q", "-o", "addopts=--tb=line",
                  "-p", "no:cacheprovider", *files],

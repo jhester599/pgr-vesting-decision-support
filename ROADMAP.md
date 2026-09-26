@@ -72,9 +72,9 @@ even after multiple parser fixes across PRs #91–#94.
 
 The active plan is documented in:
 
-- [`docs/superpowers/plans/2026-04-17-v153-v158-classification-feature-research.md`](docs/superpowers/plans/2026-04-17-v153-v158-classification-feature-research.md)
+- [`docs/history/superpowers/plans/2026-04-17-v153-v158-classification-feature-research.md`](docs/history/superpowers/plans/2026-04-17-v153-v158-classification-feature-research.md)
 
-Source peer review: [`docs/archive/history/repo-peer-reviews/2026-04-17/chatgpt_repo_peerreview_20260417.md`](docs/archive/history/repo-peer-reviews/2026-04-17/chatgpt_repo_peerreview_20260417.md)
+Source peer review: [`docs/history/archive/history/repo-peer-reviews/2026-04-17/chatgpt_repo_peerreview_20260417.md`](docs/history/archive/history/repo-peer-reviews/2026-04-17/chatgpt_repo_peerreview_20260417.md)
 
 Summary of the v153-v158 classification and feature research arc:
 
@@ -108,19 +108,19 @@ Completed next queue after `v158`:
 
 ## Active Research Direction: Post-v158 (v159 + BL-01)
 
-- `v159` complete: Firth shadow lane wired; see `docs/closeouts/V159_CLOSEOUT_AND_HANDOFF.md`
-- `BL-01` complete: tau/risk_aversion sweep found incumbent optimal; see `docs/closeouts/BL01_CLOSEOUT_AND_HANDOFF.md`
+- `v159` complete: Firth shadow lane wired; see `docs/history/closeouts/V159_CLOSEOUT_AND_HANDOFF.md`
+- `BL-01` complete: tau/risk_aversion sweep found incumbent optimal; see `docs/history/closeouts/BL01_CLOSEOUT_AND_HANDOFF.md`
 - Next: `CLS-03` (time-locked on 24 matured months), `CLS-01` (depends on CLS-03)
 
 ## Active Research Direction: v160-v164 TA-01
 
 The active technical-analysis research plan is documented in:
 
-- [`docs/superpowers/plans/2026-04-18-v160-v164-technical-analysis-feature-research.md`](docs/superpowers/plans/2026-04-18-v160-v164-technical-analysis-feature-research.md)
+- [`docs/history/superpowers/plans/2026-04-18-v160-v164-technical-analysis-feature-research.md`](docs/history/superpowers/plans/2026-04-18-v160-v164-technical-analysis-feature-research.md)
 
 Source reports are archived in:
 
-- [`docs/archive/history/v160-ta-research-reports/`](docs/archive/history/v160-ta-research-reports/)
+- [`docs/history/archive/history/v160-ta-research-reports/`](docs/history/archive/history/v160-ta-research-reports/)
 
 Summary:
 
@@ -156,9 +156,9 @@ calendar-aware freshness, and TA shadow ledger checks live in testable Python
 instead of inline workflow glue.
 
 v170 clarifies the documentation layout: active operator docs are indexed in
-`docs/README.md`, legacy `docs/plans/` and `docs/results/` are labeled without
+`docs/README.md`, legacy `docs/history/plans/` and `docs/history/results/` are labeled without
 moving old references, and the current hygiene review is recorded in
-`docs/repo-hygiene-review-2026-04-19.md`.
+`docs/history/repo-hygiene-review-2026-04-19.md`.
 
 Next empirical step: monitor the TA variants prospectively until enough
 matured observations exist to evaluate calibration, Brier score, balanced
@@ -168,9 +168,9 @@ accuracy, and stability.
 
 The active follow-on plan is documented in:
 
-- [`docs/superpowers/plans/2026-04-16-v139-v152-autoresearch-followon.md`](docs/superpowers/plans/2026-04-16-v139-v152-autoresearch-followon.md)
-- [`docs/superpowers/plans/2026-04-13-autoresearch-execution-plan.md`](docs/superpowers/plans/2026-04-13-autoresearch-execution-plan.md)
-- [`docs/superpowers/plans/2026-04-14-autoresearch-execution-log.md`](docs/superpowers/plans/2026-04-14-autoresearch-execution-log.md)
+- [`docs/history/superpowers/plans/2026-04-16-v139-v152-autoresearch-followon.md`](docs/history/superpowers/plans/2026-04-16-v139-v152-autoresearch-followon.md)
+- [`docs/history/superpowers/plans/2026-04-13-autoresearch-execution-plan.md`](docs/history/superpowers/plans/2026-04-13-autoresearch-execution-plan.md)
+- [`docs/history/superpowers/plans/2026-04-14-autoresearch-execution-log.md`](docs/history/superpowers/plans/2026-04-14-autoresearch-execution-log.md)
 
 Summary of the v139-v152 follow-on arc:
 
@@ -222,7 +222,7 @@ Current execution progress on 2026-04-16:
 - `v151` complete: the promoted `v139-v150` winners now appear in one
   reporting-only side-by-side shadow lane named `autoresearch_followon_v150`
 - `v152` complete: the cycle is now closed with a final synthesis and ranked
-  handoff note in `docs/closeouts/V152_CLOSEOUT_AND_HANDOFF.md`
+  handoff note in `docs/history/closeouts/V152_CLOSEOUT_AND_HANDOFF.md`
 
 Recommended next autonomous queue after `v152`:
 
@@ -242,10 +242,10 @@ GBT line.
 
 The active plan is documented in:
 
-- [`docs/superpowers/plans/2026-04-12-v123-v128-classification-enhancement-plan.md`](docs/superpowers/plans/2026-04-12-v123-v128-classification-enhancement-plan.md)
-- [`docs/superpowers/plans/2026-04-12-v126-methodology-hardening.md`](docs/superpowers/plans/2026-04-12-v126-methodology-hardening.md)
-- [`docs/superpowers/plans/2026-04-12-v127-path-b-calibration.md`](docs/superpowers/plans/2026-04-12-v127-path-b-calibration.md)
-- [`docs/superpowers/plans/2026-04-12-v128-benchmark-specific-feature-search.md`](docs/superpowers/plans/2026-04-12-v128-benchmark-specific-feature-search.md)
+- [`docs/history/superpowers/plans/2026-04-12-v123-v128-classification-enhancement-plan.md`](docs/history/superpowers/plans/2026-04-12-v123-v128-classification-enhancement-plan.md)
+- [`docs/history/superpowers/plans/2026-04-12-v126-methodology-hardening.md`](docs/history/superpowers/plans/2026-04-12-v126-methodology-hardening.md)
+- [`docs/history/superpowers/plans/2026-04-12-v127-path-b-calibration.md`](docs/history/superpowers/plans/2026-04-12-v127-path-b-calibration.md)
+- [`docs/history/superpowers/plans/2026-04-12-v128-benchmark-specific-feature-search.md`](docs/history/superpowers/plans/2026-04-12-v128-benchmark-specific-feature-search.md)
 
 Summary of the v123-v129 arc:
 
