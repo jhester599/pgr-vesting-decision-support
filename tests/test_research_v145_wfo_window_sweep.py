@@ -14,6 +14,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from results.research.v145_wfo_window_sweep import DEFAULT_CANDIDATE_PATH, evaluate_wfo_windows
 
 
+@pytest.mark.artifact
+@pytest.mark.usefixtures("committed_db_copy")
 @pytest.mark.slow
 def test_default_window_pair_produces_reasonable_metrics() -> None:
     metrics = evaluate_wfo_windows(60, 6, benchmarks=["VOO", "BND"])
@@ -26,6 +28,7 @@ def test_test_months_above_ceiling_raises() -> None:
         evaluate_wfo_windows(60, 36)
 
 
+@pytest.mark.artifact
 def test_candidate_file_has_expected_keys() -> None:
     payload = json.loads(DEFAULT_CANDIDATE_PATH.read_text(encoding="utf-8"))
     assert set(payload) == {"train", "test"}

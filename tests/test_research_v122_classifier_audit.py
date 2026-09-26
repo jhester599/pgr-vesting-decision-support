@@ -3,6 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
+import pytest
+
+# Stored-artifact tests: they read committed data (review F28, step 9).
+pytestmark = pytest.mark.artifact
 
 
 RESULTS_DIR = Path("results") / "research"

@@ -19,11 +19,13 @@ def test_fraction_below_floor_raises() -> None:
         evaluate_kelly_params(0.0, 0.2)
 
 
+@pytest.mark.artifact
 def test_candidate_file_has_expected_keys() -> None:
     payload = json.loads(DEFAULT_CANDIDATE_PATH.read_text(encoding="utf-8"))
     assert set(payload) == {"fraction", "cap"}
 
 
+@pytest.mark.artifact
 def test_default_candidate_produces_reasonable_metrics() -> None:
     metrics = evaluate_kelly_params(0.25, 0.20)
     assert -1.0 <= metrics["utility_score"] <= 1.0

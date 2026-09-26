@@ -21,6 +21,7 @@ from results.research.v129_feature_map_eval import (
 )
 
 
+@pytest.mark.artifact
 def test_lean_baseline_matches_v128_pooled_baseline() -> None:
     """Built-in lean baseline should recover the canonical v128 pooled reading."""
     metrics = evaluate_feature_map("lean_baseline")
@@ -28,6 +29,7 @@ def test_lean_baseline_matches_v128_pooled_baseline() -> None:
     assert metrics["coverage"] == pytest.approx(0.8700, abs=0.03)
 
 
+@pytest.mark.artifact
 def test_v128_map_is_not_worse_than_lean_baseline() -> None:
     """The v128 winner map should weakly improve on the lean baseline."""
     lean = evaluate_feature_map("lean_baseline")
@@ -35,6 +37,8 @@ def test_v128_map_is_not_worse_than_lean_baseline() -> None:
     assert mapped["covered_ba"] >= lean["covered_ba"]
 
 
+@pytest.mark.artifact
+@pytest.mark.usefixtures("committed_db_copy")
 @pytest.mark.slow
 def test_file_strategy_accepts_candidate_map_artifact() -> None:
     """The file-backed candidate-map path should be loadable and scoreable."""
@@ -46,6 +50,7 @@ def test_file_strategy_accepts_candidate_map_artifact() -> None:
     assert 0.0 <= metrics["coverage"] <= 1.0
 
 
+@pytest.mark.artifact
 def test_loading_candidate_map_rejects_invalid_feature(tmp_path: Path) -> None:
     """Candidate maps must only use features from the v128 universe."""
     candidate = _candidate_map_from_v128()

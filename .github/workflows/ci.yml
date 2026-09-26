@@ -57,7 +57,10 @@ jobs:
           config/tax.py
 
       - name: Run unit and integration tests
-        run: python -m pytest -q
+        # Stored-artifact tests (they read committed CSVs, charts and the
+        # committed DB) run in the `artifacts` job below (review 2026-09-25,
+        # F28, step 9).
+        run: python -m pytest -q -m "not artifact"
 
       - name: Smoke test production entrypoints (network mocked)
         # ci_offline_smoke.py refuses every socket connection and serves a
@@ -72,3 +75,27 @@ jobs:
           python scripts/ci_offline_smoke.py scripts/peer_fetch.py --dry-run
           python scripts/ci_offline_smoke.py scripts/edgar_8k_fetcher.py --dry-run
           python scripts/ci_offline_smoke.py scripts/monthly_decision.py --as-of 2026-04-02 --dry-run --skip-fred
+
+  artifacts:
+    # Tests marked `artifact` check committed data (results/, artifacts/,
+    # data/, the committed DB) rather than code. A failure here means the
+    # committed outputs changed or went stale, not that the code broke.
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install runtime and dev dependencies
+        run: |
+          pip install -r requirements-dev.txt -c constraints-dev.txt
+          pip install --no-deps -e .
+
+      - name: Run stored-artifact tests
+        run: python -m pytest -q -m artifact

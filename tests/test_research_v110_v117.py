@@ -3,11 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 
 RESULTS_DIR = Path("results") / "research"
 
 
+@pytest.mark.artifact
 def test_v110_results_have_expected_columns() -> None:
     df = pd.read_csv(RESULTS_DIR / "v110_gemini_veto_gate_results.csv")
     assert {
@@ -20,6 +22,7 @@ def test_v110_results_have_expected_columns() -> None:
     }.issubset(df.columns)
 
 
+@pytest.mark.artifact
 def test_v111_results_have_expected_columns() -> None:
     df = pd.read_csv(RESULTS_DIR / "v111_permission_overlay_results.csv")
     assert {
@@ -32,6 +35,7 @@ def test_v111_results_have_expected_columns() -> None:
     }.issubset(df.columns)
 
 
+@pytest.mark.artifact
 def test_v112_results_have_expected_columns() -> None:
     df = pd.read_csv(RESULTS_DIR / "v112_target_reformulation_results.csv")
     assert {
@@ -43,6 +47,7 @@ def test_v112_results_have_expected_columns() -> None:
     }.issubset(df.columns)
 
 
+@pytest.mark.artifact
 def test_v113_results_have_promotion_flags() -> None:
     df = pd.read_csv(RESULTS_DIR / "v113_constrained_candidate_selection_results.csv")
     assert {

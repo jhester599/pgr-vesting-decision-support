@@ -17,6 +17,7 @@ from results.research.v138_bl_param_eval import (
 )
 
 
+@pytest.mark.artifact
 def test_default_params_produce_reasonable_accuracy() -> None:
     """The baseline BL proxy should land in a broad sanity range."""
     metrics = evaluate_bl_params(0.05, 1.0)
@@ -36,6 +37,7 @@ def test_view_confidence_below_floor_raises() -> None:
         evaluate_bl_params(0.05, 0.10)
 
 
+@pytest.mark.artifact
 def test_candidate_file_parses_to_expected_pair() -> None:
     """The candidate JSON should round-trip through the CLI helper."""
     tau, confidence = _parse_params(None, None, str(DEFAULT_CANDIDATE_PATH))

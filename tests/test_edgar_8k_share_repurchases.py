@@ -153,6 +153,7 @@ class TestSmallIntegerThousandsFormat:
         assert parsed["shares_repurchased"] == pytest.approx(0.0, abs=1e-9)
 
 
+@pytest.mark.artifact
 class TestCsvDataIntegrity:
     """Data-integrity tests against the committed pgr_edgar_cache.csv."""
 

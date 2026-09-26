@@ -28,7 +28,12 @@ _DB_PATH = Path(
     )
 )
 
-pytestmark = pytest.mark.skipif(not _DB_PATH.exists(), reason="committed DB not present")
+# Every test reads the committed DB through a module-scoped connection, so
+# the whole module is an artifact test (review F28, step 9).
+pytestmark = [
+    pytest.mark.skipif(not _DB_PATH.exists(), reason="committed DB not present"),
+    pytest.mark.artifact,
+]
 
 
 @pytest.fixture(scope="module")

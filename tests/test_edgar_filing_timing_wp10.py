@@ -113,6 +113,7 @@ def test_first_feature_row_with_an_edgar_row_is_on_or_after_filing_and_within_a_
     assert checked == len(rows)
 
 
+@pytest.mark.artifact
 @pytest.mark.skipif(not DB_PATH.exists(), reason="committed DB not available")
 def test_every_committed_edgar_row_is_placed_on_or_after_filing_within_a_month() -> None:
     from src.processing.feature_engineering import edgar_availability_dates

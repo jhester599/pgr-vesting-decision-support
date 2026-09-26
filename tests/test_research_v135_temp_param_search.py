@@ -55,6 +55,7 @@ def _write_fold_detail(
     return csv_path
 
 
+@pytest.mark.artifact
 def test_default_config_matches_current_v131_threshold_baseline() -> None:
     """The default v135 config should reproduce the current v131 search baseline."""
     metrics = evaluate_temperature_config(
@@ -75,12 +76,14 @@ def test_temp_min_greater_than_temp_max_raises() -> None:
         _build_temperature_grid(3.0, 0.5, 51)
 
 
+@pytest.mark.artifact
 def test_warmup_below_minimum_raises() -> None:
     """Warmup below the stability floor should raise ValueError."""
     with pytest.raises(ValueError, match="warmup must be >="):
         evaluate_temperature_config(temp_min=0.5, temp_max=3.0, warmup=MIN_WARMUP - 1)
 
 
+@pytest.mark.artifact
 def test_warmup_above_maximum_raises() -> None:
     """Warmup above the evaluation ceiling should raise ValueError."""
     with pytest.raises(ValueError, match="warmup must be <="):

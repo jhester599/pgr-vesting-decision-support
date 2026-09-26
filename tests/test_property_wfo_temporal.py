@@ -1,263 +1,159 @@
-"""v36 — Property-based tests: WFO temporal-integrity invariants.
+"""Property tests: WFO temporal integrity, checked on ``run_wfo`` itself.
 
-Verifies that fold construction maintains strict temporal ordering
-(train_start < train_end < test_start < test_end) and that no training
-observation leaks into the out-of-sample test window, regardless of
-the data length or embargo configuration chosen.
+Review 2026-09-25, F28: the v36 version of this file built ``FoldResult``
+objects by hand and checked their own arithmetic, so it never called
+production code. These properties run ``run_wfo`` and ``predict_current``
+on generated monthly data and check the folds they actually produce:
+
+- train rows precede test rows, separated by exactly
+  ``target_horizon + purge_buffer`` rows (the embargo);
+- every training window is exactly ``WFO_TRAIN_WINDOW_MONTHS`` rows;
+- test windows are ``WFO_TEST_WINDOW_MONTHS`` long, disjoint, increasing,
+  and the last one ends on the last row;
+- ``y_true`` is the target on the test dates;
+- a fold's predictions do not change when rows after its training window
+  change (no look-ahead through fitting, imputation or scaling);
+- the live refit uses only the most recent ``train_window_months`` rows.
 """
 
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import pytest
-from hypothesis import given, settings, assume
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from src.models.wfo_engine import FoldResult, WFOResult
+import config
+from src.models.wfo_engine import _min_required_observations, predict_current, run_wfo
+
+_FEATURES = ["f0", "f1", "f2"]
+_SETTINGS = settings(
+    max_examples=12,
+    deadline=None,
+    suppress_health_check=[HealthCheck.too_slow],
+)
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _make_fold(
-    fold_idx: int,
-    train_offset_months: int,
-    train_window_months: int,
-    embargo_months: int,
-    test_window_months: int,
-) -> FoldResult:
-    """Construct a FoldResult with parameterised window sizes."""
-    base = pd.Timestamp("2015-01-31")
-    train_start = base + pd.DateOffset(months=train_offset_months)
-    train_end = train_start + pd.DateOffset(months=train_window_months)
-    test_start = train_end + pd.DateOffset(months=embargo_months)
-    test_end = test_start + pd.DateOffset(months=test_window_months)
-    n = test_window_months
-    y = np.zeros(n)
-    return FoldResult(
-        fold_idx=fold_idx,
-        train_start=train_start,
-        train_end=train_end,
-        test_start=test_start,
-        test_end=test_end,
-        y_true=y,
-        y_hat=y,
-        optimal_alpha=0.01,
-        feature_importances={},
-        n_train=train_window_months,
-        n_test=n,
-        _test_dates=[test_start + pd.DateOffset(months=i) for i in range(n)],
+def _panel(n_rows: int, seed: int, nan_rate: float = 0.0) -> tuple[pd.DataFrame, pd.Series]:
+    """Monthly features and a target that depends on them, with optional NaNs."""
+    rng = np.random.default_rng(seed)
+    idx = pd.date_range("2005-01-31", periods=n_rows, freq="BME")
+    X = pd.DataFrame(rng.normal(size=(n_rows, len(_FEATURES))), index=idx, columns=_FEATURES)
+    y = pd.Series(
+        0.5 * X["f0"].to_numpy() - 0.3 * X["f1"].to_numpy() + rng.normal(0, 0.5, n_rows),
+        index=idx,
+        name="target",
     )
+    if nan_rate > 0:
+        mask = rng.random(X.shape) < nan_rate
+        X = X.mask(mask)
+    return X, y
 
 
-# ---------------------------------------------------------------------------
-# 1. Fold timestamps are strictly ordered
-# ---------------------------------------------------------------------------
+_wfo_case = st.fixed_dictionaries(
+    {
+        "horizon": st.sampled_from([6, 12]),
+        "purge_buffer": st.integers(min_value=0, max_value=3),
+        "extra_rows": st.integers(min_value=0, max_value=40),
+        "seed": st.integers(min_value=0, max_value=10_000),
+        "nan_rate": st.sampled_from([0.0, 0.1]),
+    }
+)
+
+
+def _run(case: dict) -> tuple[pd.DataFrame, pd.Series, object, int]:
+    gap = case["horizon"] + case["purge_buffer"]
+    n_rows = _min_required_observations(gap) + case["extra_rows"]
+    X, y = _panel(n_rows, case["seed"], case["nan_rate"])
+    result = run_wfo(
+        X,
+        y,
+        model_type="ridge",
+        target_horizon_months=case["horizon"],
+        purge_buffer=case["purge_buffer"],
+        feature_columns=_FEATURES,
+    )
+    return X, y, result, gap
+
+
+@given(_wfo_case)
+@_SETTINGS
+def test_folds_are_embargoed_bounded_and_ordered(case: dict) -> None:
+    X, y, result, gap = _run(case)
+    dates = X.index
+    assert result.folds, "run_wfo produced no folds"
+    previous_test_end = None
+    for fold in result.folds:
+        train_end_pos = dates.get_loc(fold.train_end)
+        test_start_pos = dates.get_loc(fold.test_start)
+        train_start_pos = dates.get_loc(fold.train_start)
+        # Strict order and an embargo of exactly horizon + purge_buffer rows.
+        assert fold.train_start <= fold.train_end < fold.test_start <= fold.test_end
+        assert test_start_pos - train_end_pos - 1 == gap
+        # Rolling window: exactly WFO_TRAIN_WINDOW_MONTHS contiguous rows in
+        # every fold (the oldest train set is train + available mod test
+        # rows before the cap).
+        assert fold.n_train == config.WFO_TRAIN_WINDOW_MONTHS
+        assert train_end_pos - train_start_pos + 1 == fold.n_train
+        assert fold.n_test == config.WFO_TEST_WINDOW_MONTHS
+        if previous_test_end is not None:
+            assert fold.test_start > previous_test_end
+        previous_test_end = fold.test_end
+        # y_true is the target on the fold's own test dates.
+        np.testing.assert_allclose(fold.y_true, y.loc[fold._test_dates].to_numpy())
+        assert len(fold.y_hat) == len(fold.y_true)
+    assert result.folds[-1].test_end == dates[-1]
+
+
+@given(_wfo_case, st.data())
+@_SETTINGS
+def test_fold_predictions_ignore_rows_after_training(case: dict, data: st.DataObject) -> None:
+    X, y, result, _gap = _run(case)
+    fold_idx = data.draw(st.integers(min_value=0, max_value=len(result.folds) - 1), label="fold")
+    fold = result.folds[fold_idx]
+    after_train = X.index > fold.train_end
+    # Scramble every target after the training window, and every feature
+    # outside this fold's train and test rows.
+    rng = np.random.default_rng(case["seed"] + 1)
+    y_perturbed = y.copy()
+    y_perturbed[after_train] = rng.normal(5.0, 3.0, int(after_train.sum()))
+    X_perturbed = X.copy()
+    other = after_train & ~X.index.isin(fold._test_dates)
+    X_perturbed.loc[other] = rng.normal(10.0, 5.0, (int(other.sum()), X.shape[1]))
+    perturbed = run_wfo(
+        X_perturbed,
+        y_perturbed,
+        model_type="ridge",
+        target_horizon_months=case["horizon"],
+        purge_buffer=case["purge_buffer"],
+        feature_columns=_FEATURES,
+    )
+    match = [f for f in perturbed.folds if f.test_start == fold.test_start]
+    assert len(match) == 1
+    np.testing.assert_allclose(match[0].y_hat, fold.y_hat, rtol=1e-9, atol=1e-12)
+
 
 @given(
-    st.integers(min_value=0, max_value=60),   # train_offset_months
-    st.integers(min_value=12, max_value=84),  # train_window_months
-    st.integers(min_value=1, max_value=24),   # embargo_months
-    st.integers(min_value=1, max_value=12),   # test_window_months
+    st.integers(min_value=0, max_value=10_000),
+    # The inner RidgeCV needs a TimeSeriesSplit with gap 8 inside the window.
+    st.integers(min_value=36, max_value=60),
+    st.integers(min_value=1, max_value=40),
 )
-@settings(max_examples=400)
-def test_fold_timestamps_strictly_ordered(
-    train_offset: int,
-    train_window: int,
-    embargo: int,
-    test_window: int,
-) -> None:
-    """train_start < train_end < test_start < test_end for all valid configs."""
-    fold = _make_fold(0, train_offset, train_window, embargo, test_window)
-    assert fold.train_start < fold.train_end, "train_start must precede train_end"
-    assert fold.train_end < fold.test_start, "embargo gap: train_end must precede test_start"
-    assert fold.test_start < fold.test_end, "test_start must precede test_end"
-
-
-# ---------------------------------------------------------------------------
-# 2. No temporal overlap between train and test windows
-# ---------------------------------------------------------------------------
-
-@given(
-    st.integers(min_value=0, max_value=60),
-    st.integers(min_value=12, max_value=84),
-    st.integers(min_value=1, max_value=24),
-    st.integers(min_value=1, max_value=12),
-)
-@settings(max_examples=400)
-def test_no_temporal_overlap_train_test(
-    train_offset: int,
-    train_window: int,
-    embargo: int,
-    test_window: int,
-) -> None:
-    """The test window must not overlap with the training window."""
-    fold = _make_fold(0, train_offset, train_window, embargo, test_window)
-    # Overlap condition: train_end >= test_start
-    assert fold.train_end < fold.test_start, (
-        f"Temporal leakage: train_end={fold.train_end} >= test_start={fold.test_start}"
+@_SETTINGS
+def test_live_refit_uses_only_the_recent_window(seed: int, window: int, older_rows: int) -> None:
+    X, y = _panel(window + older_rows, seed)
+    wfo_stub = run_wfo(
+        *_panel(_min_required_observations(8), seed),
+        model_type="ridge",
+        target_horizon_months=6,
+        feature_columns=_FEATURES,
     )
-
-
-# ---------------------------------------------------------------------------
-# 3. Embargo gap is at least the configured embargo duration
-# ---------------------------------------------------------------------------
-
-@given(
-    st.integers(min_value=0, max_value=60),
-    st.integers(min_value=12, max_value=84),
-    st.integers(min_value=1, max_value=24),
-    st.integers(min_value=1, max_value=12),
-)
-@settings(max_examples=400)
-def test_embargo_gap_respected(
-    train_offset: int,
-    train_window: int,
-    embargo: int,
-    test_window: int,
-) -> None:
-    """Gap between train_end and test_start is at least `embargo` months."""
-    fold = _make_fold(0, train_offset, train_window, embargo, test_window)
-    gap_days = (fold.test_start - fold.train_end).days
-    # embargo months in calendar days (conservative: use 28 days/month floor)
-    min_gap_days = embargo * 28
-    assert gap_days >= min_gap_days, (
-        f"Embargo gap too small: {gap_days} days < {min_gap_days} days "
-        f"(embargo={embargo} months)"
-    )
-
-
-# ---------------------------------------------------------------------------
-# 4. Multi-fold WFO: folds are non-overlapping on the test window
-# ---------------------------------------------------------------------------
-
-@given(
-    st.integers(min_value=3, max_value=8),    # n_folds
-    st.integers(min_value=90, max_value=730), # train_window_days
-    st.integers(min_value=7, max_value=180),  # embargo_days
-    st.integers(min_value=30, max_value=180), # test_window_days
-)
-@settings(max_examples=200)
-def test_sequential_folds_non_overlapping_test_windows(
-    n_folds: int,
-    train_window_days: int,
-    embargo_days: int,
-    test_window_days: int,
-) -> None:
-    """For sequentially offset folds, test windows must not overlap.
-
-    Uses day-level arithmetic (pd.Timedelta) to avoid month-length
-    ambiguity that arises with pd.DateOffset on month-end timestamps.
-    """
-    base = pd.Timestamp("2015-01-15")  # mid-month avoids month-end edge cases
-    stride = pd.Timedelta(days=test_window_days)
-    folds = []
-    for i in range(n_folds):
-        train_start = base + pd.Timedelta(days=i * test_window_days)
-        train_end = train_start + pd.Timedelta(days=train_window_days)
-        test_start = train_end + pd.Timedelta(days=embargo_days)
-        test_end = test_start + pd.Timedelta(days=test_window_days)
-        fold = FoldResult(
-            fold_idx=i,
-            train_start=train_start,
-            train_end=train_end,
-            test_start=test_start,
-            test_end=test_end,
-            y_true=np.zeros(1),
-            y_hat=np.zeros(1),
-            optimal_alpha=0.01,
-            feature_importances={},
-            n_train=train_window_days,
-            n_test=1,
-        )
-        folds.append(fold)
-    for j in range(len(folds) - 1):
-        earlier = folds[j]
-        later = folds[j + 1]
-        assert earlier.test_end <= later.test_start, (
-            f"Fold {j} test_end={earlier.test_end} overlaps fold {j+1} "
-            f"test_start={later.test_start}"
-        )
-
-
-# ---------------------------------------------------------------------------
-# 5. y_true and y_hat arrays have the same length
-# ---------------------------------------------------------------------------
-
-@given(
-    st.lists(
-        st.floats(min_value=-0.5, max_value=1.0, allow_nan=False, allow_infinity=False),
-        min_size=1,
-        max_size=120,
-    )
-)
-@settings(max_examples=300)
-def test_y_true_y_hat_length_invariant(values: list[float]) -> None:
-    """Any FoldResult where y_true and y_hat share the same array must stay equal in length."""
-    arr = np.array(values)
-    fold = FoldResult(
-        fold_idx=0,
-        train_start=pd.Timestamp("2020-01-31"),
-        train_end=pd.Timestamp("2023-01-31"),
-        test_start=pd.Timestamp("2023-07-31"),
-        test_end=pd.Timestamp("2024-01-31"),
-        y_true=arr.copy(),
-        y_hat=arr.copy(),
-        optimal_alpha=0.01,
-        feature_importances={},
-        n_train=36,
-        n_test=len(arr),
-    )
-    assert len(fold.y_true) == len(fold.y_hat), (
-        f"y_true length {len(fold.y_true)} != y_hat length {len(fold.y_hat)}"
-    )
-    assert fold.n_test == len(fold.y_true), (
-        f"n_test={fold.n_test} != len(y_true)={len(fold.y_true)}"
-    )
-
-
-# ---------------------------------------------------------------------------
-# 6. WFOResult aggregation: y_true_all / y_hat_all match total OOS obs count
-# ---------------------------------------------------------------------------
-
-@given(
-    st.lists(
-        st.lists(
-            st.floats(min_value=-0.5, max_value=1.0, allow_nan=False, allow_infinity=False),
-            min_size=2,
-            max_size=12,
-        ),
-        min_size=2,
-        max_size=6,
-    )
-)
-@settings(max_examples=200)
-def test_wfo_result_aggregation_length(fold_returns: list[list[float]]) -> None:
-    """WFOResult.y_true_all length equals sum of individual fold y_true lengths."""
-    folds = []
-    base = pd.Timestamp("2015-01-31")
-    for i, returns in enumerate(fold_returns):
-        arr = np.array(returns)
-        fold = FoldResult(
-            fold_idx=i,
-            train_start=base + pd.DateOffset(months=i * 12),
-            train_end=base + pd.DateOffset(months=i * 12 + 6),
-            test_start=base + pd.DateOffset(months=i * 12 + 7),
-            test_end=base + pd.DateOffset(months=i * 12 + 7 + len(returns)),
-            y_true=arr.copy(),
-            y_hat=arr.copy(),
-            optimal_alpha=0.01,
-            feature_importances={},
-            n_train=6,
-            n_test=len(arr),
-        )
-        folds.append(fold)
-
-    wfo = WFOResult(folds=folds, benchmark="VTI", target_horizon=6, model_type="lasso")
-    expected_total = sum(len(f.y_true) for f in folds)
-    assert len(wfo.y_true_all) == expected_total, (
-        f"y_true_all length {len(wfo.y_true_all)} != expected {expected_total}"
-    )
-    assert len(wfo.y_hat_all) == expected_total
+    X_current = X.iloc[[-1]]
+    base = predict_current(X, y, X_current, wfo_stub, model_type="ridge", train_window_months=window)
+    # Rows older than the window must not matter.
+    y_older = y.copy()
+    y_older.iloc[:older_rows] = np.random.default_rng(seed + 2).normal(-4.0, 2.0, older_rows)
+    X_older = X.copy()
+    X_older.iloc[:older_rows] = np.random.default_rng(seed + 3).normal(8.0, 1.0, (older_rows, X.shape[1]))
+    moved = predict_current(X_older, y_older, X_current, wfo_stub, model_type="ridge", train_window_months=window)
+    assert np.isclose(moved["predicted_return"], base["predicted_return"], rtol=1e-9, atol=1e-12)

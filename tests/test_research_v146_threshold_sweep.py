@@ -42,11 +42,13 @@ def test_low_greater_than_high_raises() -> None:
         evaluate_threshold_candidate(0.50, 0.50)
 
 
+@pytest.mark.artifact
 def test_candidate_file_has_expected_keys() -> None:
     payload = json.loads(DEFAULT_CANDIDATE_PATH.read_text(encoding="utf-8"))
     assert set(payload) == {"low", "high"}
 
 
+@pytest.mark.artifact
 def test_main_returns_exit_code_1_when_coverage_too_low(tmp_path: Path) -> None:
     y_true = np.array([0, 1] * 30, dtype=int)
     path_b_prob = np.full(len(y_true), 0.50, dtype=float)

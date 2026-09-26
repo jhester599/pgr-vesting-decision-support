@@ -5,6 +5,92 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v182 (2026-09-26) — WFO minimum row count
+
+Found by the step 9 property tests (`docs/reviews/2026-09-25_step9_test_hardening.md`,
+section 2).
+
+- **Bug.** `_min_required_observations` was train (60) + gap + one test
+  window (6), but `TimeSeriesSplit` needs `n_splits >= 2`. So every row
+  count from that minimum up to one test window more failed inside sklearn
+  ("n_splits=2 or more") instead of with `run_wfo`'s own error.
+  `evaluation.iter_wfo_splits`/`build_wfo_splitter` and the x2 research
+  splitter had the same gap.
+- **Fix.** The minimum is now train + gap + two test windows (80 rows for
+  6M, 87 for 12M). Below it, all three raise their own "too small"
+  `ValueError`, whose message now reads `2 x TEST_WINDOW`. Callers already
+  treated any `ValueError` as too little data, so no recommendation or
+  report changes. Datasets at or above the new minimum split exactly as
+  before.
+- **Tests.** New `tests/test_wfo_min_rows.py` (14 tests; all 14 failed
+  before) covers the old minimum and +5 rows for each horizon, two folds at
+  the new minimum, and the evaluation and x2 splitters.
+  `test_property_wfo_temporal.py` now generates from the minimum
+  (`extra_rows` from 0) and requires exactly 60 training rows in every fold.
+- **Full suite:** `2451 passed, 1 skipped, 127 warnings in 593.20s`.
+
+## v181 (2026-09-26) — Review 2026-09-25, step 9: test hardening sweep
+
+WP12 from `docs/reviews/REPO_REVIEW_2026-09-25.md` (the parts of F28 that
+steps 1–7 had not covered). Only tests, test configuration, CI and one
+developer script change; production behaviour does not change. Report,
+mutation tables and before/after tests:
+`docs/reviews/2026-09-25_step9_test_hardening.md`.
+
+- **Mutations.** `scripts/checks/mutation_study.py` re-runs F28's 18
+  mutations in a scratch clone. It refuses to run on the working tree.
+  Survivors: 16 of 18 in the review, 10 of 18 on `master`, 0 of 18 now.
+  `tests/test_mutation_kills_wp12.py` covers:
+  - quarterly-ROE filing placement and the 12-month `combined_ratio_ttm`;
+  - the WFO 60-month window and the live refit window;
+  - the consensus λ-mix, IC clip and λ clip;
+  - UNDERPERFORM selling 100 %;
+  - the conformal finite-sample quantile and the ACI sign.
+
+  Six extra mutations show the vacuous-test fixes bite (4 of 6 survived,
+  now 0 of 6).
+- **Property tests over production code.** The WFO, return, feature and
+  tax property files now test `run_wfo`/`predict_current`,
+  `build_position_series`, the price-feature helpers and
+  `build_feature_matrix`, and `optimize_sale`/`is_ltcg_eligible`, not
+  inline arithmetic. Run alone on the mutations they target, the old files
+  let 4 of 4 survive; the new ones kill all 4. The two VIF properties get
+  `deadline=None` (their first example timed out importing statsmodels).
+- **Repository guard.** `tests/conftest.py` installs `tests/repo_guard.py`,
+  an audit hook active from test setup to teardown.
+  - A test fails if it writes inside the repository tree (outside
+    `__pycache__` and `.pytest_cache`) or opens the committed
+    `data/pgr_financials.db`. Artifact tests may open it read-only.
+  - An autouse fixture points `config.DB_PATH` and
+    `feature_engineering._PROCESSED_PATH` at `tmp_path`.
+  - `committed_db_copy` gives research tests a private copy of the DB.
+  - Hypothesis stores its database under `$TMPDIR`.
+  - Before this, 64 tests wrote `data/processed/feature_matrix.parquet`
+    and 27 opened the committed DB (18 read-write). The suite now leaves
+    the working tree clean.
+- **Stored-artifact tests.** `@pytest.mark.artifact` (198 tests in 73
+  files) marks tests whose assertions are about committed data. CI's
+  `test` job runs `-m "not artifact"`; a new `artifacts` job runs
+  `-m artifact`.
+- **Other test fixes.**
+  - `test_integration.py` seeds with `zlib.crc32(ticker)`, not
+    `hash(ticker)`.
+  - The FRED formula tests lose their `if col in df.columns:` guards, check
+    exact values and causality, and use business-month-end FRED rows as
+    production does.
+  - `test_v45_features.py` uses a 72-month fixture, so its diff test no
+    longer skips.
+  - The fracdiff memory and stationarity tests and the valuation-multiples
+    availability test can now fail.
+  - `test_ops_wp8`'s step parser stops at job boundaries.
+- **Docs.** `CONTRIBUTING.md` has a Tests section: markers, the guard,
+  `committed_db_copy`, seeds and the mutation study.
+- **Found, not fixed.**
+  - `apply_fracdiff`'s defaults never produce output on monthly-length
+    series; it has no production caller.
+- **Full suite:** `2437 passed, 1 skipped` (v180: 2397 passed, 2 skipped).
+  The skip left is the manual `test_classification_shadow` integration test.
+
 ## v180 (2026-09-26) — Review 2026-09-25, step 7: restructure phases 0–2
 
 WP13 phases 0–2 from section 5 of `docs/reviews/REPO_REVIEW_2026-09-25.md`

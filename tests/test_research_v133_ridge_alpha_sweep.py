@@ -13,6 +13,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from results.research.v133_ridge_alpha_sweep import run_ridge_alpha_sweep
 
 
+@pytest.mark.artifact
+@pytest.mark.usefixtures("committed_db_copy")
 @pytest.mark.slow
 def test_default_grid_produces_reasonable_r2() -> None:
     """The default grid should recover the current ridge-only baseline band."""

@@ -30,6 +30,8 @@ def _load_module():
 MODULE = _load_module()
 
 
+@pytest.mark.artifact
+@pytest.mark.usefixtures("committed_db_copy")
 def test_candidate_feature_columns_excludes_target_column() -> None:
     feature_df, _ = MODULE.load_v128_inputs(benchmarks=["VOO"])
     features = MODULE.candidate_feature_columns(feature_df)
@@ -119,6 +121,8 @@ def test_select_benchmark_winner_falls_back_to_baseline_when_guardrails_fail() -
     assert winners.iloc[0]["method"] == "lean_baseline"
 
 
+@pytest.mark.artifact
+@pytest.mark.usefixtures("committed_db_copy")
 @pytest.mark.slow
 def test_run_feature_search_smoke_covers_all_benchmarks_with_small_subset() -> None:
     feature_df, _ = MODULE.load_v128_inputs()

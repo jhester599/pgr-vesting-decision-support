@@ -61,6 +61,7 @@ markers = [
     "integration: marks tests as integration (slow, real I/O)",
     "slow: marks intentionally expensive tests that can be skipped with --fast",
     "unit: fast, no I/O",
+    "artifact: reads committed data (results/, artifacts/, data/, the committed DB); runs in the separate CI job",
 ]
 
 # ---------------------------------------------------------------------------

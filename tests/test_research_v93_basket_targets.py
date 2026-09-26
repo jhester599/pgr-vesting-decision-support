@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 
 CSV_PATH = Path("results/research/v93_basket_targets_results.csv")
@@ -10,6 +11,7 @@ def test_csv_exists() -> None:
     assert CSV_PATH.exists()
 
 
+@pytest.mark.artifact
 def test_candidate_names_present() -> None:
     df = pd.read_csv(CSV_PATH)
     assert {
@@ -20,6 +22,7 @@ def test_candidate_names_present() -> None:
     } <= set(df["candidate_name"])
 
 
+@pytest.mark.artifact
 def test_selected_target_candidate_present() -> None:
     df = pd.read_csv(CSV_PATH)
     assert df["selected_next"].sum() == 1

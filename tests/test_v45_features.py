@@ -86,9 +86,15 @@ def _make_fred_with_ppi(n_months: int = 84) -> pd.DataFrame:
     return df
 
 
-def _make_pgr_monthly(n_months: int = 36) -> pd.DataFrame:
-    """Synthetic PGR monthly EDGAR data with combined_ratio for cr_acceleration."""
-    dates = pd.date_range("2022-01-31", periods=n_months, freq="ME")
+def _make_pgr_monthly(n_months: int = 72) -> pd.DataFrame:
+    """Synthetic PGR monthly EDGAR data with combined_ratio for cr_acceleration.
+
+    Starts with the price history (2018-01) so that at least
+    ``config.WFO_MIN_GAINSHARE_OBS`` (60) months fall inside it: with fewer,
+    ``build_feature_matrix`` drops ``combined_ratio_ttm`` and the diff test
+    used to skip (review F28).
+    """
+    dates = pd.date_range("2018-01-31", periods=n_months, freq="BME")
     rng = np.random.default_rng(2)
     return pd.DataFrame({
         "combined_ratio":   rng.uniform(88, 105, n_months),
@@ -239,7 +245,7 @@ class TestPpiAutoInsYoy:
 # ===========================================================================
 
 class TestCrAcceleration:
-    def _build(self, n_months: int = 36) -> pd.DataFrame:
+    def _build(self, n_months: int = 72) -> pd.DataFrame:
         return build_feature_matrix(
             _make_prices(), _make_dividends(), _make_splits(),
             pgr_monthly=_make_pgr_monthly(n_months), **_BUILD_KW,
@@ -255,8 +261,7 @@ class TestCrAcceleration:
     def test_cr_acceleration_is_3period_diff_of_ttm(self) -> None:
         """cr_acceleration = combined_ratio_ttm.diff(3) at every point."""
         df = self._build()
-        if "combined_ratio_ttm" not in df.columns:
-            pytest.skip("combined_ratio_ttm not produced with this data")
+        assert df["combined_ratio_ttm"].notna().sum() >= config.WFO_MIN_GAINSHARE_OBS
         expected = df["combined_ratio_ttm"].diff(3)
         pd.testing.assert_series_equal(
             df["cr_acceleration"].dropna(),

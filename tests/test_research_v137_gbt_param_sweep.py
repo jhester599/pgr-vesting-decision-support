@@ -13,6 +13,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from results.research.v137_gbt_param_sweep import run_gbt_sweep
 
 
+@pytest.mark.artifact
+@pytest.mark.usefixtures("committed_db_copy")
 def test_default_params_produce_reasonable_r2() -> None:
     """The baseline GBT config should land in a broad sanity range."""
     metrics = run_gbt_sweep(2, 50, 0.1, 0.8)

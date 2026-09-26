@@ -177,6 +177,7 @@ def test_migration_004_rescales_fractions_and_leaves_percent_untouched(tmp_path:
     assert values["2025-01-31"] is None
 
 
+@pytest.mark.artifact
 def test_committed_db_investment_book_yield_is_percent() -> None:
     """Every non-null stored book yield must be a plausible percent value."""
     conn = sqlite3.connect(f"{COMMITTED_DB.as_uri()}?mode=ro", uri=True)

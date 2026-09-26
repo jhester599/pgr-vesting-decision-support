@@ -228,20 +228,32 @@ def test_book_value_not_interpolated_across_split() -> None:
 
 
 def test_availability_date_covers_fills_in_ttm_window() -> None:
-    months = pd.date_range("2015-01-31", "2016-06-30", freq="ME")
+    """Every TTM window that contains the filled May 2015 value waits for the
+    Q2 10-Q (presumed filed 2015-08-14).
+
+    Review F28: the old fixture started in 2015-01, so the first month with
+    a TTM value was 2015-12, filed after 2015-08-14 anyway, and the check
+    passed without the 12-month maximum of availability dates. Here the
+    history starts in 2014-06, so June 2015 (its own 8-K filed 2015-07-15)
+    has a TTM window containing May 2015 and must wait for the 10-Q.
+    """
+    months = pd.date_range("2014-06-30", "2016-06-30", freq="ME")
     edgar = _edgar(months, eps=[0.2] * len(months), bvps=[10.0] * len(months)).drop(
         pd.Timestamp("2015-05-31")
     )
-    quarterly = _quarterly({"2015-06-30": 0.6})
-    prices = _weekly_prices("2015-01-01", "2016-06-30", lambda d: 24.0)
+    quarterly = _quarterly({"2015-03-31": 0.6, "2015-06-30": 0.6})
+    prices = _weekly_prices("2014-06-01", "2016-06-30", lambda d: 24.0)
 
     out = build_monthly_valuation_multiples(prices, edgar, NO_SPLITS, quarterly).set_index(
         "month_end"
     )
 
     assert out.loc["2015-05-31", "eps_basic"] == pytest.approx(0.2)
-    assert out["pe_ratio"].dropna().tolist() == pytest.approx([10.0] * 7)
-    # Every TTM window containing May 2015 waits for the Q2 10-Q.
-    window = out.loc["2015-12-31":"2016-04-30", "data_available_date"]
+    assert out["pe_ratio"].dropna().tolist() == pytest.approx([10.0] * 14)
+    # June 2015 was filed 2015-07-15 but its TTM window holds May 2015.
+    assert out.loc["2015-06-30", "filing_date"] == "2015-07-15"
+    assert out.loc["2015-06-30", "data_available_date"] == "2015-08-14"
+    # Every TTM window containing May 2015 (June 2015 to April 2016).
+    window = out.loc["2015-06-30":"2016-04-30", "data_available_date"]
     assert (pd.to_datetime(window) >= pd.Timestamp("2015-08-14")).all()
     assert out.loc["2016-05-31", "data_available_date"] == out.loc["2016-05-31", "filing_date"]

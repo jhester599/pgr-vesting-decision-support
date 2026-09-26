@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 
 CSV_PATH = Path("results/research/v90_pooled_panel_classifiers_results.csv")
@@ -10,6 +11,7 @@ def test_csv_exists() -> None:
     assert CSV_PATH.exists()
 
 
+@pytest.mark.artifact
 def test_expected_panel_models_present() -> None:
     df = pd.read_csv(CSV_PATH)
     assert {
@@ -19,6 +21,7 @@ def test_expected_panel_models_present() -> None:
     } <= set(df["model_name"])
 
 
+@pytest.mark.artifact
 def test_selected_model_is_unique() -> None:
     df = pd.read_csv(CSV_PATH)
     pooled = df[df["benchmark"] == "POOLED"]

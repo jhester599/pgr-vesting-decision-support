@@ -171,11 +171,19 @@ def _safe_spearman_ic(
 
 
 def _min_required_observations(total_gap: int) -> int:
-    """Return the minimum rows needed for one valid WFO split."""
+    """Return the minimum rows for a WFO run: two test windows.
+
+    ``TimeSeriesSplit`` needs ``n_splits >= 2``, so train + gap + one test
+    window was not enough: every row count below train + gap + two test
+    windows failed with sklearn's "n_splits=2 or more" error (review
+    2026-09-25, step 9). Every fold still trains on the full
+    ``WFO_TRAIN_WINDOW_MONTHS`` rows: the oldest train set has
+    ``train + (available mod test)`` rows before the cap.
+    """
     return (
         config.WFO_TRAIN_WINDOW_MONTHS
         + total_gap
-        + config.WFO_TEST_WINDOW_MONTHS
+        + 2 * config.WFO_TEST_WINDOW_MONTHS
     )
 
 def run_wfo(
@@ -268,7 +276,7 @@ def run_wfo(
             f"Dataset has only {n} observations. Need at least "
             f"{min_required} "
             f"(TRAIN_WINDOW={config.WFO_TRAIN_WINDOW_MONTHS} + "
-            f"GAP={total_gap} + TEST_WINDOW={config.WFO_TEST_WINDOW_MONTHS})."
+            f"GAP={total_gap} + 2 x TEST_WINDOW={config.WFO_TEST_WINDOW_MONTHS})."
         )
 
     tscv = TimeSeriesSplit(

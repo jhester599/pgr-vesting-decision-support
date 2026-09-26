@@ -44,6 +44,8 @@ def test_augment_feature_df_missing_column() -> None:
     assert "term_premium_diff_3m" not in result.columns
 
 
+@pytest.mark.artifact
+@pytest.mark.usefixtures("committed_db_copy")
 @pytest.mark.slow
 def test_run_term_premium_evaluation_writes_candidate(tmp_path: Path) -> None:
     from results.research.v157_term_premium_eval import run_term_premium_evaluation
@@ -53,6 +55,7 @@ def test_run_term_premium_evaluation_writes_candidate(tmp_path: Path) -> None:
     assert "term_premium_winners" in result
 
 
+@pytest.mark.artifact
 def test_candidate_file_schema() -> None:
     import json
     from results.research.v157_term_premium_eval import DEFAULT_CANDIDATE_PATH
