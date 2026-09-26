@@ -1,0 +1,857 @@
+# Research study registry (review 2026-09-25, section 5, phase 3).
+#
+# One entry per folder in research/studies/, which is named <id>_<slug>.
+# research/README.md is generated from this file:
+#     python research/tools/registry.py --write
+# CI runs `python research/tools/registry.py`, which fails if a folder is
+# not registered, an entry has no folder, or the README is stale.
+#
+# Fields
+#   id           study id (v38, x15, bl01, ...)
+#   slug         rest of the folder name
+#   date         first commit of the study (YYYY-MM-DD, quoted)
+#   question     what the study asked
+#   status       promoted | retained | shadow | closed (see research/README.md)
+#   promoted_to  the live or shadow setting/module it feeds (null if closed)
+#   closeout     closeout note, or the plan/log that records the conclusion
+#   notes        optional
+
+studies:
+  - id: bl01
+    slug: tau_sweep_eval
+    date: "2026-04-18"
+    question: "BL-01: Monte Carlo parameter sweep for Black-Litterman tau / risk_aversion tuning."
+    status: retained
+    promoted_to: "config.model.BL_TAU / BL_RISK_AVERSION"
+    closeout: docs/closeouts/BL01_CLOSEOUT_AND_HANDOFF.md
+    notes: "keep_incumbent (tau 0.05, risk aversion 2.5)."
+  - id: v9
+    slug: experiments
+    date: "2026-04-03"
+    question: "Which features, targets, pooled benchmark families and classifier set-ups work on the reduced v9 benchmark universe, including point-in-time weekly snapshots? (five scripts: feature, target, pooled-benchmark, confirmatory-classifier and weekly-snapshot experiments)"
+    status: closed
+    promoted_to: null
+    closeout: docs/closeouts/V9_CLOSEOUT_AND_V91_NEXT.md
+  - id: v37
+    slug: baseline
+    date: "2026-04-10"
+    question: "Baseline measurement of current v11.0 lean Ridge+GBT ensemble."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v38
+    slug: shrinkage
+    date: "2026-04-10"
+    question: "Post-hoc prediction shrinkage: y_hat_shrunk = alpha * y_hat."
+    status: promoted
+    promoted_to: "config.model.ENSEMBLE_SHRINKAGE_ALPHA_GRID"
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+    notes: "v38's shrinkage rule. Since review 2026-09-25 (F13) production applies it prequentially; the fixed alpha 0.50 (ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA) is research-only. Re-run pending (WP11)."
+  - id: v39
+    slug: ridge_alpha
+    date: "2026-04-10"
+    question: "Ridge alpha grid extension across production WFO splits."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v40
+    slug: gbt_constraint
+    date: "2026-04-10"
+    question: "Compare Ridge-only, constrained GBT, and 80/20 post-hoc reweighting."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v41
+    slug: winsorize
+    date: "2026-04-10"
+    question: "Target winsorization within each WFO fold."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v42
+    slug: expanding
+    date: "2026-04-10"
+    question: "Expanding window variants: pure, decay-weighted, and capped."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v43
+    slug: features
+    date: "2026-04-10"
+    question: "Feature reduction experiments using 7-feature subsets."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v44
+    slug: pca
+    date: "2026-04-10"
+    question: "Blockwise PCA dimensionality reduction within each WFO fold."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v45
+    slug: bayesian_ridge
+    date: "2026-04-10"
+    question: "BayesianRidge as primary model: default, tight prior, and 80/20 +GBT."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v46
+    slug: classification
+    date: "2026-04-10"
+    question: "Can a per-benchmark logistic classifier predict whether PGR outperforms each benchmark over 6 months? (script: src/research/binary_classification.py)"
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v47
+    slug: composite_benchmark
+    date: "2026-04-10"
+    question: "Composite benchmark target: equal-weight, inv-vol-weight, equity-only."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v48
+    slug: panel_pooling
+    date: "2026-04-10"
+    question: "Panel pooling: stack all 8 benchmarks with optional fixed effects."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v49
+    slug: regime_features
+    date: "2026-04-10"
+    question: "Regime indicator features: hard_market, high_vol, inverted_curve."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v50
+    slug: pred_winsorize
+    date: "2026-04-10"
+    question: "Prediction winsorization: clip OOS predictions at training percentiles."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v51
+    slug: peer_pooling
+    date: "2026-04-10"
+    question: "Peer company pooling: peer spread feature and two-stage sector signal."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v52
+    slug: test_window
+    date: "2026-04-10"
+    question: "Shorter WFO test windows: 1M and 3M alternatives."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v53
+    slug: ard
+    date: "2026-04-10"
+    question: "ARDRegression: automatic relevance determination variants."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v54
+    slug: gpr
+    date: "2026-04-10"
+    question: "Gaussian Process Regression variants on the shared 7-feature set."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v55
+    slug: rank_target
+    date: "2026-04-10"
+    question: "Rank-based target transforms within each WFO fold."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v56
+    slug: 12m_horizon
+    date: "2026-04-10"
+    question: "12-month prediction horizon: rolling and expanding Ridge variants."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v57
+    slug: transforms
+    date: "2026-04-10"
+    question: "Feature transformations: logs, rank-normalization, and lags."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v58
+    slug: fred_features
+    date: "2026-04-10"
+    question: "Domain-specific FRED features from long-format macro series."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v59
+    slug: imputation
+    date: "2026-04-10"
+    question: "Imputation strategies on an expanded 18-feature panel."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v60
+    slug: diagnostics
+    date: "2026-04-10"
+    question: "Clark-West diagnostics, MSE decomposition, and CE gain."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v37-v60-results-summary.md
+  - id: v70
+    slug: benchmark_shrinkage
+    date: "2026-04-10"
+    question: "Per-benchmark prequential shrinkage calibration."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v66-v73-calibration-and-decision-layer.md
+  - id: v71
+    slug: affine_recalibration
+    date: "2026-04-10"
+    question: "Prequential affine recalibration on ensemble OOS predictions."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v66-v73-calibration-and-decision-layer.md
+  - id: v72
+    slug: quality_weighted_consensus
+    date: "2026-04-10"
+    question: "Benchmark-quality-weighted consensus on top of the v38 baseline."
+    status: promoted
+    promoted_to: "config.model.CONSENSUS_WEIGHTING_MODE"
+    closeout: docs/superpowers/plans/2026-04-10-v66-v73-calibration-and-decision-layer.md
+    notes: "Quality-weighted consensus, promoted to the live path in v76 after the v74 shadow period and the v75 hold-out replay."
+  - id: v73
+    slug: hybrid_decision_gate
+    date: "2026-04-10"
+    question: "Hybrid decision-layer gating using v38 regression and v46 probabilities."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-10-v66-v73-calibration-and-decision-layer.md
+  - id: v75
+    slug: holdout_shadow_replay
+    date: "2026-04-10"
+    question: "Holdout-era monthly replay for the v74 quality-weighted shadow path."
+    status: promoted
+    promoted_to: "config.model.CONSENSUS_WEIGHTING_MODE"
+    closeout: docs/superpowers/plans/2026-04-10-v74-v78-quality-weighted-promotion.md
+    notes: "Hold-out replay that supported the v76 promotion of the v72 quality-weighted consensus."
+  - id: v87
+    slug: target_taxonomy
+    date: "2026-04-11"
+    question: "Problem framing and target taxonomy for classification research."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v81-v88-repo-review-and-adoption-plan.md
+  - id: v88
+    slug: feature_sweep
+    date: "2026-04-11"
+    question: "Stepwise feature-family sweep for the chosen binary target."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v81-v88-repo-review-and-adoption-plan.md
+  - id: v89
+    slug: per_benchmark_linear
+    date: "2026-04-11"
+    question: "Per-benchmark linear classifier comparisons."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v87-v96-classification-hybrid-research.md
+  - id: v90
+    slug: pooled_panel_classifiers
+    date: "2026-04-11"
+    question: "Pooled panel classifiers versus separate benchmark models."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v87-v96-classification-hybrid-research.md
+  - id: v91
+    slug: nonlinear_classifier_sweep
+    date: "2026-04-11"
+    question: "Conservative nonlinear classifier family sweep."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v87-v96-classification-hybrid-research.md
+  - id: v92
+    slug: calibration_and_abstention
+    date: "2026-04-11"
+    question: "Probability calibration and abstention-threshold design."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v87-v96-classification-hybrid-research.md
+  - id: v93
+    slug: basket_targets
+    date: "2026-04-11"
+    question: "Basket-target versus benchmark-panel target formulations."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v87-v96-classification-hybrid-research.md
+  - id: v94
+    slug: hybrid_gate
+    date: "2026-04-11"
+    question: "Hybrid classifier + regression gate architecture."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v87-v96-classification-hybrid-research.md
+  - id: v95
+    slug: policy_replay
+    date: "2026-04-11"
+    question: "Policy replay and promotion-style evaluation for classifier hybrids."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v87-v96-classification-hybrid-research.md
+  - id: v96
+    slug: decision_summary
+    date: "2026-04-11"
+    question: "Final summary and candidacy decision for the classification program."
+    status: shadow
+    promoted_to: "src/models/classification_shadow.py"
+    closeout: docs/superpowers/plans/2026-04-11-v87-v96-classification-hybrid-research.md
+    notes: "Closes the v87-v96 classification programme: the classifier stays a shadow interpretation layer."
+  - id: v110
+    slug: gemini_veto_gate
+    date: "2026-04-11"
+    question: "Gemini-style veto gate backtest."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v102-v117-post-review-enhancement-plan.md
+  - id: v111
+    slug: permission_overlay
+    date: "2026-04-11"
+    question: "ChatGPT-style permission-to-deviate overlay research."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v102-v117-post-review-enhancement-plan.md
+  - id: v112
+    slug: target_reformulation
+    date: "2026-04-11"
+    question: "Narrow target reformulation research."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v102-v117-post-review-enhancement-plan.md
+  - id: v113
+    slug: constrained_candidate_selection
+    date: "2026-04-11"
+    question: "Constrained selection of promotable policy candidates."
+    status: shadow
+    promoted_to: "src/models/classification_gate_overlay.py"
+    closeout: docs/superpowers/plans/2026-04-11-v102-v117-post-review-enhancement-plan.md
+    notes: "The monthly run reads v113_constrained_candidate_selection_results.csv to pick the shadow gate overlay."
+  - id: v114
+    slug: shadow_gate_overlay_summary
+    date: "2026-04-11"
+    question: "Shadow gate overlay selection summary."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v102-v117-post-review-enhancement-plan.md
+  - id: v115
+    slug: classifier_monitoring_summary
+    date: "2026-04-11"
+    question: "Horizon-aware classifier monitoring summary."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v102-v117-post-review-enhancement-plan.md
+  - id: v116
+    slug: limited_gate_candidate
+    date: "2026-04-11"
+    question: "Limited production gate candidacy evaluation."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v102-v117-post-review-enhancement-plan.md
+  - id: v117
+    slug: primary_mode_selector_evaluation
+    date: "2026-04-11"
+    question: "Evaluate classifier influence on recommendation mode selection."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v102-v117-post-review-enhancement-plan.md
+  - id: v118
+    slug: prospective_shadow_replay
+    date: "2026-04-11"
+    question: "Prospective shadow replay for the selected gate candidate."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v118-v121-prospective-shadow-monitoring.md
+  - id: v119
+    slug: disagreement_scorecard
+    date: "2026-04-11"
+    question: "Disagreement-focused scorecard for prospective shadow monitoring."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v118-v121-prospective-shadow-monitoring.md
+  - id: v120
+    slug: prospective_shadow_gate_assessment
+    date: "2026-04-11"
+    question: "Promotion-style assessment of the prospective shadow replay."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v118-v121-prospective-shadow-monitoring.md
+  - id: v121
+    slug: prospective_shadow_phase_summary
+    date: "2026-04-11"
+    question: "Final summary for the prospective shadow-monitoring phase."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-11-v118-v121-prospective-shadow-monitoring.md
+  - id: v122
+    slug: classifier_audit
+    date: "2026-04-12"
+    question: "Current classifier audit note and coefficient snapshot."
+    status: closed
+    promoted_to: null
+    closeout: null
+  - id: v125
+    slug: portfolio_target_classifier
+    date: "2026-04-12"
+    question: "Path B: Composite portfolio-target classifier."
+    status: shadow
+    promoted_to: "src/models/path_b_classifier.py"
+    closeout: docs/superpowers/plans/2026-04-12-v123-v125-classifier-portfolio-alignment.md
+    notes: "Path B composite portfolio-target classifier (shadow)."
+  - id: v127
+    slug: path_b_calibration
+    date: "2026-04-12"
+    question: "Path B calibration sweep on the matched v126 fold frame."
+    status: shadow
+    promoted_to: "src/models/path_b_classifier.py"
+    closeout: docs/superpowers/plans/2026-04-12-v123-v128-classification-enhancement-plan.md
+    notes: "Path B calibration (shadow)."
+  - id: v128
+    slug: benchmark_feature_search
+    date: "2026-04-12"
+    question: "Benchmark-specific full feature search for classification models."
+    status: shadow
+    promoted_to: "config.features.V128_BENCHMARK_FEATURE_MAP_PATH"
+    closeout: docs/superpowers/plans/2026-04-12-v123-v128-classification-enhancement-plan.md
+    notes: "The monthly run reads v128_benchmark_feature_map.csv for the benchmark-specific shadow classifier. Re-run pending (WP11)."
+  - id: v129
+    slug: feature_map_eval
+    date: "2026-04-12"
+    question: "Benchmark feature-map evaluation harness."
+    status: shadow
+    promoted_to: "config.features.DUAL_TRACK_LEAN_BASELINE_OVERRIDES"
+    closeout: null
+    notes: "Dual-track shadow integration; the VGT robustness audit put VGT back on the lean baseline."
+  - id: v130
+    slug: path_b_temp_scaling_adoption
+    date: "2026-04-12"
+    question: "Path B temperature scaling revised adoption analysis."
+    status: shadow
+    promoted_to: "src/models/path_b_classifier.py"
+    closeout: null
+    notes: "Path B temperature scaling (shadow)."
+  - id: v131
+    slug: threshold_sweep_eval
+    date: "2026-04-13"
+    question: "Asymmetric abstention threshold evaluator for Path B temperature-scaled classifier."
+    status: retained
+    promoted_to: "config.model.SHADOW_CLASSIFIER_HIGH_THRESH / SHADOW_CLASSIFIER_LOW_THRESH"
+    closeout: null
+    notes: "Found (0.15, 0.70); v132's hold-out rejected it, so the thresholds stay at (0.30, 0.70)."
+  - id: v132
+    slug: threshold_validation
+    date: "2026-04-13"
+    question: "Temporal hold-out validation for asymmetric abstention thresholds."
+    status: retained
+    promoted_to: "config.model.SHADOW_CLASSIFIER_HIGH_THRESH / SHADOW_CLASSIFIER_LOW_THRESH"
+    closeout: docs/superpowers/plans/2026-04-13-threshold-constants-and-v132-validation.md
+    notes: "Temporal hold-out: DO NOT ADOPT; the thresholds stay at (0.30, 0.70)."
+  - id: v133
+    slug: ridge_alpha_sweep
+    date: "2026-04-14"
+    question: "Ridge alpha-grid sweep on the production research frame."
+    status: closed
+    promoted_to: null
+    closeout: null
+  - id: v134
+    slug: fred_lag_sweep
+    date: "2026-04-14"
+    question: "FRED publication lag sweep against the production ensemble path."
+    status: retained
+    promoted_to: "config.features.FRED_SERIES_LAGS"
+    closeout: null
+    notes: "Run on the pre-lagged DB, so its lag 0 was really lag 1 (review F06). Re-run pending (WP11)."
+  - id: v135
+    slug: temp_param_search
+    date: "2026-04-14"
+    question: "Path B temperature-parameter search harness."
+    status: closed
+    promoted_to: null
+    closeout: null
+  - id: v136
+    slug: backlog_ranking
+    date: "2026-04-14"
+    question: "Which backlog items should the autoresearch loop run next? (persona-scored consensus ranking of the research backlog)"
+    status: closed
+    promoted_to: null
+    closeout: null
+  - id: v137
+    slug: gbt_param_sweep
+    date: "2026-04-14"
+    question: "Standalone GBT hyperparameter sweep on the production research frame."
+    status: closed
+    promoted_to: null
+    closeout: null
+  - id: v138
+    slug: bl_param_eval
+    date: "2026-04-14"
+    question: "Black-Litterman parameter replay proxy on matured shadow history."
+    status: closed
+    promoted_to: null
+    closeout: null
+  - id: v140
+    slug: shrinkage_eval
+    date: "2026-04-16"
+    question: "Standalone shrinkage evaluation on the current ensemble frame."
+    status: retained
+    promoted_to: "config.model.ENSEMBLE_PREDICTION_SHRINKAGE_ALPHA"
+    closeout: docs/closeouts/V152_CLOSEOUT_AND_HANDOFF.md
+    notes: "Flat across the bounded range; 0.50 kept."
+  - id: v141
+    slug: blend_eval
+    date: "2026-04-16"
+    question: "Fixed Ridge-vs-GBT ensemble blend evaluation."
+    status: shadow
+    promoted_to: "src/reporting/shadow_followon.py"
+    closeout: docs/closeouts/V152_CLOSEOUT_AND_HANDOFF.md
+    notes: "Candidate ridge weight feeds the autoresearch_followon_v150 shadow lane."
+  - id: v142
+    slug: edgar_lag_eval
+    date: "2026-04-16"
+    question: "EDGAR filing-lag evaluation on the current ensemble frame."
+    status: retained
+    promoted_to: "config.features.EDGAR_FILING_LAG_MONTHS"
+    closeout: docs/closeouts/V142_CLOSEOUT_AND_V143_NEXT.md
+    notes: "Kept lag 2, chosen by in-sample R2 among lags 0-3 (review F23); step 6 placed EDGAR rows by filing date. Re-run pending (WP11)."
+  - id: v143
+    slug: corr_prune_eval
+    date: "2026-04-16"
+    question: "Correlation-pruned feature-set evaluation on the current frame."
+    status: shadow
+    promoted_to: "src/reporting/shadow_followon.py"
+    closeout: docs/closeouts/V152_CLOSEOUT_AND_HANDOFF.md
+    notes: "Candidate correlation-prune threshold feeds the autoresearch_followon_v150 shadow lane."
+  - id: v144
+    slug: conformal_eval
+    date: "2026-04-16"
+    question: "Conformal coverage backtest on the current pooled ensemble frame."
+    status: shadow
+    promoted_to: "src/reporting/shadow_followon.py"
+    closeout: docs/closeouts/V152_CLOSEOUT_AND_HANDOFF.md
+    notes: "Candidate conformal settings feed the autoresearch_followon_v150 shadow lane."
+  - id: v145
+    slug: wfo_window_sweep
+    date: "2026-04-16"
+    question: "WFO train/test window sweep on the current ensemble frame."
+    status: retained
+    promoted_to: "config.model.WFO_TRAIN_WINDOW_MONTHS / WFO_TEST_WINDOW_MONTHS"
+    closeout: docs/closeouts/V145_CLOSEOUT_AND_V146_NEXT.md
+    notes: "Kept (60, 6)."
+  - id: v146
+    slug: threshold_sweep
+    date: "2026-04-16"
+    question: "Threshold sweep on top of the current v135 temperature baseline."
+    status: closed
+    promoted_to: null
+    closeout: docs/closeouts/V152_CLOSEOUT_AND_HANDOFF.md
+  - id: v147
+    slug: coverage_weighted_aggregate
+    date: "2026-04-16"
+    question: "Coverage-weighted Path A / Path B probability aggregation proxy."
+    status: closed
+    promoted_to: null
+    closeout: docs/closeouts/V152_CLOSEOUT_AND_HANDOFF.md
+  - id: v148
+    slug: class_weight_eval
+    date: "2026-04-16"
+    question: "Positive-class weight replay proxy on preserved Path B probabilities."
+    status: closed
+    promoted_to: null
+    closeout: docs/closeouts/V152_CLOSEOUT_AND_HANDOFF.md
+  - id: v149
+    slug: kelly_eval
+    date: "2026-04-16"
+    question: "Kelly fraction / cap replay proxy on the v138 BL posterior frame."
+    status: shadow
+    promoted_to: "src/reporting/shadow_followon.py"
+    closeout: docs/closeouts/V152_CLOSEOUT_AND_HANDOFF.md
+    notes: "Candidate Kelly fraction and cap feed the autoresearch_followon_v150 shadow lane."
+  - id: v150
+    slug: neutral_band_eval
+    date: "2026-04-16"
+    question: "Neutral-band replay proxy on top of the v149 Kelly baseline."
+    status: shadow
+    promoted_to: "src/reporting/shadow_followon.py"
+    closeout: docs/closeouts/V150_CLOSEOUT_AND_V151_NEXT.md
+    notes: "Candidate neutral band feeds the autoresearch_followon_v150 shadow lane."
+  - id: v154
+    slug: firth_logistic_eval
+    date: "2026-04-18"
+    question: "Firth logistic evaluation for short-history benchmarks (CLS-02)."
+    status: closed
+    promoted_to: null
+    closeout: docs/closeouts/V158_CLOSEOUT_AND_HANDOFF.md
+  - id: v155
+    slug: wti_momentum_eval
+    date: "2026-04-18"
+    question: "WTI 3M momentum evaluation for DBC/VDE classification (FEAT-02)."
+    status: closed
+    promoted_to: null
+    closeout: docs/closeouts/V158_CLOSEOUT_AND_HANDOFF.md
+  - id: v156
+    slug: usd_momentum_eval
+    date: "2026-04-18"
+    question: "USD index momentum evaluation for BND/VXUS/VWO (FEAT-01)."
+    status: closed
+    promoted_to: null
+    closeout: docs/closeouts/V158_CLOSEOUT_AND_HANDOFF.md
+  - id: v157
+    slug: term_premium_eval
+    date: "2026-04-18"
+    question: "Term premium 3M differential evaluation (FEAT-03)."
+    status: closed
+    promoted_to: null
+    closeout: docs/closeouts/V158_CLOSEOUT_AND_HANDOFF.md
+  - id: v158
+    slug: synthesis
+    date: "2026-04-18"
+    question: "What did the v153-v157 classification and feature studies conclude? (synthesis)"
+    status: closed
+    promoted_to: null
+    closeout: docs/closeouts/V158_CLOSEOUT_AND_HANDOFF.md
+  - id: v162
+    slug: ta_broad_screen
+    date: "2026-04-18"
+    question: "Broad technical-analysis screen helpers and harness."
+    status: closed
+    promoted_to: null
+    closeout: docs/closeouts/V164_CLOSEOUT_AND_HANDOFF.md
+  - id: v163
+    slug: ta_survivor_confirm
+    date: "2026-04-18"
+    question: "Survivor confirmation helpers for the TA research arc."
+    status: closed
+    promoted_to: null
+    closeout: docs/closeouts/V164_CLOSEOUT_AND_HANDOFF.md
+  - id: v164
+    slug: ta_synthesis
+    date: "2026-04-18"
+    question: "Which technical-analysis features survived the v160-v163 screen? (synthesis)"
+    status: closed
+    promoted_to: null
+    closeout: docs/closeouts/V164_CLOSEOUT_AND_HANDOFF.md
+  - id: v165
+    slug: ta_shadow_replacement_eval
+    date: "2026-04-18"
+    question: "TA classification replacement shadow evaluation."
+    status: shadow
+    promoted_to: "src/reporting/classification_artifacts.py"
+    closeout: docs/closeouts/V165_CLOSEOUT_AND_HANDOFF.md
+    notes: "Reporting-only TA replacement variants (ta_shadow_variant_history.csv)."
+  - id: x1
+    slug: feature_inventory
+    date: "2026-04-22"
+    question: "Feature inventory and target sufficiency artifacts."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-22-x1-absolute-pgr-and-special-dividend-lane.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x2
+    slug: absolute_classification
+    date: "2026-04-22"
+    question: "Absolute PGR direction classification baselines."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-22-x2-absolute-classification-baseline.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x3
+    slug: direct_return
+    date: "2026-04-22"
+    question: "Direct PGR forward-return regression benchmarks."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-22-x3-direct-return-benchmark.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x4
+    slug: bvps_forecasting
+    date: "2026-04-22"
+    question: "BVPS forecasting benchmarks."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-22-x4-bvps-forecasting-leg.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x5
+    slug: pb_decomposition
+    date: "2026-04-22"
+    question: "P/B leg and recombined decomposition benchmarks."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-22-x5-pb-decomposition-benchmark.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x6
+    slug: special_dividend
+    date: "2026-04-22"
+    question: "Special-dividend two-stage annual sidecar."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-22-x6-special-dividend-sidecar.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x7
+    slug: targeted_ta
+    date: "2026-04-22"
+    question: "Targeted TA replacement experiments for x-series classification."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-23-x7-targeted-ta-feature-followup.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x8
+    slug: synthesis
+    date: "2026-04-22"
+    question: "Synthesis artifacts from checked-in x-series research outputs."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-23-x8-synthesis-ranking-memo.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x9
+    slug: bvps_bridge
+    date: "2026-04-22"
+    question: "BVPS bridge feature and baseline experiments."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-23-x9-x11-bvps-capital-research.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x10
+    slug: dividend_capital
+    date: "2026-04-22"
+    question: "Capital-enhanced special-dividend experiments."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-23-x9-x11-bvps-capital-research.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x11
+    slug: capital_synthesis
+    date: "2026-04-22"
+    question: "Synthesis artifacts for x9/x10 capital research."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-23-x9-x11-bvps-capital-research.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x12
+    slug: bvps_target_audit
+    date: "2026-04-23"
+    question: "BVPS raw-vs-adjusted target audit."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-23-x12-bvps-target-audit.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x13
+    slug: adjusted_decomposition
+    date: "2026-04-23"
+    question: "Adjusted decomposition comparisons."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-23-x13-x14-adjusted-decomposition-indicator.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x14
+    slug: indicator_synthesis
+    date: "2026-04-23"
+    question: "Indicator candidate synthesis artifacts."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-23-x13-x14-adjusted-decomposition-indicator.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x15
+    slug: pb_regime_overlay
+    date: "2026-04-23"
+    question: "Bounded P/B regime overlay experiments."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-23-x15-pb-regime-overlay.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x16
+    slug: indicator_package
+    date: "2026-04-23"
+    question: "Research-only indicator package artifacts."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-23-x16-indicator-package.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x17
+    slug: persistent_bvps
+    date: "2026-04-23"
+    question: "Persistent-BVPS bridge experiments."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-23-x17-persistent-bvps.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x18
+    slug: dividend_policy_regime
+    date: "2026-04-23"
+    question: "Dividend policy regime audit and target construction."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-23-x18-x21-dividend-policy-rebuild.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x19
+    slug: post_policy_dividend_model
+    date: "2026-04-23"
+    question: "Post-policy dividend experiments using persistent BVPS features."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-23-x18-x21-dividend-policy-rebuild.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x20
+    slug: dividend_policy_synthesis
+    date: "2026-04-23"
+    question: "Synthesis for the dividend-policy rebuild lane."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-23-x18-x21-dividend-policy-rebuild.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x21
+    slug: dividend_target_scales
+    date: "2026-04-23"
+    question: "Post-policy dividend size target-scale experiments."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-23-x18-x21-dividend-policy-rebuild.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x22
+    slug: dividend_size_baselines
+    date: "2026-04-23"
+    question: "Dividend size baseline challengers."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-23-x22-x23-dividend-size-followup.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x23
+    slug: dividend_lane_package
+    date: "2026-04-23"
+    question: "Dividend-lane synthesis and package artifacts."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-23-x22-x23-dividend-size-followup.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: x24
+    slug: indicator_contract
+    date: "2026-04-24"
+    question: "Research-only indicator contract and resume docs."
+    status: closed
+    promoted_to: null
+    closeout: docs/superpowers/plans/2026-04-24-x24-indicator-contract-and-summary.md
+    notes: "x-series: research-only PGR absolute-return lane (see docs/research/x_series_resume_2026-04-24.md)."
+  - id: pb_vs_pe
+    slug: analysis
+    date: "2026-09-24"
+    question: "Is P/B or P/E the better predictor of PGR's forward returns?"
+    status: closed
+    promoted_to: null
+    closeout: null
+  - id: test_runtime
+    slug: autoresearch
+    date: "2026-04-14"
+    question: "How much faster can the test suite run without weakening its assertions?"
+    status: closed
+    promoted_to: null
+    closeout: null

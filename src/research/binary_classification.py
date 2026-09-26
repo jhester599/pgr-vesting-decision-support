@@ -7,7 +7,7 @@ reconfigures ``sys.stdout`` or installs global warning filters at import;
 ``main()`` sets them for its own run only.
 
 Re-run the study with ``python -m src.research.binary_classification``
-(writes ``results/research/v46_classification_results.csv``).
+(writes ``research/studies/v46_classification/outputs/v46_classification_results.csv``).
 """
 
 from __future__ import annotations

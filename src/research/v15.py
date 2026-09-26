@@ -343,7 +343,7 @@ def choose_best_confirmed_swaps(
 
 def _latest_v14_feature_surgery_summary() -> pd.DataFrame | None:
     """Load the most recent v14 feature-surgery summary when available."""
-    v14_dir = Path("results") / "v14"
+    v14_dir = Path("research") / "legacy" / "v14"
     files = sorted(v14_dir.glob("v14_feature_surgery_summary_*.csv"))
     if not files:
         return None

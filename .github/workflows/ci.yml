@@ -41,6 +41,12 @@ jobs:
       - name: No new sys.path edits outside tests/conftest.py
         run: python scripts/checks/check_sys_path_edits.py
 
+      - name: Every research study folder is registered
+        # research/registry.yaml lists every research/studies/<id>_<slug>/
+        # folder, and research/README.md is generated from it (review
+        # 2026-09-25, section 5, phase 3).
+        run: python research/tools/registry.py
+
       - name: mypy pass on hardened modules (v33.1 expanded to 11 modules)
         run: >
           python -m mypy

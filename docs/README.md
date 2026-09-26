@@ -41,7 +41,7 @@ Root-level docs are also active:
   closeouts and archived docs reference them, but they are not the active plan
   location.
 - `docs/results/` - legacy v9-v29 result summaries. Current research artifacts
-  live under `results/research/`; this folder is retained for historical
+  live under `research/studies/` (index: `research/README.md`); this folder is retained for historical
   continuity.
 
 ## Archive Guidance

@@ -62,7 +62,9 @@ output shape or fixtures:
 
 - `artifacts/*` (production outputs written by workflows; see
   `docs/artifact-policy.md`)
-- `results/v9/*`
+- `research/legacy/*` (the v9–v28 result folders, read-only)
+- `research/studies/*/outputs/*` (written by each study's script)
+- `research/README.md` (generated from `research/registry.yaml`)
 - `data/pgr_financials.db`
 
 If a code change intentionally alters a generated artifact, regenerate it and
