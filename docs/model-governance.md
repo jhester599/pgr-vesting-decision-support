@@ -96,11 +96,53 @@ NEUTRAL, or IC < 0.05 / missing → 50 %. Validation is walk-forward only; the
 representative CPCV (a combinatorial K-fold) no longer runs and no longer
 gates.
 
-### Health baseline at 2026-09-21
+### Current state after R3 (2026-09-27; pre-refresh, not the new baseline)
 
-Replayed on the corrected pipeline (review 2026-09-25, step 5; month-by-month
-replay in [0006](decisions/0006-validation-gates-and-cpcv-diagnostic.md)). Later
-months are compared against it.
+The new current health baseline must be measured on the DB after the step-0
+dividend refresh, once R2-lite has merged
+([execution plan](reviews/PRE_V200_FIX_PROMPTS_codex.md#owner-decisions-and-execution-plan-2026-09-27)).
+Until then this is the latest pinned state. It comes from a smoke replay of
+already-inspected history, not promotion evidence
+([closeout](reviews/R3_validation_closeout.md)).
+
+| Pin | Value |
+|---|---|
+| Code | branch `claude/remediation-session-0btise` at `1b94bf0` (R3), vs `master` `449fcde` |
+| DB | `data/pgr_financials.db` sha256 `f453ab9817ffbc5d176bcca03ca7c64a86493db652a150012ac852d93811f51d` (before the step-0 dividend refresh) |
+| Runtime | Python 3.11.15, pandas 3.0.6, numpy 2.4.6, scikit-learn 1.9.1, scipy 1.17.1, statsmodels 0.15.0; Linux |
+| Metrics / gates | `prequential-2026-09-25` / `chronological-readiness-2026-09-27` |
+
+As of 2026-09-21 (the latest committed decision):
+
+| Metric | Value | Gate |
+|---|---|---|
+| Aggregate OOS R², against each benchmark's prevailing mean of the targets realised by each forecast date | +2.86 % | PASS |
+| Equal-weight mean IC (gated) | 0.0762 | PASS |
+| Pooled rank IC, Driscoll–Kraay p clustered by date | 0.1019, p 0.125 (not significant) | — |
+| Hit rate vs the constant "PGR outperforms" rule, Pesaran–Timmermann p | 62.8 % vs 68.1 %, p 0.391 | FAIL |
+| Walk-forward validation (16 required model/benchmark pairs) | complete | PASS |
+| Required inputs at the as-of date | stale dividends: VOO, VXUS, VWO, VMBS, BND, VDE | FAIL |
+| Prequential ECE | 15.4 % | — |
+| Trailing conformal coverage (target 80 %) | 42.7 % | — |
+
+**Current recommendation: DEFER-TO-TAX-DEFAULT, sell 50 %.** The model has
+no directional skill beyond the base rate. Its calibrated probabilities and
+intervals are poorly calibrated: coverage is about half of nominal. Six
+benchmarks' dividends are stale, so the newest targets understate those
+benchmarks' returns (verification V03/N1). Every month from 2026-02 to
+2026-09 defers at 50 % under both the old and the new gates; the R3 gates
+add a `data_ready` failure from 2026-04 on. Nothing here promises a better
+return.
+
+<a id="health-baseline-at-2026-09-21"></a>
+
+### Historical: step-5 health baseline at 2026-09-21 (dated 2026-09-26)
+
+Kept as dated history; superseded as the current state by the section above
+(verification V08). Replayed on the corrected pipeline of review 2026-09-25,
+step 5 (month-by-month replay in
+[0006](decisions/0006-validation-gates-and-cpcv-diagnostic.md)), before the
+step-6 filing-date timing repair and under the retired CPCV diagnostic.
 
 | Metric | Value | Gate |
 |---|---|---|
@@ -113,8 +155,9 @@ months are compared against it.
 | CPCV positive paths (diagnostic) | 5/7, GOOD | ran |
 | Shrinkage alpha (prequential) | 0.50 | — |
 
-`model_performance_log` stores these corrected metrics from the next
-production run, tagged `metrics_version = prequential-2026-09-25`.
+`model_performance_log` stores the corrected metrics from the next
+production run, tagged `metrics_version = prequential-2026-09-25`. The R3 gate
+change does not change any metric, so the version is unchanged.
 
 ## Research Candidates Still Worth Tracking
 
@@ -174,7 +217,10 @@ The current production path is the quality-weighted consensus.
 Since review 2026-09-25, step 5, the corrected gates hold every month from
 2026-02 to 2026-09 at the 50 % tax default, and directional skill is the gate
 that binds. Step 6 changed the ACTIONABLE sell-percentage mapping
-([0007](decisions/0007-actionable-sell-mapping.md)).
+([0007](decisions/0007-actionable-sell-mapping.md)). R3 made validation
+walk-forward only and added the `wfo_completed` and `data_ready` gates
+([0008](decisions/0008-chronological-validation-and-readiness-gates.md)); the
+refreshed-DB baseline follows R2-lite.
 
 The most immediate governance questions are now:
 

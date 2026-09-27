@@ -297,19 +297,17 @@ def determine_recommendation_mode(
         reasons = [gate_reason(gate) for gate in failed]
         if failed_names <= set(QUALITY_GATE_NAMES):
             lead = "Model quality is too weak to justify a prediction-led vesting action."
-        elif "wfo_completed" in failed_names and "data_ready" in failed_names:
-            lead = (
-                "The walk-forward validation is incomplete and required inputs are not ready, "
-                "so the signal cannot justify a prediction-led vesting action."
-            )
-        elif "wfo_completed" in failed_names:
-            lead = (
-                "The walk-forward validation is incomplete, "
-                "so the signal cannot justify a prediction-led vesting action."
-            )
         else:
+            causes = []
+            if failed_names & set(QUALITY_GATE_NAMES):
+                causes.append("model quality is too weak")
+            if "wfo_completed" in failed_names:
+                causes.append("the walk-forward validation is incomplete")
+            if "data_ready" in failed_names:
+                causes.append("required inputs are not ready for this as-of date")
+            joined = causes[0] if len(causes) == 1 else ", ".join(causes[:-1]) + " and " + causes[-1]
             lead = (
-                "Required inputs are not ready for this as-of date, "
+                f"{joined[0].upper()}{joined[1:]}, "
                 "so the signal cannot justify a prediction-led vesting action."
             )
         return {
