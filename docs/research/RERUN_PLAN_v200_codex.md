@@ -1,5 +1,7 @@
 # Research rerun prompts — v200 onward (Codex)
 
+> **Status (added 2026-09-26):** two v200 research plans exist, and their version numbers mean different things: this one (v200–v207) and [`RERUN_PLAN_v200_claude.md`](RERUN_PLAN_v200_claude.md) (v200–v210). Neither is adopted yet. [The comparison](../reviews/2026-09-26_step13v_comparison.md) sets out the differences and a recommendation, and it records the owner's choice. Do not start a v2NN session until that choice is recorded there.
+
 Written 2026-09-26 from [independent verification](../reviews/VERIFICATION_2026-09-26.md). This replaces separate 8a–8c prompts. It is a plan, not a performance result or authorization to fetch data. Copy the shared preamble and **one** numbered prompt into each new session. Use one PR per session. Start at v200; never reuse v1–v199. The gap separates the repaired data foundation from historical experiments and fix releases.
 
 ## What the evidence supports

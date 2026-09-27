@@ -1,5 +1,7 @@
 # Independent verification of the 2026-09-25 review fixes — 2026-09-26
 
+> **Corrections (added 2026-09-26):** [the comparison with the second verification run](2026-09-26_step13v_comparison.md#6-corrections-to-each-report) corrects this report. F01, F02, F15, F22, F23, F24 and F28 are PARTIAL, not FIXED (reconciled totals 18 / 15 / 2). CPCV still runs every month, and its completion still gates the decision. The step-5 CSV matches the DB from before the 2026-09-26 weekly update. The rest of this report is unchanged.
+
 - **Scope:** every finding (F01–F35) of [`REPO_REVIEW_2026-09-25.md`](REPO_REVIEW_2026-09-25.md) and the work merged for it: CHANGELOG v171–v185 and PRs [#120](https://github.com/jhester599/pgr-vesting-decision-support/pull/120)–[#133](https://github.com/jhester599/pgr-vesting-decision-support/pull/133) (steps 1, 2, 3a, 3b, 4, 4b, 4c, 5, 6, 7, 9, 10, 11 and 12).
 - **Commit verified:** `master` at `aae0be8` (Merge PR #133).
 - **Committed DB:** `data/pgr_financials.db`, sha256 `7c68efbd90ef5c10a12e05dc2a9e03402e353a06219fd2db129d711754c1c35d`. It was unchanged at the start and the end of this session. The review-time DB (`9887288`) is `e7531a34…8b38`.
