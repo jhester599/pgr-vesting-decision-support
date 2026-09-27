@@ -13,21 +13,33 @@
   candidates on the current post-v138 frame
 - `v146`, `v147`, `v148`, and `v150` all closed as no-change confirmations on
   the bounded follow-through grids
-- `v151` now surfaces the promoted winners side-by-side in monthly shadow
-  artifacts under the reporting-only variant `autoresearch_followon_v150`
+- `v151` surfaces candidate settings as metadata alongside baseline-derived
+  monthly shadow forecasts under the reporting-only variant
+  `autoresearch_followon_v150`
 - `v145` recorded a promising but tradeoff-heavy `(48, 6)` WFO window result,
   so the incumbent `{"train": 60, "test": 6}` candidate remains in place
 - `v152` is now complete, so this follow-on cycle is closed
-- The durable shadow-only promotion outcome is the additive
-  `autoresearch_followon_v150` reporting lane built from the `v141`, `v143`,
-  `v144`, and `v149` winners
+- The durable reporting outcome is the additive `autoresearch_followon_v150`
+  metadata lane. Its probability, stance, detail predictions and decision
+  overlay are copied from the baseline; the `v141`, `v143`, `v144`, `v149` and
+  `v150` candidate settings are not applied by a separately fitted candidate.
+- **2026-09-27 R4 evidence note (V07):** current master
+  `dc12291b0717368c04d7c233bac88d4477f0307d` passes baseline probabilities to
+  `src/reporting/shadow_followon.py` and copies baseline detail and overlay
+  frames in `src/pgr_vds/decision/pipeline.py`. `candidate_sources` records
+  research settings only; `reporting_only` remains true. Candidate application
+  or performance requires distinct model, prediction, code and data provenance.
+  The historical study conclusions above are retained, not newly rerun or
+  verified by this maintenance session.
 - The next autonomous session should start from the ranked backlog below rather
   than reopening any `v140-v150` follow-through sweeps
 
 ## Ranked Next Queue
 
 1. `CLS-03` â€” Path A vs Path B production decision â€” blocked (24 matured months)
-2. `v159` — Wire Firth logistic for VMBS/BND into shadow classification lane — **complete (2026-04-18)**
+2. `v159` — Firth logistic for VMBS/BND — **research-only pending v204 evidence**.
+   Historical status claimed **complete (2026-04-18)**; the 2026-09-27 R4 audit
+   did not substantiate adoption (see CLS-02 below).
 3. `BL-01` - Black-Litterman tau/view tuning — **complete (2026-04-18)**
 4. `CLS-03` — Path A vs Path B production decision — blocked (24 matured months)
 
@@ -92,13 +104,24 @@ point-in-time monthly JSON artifacts.
 **Depends on:** TA-03
 **Expected metric impact:** governance and monitoring evidence; no immediate
 production impact
-**Last touched:** v167 (2026-04-18)
+**Last touched:** v189 / R4 (2026-09-27); original ledger added v167 (2026-04-18)
 **Candidate scope:** append/upsert reporting-only TA variant probabilities by
-`as_of_date` and `variant`, preserve 6M maturity dates, and reserve realized
-outcome fields for future evaluation.
+`as_of_date` and `variant`, preserving issued probability, feature anchor,
+recipe, recommendation and candidate identity. Later runs recompute maturity
+from each row's anchor and horizon against the evaluation as-of date using the
+actual business-month-end target endpoint. A January 2020 origin with a 6M
+horizon ends July 31: July 30 remains immature. Realized outcomes remain unknown
+unless the complete basket outcome is available by the evaluation date, even
+after the calendar horizon passes. Later rows cannot change backdated status.
 **Outcome:** complete. Monthly runs write
 `artifacts/monthly_decisions/ta_shadow_variant_history.csv`; production
-recommendations and classifier gate overlays remain unchanged.
+recommendations and classifier gate overlays remain unchanged. Monitoring
+updates are idempotent and use stable row keys. Dry runs may compute matured
+monitoring in memory but do not append or rewrite either shadow ledger.
+**2026-09-27 R4 evidence note (F24):** the historical v167 creation-time maturity
+claim did not establish later outcome attachment. R4 repairs that monitoring
+behavior only; it introduces no live-data loading, candidate fit or promotion.
+v204 must wait for R4 to merge or explicitly exclude the affected ledger.
 
 ### OPS-01 - Calendar-Aware PGR Monthly EDGAR Freshness
 **Status:** complete
@@ -161,13 +184,27 @@ current archive guidance, and `docs/history/repo-hygiene-review-2026-04-19.md`.
 **Last touched:** v124-v128 cycle
 
 ### CLS-02 — Firth Logistic For Short-History Benchmarks
-**Status:** complete
+**Status:** research-only pending v204 evidence
 **Priority:** medium
 **Rationale:** Short-history benchmarks still risk unstable logistic fits under small-sample class imbalance.
 **Estimated effort:** M
 **Depends on:** none
-**Expected metric impact:** VMBS BA_cov +0.0412, BND BA_cov +0.0704; shadow adoption pending v159
-**Last touched:** v154 (2026-04-17)
+**Historical research result:** v154 reported VMBS BA_cov +0.0412 and BND
+BA_cov +0.0704; these archived results are not current adoption or performance
+evidence and were not rerun by R4.
+**Last touched:** v189 / R4 (2026-09-27); research evaluation v154 (2026-04-17)
+**2026-09-27 R4 evidence note (V07):** inspection of current master
+`dc12291b0717368c04d7c233bac88d4477f0307d` finds Firth fitting and prediction
+only in `src/research/v154_utils.py`, with the archived candidate summary at
+`research/studies/v154_firth_logistic_eval/outputs/v154_firth_candidate.json`.
+No active model/config import, `src/reporting/firth_shadow.py`, v159 closeout or
+distinct monthly Firth prediction artifact substantiates the historical v159
+adoption claim. The preserved
+`docs/history/superpowers/plans/2026-04-18-v159-firth-shadow-integration.md`
+is a plan to forward baseline probability with Firth findings; even its planned
+reporting lane would not establish a separately fitted candidate. Firth remains
+research-only pending v204 matched-fit and prediction/code/data provenance.
+R4 does not implement or promote it.
 
 ### CLS-03 â€” Path A vs Path B Production Decision
 **Status:** blocked

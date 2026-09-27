@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sqlite3
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -16,13 +17,17 @@ from typing import Any
 import pandas as pd
 
 import config
-from src.models.classification_monitoring import attach_matured_classifier_outcomes
+from src.models.classification_monitoring import (
+    attach_matured_classifier_outcomes,
+    attach_matured_ta_outcomes,
+)
 from src.reporting.classification_artifacts import (
     append_classifier_history,
     append_ta_shadow_variant_history,
     build_classifier_history_entry,
     build_ta_shadow_variant_history_entries,
     classification_history_path,
+    ta_shadow_variant_history_path,
 )
 from src.reporting.confidence import benchmark_role_for_ticker
 from src.reporting.run_manifest import build_run_manifest, write_run_manifest
@@ -286,7 +291,7 @@ def append_decision_log(
 
 
 def update_shadow_ledgers(
-    conn,
+    conn: sqlite3.Connection,
     *,
     as_of: date,
     run_date: date,
@@ -355,6 +360,13 @@ def update_shadow_ledgers(
             entries=ta_history_entries,
         )
         print(f"  Appended TA shadow history to {ta_history_path}")
+    ta_history_path = ta_shadow_variant_history_path(history_base_dir)
+    if ta_history_path.exists():
+        ta_history_df = attach_matured_ta_outcomes(
+            conn, pd.read_csv(ta_history_path), as_of=as_of,
+        )
+        if not dry_run:
+            ta_history_df.to_csv(ta_history_path, index=False)
     return history_df
 
 

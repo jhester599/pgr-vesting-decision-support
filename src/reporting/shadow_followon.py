@@ -57,11 +57,14 @@ def build_followon_shadow_payload(
     probability_investable_pool_label: str | None = None,
     probability_path_b_temp_scaled_label: str | None = None,
 ) -> dict[str, Any]:
-    """Build the compact side-by-side follow-on shadow payload."""
+    """Describe baseline forecasts alongside unapplied candidate metadata."""
     return {
         "variant": FOLLOWON_VARIANT_NAME,
         "label": FOLLOWON_VARIANT_LABEL,
         "reporting_only": True,
+        "forecast_source": "baseline_shadow",
+        "candidate_application": "metadata_only",
+        "candidate_fitted": False,
         "probability_actionable_sell": probability_actionable_sell,
         "probability_actionable_sell_label": probability_actionable_sell_label,
         "confidence_tier": confidence_tier,
@@ -80,5 +83,8 @@ def build_followon_decision_overlay_payload(
     payload["variant"] = FOLLOWON_VARIANT_NAME
     payload["label"] = FOLLOWON_VARIANT_LABEL
     payload["reporting_only"] = True
+    payload["forecast_source"] = "baseline_shadow"
+    payload["candidate_application"] = "metadata_only"
+    payload["candidate_fitted"] = False
     payload["candidate_sources"] = load_followon_candidate_bundle()
     return payload
