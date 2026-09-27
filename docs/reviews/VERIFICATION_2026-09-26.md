@@ -1,5 +1,7 @@
 # Independent verification — 2026-09-26
 
+> **See also (added 2026-09-26):** a second, independent verification of the same commit, [`VERIFICATION_2026-09-26_claude.md`](VERIFICATION_2026-09-26_claude.md), and [the comparison of the two](2026-09-26_step13v_comparison.md), which checks where they disagree. This report is otherwise unchanged.
+
 ## Owner summary
 
 The repairs correct real errors in stock-split returns, price windows, accounting fields, macro-data timing, tax calculations and model evaluation. I reproduced the repaired values rather than accepting the CHANGELOG's claims. The current database has no unexplained weekly price jumps, duplicate macro months, missing PGR monthly releases or failed accounting identities under the checked tolerances. All 73 comparable quarters reconcile monthly net income with the stored quarterly XBRL facts. The latest production feature row has no missing live inputs.
