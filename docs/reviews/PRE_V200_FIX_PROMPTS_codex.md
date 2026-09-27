@@ -22,6 +22,7 @@ These decisions and this plan amend the prompts below. Where the original text c
   - The full R2 prompt below is the fallback.
 - **D4: keep the monthly e-mail as it is.** No session changes its content or format, except the gate and CPCV lines that R3's new contract requires. Content and format will be revisited in a later session.
 - **D5 (added 2026-09-27, after R3 merged): the refreshed-DB replay and the current baseline move to a new session, R3b.** R3 merged (PR #140) before the step-0 refresh, with its code complete and its replay recorded only as a pre-refresh smoke comparison. R2-lite stays a docs-only data check. R3b runs after R2-lite merges and does only the replay and the governance baseline, so the data change and the baseline change stay separately attributable.
+- **D6 (added 2026-09-27, after R5 merged): the inherited tax property failure is fixed in its own session, v192.** R1, R4 and R5 each recorded the same full-suite failure, `test_optimize_sale_orders_losses_then_ltcg_then_stcg`, and R1 escalated it to the owner, who authorized the fix. `optimize_sale` now labels a sold lot as a loss by its per-share gain, as it already sorts; see [the closeout](2026-09-27_tax_loss_label_closeout.md). It changes no data and no model input, and it should merge before R3b so R3b's pinned code commit includes it.
 
 ### Step 0: dividend refresh (owner, no session)
 
@@ -43,6 +44,7 @@ These decisions and this plan amend the prompts below. Where the original text c
 | R2-lite, dividend check | Claude | Codex | after step 0 has committed | step 0 | v187 | one `docs/reviews/` record; no code |
 | R3, validation, gates, baseline | Claude | Codex | now (code); replay after R2-lite | R2-lite | v188 | `src/pgr_vds/decision/*`, `src/models/wfo_engine.py`, `src/reporting/decision_rendering.py`, `src/reporting/run_manifest.py`, governance docs |
 | R3b, refreshed-DB replay and baseline *(D5)* | Claude | Codex | after R2-lite merges | R2-lite, R3 | v191 | `docs/model-governance.md`, one `docs/reviews/` closeout and rows CSV; no code |
+| Tax-loss label fix *(D6)* | Claude | Codex | now | anytime, before R3b | v192 | `src/tax/capital_gains.py`, two tax tests, one `docs/reviews/` closeout |
 | R4, TA maturity, Firth metadata | Codex | Claude | now | R3 | v189 | `src/pgr_vds/decision/artifacts.py` (shared with R3), `src/reporting/classification_artifacts.py`, `src/models/classification_monitoring.py`, backlog and registry docs |
 | R5, vest windows, rebalancer | Codex | Claude | now | anytime | v190 | `src/backtest/backtest_engine.py`, `src/portfolio/rebalancer.py`, tax tests |
 
@@ -58,13 +60,13 @@ These decisions and this plan amend the prompts below. Where the original text c
 - Data and baseline changes stay attributable. Only the step-0 refresh changes the DB. The replay and new baseline run on the refreshed DB, after R2-lite merges: in R3b since D5 (R3 merged first and recorded only a pre-refresh smoke replay).
 - **CHANGELOG:** each session uses its pre-assigned version and inserts its section in version order. On a conflict, keep both sections.
 - **Branches:** `codex/R<n>-<slug>` for Codex sessions; Claude sessions use the branch the session names.
-- v200 starts after all five PRs, R2-lite and R3b *(D5)* have merged and the required dividends are fresh.
+- v200 starts after all five PRs, R2-lite, R3b *(D5)* and the tax-loss label fix *(D6)* have merged and the required dividends are fresh.
 
 ### Cross-model review prompt
 
 Paste this into the reviewing model's session, with N replaced by the PR number:
 
-> Review PR #N in `jhester599/pgr-vesting-decision-support` against its session prompt: the session the PR names (one of R1–R5, R2-lite or R3b) in `docs/reviews/PRE_V200_FIX_PROMPTS_codex.md`, including the 2026-09-27 amendments.
+> Review PR #N in `jhester599/pgr-vesting-decision-support` against its session prompt: the session the PR names (one of R1–R5, R2-lite or R3b) in `docs/reviews/PRE_V200_FIX_PROMPTS_codex.md`, including the 2026-09-27 amendments. The tax-loss label fix has no session prompt: review it against D6.
 >
 > Work read-only:
 > - use scratch clones and DB copies outside the repository;
@@ -112,7 +114,7 @@ R1 must reproduce and repair those Windows failures. Later sessions must preserv
 
 Before v200, require:
 
-- [ ] R1–R5, R2-lite and R3b merged *(amended 2026-09-27, D3 and D5)*, and the full suite passing, with pytest's own summary and exit code recorded.
+- [ ] R1–R5, R2-lite, R3b and the tax-loss label fix merged *(amended 2026-09-27, D3, D5 and D6)*, and the full suite passing, with pytest's own summary and exit code recorded.
 - [ ] Required dividend histories pass freshness checks; both 6M and 12M returns rebuilt from raw prices, splits and fractional DRIP.
 - [ ] No production CPCV/K-fold execution, including fallback paths and active tests invoking it as validation.
 - [ ] Required WFO results, finite live inputs and required feed freshness fail closed when absent.
@@ -471,4 +473,4 @@ python scripts/checks/check_doc_links.py
 - v206 tests economic policy usefulness; correct tax/event arithmetic alone does not demonstrate utility.
 - v207 opens the retrospective quarantine once. Prior inspection cannot be undone. Promotion still needs the separately reserved unused evidence and a governance PR.
 
-*(Amended 2026-09-27, D3 and D5.)* After R1–R5, R2-lite and R3b merge, proceed to v200 rather than waiting for every legacy cleanup. Sessions may run in parallel on disjoint files, as the execution plan at the top sets out. The data change (step 0 and R2-lite) and the baseline change (R3b, on R3's code) stay sequenced, so each remains attributable. At most two subagents inside a session.
+*(Amended 2026-09-27, D3, D5 and D6.)* After R1–R5, R2-lite, R3b and the tax-loss label fix merge, proceed to v200 rather than waiting for every legacy cleanup. Sessions may run in parallel on disjoint files, as the execution plan at the top sets out. The data change (step 0 and R2-lite) and the baseline change (R3b, on R3's code) stay sequenced, so each remains attributable. At most two subagents inside a session.

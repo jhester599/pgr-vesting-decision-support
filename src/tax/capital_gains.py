@@ -294,8 +294,10 @@ def optimize_sale(
             rate = 0.0
             tax = 0.0
             holding_type = "WASH_SALE"
-        elif gain < 0:
-            # Loss lot: tax benefit (negative liability)
+        elif _gain_per_share(lot) < 0:
+            # Loss lot: tax benefit (negative liability). Classified per
+            # share, as in the ordering above: a tiny per-share loss can
+            # round to a total-dollar gain of exactly 0.0.
             rate = ltcg_rate if lot.is_ltcg_eligible(sell_date) else stcg_rate
             tax = gain * rate  # negative number = tax benefit
             holding_type = "LOSS"
