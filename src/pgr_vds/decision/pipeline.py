@@ -14,9 +14,10 @@ Steps, each in its own module:
 3. ``signal_generation`` builds the as-of features, trains the ensemble,
    calibrates P(outperform), adds conformal intervals and resolves the live
    consensus.
-4. ``health`` computes the realised-only OOS health, the recommendation-mode
-   gate, the model-health snapshot, the policy backtest and the manifest
-   warnings.
+4. ``health`` computes the readiness contract (walk-forward completion and
+   required inputs at the as-of date), the realised-only OOS health, the
+   recommendation-mode gate, the model-health snapshot, the policy backtest
+   and the manifest warnings.
 5. ``tax_lots`` and ``portfolio`` add the tax context, holdings guidance,
    redeploy guidance and the Black-Litterman diagnostic.
 6. ``recommendation_report`` and ``diagnostic_report`` render the reports;
@@ -275,7 +276,7 @@ def _print_console_summary(
     mean_ic: float,
     mean_hr: float,
     aggregate_health: dict | None,
-    active_recommendation_mode: dict[str, str | float],
+    active_recommendation_mode: dict[str, Any],
     sell_pct: float,
     consensus_shadow_df: pd.DataFrame | None,
     live_summary: SnapshotSummary,
@@ -298,6 +299,8 @@ def _print_console_summary(
             f"Pesaran-Timmermann p={float(aggregate_health.get('pt_p_value', float('nan'))):.3f}"
         )
     print(f"  Recommendation mode: {active_recommendation_mode['label']}")
+    for reason in active_recommendation_mode.get("deferral_reasons") or []:
+        print(f"    - {reason}")
     print(f"  Sell %: {sell_pct:.0%}")
     if consensus_shadow_df is not None and not consensus_shadow_df.empty:
         shadow_row = consensus_shadow_df[~consensus_shadow_df["is_live_path"]]
@@ -366,8 +369,10 @@ def main(
     # Step 1: Refresh FRED data
     refresh.fetch_fred_step(conn, dry_run=dry_run, skip_fred=skip_fred)
 
-    # Checked after the FRED refresh so the report describes the data used.
-    freshness_report = db_client.check_data_freshness(conn, run_date)
+    # Checked after the FRED refresh so the report describes the data used,
+    # and at the decision's as-of date so that a back-dated run is not judged
+    # by (or made fresh by) later data (R3).
+    freshness_report = db_client.check_data_freshness(conn, as_of)
     for message in freshness_report["warnings"]:
         logger.warning("[data-freshness] %s", message)
 
@@ -420,10 +425,36 @@ def main(
                 f"{ci_hi_med:+.2%}",
             )
 
-    aggregate_health = health.compute_aggregate_health(
-        ensemble_results, target_horizon_months=6, panel=prequential_panel
+    # Readiness contract (R3): walk-forward completion and required inputs,
+    # at the as-of date. Its report, with one row per required dividend feed,
+    # replaces the freshness table so every surface shows what was gated.
+    readiness = health.build_readiness(
+        conn,
+        as_of=as_of,
+        run_date=run_date,
+        ensemble_results=ensemble_results,
+        signals=signals,
+        diagnostics=diagnostics,
+        target_horizon_months=6,
     )
-    representative_cpcv = diagnostics.get("representative_cpcv")
+    feed_report = readiness.get("feed_report")
+    if isinstance(feed_report, dict) and "checks" in feed_report:
+        freshness_report = feed_report
+    for message in readiness.get("wfo_failed_pairs") or []:
+        logger.warning("[Readiness] WFO incomplete: %s", message)
+    if readiness.get("data_ready") is not True:
+        logger.warning(
+            "[Readiness] Required inputs not ready at %s: missing features %s; stale feeds %s",
+            as_of,
+            readiness.get("missing_live_features"),
+            readiness.get("stale_required_feeds"),
+        )
+    aggregate_health = health.attach_readiness(
+        health.compute_aggregate_health(
+            ensemble_results, target_horizon_months=6, panel=prequential_panel
+        ),
+        readiness,
+    )
     # Step 3: Compute consensus
     (
         consensus,
@@ -435,7 +466,6 @@ def main(
     ), consensus_shadow_df = signal_generation.resolve_live_consensus(
         signals,
         aggregate_health,
-        representative_cpcv,
     )
     recommendation_mode = health.determine_recommendation_mode(
         consensus,
@@ -443,7 +473,6 @@ def main(
         mean_ic,
         mean_hr,
         aggregate_health,
-        representative_cpcv,
     )
     sell_pct = float(recommendation_mode["sell_pct"])
     mean_cal = (
@@ -608,7 +637,6 @@ def main(
         redeploy_buckets=redeploy_buckets,
         redeploy_portfolio=redeploy_portfolio,
         recommendation_layer_label=recommendation_layer_label,
-        representative_cpcv=representative_cpcv,
         freshness_report=freshness_report,
         model_drift_summary=model_drift_summary,
         policy_summary=policy_summary,
@@ -623,6 +651,7 @@ def main(
     else:
         artifacts.append_decision_log(
             as_of, run_date, consensus, sell_pct, mean_pred, mean_ic, mean_hr, dry_run,
+            notes=artifacts.decision_log_notes(active_recommendation_mode),
         )
 
     # Step 5: Write diagnostic OOS evaluation report
@@ -634,7 +663,6 @@ def main(
         target_horizon_months=6, cal_result=cal_result,
         signals=signals,
         obs_feature_report=diagnostics.get("obs_feature_report"),
-        representative_cpcv=representative_cpcv,
         conformal_coverage_summary=conformal_coverage_summary,
         importance_stability=importance_stability,
         vif_series=diagnostics.get("vif_series"),
@@ -665,7 +693,6 @@ def main(
     manifest_warnings = health.build_manifest_warnings(
         freshness_report=freshness_report,
         aggregate_health=aggregate_health,
-        representative_cpcv=representative_cpcv,
         obs_feature_report=diagnostics.get("obs_feature_report"),
         conformal_coverage_summary=conformal_coverage_summary,
         nan_live_features=nan_live_features,
@@ -675,6 +702,7 @@ def main(
         consensus_shadow_df=consensus_shadow_df,
         recommendation_mode=recommendation_mode,
         shadow_gate_overlay=shadow_gate_overlay,
+        readiness=readiness,
     )
 
     write_dashboard_snapshot(
@@ -732,10 +760,12 @@ def main(
         shadow_gate_overlay=shadow_gate_overlay,
         classification_shadow_variants=classification_shadow_variants,
         decision_overlay_variants=decision_overlay_variants,
+        failed_gates=list(active_recommendation_mode.get("failed_gates") or []),
+        deferral_reasons=list(active_recommendation_mode.get("deferral_reasons") or []),
         model_health=build_model_health_payload(
             mean_ic=float(mean_ic),
             aggregate_health=aggregate_health,
-            representative_cpcv=representative_cpcv,
+            readiness=readiness,
             cal_result=cal_result,
             conformal_trailing_coverage=(
                 conformal_coverage_summary.trailing_empirical_coverage
@@ -756,6 +786,8 @@ def main(
         manifest_warnings=manifest_warnings,
         dry_run=dry_run,
         nan_live_features=nan_live_features,
+        readiness=readiness,
+        recommendation_mode=active_recommendation_mode,
     )
 
     conn.close()

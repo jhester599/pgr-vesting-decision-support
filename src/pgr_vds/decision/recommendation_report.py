@@ -24,7 +24,6 @@ from src.models.policy_metrics import (
     SIGNAL_POLICIES,
     PolicySummary,
 )
-from src.models.wfo_engine import CPCVResult
 from src.portfolio.black_litterman import BLDiagnostics
 from src.portfolio.redeploy_portfolio import render_redeploy_portfolio_markdown_lines
 from src.reporting.confidence import benchmark_role_for_ticker, build_confidence_snapshot
@@ -68,7 +67,6 @@ def write_recommendation_md(
     redeploy_buckets: list[dict[str, object]] | None = None,
     redeploy_portfolio: dict[str, object] | None = None,
     recommendation_layer_label: str | None = None,
-    representative_cpcv: CPCVResult | None = None,
     freshness_report: dict[str, object] | None = None,
     model_drift_summary: ModelDriftSummary | None = None,
     policy_summary: dict[str, PolicySummary] | None = None,
@@ -106,7 +104,6 @@ def write_recommendation_md(
         mean_ic=mean_ic,
         mean_hr=mean_hr,
         aggregate_health=aggregate_health,
-        representative_cpcv=representative_cpcv,
     )
     hold_vs_sell_label = build_hold_vs_sell_label(sell_pct)
     actionability_label = build_actionability_label(str(recommendation_mode["label"]))

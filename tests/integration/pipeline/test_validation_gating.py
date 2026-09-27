@@ -2,16 +2,20 @@
 
 Tests named in ``docs/reviews/REPO_REVIEW_2026-09-25.md``:
 
-- F02: for 8 folds and 2 test folds, 7 CPCV paths each cover every row exactly
-  once, and a perfect predictor gets GOOD.
+- F02: CPCV (a combinatorial K-fold) is retired (pre-v200 remediation R3).
+  Its tests are replaced by walk-forward ones: the folds score every row
+  after the first training window exactly once, in order, with the
+  production gap, and a noise-free predictor ranks perfectly.
 - F04: an oracle forecaster on an overlapping series gets OOS R^2 > 0, and the
   naive benchmark never uses a target realised after t.
 - F13: reported metrics use no later-fold statistics (recomputing on the
   truncated history gives the same values); an always-positive predictor
   fails the hit-rate gate; the gate uses the equal-weight IC; IC significance
   is clustered by date.
-- F20: a missing or UNKNOWN CPCV must not permit ACTIONABLE (and a FAIL
-  verdict no longer gates: CPCV is diagnostic-only).
+- F20: missing validation must not permit ACTIONABLE. Since R3 that is a
+  missing or unknown walk-forward completion or input readiness (the old
+  missing-CPCV assertion's replacement); a ready, skilled model is ACTIONABLE
+  with the unchanged sell mapping.
 - F21: confidence tiers are not all identical across a run.
 
 Fixtures are synthetic ``EnsembleWFOResult`` objects built from fold records,
@@ -31,7 +35,7 @@ import config
 from pgr_vds.decision import health as decision_health
 from pgr_vds.decision import signal_generation
 from src.models.multi_benchmark_wfo import EnsembleWFOResult
-from src.models.wfo_engine import CPCVResult, FoldResult, WFOResult, run_cpcv
+from src.models.wfo_engine import FoldResult, WFOResult, run_wfo
 
 # ---------------------------------------------------------------------------
 # Synthetic fixtures
@@ -112,22 +116,14 @@ def _truncate(ens: EnsembleWFOResult, n_keep: int) -> EnsembleWFOResult:
     return _ensemble(ens.benchmark, dates, y_true, preds, getattr(ens, "target_history", None))
 
 
-def _cpcv(path_ics: list[float]) -> CPCVResult:
-    return CPCVResult(
-        model_type="ridge",
-        benchmark="VOO",
-        n_splits=28,
-        n_paths=len(path_ics),
-        path_ics=list(path_ics),
-        mean_ic=float(np.mean(path_ics)) if path_ics else float("nan"),
-        ic_std=float(np.std(path_ics)) if len(path_ics) > 1 else float("nan"),
-        split_ics=[],
-    )
-
-
-# 28 positive paths: GOOD under the old 28-path thresholds and the scaled ones,
-# so tests of the other gates are not masked by F02 on the unfixed code.
-_GOOD_CPCV = _cpcv([0.1] * 28)
+# The readiness half of the gate contract (R3): walk-forward complete and
+# every required input ready, so tests of the quality gates are not masked.
+_READY: dict = {
+    "wfo_completed": True,
+    "data_ready": True,
+    "missing_live_features": [],
+    "stale_required_feeds": [],
+}
 
 
 def _skilled_health() -> dict:
@@ -138,15 +134,14 @@ def _skilled_health() -> dict:
     signal = rng.normal(0.02, 0.10, n)
     y_true = signal + rng.normal(0.0, 0.03, n)
     ens = _ensemble("VTI", dates, y_true, {"ridge": signal, "gbt": signal})
-    health = decision_health.compute_aggregate_health({"VTI": ens})
+    health = decision_health.attach_readiness(decision_health.compute_aggregate_health({"VTI": ens}), _READY)
     assert health is not None
-    health = dict(health)
     health["oos_r2"] = 0.05
     return health
 
 
 # ---------------------------------------------------------------------------
-# F02 — CPCV recombination, thresholds, purge/embargo
+# F02 — walk-forward coverage and gap (CPCV retired, R3)
 # ---------------------------------------------------------------------------
 
 
@@ -159,63 +154,48 @@ def _linear_data(n: int = 240, n_features: int = 4, noise: float = 0.0, seed: in
     return X, y
 
 
-def test_cpcv_recombines_seven_paths_each_covering_every_row_once() -> None:
-    """F02: C(8,2) gives 7 test paths; each path takes every fold exactly once."""
+def test_wfo_scores_every_row_after_the_first_window_once_in_order() -> None:
+    """240 rows, 60-row window, gap 8, 6-row folds: (240 - 68) // 6 = 28 folds
+    score the last 28 * 6 = 168 rows (positions 72..239) once each, in order."""
     X, y = _linear_data(n=240, noise=0.5)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        result = run_cpcv(X, y, model_type="ridge", n_folds=8, n_test_folds=2)
-
-    assert result.n_splits == 28
-    assert result.n_paths == 7
-    assert len(result.path_ics) == 7, "one IC per recombined path (not per fold)"
-    path_rows = getattr(result, "path_row_indices", None)
-    assert path_rows is not None and len(path_rows) == 7
-    for rows in path_rows:
-        np.testing.assert_array_equal(np.sort(np.asarray(rows)), np.arange(len(X)))
+        result = run_wfo(X, y, model_type="ridge", target_horizon_months=6, feature_columns=list(X.columns))
+    assert len(result.folds) == 28
+    tested = pd.DatetimeIndex(result.test_dates_all)
+    assert tested.is_monotonic_increasing and tested.is_unique
+    assert list(tested) == list(X.index[72:])
 
 
-def test_cpcv_perfect_predictor_is_good() -> None:
-    """F02: a perfect predictor must pass the (diagnostic) CPCV check."""
+def test_wfo_noise_free_predictor_ranks_perfectly() -> None:
+    """Replaces "a perfect predictor is CPCV GOOD": a noise-free linear target
+    is predicted in rank order on every walk-forward row (IC = 1)."""
     X, y = _linear_data(n=240, noise=0.0)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        result = run_cpcv(X, y, model_type="ridge", n_folds=8, n_test_folds=2)
-    assert result.n_positive_paths == result.n_paths == 7
-    assert result.stability_verdict == "GOOD"
+        result = run_wfo(X, y, model_type="ridge", target_horizon_months=6, feature_columns=list(X.columns))
+    assert result.information_coefficient == pytest.approx(1.0, abs=1e-9)
 
 
-def test_cpcv_thresholds_scale_to_the_path_count() -> None:
-    """19/28 good and 9/28 marginal become ceil(19*7/28)=5 and ceil(9*7/28)=3 of 7."""
-    assert _cpcv([0.1] * 5 + [-0.1] * 2).stability_verdict == "GOOD"
-    assert _cpcv([0.1] * 4 + [-0.1] * 3).stability_verdict == "MARGINAL"
-    assert _cpcv([0.1] * 3 + [-0.1] * 4).stability_verdict == "MARGINAL"
-    assert _cpcv([0.1] * 2 + [-0.1] * 5).stability_verdict == "FAIL"
-    # The 28-path reference is unchanged.
-    assert _cpcv([0.1] * 19 + [-0.1] * 9).stability_verdict == "GOOD"
-    assert _cpcv([0.1] * 9 + [-0.1] * 19).stability_verdict == "MARGINAL"
-    assert _cpcv([0.1] * 8 + [-0.1] * 20).stability_verdict == "FAIL"
+def test_wfo_gap_is_the_horizon_plus_the_purge_buffer() -> None:
+    """Replaces the CPCV purge/embargo test: the outer split is a
+    TimeSeriesSplit with gap 6 + 2 = 8, a 60-row window and 6-row folds."""
+    from unittest.mock import patch
 
+    from sklearn.model_selection import TimeSeriesSplit
 
-def test_cpcv_purges_the_horizon_and_embargoes_at_least_two_rows() -> None:
-    import skfolio.model_selection as skms
+    captured: list[dict] = []
 
-    captured: dict[str, int] = {}
-    real_cls = skms.CombinatorialPurgedCV
-
-    class Spy(real_cls):  # type: ignore[misc, valid-type]
+    class Spy(TimeSeriesSplit):
         def __init__(self, *args, **kwargs):
-            captured.update(kwargs)
+            captured.append(dict(kwargs))
             super().__init__(*args, **kwargs)
 
     X, y = _linear_data(n=240, noise=0.5)
-    from unittest.mock import patch
-
-    with patch("skfolio.model_selection.CombinatorialPurgedCV", Spy), warnings.catch_warnings():
+    with patch("src.models.wfo_engine.TimeSeriesSplit", Spy), warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        run_cpcv(X, y, model_type="ridge", target_horizon_months=6)
-    assert captured["purged_size"] == 6
-    assert captured["embargo_size"] >= 2
+        run_wfo(X, y, model_type="ridge", target_horizon_months=6, feature_columns=list(X.columns))
+    assert captured == [{"n_splits": 28, "max_train_size": 60, "test_size": 6, "gap": 8}]
 
 
 # ---------------------------------------------------------------------------
@@ -365,14 +345,13 @@ def test_always_positive_predictor_fails_hit_rate_gate() -> None:
     y_true = np.where(outcome_up, rng.uniform(0.01, 0.2, n), -rng.uniform(0.01, 0.2, n))
     always_up = rng.uniform(0.02, 0.10, n)
     ens = _ensemble("VTI", dates, y_true, {"ridge": always_up, "gbt": always_up})
-    health = decision_health.compute_aggregate_health({"VTI": ens})
+    health = decision_health.attach_readiness(decision_health.compute_aggregate_health({"VTI": ens}), _READY)
     assert health is not None
-    health = dict(health)
     health["oos_r2"] = 0.05  # isolate the hit-rate gate
     assert health["agg_hit"] > config.DIAG_MIN_HIT_RATE  # the old absolute gate passes
 
     mode = decision_health.determine_recommendation_mode(
-        "OUTPERFORM", 0.10, 0.10, health["agg_hit"], health, _GOOD_CPCV
+        "OUTPERFORM", 0.10, 0.10, health["agg_hit"], health
     )
     assert mode["mode"] != "actionable"
 
@@ -381,7 +360,7 @@ def test_skilled_directional_predictor_passes_hit_rate_gate() -> None:
     """Positive control: the gate is passable when direction is genuinely predicted."""
     health = _skilled_health()
     mode = decision_health.determine_recommendation_mode(
-        "OUTPERFORM", 0.10, 0.10, health["agg_hit"], health, _GOOD_CPCV
+        "OUTPERFORM", 0.10, 0.10, health["agg_hit"], health
     )
     assert mode["mode"] == "actionable"
 
@@ -402,7 +381,7 @@ def test_gate_uses_the_equal_weight_ic() -> None:
     health["benchmark_quality_df"] = pd.DataFrame(
         {"benchmark": ["VOO", "BND", "GLD", "DBC"], "nw_ic": [0.40, 0.0, 0.0, 0.0]}
     )
-    live, table = signal_generation.resolve_live_consensus(signals, health, _GOOD_CPCV)
+    live, table = signal_generation.resolve_live_consensus(signals, health)
     assert table is not None
     live_row = table[table["is_live_path"]].iloc[0]
     assert live_row["variant"] == "quality_weighted"
@@ -482,27 +461,50 @@ def test_monthly_signals_no_longer_report_in_sample_conformal_coverage() -> None
 
 
 # ---------------------------------------------------------------------------
-# F20 — CPCV fails closed; F02 — CPCV verdict no longer gates
+# F20 — missing validation fails closed (R3: walk-forward completion and
+# readiness replace the retired CPCV completeness gate)
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("cpcv", [None, _cpcv([])], ids=["missing", "unknown"])
-def test_missing_or_unknown_cpcv_does_not_permit_actionable(cpcv) -> None:
+@pytest.mark.parametrize(
+    "wfo_completed",
+    ["missing", None, False, "yes"],
+    ids=["missing", "unknown", "incomplete", "truthy-string"],
+)
+def test_missing_or_unknown_validation_does_not_permit_actionable(wfo_completed) -> None:
     health = _skilled_health()
+    if wfo_completed == "missing":
+        del health["wfo_completed"]
+    else:
+        health["wfo_completed"] = wfo_completed
     mode = decision_health.determine_recommendation_mode(
-        "UNDERPERFORM", -0.10, 0.10, 0.60, health, cpcv
+        "UNDERPERFORM", -0.10, 0.10, 0.60, health
     )
-    assert mode["mode"] != "actionable"
+    assert mode["mode"] == "defer-to-tax-default"
+    assert mode["failed_gates"] == ["wfo_completed"]
 
 
-def test_cpcv_verdict_is_diagnostic_only() -> None:
-    """F02: a FAIL verdict no longer forces DEFER when every gate passes."""
+def test_health_without_a_readiness_contract_does_not_permit_actionable() -> None:
+    """Aggregate health computed without the readiness step fails both gates."""
+    health = dict(_skilled_health())
+    for key in _READY:
+        del health[key]
+    mode = decision_health.determine_recommendation_mode(
+        "UNDERPERFORM", -0.10, 0.10, 0.60, health
+    )
+    assert mode["mode"] == "defer-to-tax-default"
+    assert mode["failed_gates"] == ["wfo_completed", "data_ready"]
+
+
+def test_ready_skilled_model_is_actionable_with_the_unchanged_mapping() -> None:
+    """With validation complete and inputs ready every gate passes; the live
+    mapping is unchanged (step 6): OUTPERFORM with an 18 % forecast sells 25 %."""
     health = _skilled_health()
     mode = decision_health.determine_recommendation_mode(
-        "OUTPERFORM", 0.18, 0.10, 0.60, health, _cpcv([0.1] + [-0.1] * 6)
+        "OUTPERFORM", 0.18, 0.10, 0.60, health
     )
     assert mode["mode"] == "actionable"
-    assert mode["sell_pct"] == 0.25  # the live mapping is unchanged (step 6)
+    assert mode["sell_pct"] == 0.25
 
 
 # ---------------------------------------------------------------------------
@@ -555,17 +557,6 @@ def test_confidence_tier_supports_the_signal_direction() -> None:
     assert confidence_tier_from_probability(0.62, "UNDERPERFORM") == "LOW"
     assert confidence_tier_from_probability(0.90, "NEUTRAL") == "LOW"
     assert confidence_tier_from_probability(float("nan"), "OUTPERFORM") == "LOW"
-
-
-def test_scaled_threshold_matches_report_text() -> None:
-    """The diagnostic report and the verdict use the same scaled thresholds."""
-    from src.models.wfo_engine import cpcv_path_thresholds
-
-    good, marginal = cpcv_path_thresholds(7)
-    assert (good, marginal) == (
-        math.ceil(config.DIAG_CPCV_MIN_POSITIVE_PATHS * 7 / 28),
-        math.ceil(config.DIAG_CPCV_MARGINAL_POSITIVE_PATHS * 7 / 28),
-    )
 
 
 # ---------------------------------------------------------------------------

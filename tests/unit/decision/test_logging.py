@@ -88,7 +88,7 @@ def test_main_logs_cross_check_fallback_and_completes(
         lambda *args, **kwargs: (
             signals.copy(),
             {"VOO": object(), "BND": object()},
-            {"obs_feature_report": None, "representative_cpcv": None},
+            {"obs_feature_report": None},
         ),
     )
     monkeypatch.setattr(
@@ -209,7 +209,6 @@ def test_main_logs_cross_check_fallback_and_completes(
         cal_result: CalibrationResult | None = None,
         signals: pd.DataFrame | None = None,
         obs_feature_report=None,
-        representative_cpcv=None,
         conformal_coverage_summary=None,
         importance_stability=None,
         vif_series=None,
@@ -221,7 +220,7 @@ def test_main_logs_cross_check_fallback_and_completes(
         panel=None,
     ) -> None:
         del as_of, ensemble_results, target_horizon_months, cal_result, signals
-        del obs_feature_report, representative_cpcv, conformal_coverage_summary
+        del obs_feature_report, conformal_coverage_summary
         del importance_stability, vif_series, benchmark_quality_df
         del shadow_gate_overlay, classifier_monitoring_summary
         del aggregate_health, shrinkage_alpha, panel

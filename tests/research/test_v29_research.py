@@ -6,11 +6,6 @@ from src.reporting.decision_rendering import build_executive_summary_lines
 from src.reporting.confidence import benchmark_role_for_ticker, build_confidence_snapshot
 
 
-class _FakeCPCV:
-    def __init__(self, verdict: str) -> None:
-        self.stability_verdict = verdict
-
-
 def test_benchmark_role_for_ticker_distinguishes_buyable_and_contextual() -> None:
     assert benchmark_role_for_ticker("VOO")["role"] == "Buy candidate"
     assert benchmark_role_for_ticker("VFH")["role"] == "Context only"
@@ -22,19 +17,27 @@ def test_build_confidence_snapshot_counts_pass_fail() -> None:
     snapshot = build_confidence_snapshot(
         mean_ic=0.10,
         mean_hr=0.56,
-        aggregate_health={"oos_r2": -0.10},
-        representative_cpcv=_FakeCPCV("FAIL"),
+        aggregate_health={
+            "oos_r2": -0.10,
+            "wfo_completed": True,
+            "data_ready": True,
+            "missing_live_features": [],
+            "stale_required_feeds": [],
+        },
     )
-    assert snapshot["pass_count"] == 2
+    # Passing: mean IC, walk-forward complete, inputs ready. Failing: R^2 and
+    # the directional gate.
+    assert snapshot["pass_count"] == 3
     assert snapshot["fail_count"] == 2
     statuses = {row["check"]: row["status"] for row in snapshot["rows"]}
     assert statuses["Mean IC (equal-weight)"] == "PASS"
     assert statuses["Aggregate OOS R^2"] == "FAIL"
     # No Pesaran-Timmermann result: the directional gate fails closed.
     assert statuses["Directional skill"] == "FAIL"
-    # CPCV ran, so the completeness gate passes; its FAIL verdict is not gated.
-    assert statuses["CPCV diagnostic ran"] == "PASS"
-    assert statuses["CPCV verdict"] == "INFO"
+    # R3: readiness gates replace the retired CPCV rows.
+    assert statuses["Walk-forward validation complete"] == "PASS"
+    assert statuses["Required inputs ready"] == "PASS"
+    assert not any("CPCV" in check for check in statuses)
     # A 56 % hit rate is shown but not gated.
     assert statuses["Mean hit rate"] == "INFO"
 

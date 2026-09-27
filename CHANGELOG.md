@@ -5,6 +5,65 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v188 (2026-09-27) — Pre-v200 remediation R3: chronological validation and readiness gates
+
+Session R3 of `docs/reviews/PRE_V200_FIX_PROMPTS_codex.md` (findings F02,
+F04, F07, F13, F20, F21, F26; verification V08 and the warning-only live-input
+path). Closeout, red/green outputs and the smoke replay:
+`docs/reviews/R3_validation_closeout.md`. Decision record:
+`docs/decisions/0008-chronological-validation-and-readiness-gates.md`.
+
+- **CPCV retired.** The monthly decision no longer runs the representative
+  CPCV (a combinatorial K-fold, which AGENTS.md prohibits). The
+  implementation, `CPCVResult`, its thresholds and the `CPCV_*` /
+  `DIAG_CPCV_*` config are gone; `src.models.wfo_engine.run_cpcv` remains
+  only as a stub that raises `UnsupportedValidationMethodError`. A spy on the
+  synthetic production path counts zero `run_cpcv` calls and zero
+  `CombinatorialPurgedCV` constructions (1 and 1 before).
+- **Gate contract `chronological-readiness-2026-09-27`.** The `cpcv_completed`
+  gate is replaced by two explicit gates, with the R², IC and
+  Pesaran–Timmermann gates, their thresholds and the sell mapping unchanged:
+  - `wfo_completed`: every required model (Ridge, GBT) and benchmark (the
+    eight of `PRIMARY_FORECAST_UNIVERSE`; `WFO_OPTIONAL_BENCHMARKS` is empty)
+    has non-empty folds with finite OOS predictions and outcomes, the
+    production gap, labels realised before each test fold and outcomes
+    realised by the as-of date, plus a finite live forecast
+    (`health.assess_wfo_completion`). One successful model is not completion.
+  - `data_ready`: every live model feature is finite before imputation and
+    the required prices, FRED series, PGR monthly EDGAR and dividends (PGR and
+    the eight benchmarks; GLD is an audited non-payer) are fresh at the as-of
+    date (`db_client.check_required_feed_readiness`,
+    `health.assess_data_readiness`).
+  Only exactly `True` passes; unknown, missing or truthy values fail closed.
+- **As-of readiness.** Freshness is judged at the decision's as-of date, not
+  the run date. `check_dividend_freshness(as_of=...)` and the EDGAR check
+  (by filing date) ignore rows dated or filed later. A back-dated run is
+  labelled `readiness_basis = backdated_reconstruction`: it reflects today's
+  DB, not what the original decision had.
+- **Every surface names the reason.** The executive summary and Confidence
+  Snapshot of `recommendation.md` (and so the e-mail: only its gate lines
+  change, D4), `monthly_summary.json` (`recommendation.failed_gates`,
+  `deferral_reasons`, `model_health.gate_contract_version`,
+  `model_health.readiness`), `run_manifest.json` (`decision_gates` and a
+  warning), the dashboard warnings and the decision-log Notes. CPCV text is
+  gone from every output.
+- **Protocol audit.** Outer `TimeSeriesSplit` (60-row window, 6-row folds,
+  gap 6 + 2 = 8), inner Ridge alpha `TimeSeriesSplit` with the same gap,
+  fold-local scaling and imputation, targets cut at maturity: no leakage
+  found, so nothing was retuned. `MODEL_HEALTH_METRICS_VERSION` is unchanged
+  (no metric definition changed).
+- **Replay.** `scripts/replay_monthly_decisions.py` records the gate contract
+  and readiness and labels pre-R3 payloads `historical (pre-R3)`. Pre-refresh
+  smoke replay of 2026-02 → 2026-09 on one DB copy: see the closeout. The
+  replay on the refreshed DB and the new current baseline wait for R2-lite.
+- **Decision log (N8).** Separate commit: current header, column definitions
+  and interpretation; the six historical `[DRY RUN]` rows are annotated, not
+  removed.
+- **Tests.** New `tests/integration/pipeline/test_production_validation_contract.py`
+  and `tests/unit/models/test_cpcv_retired.py`; CPCV test executions replaced
+  by walk-forward coverage, gap and no-future-training tests; mutations M09
+  and M14 retargeted to the WFO gap and the completion gate.
+
 ## v185 (2026-09-26) — Review 2026-09-25, step 12: restructure phase 5 (split the monoliths)
 
 WP13 phase 5 from section 5 of `docs/reviews/REPO_REVIEW_2026-09-25.md`

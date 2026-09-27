@@ -19,8 +19,9 @@ The live monthly workflow currently uses:
   2026-09-25, step 5)
 - the promoted quality-weighted consensus as the live recommendation path for
   direction and forecast
-- the recommendation-mode gates of review 2026-09-25, step 5 (below), gated on
-  the equal-weight IC
+- the recommendation-mode gates of review 2026-09-25, step 5, gated on the
+  equal-weight IC, plus the `wfo_completed` and `data_ready` readiness gates of
+  the pre-v200 remediation R3 (below); validation is walk-forward only
 - the equal-weight consensus retained only as a diagnostic comparison in
   `consensus_shadow.csv`
 
@@ -37,7 +38,8 @@ The production monthly output now tracks:
   Newey-West IC
 - hit rate against the base rate, with the Pesaran-Timmermann directional test
 - prequential ECE and trailing conformal coverage
-- the representative CPCV as a stability diagnostic (not a gate)
+- walk-forward completion for every required model/benchmark pair and
+  required-input readiness at the as-of date (both gates; R3)
 - pooled and per-benchmark Clark-West diagnostics
 - benchmark-level quality exports in `benchmark_quality.csv`
 - live-vs-equal-weight comparison in `consensus_shadow.csv`
@@ -61,19 +63,38 @@ The context, evidence and consequences live there; this table is the summary.
 | [0003](decisions/0003-monthly-summary-contract.md) | Post-promotion stabilisation; `monthly_summary.json` contract; visible equal-weight cross-check retired | 2026-04-11 | v79–v86 | Live |
 | [0004](decisions/0004-classifier-stays-shadow-only.md) | The directional classifier and its gate overlays stay shadow-only | 2026-04-11 | v102–v117 | Shadow only |
 | [0005](decisions/0005-ta-variants-reporting-only.md) | Two technical-analysis classifier variants are monitored as reporting-only shadow rows | 2026-04-18 | v160–v169 | Reporting only |
-| [0006](decisions/0006-validation-gates-and-cpcv-diagnostic.md) | Four recommendation-mode gates on realised-only health; CPCV is a diagnostic, not a gate | 2026-09-26 | v178 (review step 5) | Live |
+| [0006](decisions/0006-validation-gates-and-cpcv-diagnostic.md) | Four recommendation-mode gates on realised-only health; CPCV is a diagnostic, not a gate | 2026-09-26 | v178 (review step 5) | Live; CPCV retired by 0008 |
 | [0007](decisions/0007-actionable-sell-mapping.md) | ACTIONABLE sell-% mapping: a bullish consensus never sells more than the 50 % default | 2026-09-26 | v179 (review step 6) | Live |
+| [0008](decisions/0008-chronological-validation-and-readiness-gates.md) | Chronological validation only; `wfo_completed` and `data_ready` gates replace the CPCV completeness gate | 2026-09-27 | v188 (R3) | Live |
 
 ### Gates and mapping in force
 
-ACTIONABLE needs all four gates of [0006](decisions/0006-validation-gates-and-cpcv-diagnostic.md)
-to pass (OOS R² ≥ 2 % against the prevailing mean of realised targets;
-equal-weight IC ≥ 0.07; one-sided Pesaran–Timmermann p < 0.05, Driscoll–Kraay
-by date; the representative CPCV diagnostic ran). Any failure gives
-DEFER-TO-TAX-DEFAULT; otherwise MONITORING-ONLY. A missing input fails its
-gate. When every gate passes, [0007](decisions/0007-actionable-sell-mapping.md)
-sets the sell percentage: OUTPERFORM > 15 % → 25 %; OUTPERFORM ≤ 15 % → 50 %;
-UNDERPERFORM → 100 %; NEUTRAL, or IC < 0.05 / missing → 50 %.
+Gate contract `chronological-readiness-2026-09-27`
+([0008](decisions/0008-chronological-validation-and-readiness-gates.md)),
+recorded in every `run_manifest.json` and `monthly_summary.json`. ACTIONABLE
+needs all five gates to pass:
+
+- OOS R² ≥ 2 % against the prevailing mean of realised targets;
+- equal-weight IC ≥ 0.07;
+- one-sided Pesaran–Timmermann p < 0.05, Driscoll–Kraay by date;
+- `wfo_completed`: walk-forward results for every required model (Ridge, GBT)
+  and benchmark (the eight of `PRIMARY_FORECAST_UNIVERSE`), with non-empty
+  folds, finite OOS predictions, the production gap, labels realised before
+  each test fold, outcomes realised by the as-of date and a finite live
+  forecast;
+- `data_ready`: every live model feature finite before imputation, and
+  prices, the FRED series behind live features, PGR monthly EDGAR and
+  dividends (PGR and the eight benchmarks; GLD an audited non-payer) fresh at
+  the as-of date.
+
+Any failure gives DEFER-TO-TAX-DEFAULT at 50 %; otherwise MONITORING-ONLY. A
+missing, non-finite or unknown input fails its gate; the reason is named in
+every output surface. When every gate passes,
+[0007](decisions/0007-actionable-sell-mapping.md) sets the sell percentage:
+OUTPERFORM > 15 % → 25 %; OUTPERFORM ≤ 15 % → 50 %; UNDERPERFORM → 100 %;
+NEUTRAL, or IC < 0.05 / missing → 50 %. Validation is walk-forward only; the
+representative CPCV (a combinatorial K-fold) no longer runs and no longer
+gates.
 
 ### Health baseline at 2026-09-21
 

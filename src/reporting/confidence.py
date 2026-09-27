@@ -45,15 +45,15 @@ def build_confidence_snapshot(
     mean_ic: float,
     mean_hr: float,
     aggregate_health: dict[str, Any] | None,
-    representative_cpcv: Any | None,
 ) -> dict[str, Any]:
     """Build a compact gate-style confidence snapshot.
 
     The rows are the recommendation-mode gates themselves
-    (``evaluate_quality_gates``), so the table always agrees with the mode.
-    Two rows are shown but not gated: the plain mean hit rate and the CPCV
-    verdict (review 2026-09-25: a hit rate below the base rate is not skill,
-    and CPCV is a K-fold).
+    (``evaluate_quality_gates``), so the table always agrees with the mode:
+    the three quality gates and the ``wfo_completed`` and ``data_ready``
+    readiness gates (pre-v200 remediation R3). The plain mean hit rate is
+    shown but not gated (review 2026-09-25: a hit rate below the base rate is
+    not skill).
     """
     from src.reporting.decision_rendering import evaluate_quality_gates
 
@@ -61,9 +61,10 @@ def build_confidence_snapshot(
         "oos_r2": "Aggregate OOS R^2",
         "mean_ic": "Mean IC (equal-weight)",
         "directional_skill": "Directional skill",
-        "cpcv_completed": "CPCV diagnostic ran",
+        "wfo_completed": "Walk-forward validation complete",
+        "data_ready": "Required inputs ready",
     }
-    gates = evaluate_quality_gates(mean_ic, aggregate_health, representative_cpcv)
+    gates = evaluate_quality_gates(mean_ic, aggregate_health)
     rows = [
         {
             "check": labels.get(gate.name, gate.name),
@@ -92,11 +93,6 @@ def build_confidence_snapshot(
             "for monitoring, but not strong enough to fully trust as an execution-grade edge."
         )
 
-    cpcv_verdict = (
-        str(getattr(representative_cpcv, "stability_verdict", "UNKNOWN"))
-        if representative_cpcv is not None
-        else "missing"
-    )
     hr_value = float(mean_hr) if mean_hr is not None and math.isfinite(float(mean_hr)) else float("nan")
     diagnostic_rows = [
         {
@@ -105,13 +101,6 @@ def build_confidence_snapshot(
             "threshold": "not gated",
             "status": "INFO",
             "meaning": "Directional accuracy versus zero; compare with the base rate above.",
-        },
-        {
-            "check": "CPCV verdict",
-            "current": cpcv_verdict,
-            "threshold": "not gated",
-            "status": "INFO",
-            "meaning": "Stability across purged combinatorial paths (a K-fold, so diagnostic only).",
         },
     ]
 

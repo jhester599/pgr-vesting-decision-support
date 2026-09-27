@@ -17,6 +17,16 @@ Usage:
 
 ``--committed-dates`` replays the as-of date of every committed production
 month in ``artifacts/monthly_decisions/`` (from its run_manifest.json).
+
+Each row records the gate contract version and the readiness contract
+(``wfo_completed``, ``data_ready``, missing live features, stale required
+feeds, readiness basis) of the run it was collected from (R3). A payload
+written before the contract existed (``--collect-only`` on old artifacts) is
+labelled ``gate_contract_version = "historical (pre-R3)"``: its readiness
+columns stay empty and its retired CPCV columns are kept as history, never
+filled in as a current validation result. A back-dated replay's readiness is
+a reconstruction from today's DB, not evidence of what the original decision
+had (``readiness_basis``).
 """
 
 from __future__ import annotations
@@ -61,6 +71,21 @@ def committed_as_of_dates(base_dir: Path = COMMITTED_DIR) -> list[date]:
     return sorted(dates)
 
 
+HISTORICAL_CONTRACT: str = "historical (pre-R3)"
+
+
+def _joined(value: object) -> str | None:
+    """``;``-joined list for a CSV cell; ``None`` stays ``None`` (unknown)."""
+    if isinstance(value, list):
+        return "; ".join(
+            f"{item.get('benchmark')}/{item.get('model')}: {item.get('reason')}"
+            if isinstance(item, dict)
+            else str(item)
+            for item in value
+        )
+    return None
+
+
 def _gate_status(model_health: dict, name: str) -> str | None:
     for gate in model_health.get("gates", []):
         if gate.get("name") == name:
@@ -74,6 +99,9 @@ def collect_row(as_of: date, dry_run_dir: Path = DRY_RUN_DIR) -> dict[str, objec
     summary = json.loads((out_dir / "monthly_summary.json").read_text(encoding="utf-8"))
     rec = summary.get("recommendation", {})
     health = summary.get("model_health", {}) or {}
+    contract = health.get("gate_contract_version")
+    readiness = health.get("readiness", {}) or {}
+    # Retired CPCV fields exist only in pre-R3 payloads: history, not validation.
     cpcv = health.get("cpcv", {}) or {}
     calibration = health.get("calibration", {}) or {}
     row: dict[str, object] = {
@@ -98,13 +126,25 @@ def collect_row(as_of: date, dry_run_dir: Path = DRY_RUN_DIR) -> dict[str, objec
         "shrinkage_alpha": health.get("shrinkage_alpha"),
         "prequential_ece": calibration.get("prequential_ece"),
         "conformal_trailing_coverage": health.get("conformal_trailing_coverage"),
-        "cpcv_verdict": cpcv.get("verdict"),
-        "cpcv_positive_paths": cpcv.get("positive_paths"),
-        "cpcv_n_paths": cpcv.get("n_paths"),
+        "gate_contract_version": contract or HISTORICAL_CONTRACT,
         "gate_oos_r2": _gate_status(health, "oos_r2"),
         "gate_mean_ic": _gate_status(health, "mean_ic"),
         "gate_directional_skill": _gate_status(health, "directional_skill"),
-        "gate_cpcv_completed": _gate_status(health, "cpcv_completed"),
+        "gate_wfo_completed": _gate_status(health, "wfo_completed"),
+        "gate_data_ready": _gate_status(health, "data_ready"),
+        "failed_gates": _joined(rec.get("failed_gates")) if contract else None,
+        "deferral_reasons": _joined(rec.get("deferral_reasons")) if contract else None,
+        "wfo_completed": readiness.get("wfo_completed"),
+        "wfo_failed_pairs": _joined(readiness.get("wfo_failed_pairs")),
+        "data_ready": readiness.get("data_ready"),
+        "missing_live_features": _joined(readiness.get("missing_live_features")),
+        "stale_required_feeds": _joined(readiness.get("stale_required_feeds")),
+        "decision_row_date": readiness.get("decision_row_date"),
+        "readiness_basis": readiness.get("readiness_basis"),
+        "historical_cpcv_verdict": cpcv.get("verdict"),
+        "historical_cpcv_positive_paths": cpcv.get("positive_paths"),
+        "historical_cpcv_n_paths": cpcv.get("n_paths"),
+        "historical_gate_cpcv_completed": _gate_status(health, "cpcv_completed"),
     }
     shadow_path = out_dir / "consensus_shadow.csv"
     if shadow_path.exists():
@@ -140,7 +180,9 @@ def replay(as_of_dates: list[date], python: str = sys.executable) -> pd.DataFram
         after = _sha256(db_path)
         if after != before:
             raise RuntimeError(f"DB changed during the {as_of} dry run: {before} -> {after}")
-        rows.append(collect_row(as_of))
+        row = collect_row(as_of)
+        row["db_sha256"] = after
+        rows.append(row)
     return pd.DataFrame(rows)
 
 

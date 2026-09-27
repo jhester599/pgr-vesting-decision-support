@@ -34,8 +34,11 @@ The live monthly workflow currently uses:
   every month from the realised OOS record; the fixed 0.50 is research-only)
 - the `v76` quality-weighted cross-benchmark consensus as the live
   recommendation path, gated on look-ahead-free health metrics (OOS R² against
-  the prevailing mean, equal-weight IC, Pesaran–Timmermann directional skill);
-  CPCV is a diagnostic only
+  the prevailing mean, equal-weight IC, Pesaran–Timmermann directional skill)
+  and on two readiness gates: completed walk-forward validation for every
+  required model and benchmark, and finite, fresh required inputs at the
+  as-of date. Validation is walk-forward only; the CPCV diagnostic (a
+  combinatorial K-fold) was retired in R3
 - the equal-weight consensus retained in diagnostic artifacts only
 - a shadow-only classifier interpretation layer and shadow gate overlay for
   confidence and future promotion monitoring

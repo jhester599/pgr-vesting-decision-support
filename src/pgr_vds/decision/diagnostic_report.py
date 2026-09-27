@@ -18,7 +18,7 @@ from pgr_vds.decision import health, rendering
 from src.models.calibration import CalibrationResult
 from src.models.conformal import ConformalCoverageBacktest
 from src.models.evaluation import FeatureImportanceStability
-from src.models.wfo_engine import CPCVResult, cpcv_path_thresholds
+from src.reporting.decision_rendering import evaluate_quality_gates
 
 
 def plot_calibration_curve(
@@ -144,7 +144,6 @@ def write_diagnostic_report(
     cal_result: CalibrationResult | None = None,
     signals: pd.DataFrame | None = None,
     obs_feature_report: dict | None = None,
-    representative_cpcv: CPCVResult | None = None,
     conformal_coverage_summary: ConformalCoverageBacktest | None = None,
     importance_stability: FeatureImportanceStability | None = None,
     vif_series: pd.Series | None = None,
@@ -166,7 +165,8 @@ def write_diagnostic_report(
     - pooled Spearman IC with a Driscoll-Kraay p-value clustered by date
     - hit rate against the base rate, with the Pesaran-Timmermann test
     - Clark-West against the same naive benchmark
-    - the representative CPCV as a diagnostic that does not gate
+    - the readiness gates: walk-forward completion for every required
+      model/benchmark pair and required inputs at the as-of date (R3)
     - prequential ECE and trailing conformal coverage
     - Per-benchmark health table from ensemble OOS predictions
 
@@ -178,8 +178,6 @@ def write_diagnostic_report(
         target_horizon_months:  Forward return horizon used during training.
         obs_feature_report:     Output of ``compute_obs_feature_ratio()`` for the
                                 feature matrix used in this monthly run.
-        representative_cpcv:    Optional representative CPCV diagnostic
-                                (VOO + ridge).
         aggregate_health:       ``health.compute_aggregate_health`` output; computed
                                 here when omitted.
         shrinkage_alpha:        Live prequential shrinkage alpha.
@@ -250,45 +248,24 @@ def write_diagnostic_report(
     # ------------------------------------------------------------------
     # Build markdown
     # ------------------------------------------------------------------
-    cpcv_value = "not run"
-    cpcv_status = "❌ missing (fail closed)"
-    good_7, marginal_7 = cpcv_path_thresholds(7)
-    cpcv_threshold = f"diagnostic only (GOOD ≥ {good_7}/7)"
-    cpcv_note_lines = [
-        "> **CPCV (diagnostic only):** the representative CPCV did not produce paths this run,",
-        "> so ACTIONABLE is withheld (fail closed). CPCV trains on folds after its test folds,",
-        "> i.e. it is a combinatorial K-fold; AGENTS.md prohibits K-fold validation, so its",
-        "> verdict is reported but never gates the recommendation.",
+    readiness_gates = {
+        gate.name: gate
+        for gate in evaluate_quality_gates(float("nan"), aggregate_health)
+        if gate.name in {"wfo_completed", "data_ready"}
+    }
+    status_marks = {"PASS": "✅", "MARGINAL": "⚠️", "FAIL": "❌"}
+    readiness_rows = [
+        f"| Walk-forward validation complete (gate) | {readiness_gates['wfo_completed'].current} | "
+        f"{status_marks[readiness_gates['wfo_completed'].status]} | every required pair |",
+        f"| Required inputs ready at as-of (gate) | {readiness_gates['data_ready'].current} | "
+        f"{status_marks[readiness_gates['data_ready'].status]} | finite and fresh |",
     ]
-    if representative_cpcv is not None and representative_cpcv.path_ics:
-        good_thresh, marginal_thresh = cpcv_path_thresholds(len(representative_cpcv.path_ics))
-        cpcv_value = (
-            f"{representative_cpcv.n_positive_paths}/{representative_cpcv.n_paths} "
-            f"({representative_cpcv.positive_path_fraction:.1%})"
-        )
-        cpcv_status = {
-            "GOOD": "✅ (diagnostic)",
-            "MARGINAL": "⚠️ (diagnostic)",
-            "FAIL": "❌ (diagnostic)",
-        }.get(representative_cpcv.stability_verdict, "⚠️ (diagnostic)")
-        cpcv_threshold = (
-            f"diagnostic only (GOOD ≥ {good_thresh}/{representative_cpcv.n_paths}, "
-            f"MARGINAL ≥ {marginal_thresh})"
-        )
-        cpcv_note_lines = [
-            f"> **Representative CPCV (diagnostic only):** benchmark={representative_cpcv.benchmark}, "
-            f"model={representative_cpcv.model_type}, {representative_cpcv.n_splits} splits recombined "
-            f"into {representative_cpcv.n_paths} test paths (each path scores every row once), "
-            f"purge {target_horizon_months} rows, embargo {representative_cpcv.embargo_size} rows; "
-            f"mean path IC={representative_cpcv.mean_ic:.4f}, IC std={representative_cpcv.ic_std:.4f}.",
-            f"> Stability verdict: {representative_cpcv.stability_verdict} (GOOD ≥ {good_thresh}/"
-            f"{representative_cpcv.n_paths} and MARGINAL ≥ {marginal_thresh}, scaled from "
-            f"≥ {config.DIAG_CPCV_MIN_POSITIVE_PATHS}/{config.DIAG_CPCV_REFERENCE_PATHS} and "
-            f"≥ {config.DIAG_CPCV_MARGINAL_POSITIVE_PATHS}/{config.DIAG_CPCV_REFERENCE_PATHS}).",
-            "> CPCV trains on folds after its test folds (a combinatorial K-fold), which AGENTS.md "
-            "prohibits for validation, so the verdict does not gate the recommendation "
-            "(review 2026-09-25, F02).",
-        ]
+    readiness_note_lines = [
+        "> **Validation:** walk-forward only (TimeSeriesSplit, 60-month window, 6-month test folds,",
+        f"> gap = horizon + purge buffer = {target_horizon_months + config.WFO_PURGE_BUFFER_6M} months). "
+        "The combinatorial purged K-fold diagnostic",
+        "> was retired (pre-v200 remediation R3): it trained on folds after its test folds.",
+    ]
 
     obs_feature_lines: list[str] = []
     if obs_feature_report is not None:
@@ -432,12 +409,12 @@ def write_diagnostic_report(
         f"| Base rate P(PGR outperforms), same rows | {base_rate:.1%} | — | constant-sign rule hits {constant_rule:.1%} |",
         f"| Hit rate − base rate | {hit_excess:+.1%} | — | > 0 |",
         f"| Directional skill (Pesaran–Timmermann p, gate) | {pt_text} | {pt_flag} | p < {config.DIAG_MAX_DIRECTIONAL_PVALUE:.2f} |",
-        f"| CPCV Positive Paths | {cpcv_value} | {cpcv_status} | {cpcv_threshold} |",
+        *readiness_rows,
         "",
         "> The recommendation gate uses the equal-weight mean of the per-benchmark ICs",
         "> (see recommendation.md), not the pooled IC above.",
         "",
-        *cpcv_note_lines,
+        *readiness_note_lines,
         "",
         "---",
         "",
@@ -673,10 +650,10 @@ def write_diagnostic_report(
         "| Mean IC, equal-weight (gate) | > 0.07 | 0.03–0.07 | < 0.03 | Harvey et al. (2016) |",
         "| Directional skill, PT p (gate) | < 0.05 | 0.05–0.10 | ≥ 0.10 | Pesaran & Timmermann (1992, 2009) |",
         "| Clark-West | p < 0.05 | p < 0.10 | ≥ 0.10 | Clark & West (2007) |",
-        f"| CPCV +paths (diagnostic, not a gate) | ≥ {good_7}/7 | {marginal_7}–{good_7 - 1}/7 | < {marginal_7}/7 | López de Prado (2018) |",
         "| PBO | < 15% | 15–40% | > 40% | Bailey et al. (2014) |",
         "",
-        "> A missing CPCV diagnostic withholds ACTIONABLE (fail closed); its verdict does not gate.",
+        "> Incomplete walk-forward results or required inputs that are missing, non-finite or stale",
+        "> at the as-of date withhold ACTIONABLE (fail closed).",
         "",
         "---",
         "",

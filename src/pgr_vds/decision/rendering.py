@@ -54,7 +54,8 @@ MODEL_VERSION_LABEL = (
     "v11.1 (lean 2-model ensemble: Ridge + GBT, v18 feature sets, "
     "8-benchmark PRIMARY_FORECAST_UNIVERSE, inverse-variance weighting, "
     "prequential post-ensemble shrinkage and realised-only health metrics "
-    "(review 2026-09-25 WP7); C(8,2) CPCV with 7 paths is diagnostic only; "
+    "(review 2026-09-25 WP7); walk-forward validation only, with explicit "
+    "completion and input-readiness gates (R3); "
     "ElasticNet+BayesianRidge retired after v18/v20 research showed Ridge+GBT "
     "outperforms on IC, hit rate, and obs/feature ratio)"
 )

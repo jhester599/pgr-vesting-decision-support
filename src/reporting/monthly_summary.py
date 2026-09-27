@@ -142,8 +142,13 @@ def build_monthly_summary_payload(
     classification_shadow_variants: list[dict[str, Any]] | None = None,
     decision_overlay_variants: list[dict[str, Any]] | None = None,
     model_health: dict[str, Any] | None = None,
+    failed_gates: list[str] | None = None,
+    deferral_reasons: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build the machine-readable monthly summary payload.
+
+    ``failed_gates`` and ``deferral_reasons`` name why the recommendation is
+    not ACTIONABLE (pre-v200 remediation R3).
 
     ``model_health`` (review 2026-09-25, WP7) carries the gate statuses and
     the realised-only health metrics behind the recommendation mode; see
@@ -185,6 +190,8 @@ def build_monthly_summary_payload(
             "recommendation_mode": recommendation_mode,
             "recommended_sell_pct": sell_pct,
             "recommended_sell_pct_label": _format_pct(sell_pct, decimals=0),
+            "failed_gates": list(failed_gates or []),
+            "deferral_reasons": list(deferral_reasons or []),
             "predicted_6m_relative_return": mean_predicted,
             "predicted_6m_relative_return_label": _format_signed_pct(mean_predicted),
             "prob_outperform_raw": mean_prob_outperform,
@@ -229,28 +236,22 @@ def build_model_health_payload(
     *,
     mean_ic: float,
     aggregate_health: dict[str, Any] | None,
-    representative_cpcv: Any | None,
     cal_result: Any | None,
     conformal_trailing_coverage: float | None,
     shrinkage_alpha: float | None,
     quality_weighted_ic: float | None = None,
+    readiness: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Machine-readable gates and health metrics (review 2026-09-25, WP7)."""
+    """Machine-readable gates and health metrics (review 2026-09-25, WP7).
+
+    ``gate_contract_version`` names the gate set (pre-v200 remediation R3);
+    ``readiness`` carries the inputs of the ``wfo_completed`` and
+    ``data_ready`` gates. The retired CPCV diagnostic is no longer reported.
+    """
     from src.reporting.decision_rendering import evaluate_quality_gates
 
-    gates = evaluate_quality_gates(mean_ic, aggregate_health, representative_cpcv)
+    gates = evaluate_quality_gates(mean_ic, aggregate_health)
     health = aggregate_health or {}
-    cpcv: dict[str, Any] = {"available": representative_cpcv is not None}
-    if representative_cpcv is not None:
-        cpcv.update(
-            {
-                "verdict": str(getattr(representative_cpcv, "stability_verdict", "UNKNOWN")),
-                "positive_paths": int(getattr(representative_cpcv, "n_positive_paths", 0)),
-                "n_paths": int(getattr(representative_cpcv, "n_paths", 0)),
-                "mean_path_ic": _finite_or_none(getattr(representative_cpcv, "mean_ic", None)),
-                "gates_recommendation": False,
-            }
-        )
     calibration: dict[str, Any] = {}
     if cal_result is not None:
         calibration = {
@@ -287,8 +288,29 @@ def build_model_health_payload(
         "shrinkage_alpha": _finite_or_none(shrinkage_alpha),
         "conformal_trailing_coverage": _finite_or_none(conformal_trailing_coverage),
         "calibration": calibration,
-        "cpcv": cpcv,
+        "gate_contract_version": config.DECISION_GATE_CONTRACT_VERSION,
+        "readiness": readiness_payload(readiness),
     }
+
+
+def readiness_payload(readiness: dict[str, Any] | None) -> dict[str, Any]:
+    """JSON-safe view of the readiness contract (unknown stays unknown)."""
+    readiness = readiness or {}
+    keys = (
+        "as_of",
+        "run_date",
+        "readiness_basis",
+        "readiness_note",
+        "wfo_completed",
+        "wfo_required_pairs",
+        "wfo_failed_pairs",
+        "wfo_optional_excluded",
+        "data_ready",
+        "decision_row_date",
+        "missing_live_features",
+        "stale_required_feeds",
+    )
+    return {key: readiness.get(key) for key in keys}
 
 
 def write_monthly_summary(out_dir: Path, payload: dict[str, Any]) -> Path:

@@ -4,9 +4,8 @@ Tests for v5.0 ensemble upgrades.
 Validates:
   - build_gbt_pipeline()          (shallow GBT as 4th ensemble member)
   - get_feature_importances()     (handles feature_importances_ for tree models)
-  - CPCV config upgrade           (CPCV_N_FOLDS=8 → C(8,2)=28 paths)
+  - CPCV config retired (R3: a combinatorial K-fold)
   - ENSEMBLE_MODELS contains 'gbt'
-  - DIAG_CPCV_MIN_POSITIVE_PATHS updated to 19
   - run_wfo() accepts model_type="gbt"
   - Inverse-variance ensemble weighting in get_ensemble_signals()
   - Full 4-model ensemble run returns EnsembleWFOResult per benchmark
@@ -100,33 +99,17 @@ def _make_wfo_result(
 # ===========================================================================
 
 class TestConfigV50:
-    def test_cpcv_n_folds_is_8(self) -> None:
-        assert config.CPCV_N_FOLDS == 8
-
-    def test_cpcv_n_test_folds_is_2(self) -> None:
-        assert config.CPCV_N_TEST_FOLDS == 2
-
-    def test_cpcv_split_and_path_count(self) -> None:
-        """C(8, 2) = 28 splits recombine into C(7, 1) = 7 test paths (review F02)."""
-        import math
-        from skfolio.model_selection import CombinatorialPurgedCV
-
-        n_splits = math.comb(config.CPCV_N_FOLDS, config.CPCV_N_TEST_FOLDS)
-        cv = CombinatorialPurgedCV(
-            n_folds=config.CPCV_N_FOLDS, n_test_folds=config.CPCV_N_TEST_FOLDS
-        )
-        assert n_splits == cv.n_splits == 28
-        assert cv.n_test_paths == math.comb(config.CPCV_N_FOLDS - 1, config.CPCV_N_TEST_FOLDS - 1) == 7
-
-    def test_diag_cpcv_min_positive_paths(self) -> None:
-        assert config.DIAG_CPCV_MIN_POSITIVE_PATHS == 19
-
-    def test_diag_threshold_fraction_consistent(self) -> None:
-        """≥19 of a 28-path reference ≈ 67.9%; it is scaled to the actual 7 paths."""
-        frac = config.DIAG_CPCV_MIN_POSITIVE_PATHS / config.DIAG_CPCV_REFERENCE_PATHS
-        assert 0.60 <= frac <= 0.80, (
-            f"Threshold fraction {frac:.1%} outside expected 60–80% range"
-        )
+    def test_cpcv_config_is_retired(self) -> None:
+        """R3: no CPCV fold, path or threshold settings remain in config."""
+        for attr in (
+            "CPCV_N_FOLDS",
+            "CPCV_N_TEST_FOLDS",
+            "CPCV_EMBARGO_SIZE",
+            "DIAG_CPCV_MIN_POSITIVE_PATHS",
+            "DIAG_CPCV_MARGINAL_POSITIVE_PATHS",
+            "DIAG_CPCV_REFERENCE_PATHS",
+        ):
+            assert not hasattr(config, attr), attr
 
     def test_gbt_in_ensemble_models(self) -> None:
         assert "gbt" in config.ENSEMBLE_MODELS
