@@ -66,17 +66,26 @@ def test_ci_has_read_only_permissions() -> None:
 
 def test_ci_entrypoint_smokes_use_an_external_checkout_copy() -> None:
     steps = _workflow("ci")["jobs"]["test"]["steps"]
-    run = next(
-        s["run"]
+    prep = next(
+        s
+        for s in steps
+        if s["name"] == "Prepare external checkout for offline smokes"
+    )
+    smoke = next(
+        s
         for s in steps
         if s["name"] == "Smoke test production entrypoints (network mocked)"
     )
+    run = prep["run"]
     copy = run.index('cp -a . "$SMOKE_DIR/repo"')
-    chdir = run.index('cd "$SMOKE_DIR/repo"')
     install = run.index("python -m pip install --no-deps")
-    smoke = run.index("python scripts/ci_offline_smoke.py")
     assert 'SMOKE_DIR="$(mktemp -d)"' in run
-    assert copy < chdir < install < smoke
+    assert '-e "$SMOKE_DIR/repo"' in run
+    assert 'echo "PGR_SMOKE_REPO=$SMOKE_DIR/repo" >> "$GITHUB_ENV"' in run
+    assert copy < install
+    assert steps.index(prep) < steps.index(smoke)
+    assert smoke["working-directory"] == "${{ env.PGR_SMOKE_REPO }}"
+    assert smoke["env"]["PYTHONPATH"] == "${{ env.PGR_SMOKE_REPO }}"
 
 
 def test_ci_runs_windows_safety_regressions_on_python312() -> None:

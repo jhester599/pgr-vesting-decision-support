@@ -109,7 +109,9 @@ raise-removal counterfactual below.
 - CI has top-level `contents: read` and Python 3.12 Windows regressions.
   Linux unit/integration, research and artifacts remain separate. Existing
   network-mocked entrypoint smoke commands now run after copying the
-  checkout to `mktemp` and installing that external copy editable.
+  checkout to `mktemp` and installing that external copy editable. Copy
+  preparation has its own step; the four-command network-guard contract
+  remains unchanged. The smoke working directory/PYTHONPATH select the copy.
 
 ## Counterfactual reversals
 
@@ -176,8 +178,21 @@ No saved counterexample was deleted and no seed was selected for a green run.
 The owner was asked whether to extend scope; until authorized, this remains
 an explicitly documented exit-gate blocker.
 
+The next exact full-suite run gave **`2 failed, 2514 passed, 1 skipped,
+127 warnings in 326.65s (0:05:26)`**, exit **1**. Alongside the unchanged
+tax counterexample, `test_ci_smoke_tests_run_with_the_network_mocked` caught
+the copy-preparation commands inserted into a step whose existing contract
+requires exactly four guarded smoke commands. Copy preparation was moved
+to a separate step, with the copy selected through `working-directory`
+and `PYTHONPATH`. The existing test was retained unchanged.
+That node plus `test_ci_entrypoint_smokes_use_an_external_checkout_copy`
+gave **`2 failed in 0.53s`**, exit **1**, before the adjustment and
+**`2 passed in 0.46s`**, exit **0**, afterward. Command:
+`python -m pytest -o addopts="--tb=short" -q tests/integration/repo/test_workflow_contracts.py::test_ci_entrypoint_smokes_use_an_external_checkout_copy tests/integration/pipeline/test_ops_contracts.py::test_ci_smoke_tests_run_with_the_network_mocked`.
+
 The final exact full-suite rerun and branch CI outcomes are recorded below
-when those executions finish.
+when those executions finish. PR [#138](https://github.com/jhester599/pgr-vesting-decision-support/pull/138)
+is a draft because the full-suite exit gate is not met. R2 has not started.
 
 Checks already run:
 
