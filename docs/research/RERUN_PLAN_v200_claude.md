@@ -1,6 +1,6 @@
 # Research re-run plan v200–v210 (after the 2026-09-25 review fixes)
 
-> **Status (added 2026-09-26):** two v200 research plans exist, and their version numbers mean different things: this one (v200–v210) and [`RERUN_PLAN_v200_codex.md`](RERUN_PLAN_v200_codex.md) (v200–v207). Neither is adopted yet. [The comparison](../reviews/2026-09-26_step13v_comparison.md) sets out the differences and a recommendation, and it records the owner's choice. Do not start a v2NN session until that choice is recorded there.
+> **Status (updated 2026-09-27): not adopted.** The owner chose [`RERUN_PLAN_v200_codex.md`](RERUN_PLAN_v200_codex.md) as the canonical plan, with six additions taken from this one (A1–A6 in its "Owner decisions and amendments" section). This plan is kept for reference only. Its version numbers (v200–v210) are void and must not be used for new studies. Background: [the comparison](../reviews/2026-09-26_step13v_comparison.md).
 
 - **Written:** 2026-09-26, by the step-13V verification session. Read it with [`docs/reviews/VERIFICATION_2026-09-26_claude.md`](../reviews/VERIFICATION_2026-09-26_claude.md). "Verification N1" … "N10" below are that report's new issues.
 - **Status:** proposal. Nothing here changes production. Each step is one new session: paste the [shared preamble](#4-shared-preamble-paste-first-in-every-session), then that step's prompt.
