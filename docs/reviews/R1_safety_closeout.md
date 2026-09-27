@@ -13,6 +13,7 @@ Historical CHANGELOG statements were not treated as verified results.
 - Latest master fetched before implementation:
   `449fcdecee9abfaa8114f9cdee63ad2c7ffb5cc4`.
 - Branch: `codex/R1-offline-safety`.
+- Verified code commit: `aedbd39e8a9cda07fd018bf29fe2753aad1eda82`.
 - Source checkout:
   `C:\Users\Jeff\.codex\worktrees\189a\pgr-vesting-decision-support`.
 - External clone (independent Git objects and DB bytes, no hardlinks):
@@ -102,9 +103,10 @@ raise-removal counterfactual below.
 - Remove the ignored initial-fetch `force` Python parameter, CLI option,
   both prices/dividends dispatch inputs and their flag plumbing. The
   dividends workflow also called this script with `--force`, so removing
-  only the prices input would leave a broken caller. Test CLI rejection before any fetch
-  runs and inspect both script and workflow. Loader freshness/quota logic
-  stays unchanged; active workflow docs describe the removed no-op option.
+  only the prices input would leave a broken caller. Test CLI rejection
+  before any fetch runs and inspect the script and both workflows. Loader
+  freshness/quota logic stays unchanged; active workflow docs describe the
+  removed no-op option.
 - The N6 frame directly supplies $10 and 600 million same-basis shares,
   so market cap must be $6,000 million. A supplied $6,001 million must
   raise `ValueError`; no frame-builder output supplies the expectation.
@@ -138,6 +140,8 @@ from URI normalization, so one repair cannot conceal the other defect.
 | Apply URI-memory interpretation to native files; hygiene `::test_native_file_writes_do_not_get_sqlite_memory_exemption` | `2 failed in 0.40s` | `2 passed in 0.33s` |
 | Original CI smoke cwd; workflows `::test_ci_entrypoint_smokes_use_an_external_checkout_copy` | `1 failed in 0.47s` | `1 passed in 0.39s` |
 | Restore only workflow's ignored force input/plumbing; workflows `::test_initial_fetch_removes_ignored_force_option` | `1 failed in 0.98s` | `1 passed in 0.92s` |
+| Restore only dividends workflow's ignored force input/plumbing; same workflow node | `1 failed in 0.99s` | `1 passed in 0.91s` |
+| Restore original CI smoke cwd after final step separation; workflows `::test_ci_entrypoint_smokes_use_an_external_checkout_copy` | `1 failed in 0.49s` | `1 passed in 0.40s` |
 
 Abbreviations refer to these exact files:
 
@@ -164,6 +168,14 @@ Exact summaries: **`63 passed in 7.79s`**, exit **0**;
 The internal reviewer independently passed 40 pure Windows classification
 assertions, exit 0, using never-opened synthetic paths. Both guard review
 findings were repaired and reversed red/green before this final run.
+
+The final combined run also includes the unchanged operations contract:
+
+```powershell
+python -m pytest -o addopts="--tb=short" -q tests/integration/repo/test_test_suite_hygiene.py tests/integration/repo/test_restructure_phase1.py tests/integration/repo/test_workflow_contracts.py tests/integration/pipeline/test_ops_contracts.py tests/unit/scripts/test_capital_return_charts.py tests/unit/scripts/test_initial_fetch_logging.py
+```
+
+`final-focused.log`: **`93 passed in 9.16s`**, exit **0**.
 
 An initial exact full-suite run gave **`1 failed, 2507 passed, 1 skipped,
 141 warnings in 331.34s (0:05:31)`**, exit **1**. The failure is
@@ -192,28 +204,40 @@ gave **`2 failed in 0.53s`**, exit **1**, before the adjustment and
 **`2 passed in 0.46s`**, exit **0**, afterward. Command:
 `python -m pytest -o addopts="--tb=short" -q tests/integration/repo/test_workflow_contracts.py::test_ci_entrypoint_smokes_use_an_external_checkout_copy tests/integration/pipeline/test_ops_contracts.py::test_ci_smoke_tests_run_with_the_network_mocked`.
 
-The final exact full-suite rerun and branch CI outcomes are recorded below
-when those executions finish. PR [#138](https://github.com/jhester599/pgr-vesting-decision-support/pull/138)
-is a draft because the full-suite exit gate is not met. R2 has not started.
+After that repair, `full-suite-release.log` gave **`1 failed, 2515 passed,
+1 skipped, 117 warnings in 315.20s (0:05:15)`**, exit **1**. A final rerun
+after the expanded dividends contract, using the exact requested command:
+
+```powershell
+python -m pytest -o addopts="--tb=short" -q
+```
+
+`final-full-suite.log`: **`1 failed, 2515 passed, 1 skipped, 107 warnings
+in 309.53s (0:05:09)`**, exit **1**. Its only failure is the same unchanged
+tax optimizer property. The Windows full-suite exit-zero gate remains
+unmet. PR [#138](https://github.com/jhester599/pgr-vesting-decision-support/pull/138)
+is a draft; R2 has not started.
 
 The expanded force-contract test caught the remaining dividends caller:
 `python -m pytest -o addopts="--tb=short" -q tests/integration/repo/test_workflow_contracts.py::test_initial_fetch_removes_ignored_force_option`
 gave **`1 failed in 1.04s`**, exit **1**, before removing its input and
-`--force` plumbing. Its standalone original-workflow reversal and restored
-green result are recorded with the final verification below.
+`--force` plumbing. Its standalone original-workflow reversal gave
+**`1 failed in 0.99s`**, exit **1**, then **`1 passed in 0.91s`**, exit **0**.
 
-Checks already run:
+Final documentation-only closeout checks (source cwd; no DB execution):
 
 - `ruff check .`: `All checks passed!`, exit 0 (repository's existing
   syntax/fatal-lint selection; new code uses annotations and PEP 8 layout).
 - `python scripts/checks/check_doc_links.py`: `[doc-links] 347 files,
   0 broken links`, exit 0.
 - `git diff --check`: exit 0.
+- `python scripts/checks/check_sys_path_edits.py`: `[sys-path] 0 new edits,
+  0 stale allowlist entries`, exit 0.
 - `Get-FileHash -Algorithm SHA256 -LiteralPath data/pgr_financials.db`:
   unchanged `f453ab9817ffbc5d176bcca03ca7c64a86493db652a150012ac852d93811f51d`.
   Every recorded test/reversal compares source and scratch hash, size and
   modification time, including sidecar lists. No WAL/SHM/journal sidecar
-  existed before or appeared afterward; all 51 runs then recorded matched.
+  existed before or appeared afterward; all 64 recorded runs matched.
 
 Linux was unavailable locally (`wsl --list --quiet`: WSL not installed).
 The fetched master's [existing CI run](https://github.com/jhester599/pgr-vesting-decision-support/actions/runs/36318626284)
@@ -222,6 +246,25 @@ had three successful Linux jobs, with summaries copied from its actual logs:
 (unit/integration), `350 passed, 2145 deselected, 1 warning in 14.28s`
 (research), and `198 passed, 2297 deselected, 28 warnings in 202.61s (0:03:22)`
 (artifacts). Those are baseline remote results, not local or R1 branch runs.
+
+The R1 [PR CI run](https://github.com/jhester599/pgr-vesting-decision-support/actions/runs/36321702159)
+at `aedbd39e8a9cda07fd018bf29fe2753aad1eda82` completed successfully.
+Actual commands and summaries from `release-ci.log`, all exit **0**:
+
+| Platform/job | Command | Exact pytest summary |
+|---|---|---|
+| Windows / Python 3.12 | `python -m pytest -o addopts="--tb=short" -q tests/integration/repo/test_test_suite_hygiene.py tests/integration/repo/test_restructure_phase1.py tests/integration/repo/test_workflow_contracts.py tests/unit/scripts/test_capital_return_charts.py` | `73 passed in 25.54s` |
+| Linux / Python 3.11 unit/integration | `python -m pytest -q -m "not artifact and not research"` | `1968 passed, 1 skipped, 548 deselected, 71 warnings in 263.63s (0:04:23)` |
+| Linux / Python 3.11 research | `python -m pytest -q -m "research and not artifact"` | `350 passed, 2167 deselected, 1 warning in 15.22s` |
+| Linux / Python 3.11 artifacts | `python -m pytest -q -m artifact` | `198 passed, 2319 deselected, 28 warnings in 330.25s (0:05:30)` |
+
+Linux also passed the retained lint, documentation, typing and four offline
+entrypoint smoke checks. These are remote results. Fresh CI Hypothesis
+examples did not expose the retained local tax counterexample; CI success
+does not invalidate that failure or satisfy the exact Windows full-suite
+gate. Earlier superseded branch runs were canceled after CI exposed the
+four-command smoke-step contract; they are not green evidence for this
+commit.
 
 An early targeted invocation mistakenly used source cwd: `67 passed in
 9.64s`, exit 0. It is excluded from copy-only verification evidence. The
