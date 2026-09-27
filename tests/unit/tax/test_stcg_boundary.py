@@ -2,7 +2,7 @@
 Tests for the v4.4 STCG Tax Boundary Guard.
 
 Validates:
-  - _check_stcg_boundary() zone detection (180 < days ≤ 365)
+  - _check_stcg_boundary() alerts after 180 days until calendar eligibility
   - Warning fires when predicted_alpha < STCG_BREAKEVEN_THRESHOLD
   - Warning suppressed when alpha is sufficient to justify selling STCG
   - Warning suppressed when no lots are in the boundary zone
@@ -29,7 +29,80 @@ from src.portfolio.rebalancer import (
     _check_stcg_boundary,
     generate_recommendation,
 )
-from src.tax.capital_gains import TaxLot
+from src.tax.capital_gains import TaxLot, ltcg_eligible_date
+
+
+@pytest.mark.parametrize(
+    ("sale_date", "remaining"),
+    [(date(2024, 2, 29), 2), (date(2024, 3, 1), 1)],
+)
+def test_stcg_warning_uses_calendar_eligibility_across_leap_year(
+    sale_date: date, remaining: int,
+) -> None:
+    lot = _lot(date(2023, 3, 1))
+    assert ltcg_eligible_date(lot.vest_date) == date(2024, 3, 2)
+    warning = _check_stcg_boundary([lot], sale_date, 0.05, PRICE)
+    assert warning is not None
+    assert f"in {remaining} day(s)" in warning
+    assert f"{remaining}d to LTCG" in warning
+
+
+@pytest.mark.parametrize(
+    ("acquired", "first_ltcg", "anniversary"),
+    [
+        (date(2023, 3, 1), date(2024, 3, 2), date(2024, 3, 1)),
+        (date(2024, 2, 29), date(2025, 3, 1), date(2025, 2, 28)),
+        (date(2025, 7, 1), date(2026, 7, 2), date(2026, 7, 1)),
+    ],
+)
+def test_stcg_warning_stops_on_first_ltcg_day(
+    acquired: date, first_ltcg: date, anniversary: date,
+) -> None:
+    lot = _lot(acquired)
+    assert ltcg_eligible_date(acquired) == first_ltcg
+    warning = _check_stcg_boundary([lot], anniversary, 0.05, PRICE)
+    assert warning is not None
+    assert "1d to LTCG" in warning
+    assert _check_stcg_boundary([lot], first_ltcg, 0.05, PRICE) is None
+
+
+def test_stcg_alert_age_override_does_not_define_eligibility() -> None:
+    lot = _lot(date(2025, 7, 1))
+    # July 1, 2026 is the anniversary; qualification remains July 2.
+    warning = _check_stcg_boundary(
+        [lot], date(2026, 7, 1), 0.05, PRICE, zone_max_days=400
+    )
+    assert warning is not None
+    assert "1d to LTCG" in warning
+    assert _check_stcg_boundary(
+        [lot], date(2026, 7, 2), 0.05, PRICE, zone_max_days=400
+    ) is None
+    # A nondefault age cap keeps its original alert suppression semantics.
+    assert _check_stcg_boundary(
+        [lot], date(2026, 7, 1), 0.05, PRICE, zone_max_days=300
+    ) is None
+
+
+def test_stcg_warning_ignores_unvested_and_empty_lots() -> None:
+    future = _lot(date(2027, 7, 1))
+    empty = _lot(date(2025, 7, 1))
+    empty.shares_remaining = 0.0
+    assert _check_stcg_boundary(
+        [future, empty], date(2026, 7, 1), 0.05, PRICE
+    ) is None
+
+
+def test_stcg_configured_alert_age_cap_is_preserved(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lot = _lot(date(2025, 7, 1))
+    monkeypatch.setattr(config, "STCG_ZONE_MAX_DAYS", 300)
+    assert _check_stcg_boundary([lot], date(2026, 7, 1), 0.05, PRICE) is None
+    monkeypatch.setattr(config, "STCG_ZONE_MAX_DAYS", 400)
+    warning = _check_stcg_boundary([lot], date(2026, 7, 1), 0.05, PRICE)
+    assert warning is not None
+    assert "1d to LTCG" in warning
+    assert _check_stcg_boundary([lot], date(2026, 7, 2), 0.05, PRICE) is None
 
 
 # ---------------------------------------------------------------------------
@@ -113,13 +186,11 @@ class TestZoneDetection:
         assert result is None
 
     def test_lot_at_exactly_365_days_in_zone(self) -> None:
-        """Exactly 365 days is still STCG (IRS requires > 365 days for LTCG).
-        The lot is in the zone with 0 days to LTCG qualification — highest
-        priority boundary case."""
+        """2025-07-01 acquisition: 2026-07-02 is the first eligible day."""
         lot = _lot_held(365)
         result = _check_stcg_boundary([lot], SELL_DATE, 0.05, PRICE)
         assert result is not None
-        assert "0d to LTCG" in result
+        assert "1d to LTCG" in result
 
     def test_lot_at_366_days_ltcg_no_warning(self) -> None:
         """Already LTCG-eligible — no boundary concern."""
@@ -216,9 +287,10 @@ class TestWarningContent:
         assert "STCG" in w
 
     def test_warning_mentions_days_to_ltcg(self) -> None:
-        lot = _lot_held(300)  # 300d held → 65d to LTCG
+        # September 4, 2025 -> September 5, 2026; July 1 is 66 days earlier.
+        lot = _lot_held(300)
         w = _check_stcg_boundary([lot], SELL_DATE, 0.05, PRICE)
-        assert "65" in w
+        assert "66d to LTCG" in w
 
     def test_warning_mentions_shares(self) -> None:
         lot = _lot_held(270, shares=42.5)
@@ -243,10 +315,10 @@ class TestWarningContent:
 
     def test_warning_multiple_lots_sorted_by_days_to_ltcg(self) -> None:
         """Lot closest to LTCG should appear first in the warning."""
-        near_lot = _lot_held(350)   # 15d to LTCG
-        far_lot = _lot_held(200)    # 165d to LTCG
+        near_lot = _lot_held(350)   # July 16, 2025 -> July 17, 2026: 16 days
+        far_lot = _lot_held(200)    # Dec 13, 2025 -> Dec 14, 2026: 166 days
         w = _check_stcg_boundary([far_lot, near_lot], SELL_DATE, 0.05, PRICE)
-        assert w.index("15") < w.index("165")
+        assert w.index("16d to LTCG") < w.index("166d to LTCG")
 
     def test_warning_lot_count(self) -> None:
         lots = [_lot_held(200), _lot_held(270), _lot_held(340)]

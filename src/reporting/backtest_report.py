@@ -588,6 +588,7 @@ def export_backtest_to_csv(
             "hit_rate_at_event":          r.hit_rate_at_event,
             "n_train_observations":       r.n_train_observations,
             "proxy_fill_fraction":        r.proxy_fill_fraction,
+            **r.outcome_metadata(),
         })
 
     df = pd.DataFrame(rows)

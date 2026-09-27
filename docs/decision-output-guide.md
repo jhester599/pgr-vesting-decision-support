@@ -83,6 +83,14 @@ missing, non-finite or unknown input fails its gate.
   lots only, and move a loss sale out of the 30-day wash-sale window of every
   vest.
 
+The portfolio rebalancer's STCG boundary warning counts days until the first
+calendar LTCG day (one-year anniversary plus one day), rather than subtracting
+holding days from 365. For a March 1, 2023 acquisition, February 29, 2024
+shows two days remaining, March 1 shows one, and March 2 has no STCG warning.
+For February 29 acquisitions the following anniversary is February 28. The
+alert's age/wait settings do not change eligibility or tax rates. R5 does not
+change the monthly e-mail renderer or its content/format.
+
 All health numbers are realised-only: every OOS month's ensemble weights,
 shrinkage, calibrator and conformal interval use only targets whose 6-month
 window had ended by that month (`src/models/prequential.py`).

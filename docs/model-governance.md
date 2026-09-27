@@ -28,6 +28,47 @@ The live monthly workflow currently uses:
 The monthly workflow is the only place where a model or consensus stack becomes
 operational.
 
+## R5 event outcomes and calendar tax alerts (v190)
+
+Vesting policy outcomes and monthly regression targets are separate contracts.
+`run_historical_backtest` computes PGR-minus-benchmark raw-price total returns
+from the last observable quote on/before the vest event to the last quote
+on/before its explicit calendar-month endpoint. Canonical split history and
+fractional-share DRIP use the existing total-return implementation. The
+endpoint must be on/before evaluation `as_of` (today by default), and both
+price feeds must cover it by that date. Otherwise no completed result is
+emitted, so unavailable outcomes never enter hit rates or policy utility.
+The result records the forecast anchor, convention, nominal dates, actual
+quote dates and each asset's return. Weekly quotes approximate execution;
+actions between the starting quote and event are part of that approximation.
+A later weekly bar is never an observable event-date close.
+
+The model forecast retains its latest available monthly feature anchor and
+BME-to-BME target horizon. The realised policy holding period is event-to-end;
+directional agreement between these is descriptive, not a matched-target
+regression validation metric. `run_monthly_stability_backtest` retains the
+exact-origin BME monthly target and its endpoint availability check. Neither
+the monthly target table nor model parameters, validation gaps or sell mapping
+change in R5.
+
+Before v206 comparisons, always-50% and every candidate policy must consume
+the same `compute_event_outcome` results, dates and available-event mask.
+Unavailable outcomes cannot count as policy losses or completed evaluations.
+Previously emitted historical event utility figures are not repaired by a
+code change and must be labelled superseded for event alignment until replayed
+on permitted data. R5's synthetic allocation comparison is a smoke check,
+not promotion evidence; no quarantined outcomes were inspected for it.
+
+The rebalancer's STCG warnings use `ltcg_eligible_date`: the calendar
+anniversary plus one day, including February 29 acquisitions. Alert settings
+do not define tax eligibility: `zone_min_days` is the minimum age (exclusive)
+and an explicit `zone_max_days` caps holding age for an alert, preserving
+the override's existing units. The default upper end is calendar eligibility;
+the legacy configured default 365 maps to that calendar behavior. Nondefault
+configured caps and explicit overrides retain holding-age alert semantics.
+Tax rates and sale mapping stay unchanged. Unvested/empty lots are
+excluded. See [R5 evidence and limitations](reviews/R5_event_tax_closeout.md).
+
 ## Current Monitoring Baseline
 
 The production monthly output now tracks:

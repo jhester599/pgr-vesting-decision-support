@@ -27,6 +27,7 @@ from src.tax.capital_gains import (
     ThreeScenarioResult,
     compute_position_summary,
     compute_three_scenarios,
+    ltcg_eligible_date,
     optimize_sale,
 )
 from src.portfolio.drift_analyzer import (
@@ -227,11 +228,10 @@ def _check_stcg_boundary(
     """
     Warn when lots in the 6–12 month STCG zone would be better held for LTCG.
 
-    Identifies lots held between ``zone_min_days`` and ``zone_max_days`` at the
-    time of ``sell_date``.  These lots are in the "STCG boundary zone": they
-    have incurred short-term capital gains treatment but are close enough to the
-    365-day LTCG threshold that the tax savings from waiting may exceed the
-    expected alpha from diversifying now.
+    Identifies vested STCG lots held longer than ``zone_min_days``. The
+    calendar anniversary plus one day determines eligibility and the wait.
+    An explicit ``zone_max_days`` caps the alert's holding age, not tax
+    eligibility. By default alerts continue until calendar eligibility.
 
     The breakeven logic:
         Selling STCG vs. LTCG costs ~17–22pp in effective tax rate for most
@@ -246,7 +246,9 @@ def _check_stcg_boundary(
         current_price:        Current PGR share price (for gain estimation).
         breakeven_threshold:  Override for config.STCG_BREAKEVEN_THRESHOLD.
         zone_min_days:        Override for config.STCG_ZONE_MIN_DAYS (default 180).
-        zone_max_days:        Override for config.STCG_ZONE_MAX_DAYS (default 365).
+        zone_max_days:        Optional holding-age cap for alerts, inclusive.
+                              None uses calendar eligibility as the upper end.
+                              A nondefault configured cap is still respected.
 
     Returns:
         A human-readable warning string if boundary lots exist AND
@@ -256,16 +258,23 @@ def _check_stcg_boundary(
         breakeven_threshold = config.STCG_BREAKEVEN_THRESHOLD
     if zone_min_days is None:
         zone_min_days = config.STCG_ZONE_MIN_DAYS
-    if zone_max_days is None:
+    if zone_max_days is None and config.STCG_ZONE_MAX_DAYS != 365:
+        # Adapt the legacy default tax boundary to the calendar contract;
+        # preserve customized configuration as a holding-age alert cap.
         zone_max_days = config.STCG_ZONE_MAX_DAYS
-
     boundary_lots = []
     for lot in lots:
         if lot.shares_remaining is None or lot.shares_remaining <= 0:
             continue
+        eligible_date = ltcg_eligible_date(lot.vest_date)
+        if sell_date < lot.vest_date or sell_date >= eligible_date:
+            continue
         holding_days = (sell_date - lot.vest_date).days
-        if zone_min_days < holding_days <= zone_max_days:
-            days_to_ltcg = zone_max_days - holding_days
+        days_to_ltcg = (eligible_date - sell_date).days
+        if (
+            holding_days > zone_min_days
+            and (zone_max_days is None or holding_days <= zone_max_days)
+        ):
             gain_per_share = current_price - lot.cost_basis_per_share
             boundary_lots.append({
                 "lot": lot,

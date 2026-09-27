@@ -5,6 +5,19 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v190 (2026-09-27) — R5: event holding windows and calendar tax warnings
+
+- Confirm the vest-event/monthly-target offset with independent raw-price
+  arithmetic. Compute explicit event-to-end split/fractional-DRIP outcomes,
+  requiring endpoint availability and observable starting bars. Record dates
+  and asset returns; retain the monthly stability target contract.
+- Use the existing anniversary-plus-one-day tax helper for STCG warning
+  eligibility and remaining days. Alert overrides do not define tax status;
+  rates, actual lots, model settings and sale mapping remain unchanged.
+- Synthetic regression and allocation smoke checks only; no provider calls,
+  tracked DB changes, historical utility rerun or production model promotion.
+  See [R5 red/green evidence and limitations](docs/reviews/R5_event_tax_closeout.md).
+
 ## v189 (2026-09-27) — R4: TA maturity and truthful shadow provenance
 
 - Re-evaluate TA shadow outcomes at each row's business-month-end horizon
