@@ -5,6 +5,27 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v186 (2026-09-27) — R1: Windows test isolation and offline workflows
+
+- Normalize SQLite file URIs and native paths using platform path rules,
+  including encoded spaces, Windows drive/case spellings and authorities.
+  Keep unmarked committed-DB reads, artifact read-write opens and swallowed
+  write errors blocked by the test audit hook.
+- Normalize nested pytest node separators and compare the email reader's
+  actual missing path with the required artifact path. Email output is
+  unchanged.
+- Execute the peer-bootstrap summary against a synthetic production-schema
+  DB in its regression test; fix `MIN(price_date)` to `MIN(date)`.
+- Add Python 3.12 Windows safety CI and read-only CI permissions; retain
+  separate Linux tests/research/artifacts and move offline entrypoint smokes
+  onto an external checkout copy.
+- Remove the ignored initial-fetch `--force` option and both workflow inputs.
+  Add a hand-controlled inconsistent-market-cap guard test.
+
+Red/green evidence, DB hashes, exact test exits and remaining guard limits:
+[R1 safety closeout](docs/reviews/R1_safety_closeout.md). These checks do
+not establish investment-performance improvement.
+
 ## v185 (2026-09-26) — Review 2026-09-25, step 12: restructure phase 5 (split the monoliths)
 
 WP13 phase 5 from section 5 of `docs/reviews/REPO_REVIEW_2026-09-25.md`

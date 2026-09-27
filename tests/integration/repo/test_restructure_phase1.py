@@ -134,11 +134,20 @@ def test_classification_history_paths_default_to_artifacts() -> None:
     )
 
 
-def test_email_reads_report_and_charts_from_artifacts(tmp_path: Path, monkeypatch) -> None:
+def test_email_reads_report_and_charts_from_artifacts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     assert _posix(email_sender._CHARTS_DIR) == "artifacts/charts"
     monkeypatch.chdir(tmp_path)
-    with pytest.raises(FileNotFoundError, match="artifacts/monthly_decisions/2026-09/recommendation.md"):
+    with pytest.raises(FileNotFoundError) as error:
         email_sender.send_monthly_email(month_label="2026-09", dry_run=True)
+    prefix = "Monthly report not found: "
+    assert str(error.value).startswith(prefix)
+    missing_path = Path(str(error.value).removeprefix(prefix))
+    assert _posix(missing_path) == (
+        "artifacts/monthly_decisions/2026-09/recommendation.md"
+    )
 
 
 def test_chart_scripts_write_to_artifacts_charts() -> None:

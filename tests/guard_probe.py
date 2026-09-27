@@ -8,6 +8,7 @@ repository is refused before the file is created, so nothing is written.
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from pathlib import Path
 
@@ -36,7 +37,30 @@ def test_probe_mkdir_inside_repo() -> None:
 
 
 def test_probe_unmarked_read_only_db_open() -> None:
-    sqlite3.connect(f"{repo_guard.COMMITTED_DB.as_uri()}?mode=ro", uri=True).close()
+    uri = repo_guard.COMMITTED_DB.as_uri() + "?mode=ro&immutable=1"
+    sqlite3.connect(uri, uri=True).close()
+
+
+def test_probe_unmarked_relative_db_open() -> None:
+    sqlite3.connect(
+        "file:data/pgr_financials.db?mode=ro&immutable=1",
+        uri=True,
+    ).close()
+
+
+def test_probe_unmarked_native_case_db_open() -> None:
+    db = str(repo_guard.COMMITTED_DB)
+    if os.name == "nt":
+        db = db.swapcase()
+    sqlite3.connect(db).close()
+
+
+def test_probe_swallowed_read_only_db_open() -> None:
+    try:
+        uri = repo_guard.COMMITTED_DB.as_uri() + "?mode=ro&immutable=1"
+        sqlite3.connect(uri, uri=True).close()
+    except PermissionError:
+        pass
 
 
 def test_probe_unmarked_plain_file_read_of_db() -> None:
@@ -50,8 +74,15 @@ def test_probe_artifact_read_write_db_open() -> None:
 
 
 @pytest.mark.artifact
+def test_probe_artifact_read_write_uri_db_open() -> None:
+    uri = repo_guard.COMMITTED_DB.as_uri() + "?mode=rw"
+    sqlite3.connect(uri, uri=True).close()
+
+
+@pytest.mark.artifact
 def test_probe_artifact_read_only_db_open() -> None:
-    conn = sqlite3.connect(f"{repo_guard.COMMITTED_DB.as_uri()}?mode=ro", uri=True)
+    uri = repo_guard.COMMITTED_DB.as_uri() + "?mode=ro&immutable=1"
+    conn = sqlite3.connect(uri, uri=True)
     conn.execute("SELECT 1").fetchone()
     conn.close()
 
