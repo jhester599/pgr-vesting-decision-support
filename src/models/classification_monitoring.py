@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sqlite3
 from dataclasses import asdict, dataclass
 from datetime import date
 
@@ -11,7 +12,9 @@ from sklearn.metrics import log_loss
 
 import config
 from src.models.calibration import compute_ece
-from src.processing.feature_engineering import truncate_relative_target_for_asof
+from src.processing.feature_engineering import (
+    truncate_relative_target_for_asof,
+)
 from src.processing.multi_total_return import load_relative_return_matrix
 from src.processing.total_return import forward_window_end
 
@@ -31,14 +34,15 @@ class ClassifierMaturitySummary:
 
 
 def attach_matured_classifier_outcomes(
-    conn,
+    conn: sqlite3.Connection,
     history_df: pd.DataFrame,
     *,
     horizon_months: int = 6,
     threshold: float = 0.03,
     as_of: date | None = None,
+    require_complete_basket: bool = False,
 ) -> pd.DataFrame:
-    """Recompute horizon maturity and fill matured rows with realised basket outcomes.
+    """Recompute horizon maturity and attach realised basket outcomes.
 
     Review 2026-09-25, F24: ``is_horizon_mature`` was set once, when the row
     was written (always False then), and never updated, so no row ever got an
@@ -61,36 +65,73 @@ def attach_matured_classifier_outcomes(
     df["mature_on_date"] = df["mature_on_date"].astype(object)
     df["is_horizon_mature"] = False
 
-    rel_map: dict[str, pd.Series] = {}
-    for benchmark in config.PRIMARY_FORECAST_UNIVERSE:
-        rel_series = load_relative_return_matrix(conn, benchmark, horizon_months)
-        if not rel_series.empty:
-            rel_map[benchmark] = truncate_relative_target_for_asof(
-                rel_series, as_of=reference, horizon_months=horizon_months
-            )
-    basket_rel = (
-        pd.DataFrame(rel_map).mean(axis=1).dropna().rename("actual_basket_relative_return")
-        if rel_map
-        else pd.Series(dtype=float, name="actual_basket_relative_return")
-    )
+    baskets: dict[int, pd.Series] = {}
+    df["actual_basket_relative_return"] = np.nan
+    df["actual_actionable_sell"] = np.nan
 
     for idx, row in df.iterrows():
         anchor = row.get("feature_anchor_date")
         if anchor is None or pd.isna(anchor):
             continue
+        row_horizon = row.get("forecast_horizon_months", horizon_months)
+        if pd.isna(row_horizon):
+            row_horizon = horizon_months
+        horizon = int(row_horizon)
+        if horizon <= 0 or horizon != float(row_horizon):
+            raise ValueError(
+                "forecast_horizon_months must be a positive integer"
+            )
         anchor_ts = pd.Timestamp(str(anchor))
-        mature_on = forward_window_end(anchor_ts, horizon_months)
+        mature_on = forward_window_end(anchor_ts, horizon)
         df.at[idx, "mature_on_date"] = mature_on.date().isoformat()
         is_mature = bool(mature_on <= reference)
         df.at[idx, "is_horizon_mature"] = is_mature
-        if not is_mature or anchor_ts not in basket_rel.index:
-            df.at[idx, "actual_basket_relative_return"] = np.nan
-            df.at[idx, "actual_actionable_sell"] = np.nan
+        if not is_mature:
+            continue
+        if horizon not in baskets:
+            rel_map = {
+                benchmark: truncate_relative_target_for_asof(
+                    load_relative_return_matrix(conn, benchmark, horizon),
+                    as_of=reference,
+                    horizon_months=horizon,
+                )
+                for benchmark in config.PRIMARY_FORECAST_UNIVERSE
+            }
+            targets = pd.DataFrame(rel_map).replace([np.inf, -np.inf], np.nan)
+            if require_complete_basket:
+                targets = targets.dropna(how="any")
+            baskets[horizon] = targets.mean(axis=1).dropna()
+        basket_rel = baskets[horizon]
+        if anchor_ts not in basket_rel.index:
+            if require_complete_basket:
+                df.at[idx, "is_horizon_mature"] = False
             continue
         realized = float(basket_rel.loc[anchor_ts])
         df.at[idx, "actual_basket_relative_return"] = realized
         df.at[idx, "actual_actionable_sell"] = float(realized < -threshold)
     return df
+
+
+def attach_matured_ta_outcomes(
+    conn: sqlite3.Connection,
+    history_df: pd.DataFrame,
+    *,
+    as_of: date,
+    threshold: float = 0.03,
+) -> pd.DataFrame:
+    """Attach as-of TA outcomes only when every basket constituent is known.
+
+    Each issuance keeps its own anchor and horizon. The shared cached-target
+    reader checks the BME endpoint and removes future outcomes, including
+    previously stored outcomes on a backdated replay. No model is fitted.
+    """
+    return attach_matured_classifier_outcomes(
+        conn,
+        history_df,
+        as_of=as_of,
+        threshold=threshold,
+        require_complete_basket=True,
+    )
 
 
 def summarize_matured_classifier_history(
