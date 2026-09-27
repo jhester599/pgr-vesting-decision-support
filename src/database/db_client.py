@@ -521,10 +521,11 @@ def _latest_available_edgar_month(
 ) -> date | None:
     """Latest PGR monthly EDGAR month that was public on ``reference_date``.
 
-    A month counts once its filing date is on or before the reference date.
-    A row without a filing date counts from the business month-end
-    ``config.EDGAR_FILING_LAG_MONTHS`` after its month, the fallback the
-    feature builder uses (``edgar_availability_dates``).
+    A month counts once its filing date is on or before the reference date,
+    so a back-dated run is not made fresh by a later filing (R3). A row
+    without a filing date cannot show when it became public; it counts once
+    its month has ended, as before R3 (the tracked DB has a filing date on
+    every row).
     """
     latest: date | None = None
     for month_raw, filed_raw in conn.execute(
@@ -533,13 +534,7 @@ def _latest_available_edgar_month(
         month_end = _coerce_iso_date(month_raw)
         if month_end is None:
             continue
-        available = _coerce_iso_date(filed_raw)
-        if available is None:
-            lag_year, lag_month = _month_from_index(
-                _month_index(month_end.year, month_end.month)
-                + config.EDGAR_FILING_LAG_MONTHS
-            )
-            available = business_month_end(lag_year, lag_month)
+        available = _coerce_iso_date(filed_raw) or month_end
         if available <= reference_date and (latest is None or month_end > latest):
             latest = month_end
     return latest
