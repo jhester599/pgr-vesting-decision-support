@@ -28,15 +28,16 @@ PERF_RSU_VEST_DAY: int = 17
 # most high-income earners (37% ordinary − 20% LTCG = 17pp; add 3.8% NIIT
 # and state taxes for an upper bound near 22pp).  0.18 is the mid-range
 # breakeven: if the model predicts less than 18% alpha, the tax savings from
-# waiting a few weeks/months to cross the 365-day threshold likely exceed the
+# waiting a few weeks/months to reach calendar LTCG eligibility exceed the
 # opportunity cost of holding the concentrated position slightly longer.
 #
-# The 6–12 month zone is defined as: 180 < holding_days_at_vest <= 365.
-# Lots held < 180 days have too long to wait; lots > 365 days are LTCG.
+# Alerts require >180 days held and STCG under ltcg_eligible_date's calendar
+# anniversary-plus-one-day rule. Neither alert setting defines tax eligibility.
 STCG_BREAKEVEN_THRESHOLD: float = 0.18
 # Lower bound of the STCG boundary zone (days held, exclusive).
 STCG_ZONE_MIN_DAYS: int = 180
-# Upper bound of the STCG boundary zone — day 365 triggers LTCG.
+# Legacy default 365 maps to calendar eligibility in the rebalancer.
+# Nondefault values (or explicit zone_max_days) remain holding-age alert caps.
 STCG_ZONE_MAX_DAYS: int = 365
 
 # ---------------------------------------------------------------------------

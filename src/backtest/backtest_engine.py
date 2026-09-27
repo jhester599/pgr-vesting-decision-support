@@ -7,14 +7,15 @@ For each vesting event × benchmark × target_horizon combination:
      rows ≤ event_date - embargo (prevents training on overlapping returns).
   3. Calls ``predict_current()`` using a freshly refitted model to generate a
      signal as of event_date.
-  4. Loads the realized relative return for the forward window from the DB.
+  4. Computes the event holding-period outcome from raw bars and actions.
   5. Records whether the directional prediction was correct.
 
 Temporal integrity:
   - Feature matrix slice: ``df.loc[: event_date]``
   - Relative return target slice: ``y.loc[: event_date - timedelta(embargo)]``
-  - Realized outcome: from ``monthly_relative_returns`` table (pre-computed,
-    no leakage by construction since forward returns require future prices)
+  - Event outcomes require their stated endpoint <= evaluation as-of and
+    price coverage through that endpoint for both assets.
+  - Monthly stability evaluation retains the separate BME target contract.
 
 Output: one BacktestEventResult per (event × benchmark × horizon) tuple.
 ``run_full_backtest()`` returns a flat DataFrame of all results.
@@ -43,9 +44,87 @@ from src.processing.feature_engineering import (
     build_feature_matrix_from_db,
     get_X_y_relative,
 )
-from src.processing.multi_total_return import load_relative_return_matrix
+from src.processing.multi_total_return import (
+    _load_ticker_data,
+    load_relative_return_matrix,
+)
+from src.processing.total_return import (
+    build_position_series,
+    compute_total_return,
+    forward_window_end,
+)
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class EventReturnOutcome:
+    """Observable-bar approximation of an explicit event holding period."""
+
+    start_date: date
+    end_date: date
+    pgr_start_bar: date
+    pgr_end_bar: date
+    benchmark_start_bar: date
+    benchmark_end_bar: date
+    pgr_total_return: float
+    benchmark_total_return: float
+
+    @property
+    def relative_return(self) -> float:
+        return self.pgr_total_return - self.benchmark_total_return
+
+
+def compute_event_outcome(
+    conn: sqlite3.Connection,
+    benchmark: str,
+    event_date: date,
+    outcome_end: date,
+    as_of: date,
+) -> EventReturnOutcome | None:
+    """Use raw prices, canonical splits and fractional DRIP for both assets.
+
+    Start/end quotes are the last bars on/before the nominal dates, never
+    the next bar. Weekly bars approximate execution, including any actions
+    between the starting quote and event. Require coverage through the
+    endpoint by as-of; calendar passage alone cannot mature a sparse feed.
+    No monthly targets are read or written here.
+    """
+    if outcome_end <= event_date or outcome_end > as_of:
+        return None
+    start_ts, end_ts = pd.Timestamp(event_date), pd.Timestamp(outcome_end)
+    asset_returns: list[float] = []
+    bars: list[tuple[date, date]] = []
+    for ticker in ("PGR", benchmark):
+        prices, dividends, splits = _load_ticker_data(conn, ticker)
+        prices = prices.loc[:pd.Timestamp(as_of)].copy()
+        closes = prices["close"]
+        valid_closes = closes.loc[np.isfinite(closes) & (closes > 0)]
+        if valid_closes.empty or valid_closes.index.max() < end_ts:
+            return None
+        starting = valid_closes.loc[:start_ts]
+        ending = valid_closes.loc[:end_ts]
+        if starting.empty or ending.empty:
+            return None
+        first_bar, last_bar = starting.index[-1], ending.index[-1]
+        window = prices.loc[first_bar:last_bar]
+        if (
+            not np.isfinite(window["close"]).all()
+            or (window["close"] <= 0).any()
+        ):
+            return None
+        position = build_position_series(
+            window, dividends.loc[first_bar:last_bar],
+            splits.loc[first_bar:last_bar],
+        )
+        total_return = compute_total_return(position, start_ts, end_ts)
+        if not np.isfinite(total_return):
+            return None
+        asset_returns.append(total_return)
+        bars.append((first_bar.date(), last_bar.date()))
+    return EventReturnOutcome(
+        event_date, outcome_end, *bars[0], *bars[1], *asset_returns,
+    )
 
 
 @dataclass
@@ -63,6 +142,34 @@ class BacktestEventResult:
     hit_rate_at_event: float
     n_train_observations: int
     proxy_fill_fraction: float   # fraction of training obs using proxy-filled prices
+    forecast_anchor: date | None = None
+    outcome_convention: Literal["event", "monthly"] = "event"
+    outcome: EventReturnOutcome | None = None
+
+    def outcome_metadata(self) -> dict[str, date | str | float | None]:
+        """Label forecast and holding-period contracts in exported results."""
+        if self.outcome_convention == "monthly":
+            nominal_end = forward_window_end(
+                pd.Timestamp(self.event.event_date), self.target_horizon
+            ).date()
+        elif self.target_horizon == 6:
+            nominal_end = self.event.horizon_6m_end
+        else:
+            nominal_end = self.event.horizon_12m_end
+        metadata: dict[str, date | str | float | None] = {
+            "forecast_anchor": self.forecast_anchor,
+            "outcome_convention": self.outcome_convention,
+            "outcome_start": self.event.event_date,
+            "outcome_end": nominal_end,
+        }
+        for field in (
+            "pgr_start_bar", "pgr_end_bar", "benchmark_start_bar",
+            "benchmark_end_bar", "pgr_total_return", "benchmark_total_return",
+        ):
+            metadata[field] = (
+                getattr(self.outcome, field) if self.outcome else None
+            )
+        return metadata
 
 
 def _signal_from_prediction(predicted: float) -> Literal["OUTPERFORM", "UNDERPERFORM"]:
@@ -99,6 +206,8 @@ def run_historical_backtest(
     start_year: int = 2014,
     end_year: int | None = None,
     events_override: list[VestingEvent] | None = None,
+    as_of: date | None = None,
+    outcome_convention: Literal["event", "monthly"] = "event",
 ) -> list[BacktestEventResult]:
     """
     Run walk-forward backtests for all vesting events and all ETF benchmarks.
@@ -120,11 +229,21 @@ def run_historical_backtest(
         events_override:       If provided, evaluate these events instead of
                                the default vesting event calendar.  Used by
                                ``run_monthly_stability_backtest()``.
+        as_of:                 Outcome availability cutoff; defaults to today.
+        outcome_convention:    Event-to-calendar-end holdings, or the separate
+                               BME monthly model target for stability checks.
 
     Returns:
         List of BacktestEventResult, one per (event × benchmark) pair where
-        sufficient data exists to run the WFO model.
+        sufficient data exists to run the WFO model and observe the complete
+        holding-period outcome. Unavailable outcomes are not completed misses.
     """
+    if target_horizon_months not in (6, 12):
+        raise ValueError("Target horizon must be 6 or 12 months.")
+    if outcome_convention not in ("event", "monthly"):
+        raise ValueError("Outcome convention must be event or monthly.")
+    evaluation_date = as_of if as_of is not None else date.today()
+
     # Build the full feature matrix once (uses DB, not stale Parquet cache)
     df_full = build_feature_matrix_from_db(conn, force_refresh=True)
 
@@ -143,6 +262,8 @@ def run_historical_backtest(
     embargo = target_horizon_months   # months to lag the target slice
 
     for event in vesting_events:
+        if event.event_date > evaluation_date:
+            continue
         event_ts = pd.Timestamp(event.event_date)
 
         # Slice feature matrix to rows ≤ event_date
@@ -223,21 +344,33 @@ def run_historical_backtest(
             ic = pred["ic"]
             hit_rate = pred["hit_rate"]
 
-            # Retrieve realized outcome from the pre-computed DB table
-            # The realized return is the row nearest to event_date in the
-            # monthly_relative_returns table for this benchmark/horizon.
-            realized_series = load_relative_return_matrix(
-                conn, etf, target_horizon_months,
-                start_date=event.event_date.strftime("%Y-%m-%d"),
-                end_date=event.horizon_6m_end.strftime("%Y-%m-%d")
-                if target_horizon_months == 6
-                else event.horizon_12m_end.strftime("%Y-%m-%d"),
-            )
-
-            if realized_series.empty:
+            outcome = None
+            if outcome_convention == "monthly":
+                # Exact origin only: never substitute a later monthly target.
+                monthly_end = forward_window_end(
+                    event_ts, target_horizon_months
+                )
                 realized = np.nan
+                if monthly_end.date() <= evaluation_date:
+                    realized_series = load_relative_return_matrix(
+                        conn, etf, target_horizon_months,
+                        start_date=event.event_date.isoformat(),
+                        end_date=event.event_date.isoformat(),
+                    )
+                    if not realized_series.empty:
+                        realized = float(realized_series.iloc[0])
             else:
-                realized = float(realized_series.iloc[0])
+                outcome_end = (
+                    event.horizon_6m_end if target_horizon_months == 6
+                    else event.horizon_12m_end
+                )
+                outcome = compute_event_outcome(
+                    conn, etf, event.event_date, outcome_end, evaluation_date,
+                )
+                realized = outcome.relative_return if outcome else np.nan
+
+            if not np.isfinite(realized):
+                continue
 
             # Proxy fill fraction: fraction of training obs with proxy prices
             # We approximate this from the DB; if the column is absent, use 0
@@ -255,8 +388,8 @@ def run_historical_backtest(
                 proxy_frac = 0.0
 
             signal = _signal_from_prediction(predicted)
-            realized_dir = _realized_direction(realized) if not np.isnan(realized) else None
-            correct = (signal == realized_dir) if realized_dir is not None else False
+            realized_dir = _realized_direction(realized)
+            correct = signal == realized_dir
 
             results.append(
                 BacktestEventResult(
@@ -272,6 +405,9 @@ def run_historical_backtest(
                     hit_rate_at_event=hit_rate,
                     n_train_observations=len(y_aligned),
                     proxy_fill_fraction=proxy_frac,
+                    forecast_anchor=X_current.index[-1].date(),
+                    outcome_convention=outcome_convention,
+                    outcome=outcome,
                 )
             )
 
@@ -284,6 +420,7 @@ def run_monthly_stability_backtest(
     target_horizon_months: int = 6,
     start_year: int = 2014,
     end_year: int | None = None,
+    as_of: date | None = None,
 ) -> list[BacktestEventResult]:
     """
     Run walk-forward backtests across all month-end evaluation dates (v3.0+).
@@ -321,12 +458,15 @@ def run_monthly_stability_backtest(
         start_year=start_year,
         end_year=end_year,
         events_override=monthly_dates,
+        as_of=as_of,
+        outcome_convention="monthly",
     )
 
 
 def run_full_backtest(
     conn: sqlite3.Connection,
     model_type: str = "elasticnet",
+    as_of: date | None = None,
 ) -> pd.DataFrame:
     """
     Run the complete backtest for all vesting events, all benchmarks, and
@@ -342,6 +482,8 @@ def run_full_backtest(
           - ``predicted_sell_pct``
           - ``ic_at_event``, ``hit_rate_at_event``
           - ``n_train_observations``, ``proxy_fill_fraction``
+          - ``forecast_anchor``, ``outcome_convention``, ``outcome_start``,
+            ``outcome_end``, observable bar dates and both asset returns
     """
     all_results = []
     for horizon in config.WFO_TARGET_HORIZONS:
@@ -349,6 +491,7 @@ def run_full_backtest(
             conn,
             model_type=cast(Literal["lasso", "ridge", "elasticnet"], model_type),
             target_horizon_months=horizon,
+            as_of=as_of,
         )
         all_results.extend(results)
 
@@ -372,6 +515,7 @@ def run_full_backtest(
             "hit_rate_at_event":            r.hit_rate_at_event,
             "n_train_observations":         r.n_train_observations,
             "proxy_fill_fraction":          r.proxy_fill_fraction,
+            **r.outcome_metadata(),
         })
 
     return pd.DataFrame(rows)

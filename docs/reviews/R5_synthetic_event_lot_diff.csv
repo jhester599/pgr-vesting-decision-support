@@ -1,0 +1,14 @@
+fixture,quantity,old_value,new_value,cause
+2020-01-15-event,relative_return,1.8,0.58,event window instead of January 31 monthly target
+2020-01-15-event,pgr_total_return,2.0,0.68,event window split and fractional DRIP
+2020-01-15-event,benchmark_total_return,0.2,0.1,event window price dates
+2020-01-15-event,pretax_always_50_terminal_per_100,210.0,139.0,synthetic matched event outcome smoke only
+2020-01-15-event,pretax_sell_25_terminal_per_100,255.0,153.5,synthetic matched event outcome smoke only
+2020-01-15-event,predicted_return,0.2,0.2,unchanged mocked forecast
+2020-01-15-event,sell_fraction,0.25,0.25,unchanged sell mapping
+2020-01-31-monthly,relative_return,1.8,1.8,monthly contract preserved
+2023-03-01-lot/2024-02-29,days_to_ltcg,0,2,warning calendar count only
+2023-03-01-lot/2024-03-01,warning,absent,1 day remaining,warning calendar eligibility only
+2023-03-01-lot/2024-03-02,warning,absent,absent,calendar eligibility reached
+2024-02-29-lot/2025-02-28,days_to_ltcg,0,1,warning calendar count only
+2025-07-01-lot/2026-07-01,days_to_ltcg,0,1,warning calendar count only
