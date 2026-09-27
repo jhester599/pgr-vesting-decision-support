@@ -275,6 +275,7 @@ After the move it equals the source tree. The tracked DB's sha256 was
 | same, after the code change (first pass) | `7 failed, 2518 passed, 1 skipped, 102 warnings in 1603.84s (0:26:43)`: freshness tests that seed EDGAR rows without a filing date; fixed by `1b94bf0` | 1 |
 | focused R3 command (`test_production_validation_contract.py`, `test_validation_gating.py`, `test_monthly_pipeline_e2e.py`, `test_dry_run_read_only.py`) | `88 passed, 1 warning in 131.76s (0:02:11)` | 0 |
 | `python -m pytest -o addopts="--tb=short" -q` (final, at `1ee54e2`) | `2525 passed, 1 skipped, 104 warnings in 571.10s (0:09:31)` | 0 |
+| `python -m pytest -o addopts="--tb=short" -q` after merging `master` `dc12291` (R1, v186) | `2547 passed, 1 skipped, 127 warnings in 580.94s (0:09:40)` | 0 |
 | `python scripts/checks/check_doc_links.py` | `[doc-links] 348 files, 0 broken links` | 0 |
 | `python scripts/checks/check_sys_path_edits.py` | `[sys-path] 0 new edits, 0 stale allowlist entries` | 0 |
 | `ruff check .` | `All checks passed!` | 0 |
