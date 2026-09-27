@@ -3,30 +3,18 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
-import numpy as np
-
 from pgr_vds.decision.health import determine_recommendation_mode
 from pgr_vds.decision.rendering import build_executive_summary_lines, build_vest_decision_lines
-from src.models.wfo_engine import CPCVResult
 from src.tax.capital_gains import TaxScenario, ThreeScenarioResult
 
-
-def _cpcv(verdict: str) -> CPCVResult:
-    path_ics = [0.05] * 28
-    if verdict == "FAIL":
-        path_ics = [-0.02] * 20 + [0.01] * 8
-    elif verdict == "MARGINAL":
-        path_ics = [0.03] * 15 + [-0.01] * 13
-    return CPCVResult(
-        model_type="elasticnet",
-        benchmark="VTI",
-        n_splits=28,
-        n_paths=28,
-        path_ics=path_ics,
-        mean_ic=0.05,
-        ic_std=0.01,
-        split_ics=[],
-    )
+# The readiness half of the gate contract (R3): walk-forward complete and
+# every required input ready. The retired CPCV no longer takes part.
+READY = {
+    "wfo_completed": True,
+    "data_ready": True,
+    "missing_live_features": [],
+    "stale_required_feeds": [],
+}
 
 
 def test_determine_recommendation_mode_defers_when_quality_is_weak() -> None:
@@ -35,8 +23,7 @@ def test_determine_recommendation_mode_defers_when_quality_is_weak() -> None:
         mean_predicted=0.08,
         mean_ic=0.01,
         mean_hr=0.50,
-        aggregate_health={"oos_r2": -0.05},
-        representative_cpcv=_cpcv("FAIL"),
+        aggregate_health={"oos_r2": -0.05, **READY},
     )
     assert mode["mode"] == "defer-to-tax-default"
     assert mode["sell_pct"] == 0.50
@@ -48,8 +35,7 @@ def test_determine_recommendation_mode_actionable_when_all_quality_checks_pass()
         mean_predicted=0.18,
         mean_ic=0.08,
         mean_hr=0.58,
-        aggregate_health={"oos_r2": 0.03, "pt_p_value": 0.01},
-        representative_cpcv=_cpcv("GOOD"),
+        aggregate_health={"oos_r2": 0.03, "pt_p_value": 0.01, **READY},
     )
     assert mode["mode"] == "actionable"
     assert mode["sell_pct"] == 0.25
@@ -62,8 +48,7 @@ def test_determine_recommendation_mode_needs_directional_skill() -> None:
         mean_predicted=0.18,
         mean_ic=0.08,
         mean_hr=0.58,
-        aggregate_health={"oos_r2": 0.03, "pt_p_value": 0.40},
-        representative_cpcv=_cpcv("GOOD"),
+        aggregate_health={"oos_r2": 0.03, "pt_p_value": 0.40, **READY},
     )
     assert mode["mode"] == "defer-to-tax-default"
 

@@ -247,7 +247,6 @@ def _build_path_snapshot(
         mean_ic,
         mean_hr,
         aggregate_health,
-        representative_cpcv=None,
     )
     return {
         "as_of": as_of.date().isoformat(),

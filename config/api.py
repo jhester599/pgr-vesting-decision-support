@@ -93,6 +93,13 @@ DATA_FRESHNESS_PGR_EDGAR_FILING_GRACE_DAYS: int = 25
 # Dividends are STALE when the latest ex-date is older than the latest price
 # date minus this many usual payment intervals (review F08).
 DIVIDEND_FRESHNESS_INTERVAL_MULTIPLE: float = 1.5
+# Required tickers audited as non-dividend payers (R3, 2026-09-27). Only these
+# may have no dividend history and still count as ready. GLD (SPDR Gold
+# Shares) is a grantor trust holding bullion; it has never paid a
+# distribution and the DB holds no GLD dividend rows (verification
+# 2026-09-26, V03/N1). A ticker is never added here because a dividend
+# request failed or came back empty.
+AUDITED_NON_DIVIDEND_PAYERS: tuple[str, ...] = ("GLD",)
 # Budget-aware dividend refresh (scripts/weekly_fetch.py --dividend-refresh):
 # re-fetch a ticker once its last dividend fetch is this many days old.
 # Monthly payers (usual interval <= 45 days) are refreshed weekly so that they

@@ -44,13 +44,11 @@ from src.models.multi_benchmark_wfo import (
     run_ensemble_benchmarks,
 )
 from src.models.prequential import build_prequential_panel, live_shrinkage_alpha
-from src.models.wfo_engine import CPCVResult, run_cpcv
 from src.processing.feature_engineering import (
     build_feature_matrix_from_db,
     compute_obs_feature_ratio,
     compute_vif,
     get_feature_columns,
-    get_model_feature_columns,
     get_X_y_relative,
     truncate_relative_target_for_asof,
 )
@@ -84,8 +82,15 @@ def generate_signals(
         benchmark with columns predicted_relative_return, raw_ensemble_prediction,
         shrinkage_alpha, ic, hit_rate, signal, prob_outperform, confidence_tier;
         ensemble_results is the dict returned by ``run_ensemble_benchmarks``
-        (ETF ticker → EnsembleWFOResult); diagnostics carries the representative
-        CPCV, the prequential OOS panel and the live shrinkage alpha.
+        (ETF ticker → EnsembleWFOResult); diagnostics carries the decision row
+        before imputation (``live_feature_row``) and its non-finite required
+        features (``missing_live_features``, also kept as
+        ``nan_live_features``), the prequential OOS panel and the live
+        shrinkage alpha.
+
+    Validation is walk-forward only (``run_ensemble_benchmarks``). The
+    representative CPCV, a combinatorial K-fold, was retired by the pre-v200
+    remediation R3; completion is judged by ``health.assess_wfo_completion``.
     """
     as_of_ts = pd.Timestamp(as_of)
 
@@ -102,8 +107,8 @@ def generate_signals(
     nan_live_features = find_nan_live_features(X_current)
     if nan_live_features:
         logger.warning(
-            "[Live features] %s live-model feature(s) are NaN in the decision row "
-            "(%s) and will be median-imputed from the training window: %s",
+            "[Live features] %s live-model feature(s) are NaN or infinite in the decision "
+            "row (%s); the forecast median-imputes them and data_ready fails: %s",
             len(nan_live_features),
             X_current.index[-1].date(),
             ", ".join(nan_live_features),
@@ -124,8 +129,10 @@ def generate_signals(
 
     diagnostics: dict[str, object] = {
         "obs_feature_report": compute_obs_feature_ratio(X_primary_for_ratio, warn=False),
-        "representative_cpcv": None,
         "vif_series": vif_series,
+        "live_feature_row": X_current.copy(),
+        "decision_row_date": X_current.index[-1].date().isoformat(),
+        "missing_live_features": list(nan_live_features),
         "nan_live_features": nan_live_features,
     }
 
@@ -146,29 +153,6 @@ def generate_signals(
         return pd.DataFrame(), {}, diagnostics
 
     rel_matrix = pd.DataFrame(rel_matrix_cols)
-
-    # v11.0: representative CPCV uses VOO + ridge (core benchmark of the primary
-    # universe). Diagnostic only (review 2026-09-25, F02): CPCV is a
-    # combinatorial K-fold, so its verdict never gates the recommendation; a
-    # run where it fails to produce paths fails closed (F20).
-    if "VOO" in rel_matrix.columns:
-        try:
-            rel_series_voo = rel_matrix["VOO"].rename(f"VOO_{target_horizon_months}m")
-            X_voo_all, y_voo = get_X_y_relative(X_event, rel_series_voo, drop_na_target=True)
-            ridge_cols = [c for c in config.MODEL_FEATURE_OVERRIDES.get("ridge", []) if c in X_voo_all.columns]
-            X_voo = X_voo_all[ridge_cols] if ridge_cols else X_voo_all
-            diagnostics["representative_cpcv"] = run_cpcv(
-                X_voo,
-                y_voo,
-                model_type="ridge",
-                target_horizon_months=target_horizon_months,
-                benchmark="VOO",
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.exception(
-                "[CPCV] Representative CPCV run failed; continuing without CPCV diagnostic. Error=%r",
-                exc,
-            )
 
     # Train lean Ridge+GBT ensemble per primary benchmark with v18 feature sets.
     ensemble_results = run_ensemble_benchmarks(
@@ -210,22 +194,17 @@ def generate_signals(
 
 
 def find_nan_live_features(X_current: pd.DataFrame) -> list[str]:
-    """Return live-model features that are NaN in the decision row.
+    """Return required live-model features that are not finite in the decision row.
 
     The live ensemble median-imputes NaN inputs from its training window, so a
     stale upstream series (e.g. an unrefreshed FRED series) would otherwise
-    silently turn a feature into a constant. Callers log and flag these.
-    Features are the columns each ``config.ENSEMBLE_MODELS`` model is fed.
+    silently turn a feature into a constant. These features fail the
+    ``data_ready`` gate (``health.find_nonfinite_live_features``); an empty
+    frame has no decision row and returns an empty list here.
     """
     if X_current.empty:
         return []
-    row = X_current.iloc[-1]
-    missing: list[str] = []
-    for model_type in config.ENSEMBLE_MODELS:
-        for col in get_model_feature_columns(X_current, model_type=model_type):
-            if col not in missing and pd.isna(row[col]):
-                missing.append(col)
-    return missing
+    return health.find_nonfinite_live_features(X_current)
 
 
 def live_calibration_score(signals: pd.DataFrame, ticker: str) -> float:
@@ -516,7 +495,6 @@ def consensus_signal(
 def build_v74_shadow_consensus(
     signals: pd.DataFrame,
     aggregate_health: dict | None,
-    representative_cpcv: CPCVResult | None = None,
 ) -> pd.DataFrame | None:
     """Build the live-vs-shadow consensus comparison table.
 
@@ -555,7 +533,6 @@ def build_v74_shadow_consensus(
             gate_ic,
             float(row["mean_hit_rate"]),
             aggregate_health,
-            representative_cpcv,
         )
         enriched = dict(row)
         enriched["recommendation_mode"] = str(recommendation_mode["label"])
@@ -586,7 +563,6 @@ def equal_weight_mean(signals: pd.DataFrame, column: str) -> float:
 def resolve_live_consensus(
     signals: pd.DataFrame,
     aggregate_health: dict | None,
-    representative_cpcv: CPCVResult | None = None,
 ) -> tuple[tuple[str, float, float, float, float, str], pd.DataFrame | None]:
     """Resolve the promoted live consensus tuple and the comparison table.
 
@@ -600,7 +576,6 @@ def resolve_live_consensus(
     consensus_shadow_df = build_v74_shadow_consensus(
         signals,
         aggregate_health,
-        representative_cpcv,
     )
     if consensus_shadow_df is None or consensus_shadow_df.empty:
         return default, None
@@ -692,13 +667,15 @@ def build_shadow_baseline_summary(
     shadow_signals = pd.DataFrame(signal_rows).set_index("benchmark").sort_index()
     aggregate_health = aggregate_health_from_prediction_frames(prediction_frames, target_horizon_months)
     consensus, mean_pred, mean_ic, mean_hr, _, confidence_tier = consensus_signal(shadow_signals)
+    # This cross-check carries no readiness contract, so its wfo_completed and
+    # data_ready gates fail closed: it is never ACTIONABLE, as it was never
+    # ACTIONABLE under the retired CPCV gate (R3).
     recommendation_mode = health.determine_recommendation_mode(
         consensus,
         mean_pred,
         mean_ic,
         mean_hr,
         aggregate_health,
-        representative_cpcv=None,
     )
     if recommendation_mode["mode"] == "actionable":
         sell_pct = sell_pct_from_policy(mean_pred, config.V13_SHADOW_BASELINE_POLICY)

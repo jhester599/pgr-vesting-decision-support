@@ -1,6 +1,6 @@
 """
-Walk-Forward Optimization parameters, Kelly sizing, ensemble models, CPCV,
-Black-Litterman, fractional differentiation, diagnostic thresholds (DIAG_*,
+Walk-Forward Optimization parameters, Kelly sizing, ensemble models, the
+decision gate contract, Black-Litterman, fractional differentiation, diagnostic thresholds (DIAG_*,
 VIF_*), probability calibration, conformal prediction, recommendation-layer
 constants, V13 shadow settings, and BLP parameters.
 """
@@ -69,17 +69,22 @@ V74_SHADOW_CONSENSUS_LAMBDA_MIX: float = 0.25
 CONSENSUS_WEIGHTING_MODE: str = "quality_weighted"
 
 # ---------------------------------------------------------------------------
-# CPCV parameters — diagnostic only (review 2026-09-25, F02).
-# C(8,2) = 28 train/test splits recombine into C(7,1) = 7 test paths.
-# CPCV trains on folds after the test folds, i.e. it is a combinatorial
-# K-fold, which AGENTS.md prohibits for validation; it is reported but never
-# gates the recommendation.
+# Decision gate contract (pre-v200 remediation R3, 2026-09-27)
+# The representative CPCV (a combinatorial K-fold, review 2026-09-25 F02) is
+# retired from the monthly decision. ACTIONABLE needs the three quality gates
+# (OOS R^2, equal-weight IC, directional skill) plus two explicit readiness
+# gates: every required model/benchmark walk-forward result is complete
+# (``wfo_completed``) and every required live input is finite and fresh at
+# the decision's as-of date (``data_ready``). Unknown counts as FAIL. This
+# version is recorded in run_manifest.json and monthly_summary.json; it
+# changes when the gate set or a gate rule changes, independently of
+# MODEL_HEALTH_METRICS_VERSION (metric definitions).
 # ---------------------------------------------------------------------------
-CPCV_N_FOLDS: int = 8         # Number of folds for CombinatorialPurgedCV
-CPCV_N_TEST_FOLDS: int = 2    # Test folds per split: 28 splits, 7 test paths
-# Rows dropped from the training set after each test block, on top of the
-# purge (= target horizon). Features such as momentum overlap the test targets.
-CPCV_EMBARGO_SIZE: int = 2
+DECISION_GATE_CONTRACT_VERSION: str = "chronological-readiness-2026-09-27"
+# Benchmarks of PRIMARY_FORECAST_UNIVERSE whose walk-forward result may be
+# missing without failing ``wfo_completed``. Each one that is excluded in a
+# run is listed in the manifest. None today: all eight are required.
+WFO_OPTIONAL_BENCHMARKS: tuple[str, ...] = ()
 
 # ---------------------------------------------------------------------------
 # v4.0 Black-Litterman parameters
@@ -119,12 +124,6 @@ DIAG_MIN_HIT_RATE: float = 0.55
 # e.g. a predictor that always calls the same sign) fails.
 DIAG_MAX_DIRECTIONAL_PVALUE: float = 0.05
 DIAG_MARGINAL_DIRECTIONAL_PVALUE: float = 0.10
-# CPCV positive paths, stated for a 28-path reference and scaled to the actual
-# path count (F02): GOOD ≥ ceil(19·n/28), MARGINAL ≥ ceil(9·n/28), else FAIL.
-# With C(8,2) there are 7 paths: GOOD ≥ 5/7, MARGINAL ≥ 3/7. Diagnostic only.
-DIAG_CPCV_MIN_POSITIVE_PATHS: int = 19
-DIAG_CPCV_MARGINAL_POSITIVE_PATHS: int = 9
-DIAG_CPCV_REFERENCE_PATHS: int = 28
 # Metric definitions behind each model_performance_log row (migration 008).
 # Rows before review 2026-09-25 step 5 are 'pre-2026-09-25'; the drift monitor
 # only compares rows that share a version.

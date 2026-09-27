@@ -18,8 +18,9 @@ closeouts of their cycle (linked in each file), now under
 | [0003](0003-monthly-summary-contract.md) | Post-promotion stabilisation, `monthly_summary.json`, cross-check retired (v79–v86) | 2026-04-11 | Live |
 | [0004](0004-classifier-stays-shadow-only.md) | Classifier stays shadow-only (v102–v117) | 2026-04-11 | Shadow only |
 | [0005](0005-ta-variants-reporting-only.md) | Technical-analysis classifier variants are reporting-only (v160–v169) | 2026-04-18 | Reporting only |
-| [0006](0006-validation-gates-and-cpcv-diagnostic.md) | Recommendation-mode gates, realised-only health, CPCV as a diagnostic | 2026-09-26 | Live |
+| [0006](0006-validation-gates-and-cpcv-diagnostic.md) | Recommendation-mode gates, realised-only health, CPCV as a diagnostic | 2026-09-26 | Live; CPCV retired by 0008 |
 | [0007](0007-actionable-sell-mapping.md) | ACTIONABLE sell-percentage mapping | 2026-09-26 | Live |
+| [0008](0008-chronological-validation-and-readiness-gates.md) | Chronological validation only; `wfo_completed` and `data_ready` gates replace the CPCV completeness gate | 2026-09-27 | Live |
 
 ## Adding a decision
 

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Accepted, live since v178 |
+| **Status** | Accepted, live since v178. Amended by [0008](0008-chronological-validation-and-readiness-gates.md) (v188): the CPCV diagnostic and its completeness gate are retired; `wfo_completed` and `data_ready` gates replace it |
 | **Date** | 2026-09-26 |
 | **Where it lives** | `src/reporting/decision_rendering.py` (gates); `src/models/prequential.py` (realised-only weights, alpha, calibration, conformal) |
 | **Findings** | F02, F04, F13, F20 (missing CPCV), F21 of [`REPO_REVIEW_2026-09-25.md`](../reviews/REPO_REVIEW_2026-09-25.md) |

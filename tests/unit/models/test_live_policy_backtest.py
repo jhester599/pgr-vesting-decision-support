@@ -38,12 +38,19 @@ def test_bullish_signal_never_sells_more_than_the_default(mean_predicted: float,
 
 def test_actionable_outperform_with_small_forecast_sells_the_default() -> None:
     """The review's case: OUTPERFORM with a forecast <= 5 % sold 75 %."""
-    health = {"oos_r2": 0.05, "pt_p_value": 0.01, "agg_hit": 0.70, "constant_rule_hit_rate": 0.60}
+    health = {
+        "oos_r2": 0.05,
+        "pt_p_value": 0.01,
+        "agg_hit": 0.70,
+        "constant_rule_hit_rate": 0.60,
+        # R3 readiness contract: walk-forward complete, inputs ready.
+        "wfo_completed": True,
+        "data_ready": True,
+        "missing_live_features": [],
+        "stale_required_feeds": [],
+    }
 
-    class _Cpcv:
-        stability_verdict = "GOOD"
-
-    mode = determine_recommendation_mode("OUTPERFORM", 0.03, 0.10, 0.70, health, _Cpcv())
+    mode = determine_recommendation_mode("OUTPERFORM", 0.03, 0.10, 0.70, health)
     assert mode["mode"] == "actionable"
     assert mode["sell_pct"] == pytest.approx(0.50)
 

@@ -14,7 +14,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pgr_vds"
-version = "0.185.0"
+version = "0.189.0"
 description = "PGR RSU vesting decision support: monthly sell/hold recommendation engine."
 readme = "README.md"
 # pandas 3 needs Python 3.11+; CI and every workflow run 3.11.

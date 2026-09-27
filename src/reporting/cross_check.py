@@ -285,7 +285,6 @@ def build_promoted_cross_check_summary(
         mean_ic,
         mean_hr,
         aggregate_health,
-        representative_cpcv=None,
     )
     return SnapshotSummary(
         label="cross-check",

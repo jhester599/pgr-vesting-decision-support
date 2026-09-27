@@ -74,20 +74,100 @@ def _threshold_status(value: float | None, good: float, fail_below: float) -> st
     return GATE_MARGINAL
 
 
-def cpcv_available(representative_cpcv: Any | None) -> bool:
-    """True when the CPCV diagnostic ran and produced paths (verdict known)."""
-    if representative_cpcv is None:
-        return False
-    verdict = getattr(representative_cpcv, "stability_verdict", "UNKNOWN")
-    return str(verdict) not in {"UNKNOWN", ""}
+def _is_empty_list(value: Any) -> bool:
+    """True only for an actual empty list or tuple (unknown is not empty)."""
+    return isinstance(value, (list, tuple)) and len(value) == 0
+
+
+def _names(value: Any) -> str:
+    if isinstance(value, (list, tuple)):
+        return ", ".join(str(item) for item in value)
+    return "unknown"
+
+
+def _wfo_gate(health: dict[str, Any], available: bool) -> QualityGate:
+    """``wfo_completed``: PASS only when the flag is exactly ``True``."""
+    flag = health.get("wfo_completed") if available else None
+    failed = health.get("wfo_failed_pairs") if available else None
+    if flag is True:
+        current = "complete"
+        pairs = health.get("wfo_required_pairs")
+        if isinstance(pairs, (list, tuple)) and pairs:
+            current = f"complete ({len(pairs)} required model/benchmark pairs)"
+        status = GATE_PASS
+    else:
+        status = GATE_FAIL
+        if isinstance(failed, (list, tuple)) and failed:
+            details = [
+                f"{item.get('benchmark')}/{item.get('model')} ({item.get('reason')})"
+                if isinstance(item, dict)
+                else str(item)
+                for item in failed
+            ]
+            current = "incomplete: " + "; ".join(details)
+        elif flag is False:
+            current = "incomplete"
+        else:
+            current = "unknown (fail closed)"
+    return QualityGate(
+        name="wfo_completed",
+        value=None,
+        status=status,
+        current=current,
+        threshold="every required pair complete",
+        meaning=(
+            "Walk-forward (TimeSeriesSplit, purge and embargo) results exist for every required "
+            "model and benchmark, with finite OOS and live forecasts and realised outcomes."
+        ),
+    )
+
+
+def _data_gate(health: dict[str, Any], available: bool) -> QualityGate:
+    """``data_ready``: flag exactly ``True`` and both problem lists empty."""
+    flag = health.get("data_ready") if available else None
+    missing = health.get("missing_live_features") if available else None
+    stale = health.get("stale_required_feeds") if available else None
+    problems: list[str] = []
+    if isinstance(missing, (list, tuple)) and missing:
+        problems.append(f"missing live features: {_names(missing)}")
+    elif not isinstance(missing, (list, tuple)):
+        problems.append("live features unknown")
+    if isinstance(stale, (list, tuple)) and stale:
+        problems.append(f"stale required feeds: {_names(stale)}")
+    elif not isinstance(stale, (list, tuple)):
+        problems.append("feed freshness unknown")
+    if flag is True and _is_empty_list(missing) and _is_empty_list(stale):
+        status = GATE_PASS
+        current = "ready"
+    else:
+        status = GATE_FAIL
+        if problems:
+            current = "not ready: " + "; ".join(problems)
+        elif flag is False:
+            current = "not ready"
+        else:
+            current = "unknown (fail closed)"
+    return QualityGate(
+        name="data_ready",
+        value=None,
+        status=status,
+        current=current,
+        threshold="all required inputs finite and fresh at the as-of date",
+        meaning=(
+            "Every live model feature is finite before imputation and the required price, FRED, "
+            "EDGAR and dividend feeds are fresh on the decision's as-of date."
+        ),
+    )
 
 
 def evaluate_quality_gates(
     mean_ic: float,
     aggregate_health: dict | None,
-    representative_cpcv: Any | None,
 ) -> list[QualityGate]:
-    """Evaluate the recommendation-mode gates (review 2026-09-25, WP7).
+    """Evaluate the recommendation-mode gates (gate contract
+    ``config.DECISION_GATE_CONTRACT_VERSION``).
+
+    Quality (review 2026-09-25, WP7):
 
     - OOS R^2 against the prevailing mean of realised targets (F04): PASS at
       >= ``DIAG_MIN_OOS_R2``, FAIL below 0.
@@ -99,16 +179,21 @@ def evaluate_quality_gates(
       FAIL at or above ``DIAG_MARGINAL_DIRECTIONAL_PVALUE`` or when undefined
       (e.g. a predictor that always calls the same sign). A raw hit rate is
       not gated: a 68 % base rate clears 55 % without skill.
-    - CPCV completeness (F02, F20): CPCV is a combinatorial K-fold, so its
-      verdict is diagnostic only and never gates. The run fails closed when
-      the diagnostic is missing or UNKNOWN.
 
-    A missing input fails its gate (fail closed).
+    Readiness (pre-v200 remediation R3, replacing the retired CPCV
+    completeness gate; CPCV was a combinatorial K-fold, F02):
+
+    - ``wfo_completed``: ``aggregate_health["wfo_completed"] is True``.
+    - ``data_ready``: ``aggregate_health["data_ready"] is True`` and
+      ``missing_live_features`` and ``stale_required_feeds`` are empty lists.
+
+    A missing, non-finite or unknown input fails its gate (fail closed).
     """
+    available = aggregate_health is not None
     health = aggregate_health or {}
-    oos_r2 = _finite(health.get("oos_r2")) if aggregate_health is not None else None
+    oos_r2 = _finite(health.get("oos_r2")) if available else None
     ic = _finite(mean_ic)
-    pt_p = _finite(health.get("pt_p_value")) if aggregate_health is not None else None
+    pt_p = _finite(health.get("pt_p_value")) if available else None
     hit = _finite(health.get("agg_hit"))
     base = _finite(health.get("constant_rule_hit_rate"))
 
@@ -129,12 +214,6 @@ def evaluate_quality_gates(
     else:
         pt_current = f"p={pt_p:.3f}" if pt_p is not None else "n/a"
 
-    cpcv_ok = cpcv_available(representative_cpcv)
-    cpcv_verdict = (
-        str(getattr(representative_cpcv, "stability_verdict", "UNKNOWN"))
-        if representative_cpcv is not None
-        else "missing"
-    )
     return [
         QualityGate(
             name="oos_r2",
@@ -160,15 +239,21 @@ def evaluate_quality_gates(
             threshold=f"PT p < {config.DIAG_MAX_DIRECTIONAL_PVALUE:.2f}",
             meaning="Up/down calls beat chance given the base rate (Pesaran-Timmermann, clustered by date).",
         ),
-        QualityGate(
-            name="cpcv_completed",
-            value=None,
-            status=GATE_PASS if cpcv_ok else GATE_FAIL,
-            current=f"ran ({cpcv_verdict}, diagnostic only)" if cpcv_ok else f"{cpcv_verdict}",
-            threshold="diagnostic ran",
-            meaning="Fail-closed completeness check; the CPCV verdict itself does not gate (K-fold).",
-        ),
+        _wfo_gate(health, available),
+        _data_gate(health, available),
     ]
+
+
+QUALITY_GATE_NAMES: tuple[str, ...] = ("oos_r2", "mean_ic", "directional_skill")
+
+
+def gate_reason(gate: QualityGate) -> str:
+    """One-line reason for a non-passing gate, safe inside a markdown table."""
+    if gate.name in QUALITY_GATE_NAMES:
+        text = f"{gate.name} {gate.status}: {gate.current} (needs {gate.threshold})"
+    else:
+        text = f"{gate.name} {gate.status}: {gate.current}"
+    return text.replace("|", "/")
 
 
 def determine_recommendation_mode(
@@ -177,46 +262,62 @@ def determine_recommendation_mode(
     mean_ic: float,
     mean_hr: float,
     aggregate_health: dict | None,
-    representative_cpcv: Any | None,
-) -> dict[str, str | float]:
-    """Downgrade weak-model months into monitoring or tax-default modes.
+) -> dict[str, Any]:
+    """Downgrade weak-model or not-ready months into monitoring or tax-default modes.
 
     ``mean_ic`` is the gated IC: the equal-weight mean of the per-benchmark
     OOS ICs. ``mean_hr`` is reported only; directional skill is gated on the
     Pesaran-Timmermann result in ``aggregate_health`` (``pt_p_value``). See
     ``evaluate_quality_gates``. ACTIONABLE needs every gate to PASS; any FAIL
-    gives DEFER-TO-TAX-DEFAULT; otherwise MONITORING-ONLY. The ACTIONABLE sell
-    percentage comes from ``sell_pct_from_consensus``.
+    gives DEFER-TO-TAX-DEFAULT at 50 %; otherwise MONITORING-ONLY. The
+    ACTIONABLE sell percentage comes from ``sell_pct_from_consensus``.
+
+    The payload names the failed gates (``failed_gates``) and one reason per
+    non-passing gate (``deferral_reasons``); the summary repeats the reasons
+    so every output surface that shows it names them.
     """
     del mean_hr  # reported elsewhere; not a gate since review 2026-09-25 (F13)
-    gates = evaluate_quality_gates(mean_ic, aggregate_health, representative_cpcv)
-    statuses = {gate.name: gate.status for gate in gates}
+    gates = evaluate_quality_gates(mean_ic, aggregate_health)
+    failed = [gate for gate in gates if gate.status == GATE_FAIL]
+    marginal = [gate for gate in gates if gate.status == GATE_MARGINAL]
 
-    if all(status == GATE_PASS for status in statuses.values()):
+    if not failed and not marginal:
         return {
             "mode": "actionable",
             "label": "ACTIONABLE",
             "sell_pct": sell_pct_from_consensus(consensus, mean_predicted, mean_ic),
             "summary": "Model quality is strong enough for the signal to influence the vest decision.",
             "action_note": "Prediction-led adjustment is allowed because aggregate model health is above threshold.",
+            "failed_gates": [],
+            "deferral_reasons": [],
         }
 
-    if any(status == GATE_FAIL for status in statuses.values()):
-        if statuses["cpcv_completed"] == GATE_FAIL and all(
-            status != GATE_FAIL for name, status in statuses.items() if name != "cpcv_completed"
-        ):
-            summary = (
-                "The validation run is incomplete (the CPCV diagnostic did not run), "
+    if failed:
+        failed_names = {gate.name for gate in failed}
+        reasons = [gate_reason(gate) for gate in failed]
+        if failed_names <= set(QUALITY_GATE_NAMES):
+            lead = "Model quality is too weak to justify a prediction-led vesting action."
+        else:
+            causes = []
+            if failed_names & set(QUALITY_GATE_NAMES):
+                causes.append("model quality is too weak")
+            if "wfo_completed" in failed_names:
+                causes.append("the walk-forward validation is incomplete")
+            if "data_ready" in failed_names:
+                causes.append("required inputs are not ready for this as-of date")
+            joined = causes[0] if len(causes) == 1 else ", ".join(causes[:-1]) + " and " + causes[-1]
+            lead = (
+                f"{joined[0].upper()}{joined[1:]}, "
                 "so the signal cannot justify a prediction-led vesting action."
             )
-        else:
-            summary = "Model quality is too weak to justify a prediction-led vesting action."
         return {
             "mode": "defer-to-tax-default",
             "label": "DEFER-TO-TAX-DEFAULT",
             "sell_pct": 0.50,
-            "summary": summary,
+            "summary": f"{lead} Deferral reasons: {'; '.join(reasons)}.",
             "action_note": "Use the default diversification and tax-discipline rule rather than the point forecast.",
+            "failed_gates": [gate.name for gate in failed],
+            "deferral_reasons": reasons,
         }
 
     return {
@@ -225,6 +326,8 @@ def determine_recommendation_mode(
         "sell_pct": 0.50,
         "summary": "The signal is directionally interesting, but not trustworthy enough to override the default vesting rule.",
         "action_note": "Treat this as monitoring evidence only until the aggregate diagnostics strengthen.",
+        "failed_gates": [],
+        "deferral_reasons": [gate_reason(gate) for gate in marginal],
     }
 
 
@@ -262,8 +365,8 @@ def build_executive_summary_lines(
         f"A more aggressive recommendation would require aggregate OOS R^2 >= "
         f"{config.DIAG_MIN_OOS_R2:.0%} against the prevailing-mean benchmark, "
         f"equal-weight mean IC >= {config.DIAG_MIN_IC:.2f}, significant directional skill "
-        f"(Pesaran-Timmermann p < {config.DIAG_MAX_DIRECTIONAL_PVALUE:.2f}), and a completed "
-        "CPCV diagnostic."
+        f"(Pesaran-Timmermann p < {config.DIAG_MAX_DIRECTIONAL_PVALUE:.2f}), completed walk-forward "
+        "validation for every required benchmark and model, and fresh, finite required inputs."
     )
     if recommendation_mode["mode"] == "actionable":
         change_trigger = (

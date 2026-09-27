@@ -84,7 +84,6 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
             {"VOO": object(), "BND": object()},
             {
                 "obs_feature_report": None,
-                "representative_cpcv": None,
                 "nan_live_features": list(nan_live_features),
             },
         ),
@@ -207,7 +206,6 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
         cal_result: CalibrationResult | None = None,
         signals: pd.DataFrame | None = None,
         obs_feature_report=None,
-        representative_cpcv=None,
         conformal_coverage_summary=None,
         importance_stability=None,
         vif_series=None,
@@ -219,7 +217,7 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
         panel=None,
     ) -> None:
         del as_of, ensemble_results, target_horizon_months, cal_result, signals
-        del obs_feature_report, representative_cpcv, conformal_coverage_summary
+        del obs_feature_report, conformal_coverage_summary
         del importance_stability, vif_series, benchmark_quality_df
         del shadow_gate_overlay, classifier_monitoring_summary
         del aggregate_health, shrinkage_alpha, panel
@@ -334,6 +332,19 @@ def test_monthly_decision_main_writes_core_artifacts_with_stubbed_pipeline(
     )
     assert manifest["dry_run"] is False
     assert manifest["artifact_classification"] == "production"
+    # R3: the chronological gate contract replaces the retired CPCV gate. The
+    # stubbed ensemble objects hold no walk-forward folds and the temp DB no
+    # dividends, so the run is incomplete and not ready, and defers.
+    gates = manifest["decision_gates"]
+    assert gates["gate_contract_version"] == config.DECISION_GATE_CONTRACT_VERSION
+    assert gates["wfo_completed"] is False
+    assert {"benchmark": "VOO", "model": "ridge", "reason": "missing model result"} in gates["wfo_failed_pairs"]
+    assert gates["data_ready"] is False
+    assert "Dividends VOO" in gates["stale_required_feeds"]
+    assert gates["recommendation_mode"] == "DEFER-TO-TAX-DEFAULT"
+    assert {"wfo_completed", "data_ready"} <= set(gates["failed_gates"])
+    assert not any("CPCV" in warning for warning in manifest["warnings"])
+    assert "CPCV" not in recommendation_text
     # F07: a NaN live feature in the decision row must mark the manifest.
     assert manifest["nan_live_features"] == nan_live_features
     nan_warnings = [w for w in manifest["warnings"] if "live-model feature" in w]

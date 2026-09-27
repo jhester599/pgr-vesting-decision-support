@@ -175,7 +175,13 @@ Recommended spot checks:
 - `monthly_summary.json` matches the top-level recommendation shown in
   `recommendation.md`
 - `diagnostic.md` includes Clark-West and per-benchmark quality sections
-- `decision_log.md` contains one row for the month
+- `decision_log.md` contains one row for the month, with the mode and any
+  deferral reasons in Notes
+- `run_manifest.json` `decision_gates`: `wfo_completed` and `data_ready` are
+  `true` before an `ACTIONABLE` month is acted on; otherwise
+  `failed_gates` / `deferral_reasons` say why the month deferred (a stale
+  dividend feed, for example, is fixed by the Wednesday dividend refresh,
+  not by re-running the decision)
 
 ## Recovery Guidance
 

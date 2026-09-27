@@ -74,6 +74,41 @@ def build_run_manifest(
     }
 
 
+def build_run_manifest_gates(
+    readiness: dict[str, Any] | None,
+    recommendation_mode: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """The ``decision_gates`` block of a monthly run manifest (R3).
+
+    Records the gate contract version, the readiness contract behind the
+    ``wfo_completed`` and ``data_ready`` gates, and the recommendation mode
+    with its failed gates and reasons. Unknown values stay ``None``; they are
+    never filled with a passing default.
+    """
+    import config
+
+    readiness = readiness or {}
+    mode = recommendation_mode or {}
+    return {
+        "gate_contract_version": config.DECISION_GATE_CONTRACT_VERSION,
+        "metrics_version": config.MODEL_HEALTH_METRICS_VERSION,
+        "recommendation_mode": mode.get("label"),
+        "recommended_sell_pct": mode.get("sell_pct"),
+        "failed_gates": list(mode.get("failed_gates") or []),
+        "deferral_reasons": list(mode.get("deferral_reasons") or []),
+        "wfo_completed": readiness.get("wfo_completed"),
+        "wfo_required_pairs": readiness.get("wfo_required_pairs"),
+        "wfo_failed_pairs": readiness.get("wfo_failed_pairs"),
+        "wfo_optional_excluded": readiness.get("wfo_optional_excluded"),
+        "data_ready": readiness.get("data_ready"),
+        "missing_live_features": readiness.get("missing_live_features"),
+        "stale_required_feeds": readiness.get("stale_required_feeds"),
+        "decision_row_date": readiness.get("decision_row_date"),
+        "readiness_basis": readiness.get("readiness_basis"),
+        "readiness_note": readiness.get("readiness_note"),
+    }
+
+
 def write_run_manifest(out_dir: str | Path, manifest: dict[str, Any]) -> Path:
     """Write a manifest JSON file and return the path."""
     path = Path(out_dir) / "run_manifest.json"

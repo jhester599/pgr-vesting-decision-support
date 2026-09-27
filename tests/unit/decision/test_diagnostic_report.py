@@ -29,7 +29,6 @@ import config
 from pgr_vds.decision.diagnostic_report import write_diagnostic_report
 from pgr_vds.decision.health import flag
 from src.models.conformal import ConformalCoverageBacktest
-from src.models.wfo_engine import CPCVResult
 
 # ---------------------------------------------------------------------------
 # Minimal WFOResult / EnsembleWFOResult stubs
@@ -178,9 +177,18 @@ class TestConfigConstants:
     def test_diag_min_hit_rate(self) -> None:
         assert config.DIAG_MIN_HIT_RATE == pytest.approx(0.55)
 
-    def test_diag_cpcv_min_positive_paths(self) -> None:
-        # v5.0: upgraded to 19 (≥19/28 ≈ 67% positive paths; was 10/15 under C(6,2))
-        assert config.DIAG_CPCV_MIN_POSITIVE_PATHS == 19
+    def test_cpcv_thresholds_are_retired(self) -> None:
+        # R3: the combinatorial CPCV diagnostic (a K-fold) is retired, and
+        # with it its positive-path thresholds.
+        for attr in (
+            "DIAG_CPCV_MIN_POSITIVE_PATHS",
+            "DIAG_CPCV_MARGINAL_POSITIVE_PATHS",
+            "DIAG_CPCV_REFERENCE_PATHS",
+            "CPCV_N_FOLDS",
+            "CPCV_N_TEST_FOLDS",
+            "CPCV_EMBARGO_SIZE",
+        ):
+            assert not hasattr(config, attr), attr
 
     def test_constants_are_numeric(self) -> None:
         for attr in (
@@ -189,9 +197,6 @@ class TestConfigConstants:
             "DIAG_MIN_HIT_RATE",
         ):
             assert isinstance(getattr(config, attr), float), f"{attr} should be float"
-
-    def test_cpcv_threshold_is_int(self) -> None:
-        assert isinstance(config.DIAG_CPCV_MIN_POSITIVE_PATHS, int)
 
 
 # ===========================================================================
@@ -239,7 +244,7 @@ class TestWriteDiagnosticReport:
         assert "VTI" in content
         assert "VGT" in content
 
-    def test_report_mentions_cpcv_deferred(self, tmp_path: Path) -> None:
+    def test_report_mentions_calibration_phase(self, tmp_path: Path) -> None:
         ensemble = _make_ensemble_results(n_obs=40)
         write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
@@ -247,16 +252,6 @@ class TestWriteDiagnosticReport:
 
     def test_report_includes_runtime_governance_metrics_when_provided(self, tmp_path: Path) -> None:
         ensemble = _make_ensemble_results(n_obs=40)
-        cpcv_result = CPCVResult(
-            model_type="elasticnet",
-            benchmark="VTI",
-            n_splits=28,
-            n_paths=28,
-            path_ics=[0.05] * 20 + [-0.01] * 8,
-            mean_ic=0.032,
-            ic_std=0.041,
-            split_ics=[],
-        )
         obs_feature_report = {
             "n_obs": 120,
             "n_features": 15,
@@ -270,35 +265,34 @@ class TestWriteDiagnosticReport:
             date(2026, 3, 26),
             ensemble,
             obs_feature_report=obs_feature_report,
-            representative_cpcv=cpcv_result,
         )
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
         assert "Feature Governance" in content
-        assert "20/28" in content
-        assert "Representative CPCV" in content
-        assert "≥ 19/28" in content
+        assert "CPCV" not in content
 
-    def test_report_scales_representative_cpcv_threshold_to_runtime_path_count(self, tmp_path: Path) -> None:
+    def test_report_shows_readiness_gates_and_fails_closed_without_them(self, tmp_path: Path) -> None:
+        """R3: the readiness gates replace the retired CPCV row."""
+        from pgr_vds.decision import health
+
         ensemble = _make_ensemble_results(n_obs=40)
-        cpcv_result = CPCVResult(
-            model_type="elasticnet",
-            benchmark="VTI",
-            n_splits=7,
-            n_paths=7,
-            path_ics=[0.05] * 4 + [-0.01] * 3,
-            mean_ic=0.012,
-            ic_std=0.041,
-            split_ics=[],
-        )
-        write_diagnostic_report(
-            tmp_path,
-            date(2026, 3, 26),
-            ensemble,
-            representative_cpcv=cpcv_result,
-        )
+        write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble)
         content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
-        assert "≥ 5/7" in content
-        assert "≥ 19/28" in content
+        assert "| Walk-forward validation complete (gate) | unknown (fail closed) | ❌ |" in content
+        assert "| Required inputs ready at as-of (gate) |" in content
+
+        ready = health.attach_readiness(
+            health.compute_aggregate_health(ensemble),
+            {
+                "wfo_completed": True,
+                "data_ready": True,
+                "missing_live_features": [],
+                "stale_required_feeds": [],
+            },
+        )
+        write_diagnostic_report(tmp_path, date(2026, 3, 26), ensemble, aggregate_health=ready)
+        content = (tmp_path / "diagnostic.md").read_text(encoding="utf-8")
+        assert "| Walk-forward validation complete (gate) | complete | ✅ |" in content
+        assert "| Required inputs ready at as-of (gate) | ready | ✅ |" in content
 
     def test_report_contains_threshold_reference(self, tmp_path: Path) -> None:
         ensemble = _make_ensemble_results(n_obs=40)

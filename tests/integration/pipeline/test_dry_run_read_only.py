@@ -150,6 +150,24 @@ def test_monthly_decision_dry_run_leaves_db_and_tracked_files_unchanged(
     assert manifest["artifact_classification"] == "dry_run"
     assert "nan_live_features" in manifest
 
+    # R3: the dry run reports the chronological gate contract, never the
+    # retired CPCV, and a failed readiness gate can never be ACTIONABLE.
+    gates = manifest["decision_gates"]
+    assert gates["gate_contract_version"] == config.DECISION_GATE_CONTRACT_VERSION
+    assert isinstance(gates["wfo_completed"], bool)
+    assert isinstance(gates["data_ready"], bool)
+    assert isinstance(gates["missing_live_features"], list)
+    assert isinstance(gates["stale_required_feeds"], list)
+    assert gates["readiness_basis"] == "backdated_reconstruction"
+    if not (gates["wfo_completed"] and gates["data_ready"]):
+        assert gates["recommendation_mode"] != "ACTIONABLE"
+    summary = json.loads((out_dir / "monthly_summary.json").read_text(encoding="utf-8"))
+    assert [gate["name"] for gate in summary["model_health"]["gates"]] == [
+        "oos_r2", "mean_ic", "directional_skill", "wfo_completed", "data_ready",
+    ]
+    for name in ("recommendation.md", "diagnostic.md", "monthly_summary.json", "run_manifest.json"):
+        assert "CPCV" not in (out_dir / name).read_text(encoding="utf-8"), name
+
 
 def test_read_only_connection_rejects_writes(tmp_path: Path) -> None:
     from src.database import db_client

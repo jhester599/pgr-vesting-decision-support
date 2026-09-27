@@ -38,28 +38,40 @@ Interpretation:
 
 ### Recommendation-Mode Gates
 
-Since review 2026-09-25, step 5 (WP7), the mode comes from four gates,
-evaluated in `src/reporting/decision_rendering.py::evaluate_quality_gates`.
-`ACTIONABLE` needs all four to pass; any failure gives
-`DEFER-TO-TAX-DEFAULT`; otherwise the mode is `MONITORING-ONLY`. A missing
-input fails its gate.
+Since the pre-v200 remediation R3 (gate contract
+`chronological-readiness-2026-09-27`, recorded in `run_manifest.json` and
+`monthly_summary.json`), the mode comes from five gates, evaluated in
+`src/reporting/decision_rendering.py::evaluate_quality_gates`.
+`ACTIONABLE` needs all five to pass; any failure gives
+`DEFER-TO-TAX-DEFAULT` at 50 %; otherwise the mode is `MONITORING-ONLY`. A
+missing, non-finite or unknown input fails its gate.
 
 | Gate | Pass | Fail |
 |------|------|------|
-| Aggregate OOS R² against each benchmark's prevailing mean of the targets realised by each forecast date (training history included) | ≥ 2 % | < 0 % |
-| Equal-weight mean of the per-benchmark OOS ICs | ≥ 0.07 | < 0.03 |
-| Directional skill: one-sided Pesaran–Timmermann test that the up/down calls track the realised sign, clustered by date | p < 0.05 | p ≥ 0.10 or undefined |
-| The representative CPCV diagnostic ran | ran | missing or UNKNOWN |
+| `oos_r2`: aggregate OOS R² against each benchmark's prevailing mean of the targets realised by each forecast date (training history included) | ≥ 2 % | < 0 % |
+| `mean_ic`: equal-weight mean of the per-benchmark OOS ICs | ≥ 0.07 | < 0.03 |
+| `directional_skill`: one-sided Pesaran–Timmermann test that the up/down calls track the realised sign, clustered by date | p < 0.05 | p ≥ 0.10 or undefined |
+| `wfo_completed`: walk-forward results for every required model (Ridge, GBT) and benchmark (the eight of `PRIMARY_FORECAST_UNIVERSE`), each with non-empty folds, finite OOS predictions, the production gap, labels realised before each test fold and outcomes realised by the as-of date, plus a finite live forecast | exactly `true` | anything else |
+| `data_ready`: every live model feature finite before imputation; prices, the FRED series behind live features, PGR monthly EDGAR and dividends of PGR and the eight benchmarks fresh at the as-of date (GLD is an audited non-payer) | `true`, with no missing feature and no stale feed | anything else |
 
 - The plain hit rate is reported but not gated: PGR beat the benchmarks in
   about 68 % of windows, so a 55 % hit-rate gate passed without skill.
 - The quality-weighted consensus still sets the direction and the mean
   forecast, but the IC gate uses equal weights: the quality weights are fitted
   on the same OOS record, which inflates a weighted IC.
-- CPCV trains on folds after its test folds (a combinatorial K-fold, which
-  AGENTS.md prohibits), so its verdict is reported in `diagnostic.md` and
-  never gates. Only a run where it fails to produce paths is held back from
-  `ACTIONABLE` (fail closed).
+- Validation is walk-forward only (`TimeSeriesSplit`, 60-month window, 6-month
+  test folds, gap = horizon + purge buffer = 8 months, fold-local scaling and
+  imputation). The representative CPCV diagnostic was a combinatorial K-fold,
+  which AGENTS.md prohibits; R3 retired it and its completeness gate.
+- Readiness is judged at the as-of date: rows dated or filed later never make
+  a back-dated run ready. A back-dated run's readiness is a reconstruction from
+  today's DB (`readiness_basis = backdated_reconstruction`), not evidence of
+  what the original decision had.
+- Every surface names why a month is not `ACTIONABLE`: the executive summary
+  and Confidence Snapshot in `recommendation.md` (and so the e-mail),
+  `recommendation.failed_gates` / `deferral_reasons` in
+  `monthly_summary.json`, `decision_gates` and a warning in
+  `run_manifest.json`, the dashboard warnings and the decision-log notes.
 - The `ACTIONABLE` mapping (step 6) never sells more than the 50 % default on
   an OUTPERFORM consensus: 25 % above a 15 % forecast, otherwise 50 %.
   UNDERPERFORM sells 100 %. A missing IC maps to 50 %.
@@ -99,7 +111,9 @@ The structured summary now carries top-level values such as:
   quality-weighted mean IC, OOS R², the date-clustered pooled IC p-value, the
   hit rate against the base rate, the Pesaran–Timmermann p-value, the
   prequential shrinkage alpha, the prequential ECE, trailing conformal
-  coverage and the CPCV diagnostic (`gates_recommendation: false`)
+  coverage, `gate_contract_version` and `readiness` (the inputs of the
+  `wfo_completed` and `data_ready` gates)
+- `recommendation.failed_gates` and `recommendation.deferral_reasons`
 
 `recommendation.prob_outperform_raw` is null since step 5: it came from the
 retired BayesianRidge posterior and was a constant 50 %. Use
@@ -231,7 +245,7 @@ The diagnostic report is the technical appendix. It includes:
   realised by then)
 - shadow gate overlay status
 - matured classifier-monitoring summary when available
-- the CPCV stability diagnostic (not a gate) and observation-to-feature context
+- the walk-forward completion and input-readiness gates, and observation-to-feature context
 
 Use the diagnostic report to understand why the recommendation mode landed where
 it did.

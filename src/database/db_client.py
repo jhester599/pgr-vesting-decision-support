@@ -515,6 +515,31 @@ def _fred_freshness_checks(
     return rows
 
 
+def _latest_available_edgar_month(
+    conn: sqlite3.Connection,
+    reference_date: date,
+) -> date | None:
+    """Latest PGR monthly EDGAR month that was public on ``reference_date``.
+
+    A month counts once its filing date is on or before the reference date,
+    so a back-dated run is not made fresh by a later filing (R3). A row
+    without a filing date cannot show when it became public; it counts once
+    its month has ended, as before R3 (the tracked DB has a filing date on
+    every row).
+    """
+    latest: date | None = None
+    for month_raw, filed_raw in conn.execute(
+        "SELECT month_end, filing_date FROM pgr_edgar_monthly"
+    ):
+        month_end = _coerce_iso_date(month_raw)
+        if month_end is None:
+            continue
+        available = _coerce_iso_date(filed_raw) or month_end
+        if available <= reference_date and (latest is None or month_end > latest):
+            latest = month_end
+    return latest
+
+
 def check_data_freshness(
     conn: sqlite3.Connection,
     reference_date: date,
@@ -535,11 +560,15 @@ def check_data_freshness(
     - FRED: one row per series behind a live ensemble feature by default
       (:func:`live_feature_fred_series`), judged against the observation month
       the decision row needs (:func:`_fred_freshness_checks`);
-    - PGR monthly EDGAR: the latest month against the filing-grace rule.
+    - PGR monthly EDGAR: the latest month filed on or before the reference
+      date against the filing-grace rule (:func:`_latest_available_edgar_month`).
+
+    Every check is bounded by ``reference_date``, so a back-dated run is not
+    made fresh by rows stored or filed later (R3, 2026-09-27).
 
     Args:
         conn: Open connection.
-        reference_date: Run date.
+        reference_date: The decision's as-of date (the run date for a live run).
         price_max_age_days: Allowed age of each ticker's latest bar.
         edgar_max_age_days: Kept for the report; EDGAR uses the filing grace.
         fred_grace_months: Months a FRED series may lag the needed month.
@@ -582,8 +611,7 @@ def check_data_freshness(
                 f"the decision row needs {needed} (lag {row['lag_months']} mo){used_by}."
             )
 
-    latest_raw = get_table_max_date(conn, "pgr_edgar_monthly", "month_end")
-    latest_date = _coerce_iso_date(latest_raw)
+    latest_date = _latest_available_edgar_month(conn, reference_date)
     limit_label = (
         f"{config.DATA_FRESHNESS_PGR_EDGAR_FILING_GRACE_DAYS}-day filing grace"
     )
@@ -632,6 +660,7 @@ def check_dividend_freshness(
     tickers: list[str] | None = None,
     interval_multiple: float = config.DIVIDEND_FRESHNESS_INTERVAL_MULTIPLE,
     history: int = 8,
+    as_of: date | None = None,
 ) -> list[dict[str, Any]]:
     """Per-ticker check that dividends keep up with prices (review F08).
 
@@ -647,6 +676,9 @@ def check_dividend_freshness(
             peer tickers.
         interval_multiple: Allowed lag in units of the payment interval.
         history: Number of recent gaps used for the median interval.
+        as_of: When given, only ex-dates and prices on or before this date
+            count (a back-dated decision; R3, 2026-09-27). ``None`` uses
+            every stored row, including scheduled future ex-dates.
 
     Returns:
         One dict per ticker with ``ticker``, ``status`` (``OK``, ``STALE`` or
@@ -658,15 +690,18 @@ def check_dividend_freshness(
         tickers = ["PGR", *config.ETF_BENCHMARK_UNIVERSE, *config.PEER_TICKER_UNIVERSE]
     results: list[dict[str, Any]] = []
     for ticker in tickers:
+        bound = as_of.isoformat() if as_of is not None else "9999-12-31"
         ex_dates = [
             date.fromisoformat(r[0][:10]) for r in conn.execute(
-                "SELECT ex_date FROM daily_dividends WHERE ticker = ? ORDER BY ex_date",
-                (ticker,),
+                "SELECT ex_date FROM daily_dividends WHERE ticker = ? "
+                "AND substr(ex_date, 1, 10) <= ? ORDER BY ex_date",
+                (ticker, bound),
             )
         ]
         row = conn.execute(
-            "SELECT MAX(date) FROM daily_prices WHERE ticker = ? AND proxy_fill = 0",
-            (ticker,),
+            "SELECT MAX(date) FROM daily_prices WHERE ticker = ? AND proxy_fill = 0 "
+            "AND substr(date, 1, 10) <= ?",
+            (ticker, bound),
         ).fetchone()
         last_price = _coerce_iso_date(row[0] if row else None)
         result: dict[str, Any] = {
@@ -693,6 +728,84 @@ def check_dividend_freshness(
             )
         results.append(result)
     return results
+
+
+def check_required_feed_readiness(
+    conn: sqlite3.Connection,
+    as_of: date,
+) -> dict[str, Any]:
+    """Freshness of every feed the live decision requires, at ``as_of``.
+
+    Aggregates the existing checks for the decision's ``data_ready`` gate
+    (R3, 2026-09-27): per-ticker prices, per-series FRED and PGR monthly
+    EDGAR (:func:`check_data_freshness`), plus per-ticker dividends
+    (:func:`check_dividend_freshness`) for PGR and
+    ``config.PRIMARY_FORECAST_UNIVERSE``. Everything is bounded by ``as_of``.
+
+    A ticker without dividend history is ready only if it is in
+    ``config.AUDITED_NON_DIVIDEND_PAYERS``; any other missing history is not
+    ready, so a failed or empty dividend request is never read as "pays no
+    dividend".
+
+    Returns:
+        The :func:`check_data_freshness` report for ``as_of`` with one extra
+        ``Dividends <ticker>`` row per required ticker, and
+        ``stale_required_feeds``: the feed names that are not OK.
+    """
+    report = check_data_freshness(conn, as_of)
+    checks = list(report["checks"])
+    warnings = list(report["warnings"])
+    for row in check_dividend_freshness(
+        conn, ["PGR", *config.PRIMARY_FORECAST_UNIVERSE], as_of=as_of
+    ):
+        ticker = row["ticker"]
+        status = row["status"]
+        audited = ticker in config.AUDITED_NON_DIVIDEND_PAYERS
+        if status == "NO_HISTORY" and audited and row["last_ex_date"] is None:
+            status = "OK"
+            latest_label = "none (audited non-payer)"
+        else:
+            latest_label = row["last_ex_date"] or "missing"
+        if status == "NO_HISTORY":
+            status = "MISSING"
+        check: dict[str, Any] = {
+            "feed": f"Dividends {ticker}",
+            "table": "daily_dividends",
+            "column": "ex_date",
+            "ticker": ticker,
+            "max_age_days": None,
+            "limit_label": (
+                f"due by {row['due_by']}" if row["due_by"] else "history required"
+            ),
+            "latest_date": row["last_ex_date"],
+            "latest_label": latest_label,
+            "age_days": None,
+            "age_label": (
+                f"interval {row['interval_days']:.0f} d"
+                if row["interval_days"] is not None
+                else "n/a"
+            ),
+            "status": status,
+        }
+        checks.append(check)
+        if status == "MISSING":
+            warnings.append(
+                f"Dividends {ticker}: no usable dividend history on or before "
+                f"{as_of.isoformat()} and not an audited non-payer."
+            )
+        elif status != "OK":
+            warnings.append(
+                f"Dividends {ticker} are stale: latest ex-date "
+                f"{row['last_ex_date']}, one was due by {row['due_by']}."
+            )
+    stale = [str(check["feed"]) for check in checks if check["status"] != "OK"]
+    return {
+        "reference_date": as_of.isoformat(),
+        "overall_status": "WARNING" if stale else "OK",
+        "checks": checks,
+        "warnings": warnings,
+        "stale_required_feeds": stale,
+    }
 
 
 # ---------------------------------------------------------------------------

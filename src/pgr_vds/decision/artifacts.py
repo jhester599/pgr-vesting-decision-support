@@ -30,7 +30,11 @@ from src.reporting.classification_artifacts import (
     ta_shadow_variant_history_path,
 )
 from src.reporting.confidence import benchmark_role_for_ticker
-from src.reporting.run_manifest import build_run_manifest, write_run_manifest
+from src.reporting.run_manifest import (
+    build_run_manifest,
+    build_run_manifest_gates,
+    write_run_manifest,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +209,17 @@ def write_consensus_shadow_csv(
     print(f"  Wrote {path}")
 
 
+def decision_log_notes(recommendation_mode: dict[str, Any]) -> str:
+    """Notes cell for the decision log: the mode and, if not ACTIONABLE, why.
+
+    Pipes are replaced so the reasons cannot break the markdown table (R3).
+    """
+    label = str(recommendation_mode.get("label", ""))
+    reasons = [str(reason) for reason in recommendation_mode.get("deferral_reasons") or []]
+    text = f"{label}: {'; '.join(reasons)}" if reasons else label
+    return text.replace("|", "/").replace("\n", " ")
+
+
 def append_decision_log(
     as_of: date,
     run_date: date,
@@ -215,6 +230,7 @@ def append_decision_log(
     mean_hr: float,
     dry_run: bool,
     _log_path_override: Path | None = None,
+    notes: str = "",
 ) -> None:
     """Append one row to the persistent decision_log.md.
 
@@ -229,6 +245,8 @@ def append_decision_log(
         _log_path_override: If provided, write to this path instead of the
                             default artifacts/monthly_decisions/decision_log.md.
                             Used in tests only.
+        notes:              Notes cell (``decision_log_notes``): the
+                            recommendation mode and any deferral reasons.
     """
     log_path = _log_path_override or Path(config.DECISION_LOG_PATH)
     if not log_path.exists():
@@ -239,7 +257,7 @@ def append_decision_log(
     new_row = (
         f"| {as_of} | {run_date} | {consensus} | {sell_pct:.0%} "
         f"| {mean_predicted:+.2%} | {mean_ic:.4f} | {mean_hr:.1%} "
-        f"| {'[DRY RUN]' if dry_run else ''} |"
+        f"| {'[DRY RUN]' if dry_run else notes} |"
     )
     row_prefix = (
         f"| {as_of} | {run_date} | {consensus} | {sell_pct:.0%} "
@@ -392,11 +410,15 @@ def write_monthly_run_manifest(
     manifest_warnings: list[str],
     dry_run: bool,
     nan_live_features: list[str],
+    readiness: dict[str, Any] | None = None,
+    recommendation_mode: dict[str, Any] | None = None,
 ) -> Path:
     """Write ``run_manifest.json`` for this run and return its path.
 
     ``snapshot`` is ``db_client.get_operational_snapshot`` taken before the
-    run records its retrain-trigger evaluation.
+    run records its retrain-trigger evaluation. ``decision_gates`` records
+    the gate contract version, the readiness contract and why the
+    recommendation is (not) ACTIONABLE (R3).
     """
     manifest = build_run_manifest(
         workflow_name="monthly_decision",
@@ -412,4 +434,5 @@ def write_monthly_run_manifest(
     )
     manifest["dry_run"] = bool(dry_run)
     manifest["nan_live_features"] = nan_live_features
+    manifest["decision_gates"] = build_run_manifest_gates(readiness, recommendation_mode)
     return write_run_manifest(out_dir, manifest)
