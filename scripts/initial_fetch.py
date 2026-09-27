@@ -80,12 +80,9 @@ def main(
     do_dividends: bool = False,
     do_fred: bool = False,
     dry_run: bool = False,
-    force: bool = False,
     status_file: str = _DEFAULT_STATUS_FILE,
 ) -> int:
     """Run the initial fetch and write a status report."""
-    del force
-
     configure_logging()
 
     if not do_prices and not do_dividends and not do_fred:
@@ -432,11 +429,6 @@ if __name__ == "__main__":
         help="Log actions without making HTTP calls.",
     )
     parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Re-fetch even if data was already fetched today.",
-    )
-    parser.add_argument(
         "--status-file",
         default=_DEFAULT_STATUS_FILE,
         help=f"Path for Markdown status report (default: {_DEFAULT_STATUS_FILE}).",
@@ -448,7 +440,6 @@ if __name__ == "__main__":
             do_dividends=args.dividends,
             do_fred=args.fred,
             dry_run=args.dry_run,
-            force=args.force,
             status_file=args.status_file,
         )
     )

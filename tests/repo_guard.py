@@ -25,7 +25,8 @@ import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, urlparse
+from urllib.request import url2pathname
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 COMMITTED_DB = REPO_ROOT / "data" / "pgr_financials.db"
@@ -50,10 +51,16 @@ STATE = GuardState()
 _INSTALLED = False
 
 
-def _as_path(raw: object) -> tuple[Path | None, bool]:
+def _as_path(
+    raw: object,
+    *,
+    sqlite_uri: bool = True,
+) -> tuple[Path | None, bool]:
     """Absolute path for an audited path argument, and whether a SQLite URI
     asked for read-only access. Returns (None, False) for file descriptors,
-    ``:memory:`` and anything that is not a path."""
+    SQLite memory databases and anything that is not a path. Native file
+    operations set ``sqlite_uri=False`` to keep literal filenames literal.
+    """
     if isinstance(raw, int) or raw is None:
         return None, False
     try:
@@ -61,13 +68,26 @@ def _as_path(raw: object) -> tuple[Path | None, bool]:
     except TypeError:
         return None, False
     read_only = False
-    if text.startswith("file:"):
+    if sqlite_uri and text.startswith("file:"):
         parsed = urlparse(text)
-        read_only = parse_qs(parsed.query).get("mode", [""])[0] == "ro"
-        text = unquote(parsed.path)
-    if text in ("", ":memory:"):
+        modes = parse_qs(parsed.query, keep_blank_values=True).get("mode", [])
+        # SQLite accepts repeated mode parameters. Ambiguous modes cannot
+        # establish read-only or memory access: fail closed for disk paths.
+        mode = modes[0] if len(modes) == 1 else ""
+        if mode == "memory" or parsed.path == ":memory:":
+            return None, False
+        read_only = mode == "ro"
+        # Convert with the host's URI rules: /C:/ is a Windows drive, but
+        # remains an absolute POSIX path on POSIX. Retain remote authorities
+        # as UNC/double-slash paths instead of treating them as local files.
+        authority = parsed.netloc
+        uri_path = parsed.path
+        if authority and authority.lower() != "localhost":
+            uri_path = f"//{authority}{uri_path}"
+        text = url2pathname(uri_path)
+    if not text or (sqlite_uri and text == ":memory:"):
         return None, False
-    return Path(os.path.abspath(text)), read_only
+    return Path(os.path.normcase(os.path.abspath(text))), read_only
 
 
 def _in_repo(path: Path) -> bool:
@@ -79,7 +99,7 @@ def _in_repo(path: Path) -> bool:
 
 
 def _is_committed_db(path: Path) -> bool:
-    return path == COMMITTED_DB
+    return path == Path(os.path.normcase(os.path.abspath(COMMITTED_DB)))
 
 
 def classify_access(event: str, args: tuple, allow_committed_reads: bool) -> str | None:
@@ -91,7 +111,9 @@ def classify_access(event: str, args: tuple, allow_committed_reads: bool) -> str
     else:
         targets = [args[0]]
     for raw in targets:
-        path, read_only_uri = _as_path(raw)
+        path, read_only_uri = _as_path(
+            raw, sqlite_uri=(event == "sqlite3.connect"),
+        )
         if path is None:
             continue
         if event == "sqlite3.connect":

@@ -7,11 +7,39 @@ on:
       - codex/**
   pull_request:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  windows-regressions:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: pyproject.toml
+
+      - name: Install runtime and dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run Windows safety regressions
+        run: >-
+          python -m pytest -o addopts="--tb=short" -q
+          tests/integration/repo/test_test_suite_hygiene.py
+          tests/integration/repo/test_restructure_phase1.py
+          tests/integration/repo/test_workflow_contracts.py
+          tests/unit/scripts/test_capital_return_charts.py
+
   test:
     runs-on: ubuntu-latest
 
@@ -85,6 +113,12 @@ jobs:
           FRED_API_KEY: ""
           EDGAR_USER_AGENT: "CI smoke test ci@example.invalid"
         run: |
+          # Keep fetcher/decision smoke DB work on an external copy too.
+          SMOKE_DIR="$(mktemp -d)"
+          cp -a . "$SMOKE_DIR/repo"
+          cd "$SMOKE_DIR/repo"
+          export PYTHONPATH="$PWD"
+          python -m pip install --no-deps --no-build-isolation -e .
           python scripts/ci_offline_smoke.py scripts/weekly_fetch.py --dry-run --skip-fred
           python scripts/ci_offline_smoke.py scripts/peer_fetch.py --dry-run
           python scripts/ci_offline_smoke.py cli/edgar_monthly_fetch.py --dry-run
