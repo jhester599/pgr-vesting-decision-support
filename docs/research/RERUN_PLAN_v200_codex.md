@@ -1,8 +1,61 @@
 # Research rerun prompts — v200 onward (Codex)
 
-> **Status (added 2026-09-26):** two v200 research plans exist, and their version numbers mean different things: this one (v200–v207) and [`RERUN_PLAN_v200_claude.md`](RERUN_PLAN_v200_claude.md) (v200–v210). Neither is adopted yet. [The comparison](../reviews/2026-09-26_step13v_comparison.md) sets out the differences and a recommendation, and it records the owner's choice. Do not start a v2NN session until that choice is recorded there.
+> **Status (updated 2026-09-27): adopted.** This is the canonical v200 research plan (owner decision D1). The owner's decisions of 2026-09-27, in the next section, amend it and take precedence over any conflicting text below. [`RERUN_PLAN_v200_claude.md`](RERUN_PLAN_v200_claude.md) is reference only, and its version numbers are void. Background: [the comparison of the two step-13V runs](../reviews/2026-09-26_step13v_comparison.md).
 
 Written 2026-09-26 from [independent verification](../reviews/VERIFICATION_2026-09-26.md). This replaces separate 8a–8c prompts. It is a plan, not a performance result or authorization to fetch data. Copy the shared preamble and **one** numbered prompt into each new session. Use one PR per session. Start at v200; never reuse v1–v199. The gap separates the repaired data foundation from historical experiments and fix releases.
+
+## Owner decisions and amendments (2026-09-27)
+
+These decisions amend the plan below. Where the original text conflicts with them, they win. Amended places are marked with the decision (D1–D4) or addition (A1–A6) they come from.
+
+**D1: this plan is canonical, with six additions from the Claude plan.**
+
+- **A1 (v200): production-equivalence check.** With production settings (6M: 60-month train, 6-month test, gap 8; 12M: gap 15), the research harness must reproduce `pgr_vds.decision.signal_generation.generate_signals` and `pgr_vds.decision.health.compute_aggregate_health` on the same inputs and as-of date to 1e-9. The compared figures are aggregate R², equal-weight and pooled IC, hit rate and PT p. Report the result in the protocol bridge table, next to the stricter research gaps.
+- **A2 (v200): R² fixtures.**
+  - An oracle forecaster on overlapping 6M targets must score R² > 0 against the honest prevailing-mean comparator.
+  - Pooling two benchmarks must not inflate R² (the concatenation case).
+  - `src/research/v37_utils.compute_metrics` fails both (verification N2) and must not be used.
+- **A3 (v202): the 2024 fiscal-month question.** `npw_growth_yoy` has a standard deviation of 0.198 in 2024 against 0.076 in 2016–2023. Before any block uses it, test whether Progressive's monthly reporting calendar changed in 2024, from the NPE/NPW first-month-of-quarter pattern in 2016–2026. If the change is confirmed, use trailing-12-month or quarterly NPW growth instead.
+- **A4 (v202): per-era `pb_vs_pe` re-analysis.** Cover 2004–2014 and 2015 to the development end, with date-block inference and at most 20 pre-registered descriptive tests under their own Holm correction. The work is descriptive and outside the 38-candidate budget.
+- **A5 (every step): owner summary.** Every study README starts with a plain-language summary for the owner: what was tested, the result in one sentence, what it means for the vest decision, and a definition of every metric used.
+- **A6 (inventory): v10/v10.1 corrected.** It is operational hardening, not a model study. See the corrected v10 rows below.
+
+**D2: no 24-month forward-data wait.** The owner does not want to wait for 24 months of new data. The retrospective quarantine defined below is therefore the final test for promotion.
+
+- **The quarantine itself is unchanged:**
+  - it is defined and sealed in v200;
+  - v200–v206 never touch it;
+  - v207 opens it once, in one registered batch, with all finalists frozen first.
+- **The v207 rule.** At v207 a finalist may be recommended for promotion only if both of these hold:
+  1. it met its own step's development threshold;
+  2. on the quarantine, against the v200 control:
+     - its primary metric is not worse: ΔR² ≥ 0 for regression, Brier not higher for classifiers, MAE not higher for the x-series, and after-tax uplift ≥ 0 for policies;
+     - for regression finalists, equal-weight IC is not lower by more than 0.02, and no benchmark's R² is lower by more than 5 pp;
+     - the paired date-block bootstrap test of its primary-metric improvement (the contract's settings), Holm-adjusted across the frozen finalists, gives a one-sided p below 0.10.
+
+  A finalist that meets the development threshold but not the quarantine test is "consistent, not confirmed" and stays shadow.
+- **Disclosure.** Earlier studies (v75, v129, v132) and both step-13V verification replays already saw the quarantine. v207 and any promotion PR must say so plainly. The owner accepts this weaker evidence in exchange for speed.
+- **After any promotion:**
+  - the monthly run keeps logging the v200 incumbent's forecasts next to the promoted model's;
+  - a review after 12 more matured 6M outcomes applies the same rule;
+  - a promoted model that fails the review is reverted through a governance PR.
+
+  This review does not delay the promotion.
+- **Superseded text:** the "Promotion evidence" paragraph below and v207 step 4.
+
+**D3: fix sessions before research.** All five fix sessions, R1–R5 in [`PRE_V200_FIX_PROMPTS_codex.md`](../reviews/PRE_V200_FIX_PROMPTS_codex.md), run now, before v200. So do the dividend refresh and its offline check (R2-lite). The execution plan and model split are in that file.
+- v200 starts only after all of these have merged and the required dividends pass freshness. Its `baseline_lock.json` pins that `master` commit and DB.
+- This replaces the earlier order (R1–R3 before v200, R4 before v204, R5 before v206).
+
+**D4: the monthly e-mail stays as it is.** Research sessions do not change its content or format; a later, separate session will revisit them.
+
+**Execution notes (research phase).**
+- **Order:** v200 comes first. After it, v205 (the x-series lane) can run in parallel with the chain v201 → v202 → v203 → v204 → v206. v207 comes last.
+- **Recommended model split:**
+  - v200, and v201–v204 and v206: built by the Codex model and reviewed by the Claude model. This keeps one builder on the main chain, the plan's author implementing its own validation contract, and a second model independently reproducing v200's baseline numbers.
+  - v205: built by Claude, in parallel, and reviewed by Codex.
+  - v207: run by Claude, which built the fewest candidates, and reviewed by Codex. The model that opens the quarantine once and applies the D2 rule should not be the one that built most of the candidates.
+- **Reviews** use the cross-model review prompt in the fix-prompts file.
 
 ## What the evidence supports
 
@@ -25,13 +78,13 @@ Maximum **38 candidate blueprints** across v201–v206. Inner hyperparameter gri
 
 ## Prerequisites and two kinds of holdout
 
-**Data gate:** the audited snapshot has20 stale dividend tickers (19 ETFs + ALL). Before certifying v200, a separate explicitly authorized data-repair PR must backfill required histories, include a target rebuild/migration, and pass split/DRIP, freshness, coverage and accounting tests. These research prompts authorize no provider call or DB repair. v200 may reproduce the seed to diagnose the block, but must stop candidate comparison and label it PROVISIONAL if required dividends remain stale. Isolate CB entity-splice data until a separate identity repair passes. Stale research series cannot silently forward-fill. Latest-vintage macro data must be labeled; availability lags do not restore historical vintages.
+**Data gate:** the audited snapshot has20 stale dividend tickers (19 ETFs + ALL). *(Amended 2026-09-27, D3: the gate is met by the existing dividend-refresh workflow run plus the offline R2-lite check, or by the full R2 if the refresh fails.)* Before certifying v200, a separate explicitly authorized data-repair PR must backfill required histories, include a target rebuild/migration, and pass split/DRIP, freshness, coverage and accounting tests. These research prompts authorize no provider call or DB repair. v200 may reproduce the seed to diagnose the block, but must stop candidate comparison and label it PROVISIONAL if required dividends remain stale. Isolate CB entity-splice data until a separate identity repair passes. Stale research series cannot silently forward-fill. Latest-vintage macro data must be labeled; availability lags do not restore historical vintages.
 
 **Retrospective quarantine:** reserve the most recent24 fully matured monthly target origins for each used horizon. On the audited snapshot the6M anchors are March2024–February2026; for12M they are September2023–August2025. Resolve exact BME dates from the target-end calendar in v200; fail if a claimed mature label ends after the pinned as-of date. Quarantine the **union** across horizons, and restrict development origins to before the earliest quarantined origin (September2023 here). Purge every development label whose outcome window reaches that boundary, including x-series targets. This prevents6M research from training on the12M holdout. Seal partition hashes and an access ledger before fitting. All v200–v206 metrics use development only. Score quarantined rows **once, in one batch at v207**, with all candidates frozen first.
 
-Those rows were already touched by old research and the mandatory verification replays. They are not a virgin holdout. Passing that batch can justify a shadow recommendation and prospective-testing proposal; it cannot alone justify promotion under the untouched-holdout requirement. Do not shift dates after seeing outcomes or conceal this history.
+Those rows were already touched by old research and the mandatory verification replays. They are not a virgin holdout. *(Amended 2026-09-27, D2:)* passing that batch under the v207 rule can support a promotion recommendation, and v207 and any promotion PR must disclose the prior exposure. Do not shift dates after seeing outcomes or conceal this history.
 
-**Promotion evidence:** reserve24 genuinely unused forward monthly origins after candidate/baseline specifications are frozen, recording forecasts before outcomes. If frozen by September2026, an example is October2026–September2028. All6M labels mature by March2029 and12M labels by September2029. If work finishes later, move the start forward **before** forecasting and publish the lock. Evaluate once at the end. Candidates remain shadow until this evidence, or an independently audited unused equivalent, meets the preregistered threshold. This wait is the principal owner tradeoff; no research session can waive it.
+**Promotion evidence (superseded 2026-09-27, D2):** the original rule required 24 unused forward monthly origins (for example October 2026–September 2028, with 6M labels maturing by March 2029) before any promotion. The owner declined that wait. The D2 rule at the top of this plan replaces it.
 
 ## Shared preamble — paste with every step
 
@@ -41,7 +94,7 @@ Those rows were already touched by old research and the mandatory verification r
 >
 > Apply the validation contract below to all forecasts, classifiers, calibration and policies. Reusable new code belongs in `src/pgr_vds/research_lib/` (create this installed namespace in v200; it does not yet exist). Study runners go in `research/studies/v2NN_<slug>/run.py`, with `outputs/`, `README.md` and `provenance.json` in that folder. Register in `research/registry.yaml` and regenerate research/README.md via `python research/tools/registry.py --write`. Tests belong in `tests/research/`; no sys.path edits. Old helpers need tested causal adapters before reuse. Pin all consumed CSV/parquet/model/output files by SHA256.
 >
-> No live config, live features, recommendation policy or model changes in research PRs. A winner needs a separate promotion PR under docs/model-governance.md after untouched-holdout evidence. Record blockers, attempts, negative results and discarded comparisons. End with what changed / what is left.
+> No live config, live features, recommendation policy or model changes in research PRs. A winner needs a separate promotion PR under docs/model-governance.md after passing the v207 quarantine rule (D2). Do not change the monthly e-mail's content or format (D4). Start every study README with a plain-language summary for the owner (A5). Record blockers, attempts, negative results and discarded comparisons. End with what changed / what is left.
 
 ## Validation and inference contract — mandatory in every prompt
 
@@ -50,7 +103,7 @@ Those rows were already touched by old research and the mandatory verification r
 3. **Honest metrics:** OOS R²=`1−Σ(y−prediction)²/Σ(y−prevailing_mean)²`, where prevailing mean uses only labels whose outcomes arrived by that origin, including matured training history. Never include the current target. Report equal-weight benchmark IC and panel IC with date-clustered/HAC inference or moving-date-block bootstrap of length≥h, keeping all benchmarks for each date together. Compare hit rate with the constant majority-direction rule learned from mature past labels; report base rate and directional-skill test. Prequential calibration uses only matured past predictions/outcomes: Brier/log loss/ECE and nominal80% interval coverage. Mark warmup unevaluated; never fill it from future residuals. Report sample support, availability windows, costs and uncertainty; no row-pooled p-value as independent confirmation.
 4. **Multiplicity:** freeze candidate register/ordered grids before fitting. One preregistered primary improvement test per candidate; Holm adjustment across38 campaign candidates at familywise.05, date blocks, seed20260926,2,000 bootstrap replicates. Report raw/adjusted p-values and all attempts. Pending/unused slots are assigned p=1 for conservative interim Holm reporting; v207 completes the campaign adjustment. A new feature subset, threshold, lag or recipe consumes a candidate. Secondary metrics are safeguards, not another route around a failed primary test. Keep different endpoints separate; adjust registered primary p-values together rather than pooling labels.
 5. **Control/success:** v200 evaluates current production classes/features/settings under this stricter research protocol; it does not change live gaps. Isolate protocol changes from data repairs. Later candidates share v200 support, targets, folds and naive forecast. For primary6M regression: development ΔR²≥+.010 absolute vs v200, adjusted paired date-block p<.05, equal-weight IC loss≤.01, no directional/calibration deterioration. An active-policy proposal also needs hit-rate skill vs past-learned base rate with adjusted p<.05, ECE≤.10 and80% coverage.75–.85. Otherwise retain research/shadow status. Classifier/x/policy endpoints have additional thresholds below, not substitutes for regression skill.
-6. **Provenance/holdout:** `provenance.json` records full input DB/git hashes, code commit/dirty status, baseline-lock hash, as-of/max-available dates, extraction SQL, target definitions/ends, splits/dividends/FRED/EDGAR provenance, runtime/dependency lock, seed, folds/purge/embargo, blueprint/inner-grid budgets, attempts, metric definitions, output hashes and quarantine/access-ledger hashes. No unversioned feature cache. v200–v206 never compute holdout metrics; v207 opens the retrospective quarantine once after freezing finalists. Only genuinely unused evidence supports promotion.
+6. **Provenance/holdout:** `provenance.json` records full input DB/git hashes, code commit/dirty status, baseline-lock hash, as-of/max-available dates, extraction SQL, target definitions/ends, splits/dividends/FRED/EDGAR provenance, runtime/dependency lock, seed, folds/purge/embargo, blueprint/inner-grid budgets, attempts, metric definitions, output hashes and quarantine/access-ledger hashes. No unversioned feature cache. v200–v206 never compute holdout metrics; v207 opens the retrospective quarantine once after freezing finalists. Promotion follows the v207 quarantine rule (D2).
 
 ## v200 — Clean data, targets and honest baseline: one new-session prompt
 
@@ -70,12 +123,14 @@ Those rows were already touched by old research and the mandatory verification r
 2. After repair preflight passes, create the minimal installed research_lib provenance/temporal/metric package with independent red/green tests. Do not wrap old cv=None, CPCV, origin-only holdout filtering, future-residual warmup or full-frame pruning.
 3. Hash development/quarantine partitions before fitting. Score fixed production Ridge+shallow-GBT features/settings on development folds. Cite the existing13V provisional table only; its full-history September replay includes quarantined origins and must not run again before v207. A reproduction belongs in the registered v207 batch, not v200.
 4. Lock non-searched matched-endpoint controls too: current same-label PathB classifier/probability stream; past12M cash dividend amount; past-only mean annual excess-dividend/current-BVPS ratio; past-only prevailing BVPS growth; past-only mean absolute6M PGR DRIP return. Include exact target/unit definitions and support for v204/v205 in baseline_lock.json. Save all development control forecasts, per-date/benchmark residuals, honest naive forecasts, support and warmup flags. Research gap12/24 is stricter than live6M gap8 /12M gap15: isolate the protocol effect in a bridge table, without tuning. Freeze dependencies and forbid silent later upgrades.
+5. (A1) Production-equivalence check. With production settings (6M gap 8, 12M gap 15), reproduce `generate_signals` and `compute_aggregate_health` on the same inputs and as-of date to 1e-9 (aggregate R², equal-weight and pooled IC, hit rate, PT p), at an as-of date inside the development period. Report it in the bridge table.
+6. (A2) R² fixtures in `tests/research/`: an oracle forecaster on overlapping 6M targets scores R² > 0 with the honest prevailing-mean comparator, and pooling two benchmarks does not inflate R². Show that `src/research/v37_utils.compute_metrics` fails both (red) and the new `research_lib` metric passes (green).
 
 > **Outputs/provenance:** `research/studies/v200_clean_baseline/run.py`, `README.md`, `provenance.json`, `outputs/` containing candidate/fold/availability ledgers, predictions, metrics, comparison and closeout. Record full input/code hashes, baseline lock, runtime/dependencies, grids, targets and holdout access. Register in `research/registry.yaml`, regenerate research/README.md. Shared new code in `src/pgr_vds/research_lib/`; math tests in `tests/research/`. No unhashed cache inputs.
 >
 > **Preregistered threshold/disposition:** Acceptance requires all data/availability/temporal fixtures passing, matching hashes, sufficient chronological support, complete reporting and forecasts reproducible within1e-10 on a second read-only run. No promotion in v200. Freeze its metrics as comparator; do not require positive R² to publish a baseline.
 >
-> Run required red/green math tests, full suite and DB-hash check; report inherited failures and negative results. Open one research-only PR. End with what changed / what is left. Promotion requires a separate governance PR and genuinely untouched holdout evidence.
+> Run required red/green math tests, full suite and DB-hash check; report inherited failures and negative results. Open one research-only PR. End with what changed / what is left. Promotion requires a separate governance PR after the v207 quarantine rule (D2).
 
 ## v201 — Price/technical and macro availability: one new-session prompt
 
@@ -97,9 +152,9 @@ Those rows were already touched by old research and the mandatory verification r
 
 > **Outputs/provenance:** `research/studies/v201_price_macro/run.py`, `README.md`, `provenance.json`, `outputs/` containing candidate/fold/availability ledgers, predictions, metrics, comparison and closeout. Record full input/code hashes, baseline lock, runtime/dependencies, grids, targets and holdout access. Register in `research/registry.yaml`, regenerate research/README.md. Shared new code in `src/pgr_vds/research_lib/`; math tests in `tests/research/`. No unhashed cache inputs.
 >
-> **Preregistered threshold/disposition:** ΔR²≥.010 vs v200, adjusted paired p<.05, IC loss≤.01 and no directional/calibration deterioration, per contract. One winner may advance as a shadow candidate; unused holdout remains necessary for promotion.
+> **Preregistered threshold/disposition:** ΔR²≥.010 vs v200, adjusted paired p<.05, IC loss≤.01 and no directional/calibration deterioration, per contract. One winner may advance to v207 as a finalist (D2).
 >
-> Run required red/green math tests, full suite and DB-hash check; report inherited failures and negative results. Open one research-only PR. End with what changed / what is left. Promotion requires a separate governance PR and genuinely untouched holdout evidence.
+> Run required red/green math tests, full suite and DB-hash check; report inherited failures and negative results. Open one research-only PR. End with what changed / what is left. Promotion requires a separate governance PR after the v207 quarantine rule (D2).
 
 ## v202 — Insurance fundamentals, Gainshare and valuation: one new-session prompt
 
@@ -118,12 +173,14 @@ Those rows were already touched by old research and the mandatory verification r
 1. Freeze eight addition/replacement blocks: trailingCR/change; calendarPIF growth excluding property-definition drift; Gainshare proxy from trailingCR/PIF; investment-income growth/percent book yield; latest-share-basis BVPS growth; trailingROE with correctQ4; split-consistent P/B-versus-P/E spread; calendarNPW/rate-adequacy gap. No scanning every historical feature.
 2. Align observations to actual filing/release dates. Missing dates use an explicitly conservative fallback and sensitivity table, not optimized lags. v142's old lag winner is not a fact. A later amendment cannot enter an earlier fold; flag source-vintage limitations.
 3. Test units, leap-Feb keys, negativeNI, missing old months, common-equity identities and split continuity. Prune inside inner training only. Rebuild pb_vs_pe inference using date blocks and matched support. A v201 secondary comparator is reconstructed by selecting from its preregistered catalog inside each inner training history; the globally selected development winner is exploratory only, not honest evidence.
+4. (A3) Before any block uses `npw_growth_yoy`, test the 2024 fiscal-month hypothesis from the NPE/NPW first-month-of-quarter pattern, 2016–2026 (2024 standard deviation 0.198 against 0.076 in 2016–2023). If it is confirmed, use trailing-12-month or quarterly NPW growth in the affected blocks, and record the finding.
+5. (A4) Per-era `pb_vs_pe` re-analysis (2004–2014; 2015 to the development end) with date-block inference: at most 20 pre-registered descriptive tests under their own Holm correction, outside the 38-candidate budget. It informs the valuation blocks but cannot promote anything on its own.
 
 > **Outputs/provenance:** `research/studies/v202_insurance_valuation/run.py`, `README.md`, `provenance.json`, `outputs/` containing candidate/fold/availability ledgers, predictions, metrics, comparison and closeout. Record full input/code hashes, baseline lock, runtime/dependencies, grids, targets and holdout access. Register in `research/registry.yaml`, regenerate research/README.md. Shared new code in `src/pgr_vds/research_lib/`; math tests in `tests/research/`. No unhashed cache inputs.
 >
 > **Preregistered threshold/disposition:** Same ΔR²≥.010, adjusted p<.05 and safeguards vs v200; report relative to frozen v201 too. Plausibility, repeated annual samples or in-sample fit cannot justify promotion.
 >
-> Run required red/green math tests, full suite and DB-hash check; report inherited failures and negative results. Open one research-only PR. End with what changed / what is left. Promotion requires a separate governance PR and genuinely untouched holdout evidence.
+> Run required red/green math tests, full suite and DB-hash check; report inherited failures and negative results. Open one research-only PR. End with what changed / what is left. Promotion requires a separate governance PR after the v207 quarantine rule (D2).
 
 ## v203 — Regularisation, shallow ensembles and benchmark consensus: one new-session prompt
 
@@ -147,7 +204,7 @@ Those rows were already touched by old research and the mandatory verification r
 >
 > **Preregistered threshold/disposition:** ΔR²≥.010, adjusted p<.05 and all regression safeguards. Choose the simplest qualifying complete blueprint. At mostone forecast candidate advances; synthesis cannot assemble untested winner combinations.
 >
-> Run required red/green math tests, full suite and DB-hash check; report inherited failures and negative results. Open one research-only PR. End with what changed / what is left. Promotion requires a separate governance PR and genuinely untouched holdout evidence.
+> Run required red/green math tests, full suite and DB-hash check; report inherited failures and negative results. Open one research-only PR. End with what changed / what is left. Promotion requires a separate governance PR after the v207 quarantine rule (D2).
 
 ## v204 — Classification and prequential calibration: one new-session prompt
 
@@ -171,7 +228,7 @@ Those rows were already touched by old research and the mandatory verification r
 >
 > **Preregistered threshold/disposition:** Brier loss at least5% lower than v200 same-label classifier control, adjusted paired p<.05; balanced accuracy +.02, ECE≤.10 and no worse log loss; directional skill beats past-learned base rule. At mostone shadow lane advances; no immediate regression-policy override.
 >
-> Run required red/green math tests, full suite and DB-hash check; report inherited failures and negative results. Open one research-only PR. End with what changed / what is left. Promotion requires a separate governance PR and genuinely untouched holdout evidence.
+> Run required red/green math tests, full suite and DB-hash check; report inherited failures and negative results. Open one research-only PR. End with what changed / what is left. Promotion requires a separate governance PR after the v207 quarantine rule (D2).
 
 ## v205 — Dividend/BVPS x-series lanes: one new-session prompt
 
@@ -196,7 +253,7 @@ Those rows were already touched by old research and the mandatory verification r
 >
 > **Preregistered threshold/disposition:** Each lane: MAE≥10% lower than its v200 matched-label control, adjusted block p<.05, ΔR²≥.01, no directional/calibration deterioration and sufficient independent events. Nominate at most one winner across the two lanes to keep v207 total≤6; decide using development evidence before holdout.
 >
-> Run required red/green math tests, full suite and DB-hash check; report inherited failures and negative results. Open one research-only PR. End with what changed / what is left. Promotion requires a separate governance PR and genuinely untouched holdout evidence.
+> Run required red/green math tests, full suite and DB-hash check; report inherited failures and negative results. Open one research-only PR. End with what changed / what is left. Promotion requires a separate governance PR after the v207 quarantine rule (D2).
 
 ## v206 — Decision policy and tax mapping: one new-session prompt
 
@@ -220,7 +277,7 @@ Those rows were already touched by old research and the mandatory verification r
 >
 > **Preregistered threshold/disposition:** Primary mean after-tax uplift≥0.25 percentage points/decision vs always50%, adjusted block p<.05, lower95% paired improvement bound>0. No worse95th-percentile loss, no unsupported bullish selling>50%, and all source skill/calibration safeguards. Otherwise keep default; correct tax fixtures alone do not justify promotion.
 >
-> Run required red/green math tests, full suite and DB-hash check; report inherited failures and negative results. Open one research-only PR. End with what changed / what is left. Promotion requires a separate governance PR and genuinely untouched holdout evidence.
+> Run required red/green math tests, full suite and DB-hash check; report inherited failures and negative results. Open one research-only PR. End with what changed / what is left. Promotion requires a separate governance PR after the v207 quarantine rule (D2).
 
 ## v207 — Frozen comparison and promotion recommendation: one new-session prompt
 
@@ -238,14 +295,14 @@ Those rows were already touched by old research and the mandatory verification r
 
 1. Audit lock/input hashes, candidate count≤38, nested choices/gaps, date-clustered inference, quarantine ledger and abandoned attempts. Disqualify affected candidates if preflight/chronology fails. Freeze outputs/finalists_manifest.json and nominate champion(s) from development evidence before unsealing. Use matched controls for annual/classification endpoints, not incomparable metrics.
 2. Open all retrospective quarantines once in one registered batch for finalists/controls. Report every outcome. Keep horizon-sized date blocks, prevailing-mean R², IC, hit/base skill, prequential calibration, coverage and matched utility. A repeated execution may reproduce identical files only; it cannot change candidates after label access. Log accesses.
-3. Apply unchanged area thresholds and adjusted tests. Failures remain research-only. Passing historically contaminated rows permits at mostshadow/prospective status. Write outputs/promotion_recommendation.md with uncertainty, contamination, source limitations, candidates rejected and the owner decision.
-4. Preregister24 untouched forward origins and frozen predictions, or state that virgin evidence is unavailable. A future separately authorized evaluation PR applies the frozen protocol once after maturation. Only passing unused evidence can support the separate governance promotion PR. No live config changes here.
+3. *(Amended 2026-09-27, D2.)* Check each finalist's development evidence against its step's unchanged threshold, then apply the D2 quarantine rule to the batch. Failures remain research-only. A finalist that passes both may be recommended for promotion. One that passes the development threshold only is "consistent, not confirmed" and stays shadow. Write outputs/promotion_recommendation.md with uncertainty, the quarantine's prior exposure (v75, v129, v132, both step-13V replays), source limitations, candidates rejected and the owner decision.
+4. *(Superseded 2026-09-27, D2: no forward-origin wait.)* Pre-register D2's post-promotion review instead. The v200 incumbent is logged next to any promoted model. After 12 more matured 6M outcomes, the same rule decides whether the promoted model stays or is reverted through a governance PR. No live config changes here.
 
 > **Outputs/provenance:** `research/studies/v207_synthesis/run.py`, `README.md`, `provenance.json`, `outputs/` containing candidate/fold/availability ledgers, predictions, metrics, comparison and closeout. Record full input/code hashes, baseline lock, runtime/dependencies, grids, targets and holdout access. Register in `research/registry.yaml`, regenerate research/README.md. Shared new code in `src/pgr_vds/research_lib/`; math tests in `tests/research/`. No unhashed cache inputs.
 >
-> **Preregistered threshold/disposition:** No promotion on retrospective data alone. Later unused24-month evaluation must meet the same preregistered R²/MAE/Brier/utility threshold and uncertainty/safeguards vs v200, with winners chosen before holdout. If none qualifies, recommend no promotion. Low effective sample size/wide intervals are legitimate negative results.
+> **Preregistered threshold/disposition (amended 2026-09-27, D2):** Recommend promotion only for a finalist that met its development threshold and passes the D2 quarantine rule, with winners chosen before the quarantine is opened. If none qualifies, recommend no promotion. Low effective sample size/wide intervals are legitimate negative results.
 >
-> Run required red/green math tests, full suite and DB-hash check; report inherited failures and negative results. Open one research-only PR. End with what changed / what is left. Promotion requires a separate governance PR and genuinely untouched holdout evidence.
+> Run required red/green math tests, full suite and DB-hash check; report inherited failures and negative results. Open one research-only PR. End with what changed / what is left. Promotion requires a separate governance PR after the v207 quarantine rule (D2).
 
 ## Historical inventory and prioritisation
 
@@ -315,7 +372,7 @@ All conclusions below are historical, not certified after September repairs. `pr
 
 The registry's contract is one entry per research/studies folder, not one per release. It expressly excludes research/legacy/v9-v28. Thus absent numeric IDs are not automatically missing experiments or registry integrity failures. There are 71 absent IDs in v9-v165: 10-36, 61-69, 74, 76-86, 97-109, 123, 124, 126, 139, 151-153, 159-161.
 
-- v10: no dedicated study/closeout found in the searched history/files. Do not invent a conclusion or interpret v9.1 as integer v91.
+- v10/v10.1 *(corrected 2026-09-27, A6)*: operational hardening, not a model study. [`docs/history/results/V10_1_RESULTS_SUMMARY.md`](../history/results/V10_1_RESULTS_SUMMARY.md) records post-v9 baseline reconciliation, workflow hardening, schema discipline, CI and documentation, with the recommendation "Promote with caveats". It explicitly did not address model accuracy. Do not rerun it, and do not interpret v9.1 as integer v91.
 - v11-v24 and v27-v28: legacy result folders; captured above. v13/v22 are integration records, v25/v26 repair/packaging and v29 presentation in closeouts/results.
 - v30: docs/history/plans/codex-v30-plan.md is operational hardening/retry/logging/freshness, not a single quantitative study.
 - v31: conformal coverage/drift/performance-log integration; old health inference affected by F13/F31, now should be reconstructed as causal diagnostics rather than rerunning an operational version.
@@ -477,7 +534,7 @@ Every absent ID below is classified from evidence found; unresolved or proposed 
 
 | ID | Classification | Evidence and disposition |
 |---|---|---|
-| v10 | Unresolved numbering/evidence gap | No dedicated folder or named study record found in scoped file/commit-subject search; no conclusion asserted. |
+| v10 | Non-study process/hardening *(corrected 2026-09-27, A6)* | `docs/history/results/V10_1_RESULTS_SUMMARY.md`: v10.1 workflow, schema, CI and documentation hardening; "Promote with caveats"; no model claim. Do not rerun. |
 | v11 | Legacy empirical study | research/legacy/v11 plus history closeout/results; assessed in legacy table above; registry deliberately excludes legacy folders. |
 | v12 | Legacy empirical study | research/legacy/v12 plus history closeout/results; assessed in legacy table above; registry deliberately excludes legacy folders. |
 | v13 | Non-study integration/documentation | V13_RESULTS_SUMMARY: simpler recommendation-layer promotion v13.1; integration, assessed above. |
@@ -551,7 +608,7 @@ Every absent ID below is classified from evidence found; unresolved or proposed 
 
 ## Explicit exclusions and stop rules
 
-- Do not rerun packaging/report/plan/dashboard/workflow/refactor releases as experiments (v13/v22/v25/v26/v29–v36; v66–v69/v74/v76–v86; v97/v102–v109/v123/v124/v126/v139/v151–v153/v160/v161). Verify inherited contracts or baseline artifacts. v159 integration is unsupported here; v204 tests Firth without assuming adoption.
+- Do not rerun packaging/report/plan/dashboard/workflow/refactor releases as experiments (v10/v13/v22/v25/v26/v29–v36; v66–v69/v74/v76–v86; v97/v102–v109/v123/v124/v126/v139/v151–v153/v160/v161). Verify inherited contracts or baseline artifacts. v159 integration is unsupported here; v204 tests Firth without assuming adoption.
 - Do not repeat every v39–v59 alpha/PCA/HMM/panel/GP/neural/architecture search. LOO evidence is invalid; small samples favor regularised linear models/shallow trees. v203 uses eight blueprints and small grids. A complex model needs a new hypothesis before more research.
 - Do not repeat all v87–v96/v110–v150 thresholds/calibration recipes. Reused84-row probabilities and changed criteria are not replications. v204 tests six bounded alternatives on matched endpoints with fixed bands.
 - Do not repeat BL01 synthetic IC/tau grids as empirical portfolio proof, full-history fracdiff tuning, hard regime classifiers or near-one-class annual dividend occurrence tournaments. They lack adequate independent outcomes or repaired-data questions; v205 tests amounts/BVPS directly.

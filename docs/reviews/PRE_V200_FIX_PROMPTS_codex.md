@@ -1,5 +1,7 @@
 # Pre-v200 Remediation Prompts and Implementation Plan
 
+> **Status (2026-09-27): adopted, with amendments.** The owner's decisions and the execution plan in the next section take precedence over any conflicting text below. The original text was committed unchanged in PR #136; amended places are marked. Background: [the comparison of the two step-13V runs](2026-09-26_step13v_comparison.md).
+
 > **For implementing agents:** use `superpowers:executing-plans` to execute one session at a time with its verification checkpoints. If the user chooses delegation, use `superpowers:subagent-driven-development`, with at most two subagents. The current task writes this prompt document; it does not execute the fixes.
 
 **Goal:** remove the verified safety, data and production-validation blockers before establishing the v200 research baseline.
@@ -10,9 +12,75 @@
 
 Prepared 2026-09-26 from [the independent verification](VERIFICATION_2026-09-26.md) and [the v200 research plan](../research/RERUN_PLAN_v200_codex.md). Read the relevant original sections in [the repository review](REPO_REVIEW_2026-09-25.md) before changing code. Location references below use the restructured repository; confirm them on latest master rather than copying the review's old line numbers.
 
+## Owner decisions and execution plan (2026-09-27)
+
+These decisions and this plan amend the prompts below. Where the original text conflicts with them, they win. The research-plan decisions are in [the canonical research plan](../research/RERUN_PLAN_v200_codex.md#owner-decisions-and-amendments-2026-09-27): D1 makes it canonical, with six additions, and D2 drops the 24-month wait.
+
+- **D3: run all fix sessions now.**
+  - R1–R5 all run before v200, in parallel where their files do not overlap.
+  - The dividend data is repaired through the existing refresh workflow (step 0) and checked offline in the new R2-lite session.
+  - The full R2 prompt below is the fallback.
+- **D4: keep the monthly e-mail as it is.** No session changes its content or format, except the gate and CPCV lines that R3's new contract requires. Content and format will be revisited in a later session.
+
+### Step 0: dividend refresh (owner, no session)
+
+- **How:** in GitHub, open Actions → "Weekly Data Accumulation" → Run workflow, and set `dividend_refresh` to `true`.
+- **When:** Monday 28 September (any time after 00:00 UTC), or any other day with no scheduled Alpha Vantage use.
+  - One run can make up to 23 calls: the daily limit of 25 minus a reserve of 2. That covers all 20 stale tickers.
+  - On 27 September the Sunday peer fetch had already used 8 calls, so a run that day would have covered only 15.
+  - The Friday price run and the Sunday peer run also use calls.
+- **Check:** the run's "Check price, split and dividend integrity" step must pass.
+  - If it reports stale tickers, dispatch the run again the next day.
+  - If a second run still leaves required tickers stale, use the full R2 prompt.
+- **Backstop:** the Wednesday 30 September cron runs the same refresh anyway.
+
+### Sessions, builders and order
+
+| Session | Builder | Reviewer | Start | Merge after | CHANGELOG | Main files |
+|---|---|---|---|---|---|---|
+| R1, offline safety (with additions) | Codex, on Windows | Claude | now | anytime | v186 | `tests/repo_guard.py`, repo tests, `.github/workflows/ci.yml`, `.github/workflows/peer_bootstrap.yml`, `scripts/initial_fetch.py`, a chart test |
+| R2-lite, dividend check | Claude | Codex | after step 0 has committed | step 0 | v187 | one `docs/reviews/` record; no code |
+| R3, validation, gates, baseline | Claude | Codex | now (code); replay after R2-lite | R2-lite | v188 | `src/pgr_vds/decision/*`, `src/models/wfo_engine.py`, `src/reporting/decision_rendering.py`, `src/reporting/run_manifest.py`, governance docs |
+| R4, TA maturity, Firth metadata | Codex | Claude | now | R3 | v189 | `src/pgr_vds/decision/artifacts.py` (shared with R3), `src/reporting/classification_artifacts.py`, `src/models/classification_monitoring.py`, backlog and registry docs |
+| R5, vest windows, rebalancer | Codex | Claude | now | anytime | v190 | `src/backtest/backtest_engine.py`, `src/portfolio/rebalancer.py`, tax tests |
+
+**Why this split:**
+- R1 needs Windows to reproduce and fix its three failures. Codex sessions run on the owner's Windows machine; Claude sessions run on Linux in the cloud.
+- R3 is the largest production change. Claude builds it and Codex reviews it, so the model that wrote the R3 specification checks the implementation against it.
+- R4 and R5 go to the Codex builder after R1. They are smaller, and apart from one shared file in R4 they are independent of R3.
+- Every PR is reviewed by the other model before it merges, using the prompt below.
+
+**Rules for running in parallel:**
+- At most two subagents inside a session, as before.
+- Sessions that touch the same file do not merge in parallel. R4 merges after R3, then merges `master` and resolves the overlap in `artifacts.py`.
+- Data and baseline changes stay attributable. Only the step-0 refresh changes the DB. R3's replay and new baseline run on the refreshed DB, after R2-lite merges.
+- **CHANGELOG:** each session uses its pre-assigned version and inserts its section in version order. On a conflict, keep both sections.
+- **Branches:** `codex/R<n>-<slug>` for Codex sessions; Claude sessions use the branch the session names.
+- v200 starts after all five PRs have merged and the required dividends are fresh.
+
+### Cross-model review prompt
+
+Paste this into the reviewing model's session, with N replaced by the PR number:
+
+> Review PR #N in `jhester599/pgr-vesting-decision-support` against its session prompt: the session the PR names (one of R1–R5 or R2-lite) in `docs/reviews/PRE_V200_FIX_PROMPTS_codex.md`, including the 2026-09-27 amendments.
+>
+> Work read-only:
+> - use scratch clones and DB copies outside the repository;
+> - make no fetcher runs, provider calls or e-mail;
+> - do not push to the PR branch.
+>
+> Check the following, and report each with evidence:
+> 1. Every checklist item and the exit gate are met.
+> 2. Each claimed red/green counterfactual reproduces in a scratch clone: the named test fails with the fix reverted and passes with it restored.
+> 3. The full suite (`python -m pytest -o addopts="--tb=short" -q`) passes. Quote pytest's summary line and exit code, and note your platform.
+> 4. The committed DB's sha256 is unchanged by the tests.
+> 5. The PR introduces no forbidden method (K-fold, CPCV, leave-one-out, shuffling, full-sample scaling), no provider call and no change outside the session's scope, and it uses the pre-assigned CHANGELOG version.
+>
+> Post one review. List blocking findings first, each with file:line, what fails and how to reproduce it; mark optional suggestions as optional. Approve only if nothing blocks.
+
 ## Recommendation: multiple sessions, with related small fixes combined
 
-**Use three required sessions before v200, in order R1 → R2 → R3.** Merge each PR before starting the next. Do not combine all three into one session: they have different inputs, failure modes and verification. R2 can need a continuation if the provider quota or access prevents completion; resume its existing work rather than committing partial data as a clean baseline.
+*(Superseded 2026-09-27 by D3 and the execution plan above: all five sessions run now, in parallel lanes, before v200.)* **Use three required sessions before v200, in order R1 → R2 → R3.** Merge each PR before starting the next. Do not combine all three into one session: they have different inputs, failure modes and verification. R2 can need a continuation if the provider quota or access prevents completion; resume its existing work rather than committing partial data as a clean baseline.
 
 | Session | Combine in this session | Separate boundary / reason | When |
 |---|---|---|---|
@@ -42,7 +110,7 @@ R1 must reproduce and repair those Windows failures. Later sessions must preserv
 
 Before v200, require:
 
-- [ ] R1–R3 merged and the full suite passing, with pytest's own summary and exit code recorded.
+- [ ] R1–R5 and R2-lite merged *(amended 2026-09-27, D3)*, and the full suite passing, with pytest's own summary and exit code recorded.
 - [ ] Required dividend histories pass freshness checks; both 6M and 12M returns rebuilt from raw prices, splits and fractional DRIP.
 - [ ] No production CPCV/K-fold execution, including fallback paths and active tests invoking it as validation.
 - [ ] Required WFO results, finite live inputs and required feed freshness fail closed when absent.
@@ -61,7 +129,7 @@ Copy this shared preamble, then the entire selected R1–R5 section, including i
 >
 > Every fix needs a named regression test, with its original defect observed red and its repair observed green. Expected mathematical values must be hand-computed or independently derived, not copied from the function under test. Save commands, pytest summaries and exit codes in `docs/reviews/<session>_closeout.md`. Run `python -m pytest -o addopts="--tb=short" -q`; report its exact summary and exit. Compare tracked DB SHA256 before/after tests. Use cached/synthetic inputs for tests, with no live API calls or email. Perform a counterfactual reversal in a scratch clone where the fix is to a fixture, workflow or safety guard, so the revised test cannot pass against the original defect.
 >
-> Update CHANGELOG using the next available fix version on master, not v200. Update active docs when production behavior changes. Do not edit the historical verification report to erase its observations. Open one PR, attach it to the chat, and end with what changed / what is left. Passing tests do not establish an investment-performance improvement.
+> Update CHANGELOG with the version pre-assigned in the execution plan: R1 v186, R2-lite v187, R3 v188, R4 v189, R5 v190 *(amended 2026-09-27)*. Never use v200 or later. Do not change the monthly e-mail's content or format beyond what the session's prompt requires (D4). Update active docs when production behavior changes. Do not edit the historical verification report to erase its observations. Open one PR, attach it to the chat, and end with what changed / what is left. Passing tests do not establish an investment-performance improvement.
 >
 > After v200 seals its quarantine, remediation tests/replays use synthetic fixtures or the pinned development partition only. Do not reopen recent holdout outcomes to debug a shadow/policy change. Pre-v200 replays of already-inspected historical decisions are smoke verification, must be recorded as such, and cannot become new promotion evidence.
 
@@ -100,6 +168,12 @@ Copy this shared preamble, then the entire selected R1–R5 section, including i
 - [ ] In a scratch clone, restore the old URI normalization, old slash-only parser/assertion and old SQL separately. Show their revised tests fail, restore the fixes, and show green.
 - [ ] Add `docs/reviews/R1_safety_closeout.md` with results, DB hashes, platform/runtime and remaining collection/C-level guard limits. Update CHANGELOG; open one PR. Do not call the guard a complete filesystem sandbox.
 
+**Additions (approved 2026-09-27):**
+
+- [ ] Add a test for step 4b's market-cap consistency guard (verification N6). It should feed `verify_monthly_frame` in `src/reporting/capital_return_data.py` a frame whose market cap is not price × shares, and expect the `ValueError`. Show that it fails with the `raise` removed and passes with it restored.
+- [ ] `scripts/initial_fetch.py` ignores `--force` (`del force`), although `initial_fetch_prices.yml` passes it. Either honour the flag or remove it from the script and the workflow input, and add a test either way.
+- [ ] Add a top-level `permissions: contents: read` block to `.github/workflows/ci.yml`. CI only reads, so it needs no more.
+
 **Focused commands:**
 
 ```powershell
@@ -112,6 +186,8 @@ Get-FileHash -Algorithm SHA256 -LiteralPath data/pgr_financials.db
 **Exit gate:** the three observed failures are repaired without skips; DB/sidecars unchanged; schema query executes; exact pytest summary/exit and old-code counterfactual failures recorded. R2 starts only after merge.
 
 ## R2 — Cached dividend repair and both-horizon rebuild
+
+*(Amended 2026-09-27, D3: the dividend data is repaired by the step-0 refresh and checked by R2-lite. Use this full R2 prompt only if the refresh fails or leaves required tickers stale.)*
 
 **Session recommendation:** one separate data-repair session/PR. Keep provider access, reproducible repair, target rebuild and continuity checks together. Provider quota may require a continuation; no partially refreshed DB may be called a clean v200 input.
 
@@ -156,13 +232,37 @@ The closeout must include the actual repair invocation with resolved copy paths 
 
 **Exit gate:** successful offline replay, required dividend freshness, independently correct targets, complete row/provenance diffs and full-suite exit 0. R3 starts only after merge. No claim that a repaired target automatically improves investment skill.
 
+## R2-lite — verify the dividend refresh (offline)
+
+*(Added 2026-09-27, D3.)* **Session recommendation:** one small docs-only session, run after the step-0 refresh has committed to `master`. No provider calls, fetchers or e-mail.
+
+**Paste this prompt after the shared preamble:**
+
+> Execute R2-lite only. The owner ran the existing dividend refresh (`scripts/weekly_fetch.py --dividend-refresh`, through the "Weekly Data Accumulation" workflow) instead of the full R2 repair script. Verify and record its effect. Relevant evidence: verification V03 / N1; original F03/F05/F08/F22.
+>
+> 1. **Commits and hashes.** Identify the refresh commit or commits on `master` ("chore: weekly data update …" after 2026-09-27), the DB before (the first parent) and the DB after. Record both sha256 values and the result of the run's integrity step.
+> 2. **Diffs.** On immutable copies outside the repository, diff:
+>    - `daily_dividends`: new rows per ticker, ex-date range, amounts, and any removed or changed rows;
+>    - `monthly_relative_returns` for both horizons: rows changed per benchmark, the largest absolute change in `benchmark_return` and `relative_return`, and sign flips of `relative_return`.
+> 3. **Freshness.** Run `db_client.check_dividend_freshness`. No required ticker (PGR and the 8 primary benchmarks) may be STALE. List any other STALE ticker, and treat GLD as a known non-payer.
+> 4. **Hand check.** Recompute by hand at least three stored targets whose windows contain a newly added dividend, from raw prices, canonical splits and fractional DRIP, as in Appendix C of `VERIFICATION_2026-09-26.md`. They must match the stored values to 1e-12.
+> 5. **Nothing else moved.** Confirm there are no unexplained price jumps and no duplicate FRED months, the EDGAR identities are unchanged, and every changed target row is explained by a new dividend.
+> 6. **Record.** Write `docs/reviews/<date>_R2_dividend_refresh_check.md` with the commits, hashes, diff tables and checks. Add CHANGELOG v187 ("dividend backfill verified; no code change"). Open one docs-only PR.
+
+**Exit gate:**
+- the required dividends are fresh;
+- the hand-computed targets match;
+- every changed row is explained.
+
+If a required ticker is still stale, stop and report it: the owner re-dispatches the refresh, or the full R2 prompt is used.
+
 ## R3 — Pure chronological validation, readiness gates and current baseline
 
 **Session recommendation:** one production-behavior PR after R2. Combine CPCV retirement, its gate replacement and the associated report/manifest/governance changes; splitting them would leave callers and policy inconsistent. Do not combine this with provider-backed repair.
 
 **Paste this prompt after the shared preamble:**
 
-> Execute R3 only after R1/R2 merge. Relevant original findings F02/F04/F07/F13/F20/F21/F26, verification V08 and the observed warning-only live-input path. No provider calls, fetchers or email. Use the repaired DB copy and keep model features, thresholds, parameters, targets and consensus weighting fixed.
+> Execute R3. *(Amended 2026-09-27, D3: the code work may start in parallel with R1, R4 and R5. The replay and the new baseline must use the refreshed DB, after R2-lite merges.)* Relevant original findings F02/F04/F07/F13/F20/F21/F26, verification V08 and the observed warning-only live-input path. No provider calls, fetchers or email. Use the repaired DB copy and keep model features, thresholds, parameters, targets and consensus weighting fixed.
 >
 > Remove combinatorial K-fold validation from active execution. A retired CPCV diagnostic must not prevent a valid WFO result from being used, and removing it must not make missing WFO results or stale/missing required data pass. Use the existing honest chronological metrics. Add an explicit readiness contract rather than fabricating a constant PASS to replace CPCV.
 
@@ -211,6 +311,11 @@ health = {
 - [ ] Update current governance with full DB/code/runtime pins, honest R² comparator, IC inference, hit versus base rate, calibration/coverage limitations and current recommendation. Preserve the historical +5.08% step-5 table as dated history; replace claims about current CPCV requirements. No promise of a better return.
 - [ ] Add `docs/reviews/R3_validation_closeout.md`, CHANGELOG and one PR. Include a before/after decision table and the actual red/green outputs. R3's output is the code/data starting point for v200, which creates its own research-protocol lock.
 
+**Additions (approved 2026-09-27):**
+
+- [ ] **D4.** Keep the monthly e-mail's content and format. Change only the lines the new gate contract requires: the removed CPCV text and the named reasons for a deferral.
+- [ ] **Decision log (verification N8).** In a separate commit, update the `artifacts/monthly_decisions/decision_log.md` header template to the current rules, and annotate the 6 historical `[DRY RUN]` rows as dry runs. Do not delete history.
+
 **Focused commands:**
 
 ```powershell
@@ -226,7 +331,7 @@ Run the replay command only with cwd set to the external scratch checkout and an
 
 ## R4 — TA shadow maturation and honest candidate metadata
 
-**Session recommendation:** separate shadow-only session before v204. It may run after v200 starts if it obeys the sealed-development restriction. Do not implement or promote Firth in this maintenance session.
+**Session recommendation:** *(amended 2026-09-27, D3: run now, before v200. It shares `src/pgr_vds/decision/artifacts.py` with R3, so merge R3 first and then merge `master` into R4.)* Separate shadow-only session before v204. It may run after v200 starts if it obeys the sealed-development restriction. Do not implement or promote Firth in this maintenance session.
 
 **Paste this prompt after the shared preamble:**
 
@@ -265,7 +370,7 @@ python scripts/checks/check_doc_links.py
 
 ## R5 — Verify vest-event windows and align tax-boundary warnings
 
-**Session recommendation:** separate event/tax session before v206. The event offset remains a suspicion, so quantify it before altering behavior. Combine with the remaining rebalancer anniversary warning because both concern the same vest-date decision contract.
+**Session recommendation:** *(amended 2026-09-27, D3: run now, before v200. Its files do not overlap the other sessions'.)* Separate event/tax session before v206. The event offset remains a suspicion, so quantify it before altering behavior. Combine with the remaining rebalancer anniversary warning because both concern the same vest-date decision contract.
 
 **Paste this prompt after the shared preamble:**
 
@@ -308,4 +413,4 @@ python scripts/checks/check_doc_links.py
 - v206 tests economic policy usefulness; correct tax/event arithmetic alone does not demonstrate utility.
 - v207 opens the retrospective quarantine once. Prior inspection cannot be undone. Promotion still needs the separately reserved unused evidence and a governance PR.
 
-After R1–R3 merge, proceed to v200 rather than waiting for every legacy cleanup. Keep R4/R5 as named dependencies of v204/v206. At most one implementation session/PR is active in this sequence, with at most two subagents inside a session; this keeps database and baseline changes attributable.
+*(Amended 2026-09-27, D3.)* After R1–R5 and R2-lite merge, proceed to v200 rather than waiting for every legacy cleanup. Sessions may run in parallel on disjoint files, as the execution plan at the top sets out. The data change (step 0 and R2-lite) and the baseline change (R3) stay sequenced, so each remains attributable. At most two subagents inside a session.

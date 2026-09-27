@@ -5,6 +5,7 @@
 - **Written:** 2026-09-26, at `master` `db64f8b`, after both PRs had merged.
 - **Author and bias.** This comparison was written by the same agent session that produced the Claude run. To limit bias, I settled each disagreement by re-checking the code or data rather than by preference. The evidence is listed in each row, and the commands are in the appendix.
 - **Safety.** Every check here ran offline, in scratch clones on DB copies. No fetcher, e-mail or provider call was made, and nothing in production changed.
+- **Decisions (2026-09-27).** The owner's decisions are recorded in [section 11](#11-decision-record). They are carried into the canonical plan and the fix prompts.
 
 Terms used below:
 
@@ -259,6 +260,8 @@ The Codex run's attached prompts propose five sessions. R1–R3 come before v200
 
 ## 10. Recommended sequence
 
+*(Superseded 2026-09-27. The owner chose to run all five fix sessions now. The current sequence, with the split between models, is the execution plan at the top of [`PRE_V200_FIX_PROMPTS_codex.md`](PRE_V200_FIX_PROMPTS_codex.md). The list below is the original recommendation.)*
+
 1. **Now:** R1. It is offline and independent of the data.
 2. **Wednesday 30 September:** the scheduled dividend refresh (or dispatch it). Check that the run's "Check price, split and dividend integrity" step passes.
 3. **R2-lite:** record and verify the refresh offline.
@@ -271,15 +274,15 @@ Production fixes take CHANGELOG versions v186 and up. Research keeps v200 and up
 
 ## 11. Decision record
 
-Fill this in when the owner decides, in a separate commit, with the date.
+The owner decided on 2026-09-27. The decisions are carried as D1–D4 into [the canonical research plan](../research/RERUN_PLAN_v200_codex.md#owner-decisions-and-amendments-2026-09-27) and into [the fix prompts](PRE_V200_FIX_PROMPTS_codex.md), which also hold the execution plan.
 
 | Decision | Options | Recommendation | Owner's choice |
 |---|---|---|---|
-| Canonical research plan | Codex (v200–v207) + six additions / Claude (v200–v210) | Codex + additions | *pending* |
-| Final-test rule | forward 24 months before promotion / already-seen last 24 months | forward data | *pending* |
-| Dividend repair route | scheduled refresh + R2-lite / full R2 | refresh + R2-lite | *pending* |
-| Fix sessions before v200 | R1 → refresh + R2-lite → R3 | approve | *pending* |
-| E-mail: Path B, "80 %" ranges, "chance PGR outperforms" | keep / label as experimental / hide | label as experimental or hide until re-validated | *pending* |
+| Canonical research plan | Codex (v200–v207) + six additions / Claude (v200–v210) | Codex + additions | **Codex plan with the six additions (D1).** The Claude plan is reference only; its version numbers are void. |
+| Final-test rule | forward 24 months before promotion / already-seen last 24 months | forward data | **No 24-month wait (D2).** The already-seen last 24 months, opened once at v207, are the final test. The v207 rule and a review after promotion are in the plan. |
+| Dividend repair route | scheduled refresh + R2-lite / full R2 | refresh + R2-lite | **Refresh now + R2-lite**, with the full R2 as the fallback (part of D3). |
+| Fix sessions before v200 | R1 → refresh + R2-lite → R3 | approve | **Run all of R1–R5 now, before v200 (D3)**, in parallel where their files allow. |
+| E-mail: Path B, "80 %" ranges, "chance PGR outperforms" | keep / label as experimental / hide | label as experimental or hide until re-validated | **Keep as is (D4)**; content and format to be revisited in a later session. |
 
 ## Appendix: how the checks in this document were run
 
