@@ -64,7 +64,7 @@ These decisions and this plan amend the prompts below. Where the original text c
 
 Paste this into the reviewing model's session, with N replaced by the PR number:
 
-> Review PR #N in `jhester599/pgr-vesting-decision-support` against its session prompt: the session the PR names (one of R1–R5 or R2-lite) in `docs/reviews/PRE_V200_FIX_PROMPTS_codex.md`, including the 2026-09-27 amendments.
+> Review PR #N in `jhester599/pgr-vesting-decision-support` against its session prompt: the session the PR names (one of R1–R5, R2-lite or R3b) in `docs/reviews/PRE_V200_FIX_PROMPTS_codex.md`, including the 2026-09-27 amendments.
 >
 > Work read-only:
 > - use scratch clones and DB copies outside the repository;
@@ -272,7 +272,7 @@ If a required ticker is still stale, stop and report it: the owner re-dispatches
 >    - Record both sha256 values and the runtime (Python and package versions).
 > 2. **Replay.**
 >    - Use an external scratch checkout at the pinned commit, with its own copy of the pinned DB.
->    - Run it with `PYTHONPATH=<clone>:<clone>/src`, because the editable install points at the source checkout, and with `OMP_NUM_THREADS=OPENBLAS_NUM_THREADS=MKL_NUM_THREADS=1`, because BLAS thread oversubscription made R3's replay hang.
+>    - Run it with `PYTHONPATH=<clone>:<clone>/src`, because the editable install points at the source checkout, and with `OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1` (three separate assignments), because BLAS thread oversubscription made R3's replay hang.
 >    - Command: `python scripts/replay_monthly_decisions.py --committed-dates --out <CSV outside the repository>`, with cwd set to the clone.
 >    - Record the actual paths. Record the sha256 before and after of the clone's DB, the source DB and the source ledgers. Confirm `git status` is clean in the clone afterwards.
 >    - Run the latest as-of date a second time and confirm the `monthly_summary.json` metrics are identical.

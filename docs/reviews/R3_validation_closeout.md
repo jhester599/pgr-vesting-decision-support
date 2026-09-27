@@ -187,7 +187,7 @@ own copy of the tracked DB (`f453ab98…`):
 - new code: `…/scratchpad/r3_new`, at `1b94bf0`.
 
 The session scratch directory is outside the source repository. Run
-single-threaded (`OMP_NUM_THREADS=OPENBLAS_NUM_THREADS=MKL_NUM_THREADS=1`;
+single-threaded (`OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1`;
 with several processes, BLAS thread oversubscription made the TA shadow
 step take over 25 minutes a date). Per clone, with cwd = that clone:
 
