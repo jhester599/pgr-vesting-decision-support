@@ -1,6 +1,138 @@
 from __future__ import annotations
 
+import ast
+import inspect
+import sqlite3
+import subprocess
+import sys
+from contextlib import closing
 from pathlib import Path
+from typing import Any
+
+import yaml
+
+from scripts import initial_fetch
+
+
+def _workflow(name: str) -> dict[str, Any]:
+    return yaml.safe_load(_read(f".github/workflows/{name}.yml"))
+
+
+def test_peer_bootstrap_summary_uses_existing_date_column(
+    tmp_path: Path,
+) -> None:
+    """Execute the actual summary heredoc against the production schema."""
+    db_path = tmp_path / "data" / "pgr_financials.db"
+    db_path.parent.mkdir()
+    schema = Path("src/database/schema.sql").read_text(encoding="utf-8")
+    with closing(sqlite3.connect(db_path)) as conn:
+        conn.executescript(schema)
+        for ticker in ("ALL", "TRV", "CB", "HIG"):
+            conn.executemany(
+                "INSERT INTO daily_prices (ticker, date, close) "
+                "VALUES (?, ?, ?)",
+                [(ticker, "2020-02-07", 12.0), (ticker, "2020-01-03", 10.0)],
+            )
+            conn.execute(
+                "INSERT INTO daily_dividends (ticker, ex_date, amount) "
+                "VALUES (?, '2020-01-10', 0.5)",
+                (ticker,),
+            )
+        conn.commit()
+    steps = _workflow("peer_bootstrap")["jobs"]["peer-bootstrap"]["steps"]
+    run = next(
+        step["run"] for step in steps if step["name"] == "Bootstrap summary"
+    )
+    lines = run.splitlines()
+    assert lines[0] == "python - <<'EOF'" and lines[-1] == "EOF"
+    code = "\n".join(lines[1:-1])
+    proc = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    for ticker in ("ALL", "TRV", "CB", "HIG"):
+        assert (
+            f"{ticker}: 2 prices (from 2020-01-03), 1 dividends" in proc.stdout
+        )
+
+
+def test_ci_has_read_only_permissions() -> None:
+    assert _workflow("ci")["permissions"] == {"contents": "read"}
+
+
+def test_ci_entrypoint_smokes_use_an_external_checkout_copy() -> None:
+    steps = _workflow("ci")["jobs"]["test"]["steps"]
+    prep = next(
+        s
+        for s in steps
+        if s["name"] == "Prepare external checkout for offline smokes"
+    )
+    smoke = next(
+        s
+        for s in steps
+        if s["name"] == "Smoke test production entrypoints (network mocked)"
+    )
+    run = prep["run"]
+    copy = run.index('cp -a . "$SMOKE_DIR/repo"')
+    install = run.index("python -m pip install --no-deps")
+    assert 'SMOKE_DIR="$(mktemp -d)"' in run
+    assert '-e "$SMOKE_DIR/repo"' in run
+    assert 'echo "PGR_SMOKE_REPO=$SMOKE_DIR/repo" >> "$GITHUB_ENV"' in run
+    assert copy < install
+    assert steps.index(prep) < steps.index(smoke)
+    assert smoke["working-directory"] == "${{ env.PGR_SMOKE_REPO }}"
+    assert smoke["env"]["PYTHONPATH"] == "${{ env.PGR_SMOKE_REPO }}"
+
+
+def test_ci_runs_windows_safety_regressions_on_python312() -> None:
+    jobs = _workflow("ci")["jobs"]
+    job = jobs["windows-regressions"]
+    assert job["runs-on"] == "windows-latest"
+    setup = next(
+        s for s in job["steps"] if s.get("uses") == "actions/setup-python@v6"
+    )
+    assert setup["with"]["python-version"] == "3.12"
+    commands = "\n".join(s.get("run", "") for s in job["steps"])
+    for filename in (
+        "tests/integration/repo/test_test_suite_hygiene.py",
+        "tests/integration/repo/test_restructure_phase1.py",
+        "tests/integration/repo/test_workflow_contracts.py",
+        "tests/unit/scripts/test_capital_return_charts.py",
+    ):
+        assert filename in commands
+    assert "pytest" in commands and "skip" not in commands
+    for name in ("test", "research", "artifacts"):
+        assert jobs[name]["runs-on"] == "ubuntu-latest"
+
+
+def test_initial_fetch_removes_ignored_force_option(tmp_path: Path) -> None:
+    """Reject the old no-op flag before any fetch code can run."""
+    assert "force" not in inspect.signature(initial_fetch.main).parameters
+    proc = subprocess.run(
+        [sys.executable, str(Path(initial_fetch.__file__)), "--force"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 2
+    assert "unrecognized arguments: --force" in proc.stderr
+    tree = ast.parse(_read("scripts/initial_fetch.py"))
+    assert not any(
+        isinstance(node, ast.Attribute) and node.attr == "force"
+        for node in ast.walk(tree)
+    )
+    for name in ("initial_fetch_prices", "initial_fetch_dividends"):
+        text = _read(f".github/workflows/{name}.yml")
+        assert "--force" not in text and "inputs.force" not in text, name
+        # PyYAML's YAML 1.1 resolver treats GitHub's 'on' key as True.
+        workflow = _workflow(name)
+        triggers = workflow.get("on", workflow.get(True))
+        assert "force" not in triggers["workflow_dispatch"]["inputs"], name
 
 
 def _read(path: str) -> str:

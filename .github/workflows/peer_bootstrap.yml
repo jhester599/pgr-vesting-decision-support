@@ -116,7 +116,7 @@ jobs:
                   "SELECT COUNT(*) FROM daily_dividends WHERE ticker=?", (ticker,)
               ).fetchone()[0]
               first = conn.execute(
-                  "SELECT MIN(price_date) FROM daily_prices WHERE ticker=?", (ticker,)
+                  "SELECT MIN(date) FROM daily_prices WHERE ticker=?", (ticker,)
               ).fetchone()[0]
               print(f"  {ticker}: {n_p:,} prices (from {first}), {n_d} dividends")
           print("  Ongoing updates: peer_data_fetch.yml (Sundays 04:00 UTC)")

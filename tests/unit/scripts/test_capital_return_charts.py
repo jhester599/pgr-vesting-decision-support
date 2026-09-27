@@ -16,6 +16,7 @@ import pytest
 from scripts import capital_return_charts as charts
 from scripts import repurchase_timeseries_charts as timeseries_charts
 from src.database import db_client
+from src.reporting.capital_return_data import verify_monthly_frame
 from tests.capital_return_fixture import build_fixture_db, edgar_rows, last_weekly_close
 
 _WORKFLOW = (
@@ -63,6 +64,23 @@ def test_monthly_market_cap_is_price_times_shares(frames) -> None:
         monthly["price"] * monthly["shares_outstanding"],
         check_names=False,
     )
+
+
+def test_verify_monthly_frame_rejects_inconsistent_market_cap() -> None:
+    """$10 times 600M shares is $6,000M, independently of frame building."""
+    frame = pd.DataFrame(
+        {
+            "price_date": [pd.Timestamp("2020-01-31")],
+            "price": [10.0],
+            "shares_outstanding": [600.0],
+            "shares_outstanding_latest_basis": [600.0],
+            "market_cap": [6001.0],
+            "edgar_month": [False],
+        },
+        index=pd.DatetimeIndex(["2020-01-31"]),
+    )
+    with pytest.raises(ValueError, match="market cap != price × shares"):
+        verify_monthly_frame(frame, pd.DataFrame())
 
 
 def test_no_nan_in_split_month(frames) -> None:

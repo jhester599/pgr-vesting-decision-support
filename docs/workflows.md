@@ -131,6 +131,15 @@ They are dispatch-only (review 2026-09-25, F26): their old yearly crons would
 have fired again every March. They are retained for historical recovery and
 manual bootstrap scenarios, not the steady-state operating loop.
 
+As of v186, `initial_fetch.py` and both initial-fetch workflows no longer
+accept the ignored `--force` option. Loader freshness and daily request
+budgets still determine which tickers are fetched. The peer-bootstrap
+summary reads the first price date from `daily_prices.date`.
+
+CI grants only `contents: read`. Its Linux unit/integration, research and
+stored-artifact jobs remain separate; a Python 3.12 Windows job also runs
+the repository safety, workflow and capital-return guard regressions.
+
 The two initial-fetch workflows append their run log to
 `artifacts/ops/fetch_status.md` (was `data/fetch_status.md`) and commit it
 with the DB. `post_initial_bootstrap.yml` commits the DB and
