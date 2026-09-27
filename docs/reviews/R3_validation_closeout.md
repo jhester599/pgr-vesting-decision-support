@@ -276,6 +276,7 @@ After the move it equals the source tree. The tracked DB's sha256 was
 | focused R3 command (`test_production_validation_contract.py`, `test_validation_gating.py`, `test_monthly_pipeline_e2e.py`, `test_dry_run_read_only.py`) | `88 passed, 1 warning in 131.76s (0:02:11)` | 0 |
 | `python -m pytest -o addopts="--tb=short" -q` (final, at `1ee54e2`) | `2525 passed, 1 skipped, 104 warnings in 571.10s (0:09:31)` | 0 |
 | `python -m pytest -o addopts="--tb=short" -q` after merging `master` `dc12291` (R1, v186) | `2547 passed, 1 skipped, 127 warnings in 580.94s (0:09:40)` | 0 |
+| same, after merging `master` `981a60b` (R4, v189; `artifacts.py` auto-merged, CHANGELOG ordered v189 → v188) | `2563 passed, 1 skipped, 99 warnings in 588.93s (0:09:48)` | 0 |
 | `python scripts/checks/check_doc_links.py` | `[doc-links] 348 files, 0 broken links` | 0 |
 | `python scripts/checks/check_sys_path_edits.py` | `[sys-path] 0 new edits, 0 stale allowlist entries` | 0 |
 | `ruff check .` | `All checks passed!` | 0 |
@@ -296,7 +297,8 @@ Import smoke: `python -c "import pgr_vds.decision.pipeline"` succeeds, and
    scope).
 3. A back-dated readiness check cannot prove what an original decision had,
    because the DB has no per-row fetch timestamps. It is labelled, not solved.
-4. R4 shares `src/pgr_vds/decision/artifacts.py`; it merges after this PR and
-   resolves the overlap.
+4. R4 (v189) merged before this PR; its TA-maturity change to
+   `src/pgr_vds/decision/artifacts.py` merged cleanly with R3's decision-log
+   and manifest changes.
 
 Passing tests do not establish an investment-performance improvement.
