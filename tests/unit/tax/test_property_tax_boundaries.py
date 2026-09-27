@@ -23,7 +23,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 import pytest
-from hypothesis import assume, given, settings
+from hypothesis import assume, example, given, settings
 from hypothesis import strategies as st
 
 from src.tax.capital_gains import TaxLot, optimize_sale
@@ -164,6 +164,19 @@ def test_optimize_sale_conserves_shares_and_dollars(
 
 
 @given(_lots(), st.floats(min_value=20.0, max_value=300.0))
+@example(
+    # The counterexample from the R1, R4 and R5 closeouts: a loss of 4e-15
+    # per share rounds to a total-dollar gain of exactly 0.0.
+    lots=[
+        TaxLot(
+            vest_date=date(2024, 1, 2),
+            rsu_type="time",
+            shares=409.8506658027625,
+            cost_basis_per_share=20.000000000000004,
+        )
+    ],
+    price=20.0,
+)
 @settings(max_examples=300, deadline=None)
 def test_optimize_sale_orders_losses_then_ltcg_then_stcg(lots: list[TaxLot], price: float) -> None:
     total = sum(lot.shares for lot in lots)

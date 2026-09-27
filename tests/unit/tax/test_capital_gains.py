@@ -188,6 +188,39 @@ class TestLotSelectionPriority:
         assert holding_types[1] == "LTCG", "LTCG lot must be sold second."
         assert holding_types[2] == "STCG", "STCG lot must be sold last."
 
+    def test_rounded_away_loss_is_still_labelled_loss(self):
+        """
+        Basis 20.000000000000004 at price 20 is a loss of 4e-15 per share,
+        but 409.8506658027625 x 20 and x basis round to the same total, so
+        the dollar gain is exactly 0.0. The lot is sorted as a loss and must
+        be labelled LOSS (tax 0), ahead of the LTCG lot.
+        """
+        shares = 409.8506658027625
+        basis = 20.000000000000004
+        assert shares * 20.0 - shares * basis == 0.0  # the rounding premise
+        tiny_loss = TaxLot(
+            vest_date=SELL_DATE - timedelta(days=730),
+            rsu_type="time",
+            shares=shares,
+            cost_basis_per_share=basis,
+        )
+        gain_lot = TaxLot(
+            vest_date=SELL_DATE - timedelta(days=730),
+            rsu_type="time",
+            shares=10.0,
+            cost_basis_per_share=10.0,
+        )
+        result = optimize_sale(
+            [gain_lot, tiny_loss], shares_to_sell=shares + 10.0,
+            sale_price=20.0, sell_date=SELL_DATE,
+            ltcg_rate=0.20, stcg_rate=0.37,
+        )
+        assert [r.holding_type for r in result.lots] == ["LOSS", "LTCG"]
+        assert result.lots[0].taxable_gain == 0.0
+        assert result.lots[0].tax_liability == 0.0
+        # LTCG lot: 10 x (20 - 10) = 100 gain; 100 x 0.20 = 20 tax.
+        assert math.isclose(result.total_tax, 20.0, rel_tol=1e-12)
+
 
 # ---------------------------------------------------------------------------
 # Input validation

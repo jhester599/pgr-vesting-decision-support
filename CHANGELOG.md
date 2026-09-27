@@ -5,6 +5,19 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v192 (2026-09-27) — Tax-loss label: classify sold lots per share
+
+- `optimize_sale` sorted lots by gain per share but labelled each sold lot by
+  the sign of its rounded total-dollar gain. A per-share loss that rounds to a
+  dollar gain of exactly 0.0 was sorted as a loss and labelled LTCG/STCG.
+  Label it per share, like the sort; its tax stays 0.0. No other lot changes.
+- Pin the counterexample recorded by R1, R4 and R5 (price 20, basis
+  `20.000000000000004`, 409.8506658027625 shares) as a Hypothesis
+  `@example`, so it runs on every OS, and add a hand-computed unit test.
+- Clears the one full-suite failure blocking the pre-v200 gate. No tax
+  rates, lot data, DB or model changes. See the
+  [closeout](docs/reviews/2026-09-27_tax_loss_label_closeout.md).
+
 ## v190 (2026-09-27) — R5: event holding windows and calendar tax warnings
 
 - Confirm the vest-event/monthly-target offset with independent raw-price
