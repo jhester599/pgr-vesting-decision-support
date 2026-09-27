@@ -5,6 +5,19 @@
 Day 1 = 2026-03-25 (initial price fetch). Day 2 = 2026-03-26 (dividend fetch +
 afternoon bootstrap). Development starts Day 3.
 
+## v189 (2026-09-27) — R4: TA maturity and truthful shadow provenance
+
+- Re-evaluate TA shadow outcomes at each row's business-month-end horizon
+  against the run's as-of date, requiring a complete finite realised basket.
+  Backdated runs clear unavailable outcomes; dry runs rewrite neither ledger.
+- Preserve first-issued TA forecasts and metadata on duplicate keys. Add a
+  deterministic external-copy repair command with a monitoring-only cell diff.
+- Identify follow-on forecasts and overlays as baseline-derived candidate
+  metadata, retaining `reporting_only`. Record Firth as research-only pending
+  v204 evidence; preserve historical plans and conclusions with dated notes.
+- No provider calls, backfills, live recommendation changes or model promotion.
+  See [R4 verification and remaining work](docs/reviews/R4_shadow_closeout.md).
+
 ## v188 (2026-09-27) — Pre-v200 remediation R3: chronological validation and readiness gates
 
 Session R3 of `docs/reviews/PRE_V200_FIX_PROMPTS_codex.md` (findings F02,

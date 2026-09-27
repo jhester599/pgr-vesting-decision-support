@@ -11,6 +11,7 @@ import pandas as pd
 
 from config.features import CONTEXTUAL_CLASSIFIER_BENCHMARKS
 from config.paths import MONTHLY_DECISIONS_DIR
+from src.processing.total_return import forward_window_end
 
 
 CLASSIFICATION_SHADOW_COLUMNS = [
@@ -252,11 +253,11 @@ def build_ta_shadow_variant_history_entries(
         mature_on_date = None
         is_horizon_mature = False
         if feature_anchor_date:
-            mature_on_ts = pd.Timestamp(feature_anchor_date) + pd.DateOffset(
-                months=forecast_horizon_months
+            mature_on_ts = forward_window_end(
+                pd.Timestamp(feature_anchor_date), forecast_horizon_months,
             )
             mature_on_date = mature_on_ts.date().isoformat()
-            is_horizon_mature = run_date >= mature_on_ts.date()
+            # Outcome availability is evaluated by monitoring, never wall clock.
 
         entries.append(
             TaShadowVariantHistoryEntry(
@@ -283,7 +284,11 @@ def append_ta_shadow_variant_history(
     base_dir: Path,
     entries: list[TaShadowVariantHistoryEntry],
 ) -> Path:
-    """Append or upsert TA rows keyed by as_of_date and variant."""
+    """Append first-issued TA rows keyed by as_of_date and variant.
+
+    Replays must not replace issued forecasts, candidate identity or metadata.
+    Maturity is refreshed separately using the evaluation as-of date.
+    """
     path = ta_shadow_variant_history_path(base_dir)
     if path.exists():
         history_df = pd.read_csv(path)
@@ -292,19 +297,30 @@ def append_ta_shadow_variant_history(
 
     row_df = pd.DataFrame([entry.to_row() for entry in entries])
     if not row_df.empty:
-        existing_keys = set(zip(row_df["as_of_date"], row_df["variant"], strict=True))
+        existing_keys = set(zip(
+            history_df["as_of_date"].astype(str),
+            history_df["variant"].astype(str), strict=True,
+        ))
         keep_mask = [
             (str(row["as_of_date"]), str(row["variant"])) not in existing_keys
-            for _, row in history_df.iterrows()
+            for _, row in row_df.iterrows()
         ]
-        history_df = history_df.loc[keep_mask]
+        row_df = row_df.loc[keep_mask].drop_duplicates(
+            ["as_of_date", "variant"], keep="first",
+        )
         if history_df.empty:
             history_df = row_df
         else:
             history_df = pd.concat([history_df, row_df], ignore_index=True)
 
-    history_df = _ensure_columns(history_df, TA_SHADOW_VARIANT_HISTORY_COLUMNS)
-    history_df = history_df.sort_values(["as_of_date", "variant"]).reset_index(drop=True)
+    columns = TA_SHADOW_VARIANT_HISTORY_COLUMNS + [
+        column for column in history_df
+        if column not in TA_SHADOW_VARIANT_HISTORY_COLUMNS
+    ]
+    history_df = _ensure_columns(history_df, columns)
+    history_df = history_df.sort_values(
+        ["as_of_date", "variant"],
+    ).reset_index(drop=True)
     path.parent.mkdir(parents=True, exist_ok=True)
     history_df.to_csv(path, index=False)
     return path

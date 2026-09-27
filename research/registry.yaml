@@ -511,11 +511,11 @@ studies:
   - id: v141
     slug: blend_eval
     date: "2026-04-16"
-    question: "Fixed Ridge-vs-GBT ensemble blend evaluation."
+    question: "Fixed Ridge-vs-GBT ensemble blend evaluation. Current use: baseline-derived candidate metadata only (2026-09-27 audit)."
     status: shadow
     promoted_to: "src/reporting/shadow_followon.py"
     closeout: docs/history/closeouts/V152_CLOSEOUT_AND_HANDOFF.md
-    notes: "Candidate ridge weight feeds the autoresearch_followon_v150 shadow lane."
+    notes: "2026-09-27 R4/V07 audit: ridge-weight candidate is metadata in autoresearch_followon_v150; probability, stance and detail predictions are baseline-derived. No separate candidate fit/application or performance is established. Historical study conclusions retained without rerun."
   - id: v142
     slug: edgar_lag_eval
     date: "2026-04-16"
@@ -527,19 +527,19 @@ studies:
   - id: v143
     slug: corr_prune_eval
     date: "2026-04-16"
-    question: "Correlation-pruned feature-set evaluation on the current frame."
+    question: "Correlation-pruned feature-set evaluation on the current frame. Current use: baseline-derived candidate metadata only (2026-09-27 audit)."
     status: shadow
     promoted_to: "src/reporting/shadow_followon.py"
     closeout: docs/history/closeouts/V152_CLOSEOUT_AND_HANDOFF.md
-    notes: "Candidate correlation-prune threshold feeds the autoresearch_followon_v150 shadow lane."
+    notes: "2026-09-27 R4/V07 audit: correlation-prune threshold is metadata in the reporting-only baseline-derived autoresearch_followon_v150 lane; no separate candidate fit/application or prediction provenance. Historical study conclusions retained without rerun."
   - id: v144
     slug: conformal_eval
     date: "2026-04-16"
-    question: "Conformal coverage backtest on the current pooled ensemble frame."
+    question: "Conformal coverage backtest on the current pooled ensemble frame. Current use: baseline-derived candidate metadata only (2026-09-27 audit)."
     status: shadow
     promoted_to: "src/reporting/shadow_followon.py"
     closeout: docs/history/closeouts/V152_CLOSEOUT_AND_HANDOFF.md
-    notes: "Candidate conformal settings feed the autoresearch_followon_v150 shadow lane."
+    notes: "2026-09-27 R4/V07 audit: conformal settings are metadata in the reporting-only baseline-derived autoresearch_followon_v150 lane; no separate candidate calibration/application or prediction provenance. Historical study conclusions retained without rerun."
   - id: v145
     slug: wfo_window_sweep
     date: "2026-04-16"
@@ -572,26 +572,27 @@ studies:
   - id: v149
     slug: kelly_eval
     date: "2026-04-16"
-    question: "Kelly fraction / cap replay proxy on the v138 BL posterior frame."
+    question: "Kelly fraction / cap replay proxy on the v138 BL posterior frame. Current use: baseline-derived candidate metadata only (2026-09-27 audit)."
     status: shadow
     promoted_to: "src/reporting/shadow_followon.py"
     closeout: docs/history/closeouts/V152_CLOSEOUT_AND_HANDOFF.md
-    notes: "Candidate Kelly fraction and cap feed the autoresearch_followon_v150 shadow lane."
+    notes: "2026-09-27 R4/V07 audit: Kelly fraction and cap are metadata in autoresearch_followon_v150; the reporting-only decision overlay is copied from the baseline. No distinct candidate policy application/performance provenance. Historical study conclusions retained without rerun."
   - id: v150
     slug: neutral_band_eval
     date: "2026-04-16"
-    question: "Neutral-band replay proxy on top of the v149 Kelly baseline."
+    question: "Neutral-band replay proxy on top of the v149 Kelly baseline. Current use: baseline-derived candidate metadata only (2026-09-27 audit)."
     status: shadow
     promoted_to: "src/reporting/shadow_followon.py"
     closeout: docs/history/closeouts/V150_CLOSEOUT_AND_V151_NEXT.md
-    notes: "Candidate neutral band feeds the autoresearch_followon_v150 shadow lane."
+    notes: "2026-09-27 R4/V07 audit: neutral band is metadata in autoresearch_followon_v150; its reporting-only decision overlay is copied from the baseline. No distinct candidate policy application/performance provenance. Historical study conclusions retained without rerun."
   - id: v154
     slug: firth_logistic_eval
     date: "2026-04-18"
-    question: "Firth logistic evaluation for short-history benchmarks (CLS-02)."
+    question: "Firth logistic evaluation for short-history benchmarks (CLS-02). Research-only pending v204 evidence (2026-09-27 audit)."
     status: closed
     promoted_to: null
     closeout: docs/history/closeouts/V158_CLOSEOUT_AND_HANDOFF.md
+    notes: "2026-09-27 R4/V07 audit of master dc12291b0717368c04d7c233bac88d4477f0307d: Firth exists in src/research/v154_utils.py only; no active model/config import, firth_shadow module, v159 closeout or distinct monthly Firth prediction artifact substantiates the historical v159 adoption claim. Research-only pending v204 matched-fit and prediction/code/data provenance. Historical plan and study findings preserved, not rerun."
   - id: v155
     slug: wti_momentum_eval
     date: "2026-04-18"
@@ -644,11 +645,11 @@ studies:
   - id: v165
     slug: ta_shadow_replacement_eval
     date: "2026-04-18"
-    question: "TA classification replacement shadow evaluation."
+    question: "TA classification replacement shadow evaluation. Monitoring maturity recomputed as-of on actual BME endpoint; complete basket outcomes required (2026-09-27 R4)."
     status: shadow
     promoted_to: "src/reporting/classification_artifacts.py"
     closeout: docs/history/closeouts/V165_CLOSEOUT_AND_HANDOFF.md
-    notes: "Reporting-only TA replacement variants (ta_shadow_variant_history.csv)."
+    notes: "Reporting-only TA replacement variants (ta_shadow_variant_history.csv). 2026-09-27 R4/F24: later runs recompute maturity by anchor/horizon and evaluation as-of, attaching only complete basket outcomes; preserve issuance-time forecasts/identity and stable keys. Dry runs do not write either ledger. v204 requires R4 merged or explicit exclusion of affected ledger. Historical study conclusion retained without rerun."
   - id: x1
     slug: feature_inventory
     date: "2026-04-22"

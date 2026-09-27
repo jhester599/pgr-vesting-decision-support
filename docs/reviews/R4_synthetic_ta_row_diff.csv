@@ -1,0 +1,4 @@
+as_of_date,variant,column,before,after
+2020-02-01,ta_synthetic,is_horizon_mature,False,True
+2020-02-01,ta_synthetic,actual_actionable_sell,,1.0
+2020-02-01,ta_synthetic,actual_basket_relative_return,,-0.06

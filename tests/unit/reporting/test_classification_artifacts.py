@@ -130,7 +130,7 @@ def test_ta_shadow_variant_history_filters_reporting_only_variants() -> None:
     assert entries[0].benchmark_count == 8
 
 
-def test_ta_shadow_variant_history_append_upserts_by_asof_and_variant(
+def test_ta_shadow_variant_history_preserves_issued_forecast_on_duplicate_key(
     tmp_path: Path,
 ) -> None:
     first_entries = build_ta_shadow_variant_history_entries(
@@ -180,8 +180,21 @@ def test_ta_shadow_variant_history_append_upserts_by_asof_and_variant(
     assert list(written.columns) == TA_SHADOW_VARIANT_HISTORY_COLUMNS
     assert len(written) == 2
     updated = written[written["variant"] == "ta_minimal_replacement"].iloc[0]
-    assert updated["run_date"] == "2026-04-19"
-    assert updated["probability_actionable_sell"] == 0.29
+    assert updated["run_date"] == "2026-04-18"
+    assert updated["probability_actionable_sell"] == 0.31
+
+
+def test_ta_entry_uses_bme_and_asof_not_wall_clock() -> None:
+    entries = build_ta_shadow_variant_history_entries(
+        as_of_date=date(2020, 7, 30), run_date=date(2021, 1, 1),
+        forecast_horizon_months=6,
+        classification_shadow_variants=[{
+            "variant": "ta_test", "reporting_only": True,
+            "feature_anchor_date": "2020-01-30",
+        }],
+    )
+    assert entries[0].mature_on_date == "2020-07-31"
+    assert entries[0].is_horizon_mature is False
 
 
 # ---------------------------------------------------------------------------
