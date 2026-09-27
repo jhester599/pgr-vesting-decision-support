@@ -19,7 +19,7 @@ afternoon bootstrap). Development starts Day 3.
 - Add Python 3.12 Windows safety CI and read-only CI permissions; retain
   separate Linux tests/research/artifacts and move offline entrypoint smokes
   onto an external checkout copy.
-- Remove the ignored initial-fetch `--force` option and workflow input.
+- Remove the ignored initial-fetch `--force` option and both workflow inputs.
   Add a hand-controlled inconsistent-market-cap guard test.
 
 Red/green evidence, DB hashes, exact test exits and remaining guard limits:

@@ -100,7 +100,9 @@ raise-removal counterfactual below.
   `2 prices (from 2020-01-03), 1 dividends` for each of the four peers.
   Repair only the SQL column from `price_date` to `date`.
 - Remove the ignored initial-fetch `force` Python parameter, CLI option,
-  dispatch input and flag plumbing. Test CLI rejection before any fetch
+  both prices/dividends dispatch inputs and their flag plumbing. The
+  dividends workflow also called this script with `--force`, so removing
+  only the prices input would leave a broken caller. Test CLI rejection before any fetch
   runs and inspect both script and workflow. Loader freshness/quota logic
   stays unchanged; active workflow docs describe the removed no-op option.
 - The N6 frame directly supplies $10 and 600 million same-basis shares,
@@ -193,6 +195,12 @@ gave **`2 failed in 0.53s`**, exit **1**, before the adjustment and
 The final exact full-suite rerun and branch CI outcomes are recorded below
 when those executions finish. PR [#138](https://github.com/jhester599/pgr-vesting-decision-support/pull/138)
 is a draft because the full-suite exit gate is not met. R2 has not started.
+
+The expanded force-contract test caught the remaining dividends caller:
+`python -m pytest -o addopts="--tb=short" -q tests/integration/repo/test_workflow_contracts.py::test_initial_fetch_removes_ignored_force_option`
+gave **`1 failed in 1.04s`**, exit **1**, before removing its input and
+`--force` plumbing. Its standalone original-workflow reversal and restored
+green result are recorded with the final verification below.
 
 Checks already run:
 

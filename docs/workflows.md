@@ -131,7 +131,7 @@ They are dispatch-only (review 2026-09-25, F26): their old yearly crons would
 have fired again every March. They are retained for historical recovery and
 manual bootstrap scenarios, not the steady-state operating loop.
 
-As of v186, `initial_fetch.py` and the initial-prices workflow no longer
+As of v186, `initial_fetch.py` and both initial-fetch workflows no longer
 accept the ignored `--force` option. Loader freshness and daily request
 budgets still determine which tickers are fetched. The peer-bootstrap
 summary reads the first price date from `daily_prices.date`.

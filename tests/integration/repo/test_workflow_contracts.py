@@ -126,12 +126,13 @@ def test_initial_fetch_removes_ignored_force_option(tmp_path: Path) -> None:
         isinstance(node, ast.Attribute) and node.attr == "force"
         for node in ast.walk(tree)
     )
-    text = _read(".github/workflows/initial_fetch_prices.yml")
-    assert "--force" not in text and "inputs.force" not in text
-    # PyYAML's YAML 1.1 resolver treats the unquoted GitHub 'on' key as True.
-    workflow = _workflow("initial_fetch_prices")
-    triggers = workflow.get("on", workflow.get(True))
-    assert "force" not in triggers["workflow_dispatch"]["inputs"]
+    for name in ("initial_fetch_prices", "initial_fetch_dividends"):
+        text = _read(f".github/workflows/{name}.yml")
+        assert "--force" not in text and "inputs.force" not in text, name
+        # PyYAML's YAML 1.1 resolver treats GitHub's 'on' key as True.
+        workflow = _workflow(name)
+        triggers = workflow.get("on", workflow.get(True))
+        assert "force" not in triggers["workflow_dispatch"]["inputs"], name
 
 
 def _read(path: str) -> str:
