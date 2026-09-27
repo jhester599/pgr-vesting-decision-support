@@ -55,7 +55,7 @@ model inputs and the monthly e-mail are unchanged.
 | Fixed | `tests/unit/tax tests/unit/portfolio` | `217 passed in 5.86s` | 0 |
 | Fixed, docs edited mid-run | full suite, `python -m pytest -q` | `1 failed, 2584 passed, 1 skipped, 146 warnings in 922.25s (0:15:22)` | 1 |
 | Fixed, files stable | `tests/integration/pipeline/test_dry_run_read_only.py` | `5 passed, 1 warning in 146.57s (0:02:26)` | 0 |
-| Fixed, committed tree | full suite, `python -m pytest -q` | FULLSUITE2 | FULLEXIT2 |
+| Fixed, committed tree | full suite, `python -m pytest -q` | `2585 passed, 1 skipped, 114 warnings in 916.68s (0:15:16)` | 0 |
 
 The first full run's one failure was
 `test_monthly_decision_dry_run_leaves_db_and_tracked_files_unchanged`. It
@@ -71,7 +71,7 @@ gave `[doc-links] 352 files, 0 broken links`, exit 0.
 
 `data/pgr_financials.db` SHA256 was
 `f453ab9817ffbc5d176bcca03ca7c64a86493db652a150012ac852d93811f51d` before
-and after the full suite.
+and after both full-suite runs; `git status` was clean after the second.
 
 ## Limits
 
