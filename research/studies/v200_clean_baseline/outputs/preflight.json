@@ -1,0 +1,492 @@
+{
+  "development_targets_checked": 3816,
+  "future_source_cutoff_invariance": true,
+  "historical_vintage_limitation": "Current-vintage FRED; calendar lags are conservative reconstructed release assumptions, not vintage proof.",
+  "independent_raw_split_drip_max_abs_error": 1.1102230246251565e-15,
+  "live_feature_origin": "2026-08-31",
+  "live_missing_features": [],
+  "monthly_rows": 265,
+  "quarterly_rows": 73,
+  "required_feed_readiness": {
+    "checks": [
+      {
+        "age_days": 1,
+        "column": "date",
+        "feed": "Prices PGR",
+        "latest_date": "2026-09-25",
+        "limit_label": "10 days",
+        "max_age_days": 10,
+        "status": "OK",
+        "table": "daily_prices",
+        "ticker": "PGR"
+      },
+      {
+        "age_days": 1,
+        "column": "date",
+        "feed": "Prices VOO",
+        "latest_date": "2026-09-25",
+        "limit_label": "10 days",
+        "max_age_days": 10,
+        "status": "OK",
+        "table": "daily_prices",
+        "ticker": "VOO"
+      },
+      {
+        "age_days": 1,
+        "column": "date",
+        "feed": "Prices VXUS",
+        "latest_date": "2026-09-25",
+        "limit_label": "10 days",
+        "max_age_days": 10,
+        "status": "OK",
+        "table": "daily_prices",
+        "ticker": "VXUS"
+      },
+      {
+        "age_days": 1,
+        "column": "date",
+        "feed": "Prices VWO",
+        "latest_date": "2026-09-25",
+        "limit_label": "10 days",
+        "max_age_days": 10,
+        "status": "OK",
+        "table": "daily_prices",
+        "ticker": "VWO"
+      },
+      {
+        "age_days": 1,
+        "column": "date",
+        "feed": "Prices VMBS",
+        "latest_date": "2026-09-25",
+        "limit_label": "10 days",
+        "max_age_days": 10,
+        "status": "OK",
+        "table": "daily_prices",
+        "ticker": "VMBS"
+      },
+      {
+        "age_days": 1,
+        "column": "date",
+        "feed": "Prices BND",
+        "latest_date": "2026-09-25",
+        "limit_label": "10 days",
+        "max_age_days": 10,
+        "status": "OK",
+        "table": "daily_prices",
+        "ticker": "BND"
+      },
+      {
+        "age_days": 1,
+        "column": "date",
+        "feed": "Prices GLD",
+        "latest_date": "2026-09-25",
+        "limit_label": "10 days",
+        "max_age_days": 10,
+        "status": "OK",
+        "table": "daily_prices",
+        "ticker": "GLD"
+      },
+      {
+        "age_days": 1,
+        "column": "date",
+        "feed": "Prices DBC",
+        "latest_date": "2026-09-25",
+        "limit_label": "10 days",
+        "max_age_days": 10,
+        "status": "OK",
+        "table": "daily_prices",
+        "ticker": "DBC"
+      },
+      {
+        "age_days": 1,
+        "column": "date",
+        "feed": "Prices VDE",
+        "latest_date": "2026-09-25",
+        "limit_label": "10 days",
+        "max_age_days": 10,
+        "status": "OK",
+        "table": "daily_prices",
+        "ticker": "VDE"
+      },
+      {
+        "age_days": null,
+        "age_label": "0 mo behind",
+        "column": "month_end",
+        "expected_month_end": "2026-07-31",
+        "features": [
+          "yield_slope"
+        ],
+        "feed": "FRED T10Y2Y",
+        "lag_months": 1,
+        "latest_date": "2026-09-30",
+        "latest_label": "2026-09",
+        "limit_label": "lag 1 mo; needs 2026-07",
+        "max_age_days": null,
+        "months_behind": 0,
+        "series_id": "T10Y2Y",
+        "status": "OK",
+        "table": "fred_macro_monthly"
+      },
+      {
+        "age_days": null,
+        "age_label": "0 mo behind",
+        "column": "month_end",
+        "expected_month_end": "2026-07-31",
+        "features": [
+          "real_yield_change_6m",
+          "real_rate_10y",
+          "yield_curvature"
+        ],
+        "feed": "FRED GS10",
+        "lag_months": 1,
+        "latest_date": "2026-08-31",
+        "latest_label": "2026-08",
+        "limit_label": "lag 1 mo; needs 2026-07",
+        "max_age_days": null,
+        "months_behind": 0,
+        "series_id": "GS10",
+        "status": "OK",
+        "table": "fred_macro_monthly"
+      },
+      {
+        "age_days": null,
+        "age_label": "0 mo behind",
+        "column": "month_end",
+        "expected_month_end": "2026-07-31",
+        "features": [
+          "real_yield_change_6m",
+          "real_rate_10y"
+        ],
+        "feed": "FRED T10YIE",
+        "lag_months": 1,
+        "latest_date": "2026-09-30",
+        "latest_label": "2026-09",
+        "limit_label": "lag 1 mo; needs 2026-07",
+        "max_age_days": null,
+        "months_behind": 0,
+        "series_id": "T10YIE",
+        "status": "OK",
+        "table": "fred_macro_monthly"
+      },
+      {
+        "age_days": null,
+        "age_label": "0 mo behind",
+        "column": "month_end",
+        "expected_month_end": "2026-07-31",
+        "features": [
+          "credit_spread_hy"
+        ],
+        "feed": "FRED BAMLH0A0HYM2",
+        "lag_months": 1,
+        "latest_date": "2026-09-30",
+        "latest_label": "2026-09",
+        "limit_label": "lag 1 mo; needs 2026-07",
+        "max_age_days": null,
+        "months_behind": 0,
+        "series_id": "BAMLH0A0HYM2",
+        "status": "OK",
+        "table": "fred_macro_monthly"
+      },
+      {
+        "age_days": null,
+        "age_label": "0 mo behind",
+        "column": "month_end",
+        "expected_month_end": "2026-06-30",
+        "features": [
+          "nfci"
+        ],
+        "feed": "FRED NFCI",
+        "lag_months": 2,
+        "latest_date": "2026-09-30",
+        "latest_label": "2026-09",
+        "limit_label": "lag 2 mo; needs 2026-06",
+        "max_age_days": null,
+        "months_behind": 0,
+        "series_id": "NFCI",
+        "status": "OK",
+        "table": "fred_macro_monthly"
+      },
+      {
+        "age_days": null,
+        "age_label": "0 mo behind",
+        "column": "month_end",
+        "expected_month_end": "2026-07-31",
+        "features": [
+          "vix"
+        ],
+        "feed": "FRED VIXCLS",
+        "lag_months": 1,
+        "latest_date": "2026-09-30",
+        "latest_label": "2026-09",
+        "limit_label": "lag 1 mo; needs 2026-07",
+        "max_age_days": null,
+        "months_behind": 0,
+        "series_id": "VIXCLS",
+        "status": "OK",
+        "table": "fred_macro_monthly"
+      },
+      {
+        "age_days": null,
+        "age_label": "0 mo behind",
+        "column": "month_end",
+        "expected_month_end": "2026-07-31",
+        "features": [
+          "yield_curvature"
+        ],
+        "feed": "FRED GS5",
+        "lag_months": 1,
+        "latest_date": "2026-08-31",
+        "latest_label": "2026-08",
+        "limit_label": "lag 1 mo; needs 2026-07",
+        "max_age_days": null,
+        "months_behind": 0,
+        "series_id": "GS5",
+        "status": "OK",
+        "table": "fred_macro_monthly"
+      },
+      {
+        "age_days": null,
+        "age_label": "0 mo behind",
+        "column": "month_end",
+        "expected_month_end": "2026-07-31",
+        "features": [
+          "yield_curvature"
+        ],
+        "feed": "FRED GS2",
+        "lag_months": 1,
+        "latest_date": "2026-08-31",
+        "latest_label": "2026-08",
+        "limit_label": "lag 1 mo; needs 2026-07",
+        "max_age_days": null,
+        "months_behind": 0,
+        "series_id": "GS2",
+        "status": "OK",
+        "table": "fred_macro_monthly"
+      },
+      {
+        "age_days": null,
+        "age_label": "0 mo behind",
+        "column": "month_end",
+        "expected_month_end": "2026-07-31",
+        "features": [
+          "rate_adequacy_gap_yoy"
+        ],
+        "feed": "FRED PCU5241265241261",
+        "lag_months": 1,
+        "latest_date": "2026-08-31",
+        "latest_label": "2026-08",
+        "limit_label": "lag 1 mo; needs 2026-07",
+        "max_age_days": null,
+        "months_behind": 0,
+        "series_id": "PCU5241265241261",
+        "status": "OK",
+        "table": "fred_macro_monthly"
+      },
+      {
+        "age_days": null,
+        "age_label": "0 mo behind",
+        "column": "month_end",
+        "expected_month_end": "2026-07-31",
+        "features": [
+          "rate_adequacy_gap_yoy"
+        ],
+        "feed": "FRED CUSR0000SETA02",
+        "lag_months": 1,
+        "latest_date": "2026-08-31",
+        "latest_label": "2026-08",
+        "limit_label": "lag 1 mo; needs 2026-07",
+        "max_age_days": null,
+        "months_behind": 0,
+        "series_id": "CUSR0000SETA02",
+        "status": "OK",
+        "table": "fred_macro_monthly"
+      },
+      {
+        "age_days": null,
+        "age_label": "0 mo behind",
+        "column": "month_end",
+        "expected_month_end": "2026-07-31",
+        "features": [
+          "rate_adequacy_gap_yoy"
+        ],
+        "feed": "FRED CUSR0000SAM2",
+        "lag_months": 1,
+        "latest_date": "2026-08-31",
+        "latest_label": "2026-08",
+        "limit_label": "lag 1 mo; needs 2026-07",
+        "max_age_days": null,
+        "months_behind": 0,
+        "series_id": "CUSR0000SAM2",
+        "status": "OK",
+        "table": "fred_macro_monthly"
+      },
+      {
+        "age_days": 26,
+        "column": "month_end",
+        "expected_month_end": "2026-08-31",
+        "feed": "PGR monthly EDGAR",
+        "latest_date": "2026-08-31",
+        "limit_label": "25-day filing grace",
+        "max_age_days": 35,
+        "status": "OK",
+        "table": "pgr_edgar_monthly"
+      },
+      {
+        "age_days": null,
+        "age_label": "interval 91 d",
+        "column": "ex_date",
+        "feed": "Dividends PGR",
+        "latest_date": "2026-07-02",
+        "latest_label": "2026-07-02",
+        "limit_label": "due by 2026-05-12",
+        "max_age_days": null,
+        "status": "OK",
+        "table": "daily_dividends",
+        "ticker": "PGR"
+      },
+      {
+        "age_days": null,
+        "age_label": "interval 91 d",
+        "column": "ex_date",
+        "feed": "Dividends VOO",
+        "latest_date": "2026-06-26",
+        "latest_label": "2026-06-26",
+        "limit_label": "due by 2026-05-12",
+        "max_age_days": null,
+        "status": "OK",
+        "table": "daily_dividends",
+        "ticker": "VOO"
+      },
+      {
+        "age_days": null,
+        "age_label": "interval 91 d",
+        "column": "ex_date",
+        "feed": "Dividends VXUS",
+        "latest_date": "2026-09-18",
+        "latest_label": "2026-09-18",
+        "limit_label": "due by 2026-05-12",
+        "max_age_days": null,
+        "status": "OK",
+        "table": "daily_dividends",
+        "ticker": "VXUS"
+      },
+      {
+        "age_days": null,
+        "age_label": "interval 91 d",
+        "column": "ex_date",
+        "feed": "Dividends VWO",
+        "latest_date": "2026-09-18",
+        "latest_label": "2026-09-18",
+        "limit_label": "due by 2026-05-12",
+        "max_age_days": null,
+        "status": "OK",
+        "table": "daily_dividends",
+        "ticker": "VWO"
+      },
+      {
+        "age_days": null,
+        "age_label": "interval 30 d",
+        "column": "ex_date",
+        "feed": "Dividends VMBS",
+        "latest_date": "2026-09-01",
+        "latest_label": "2026-09-01",
+        "limit_label": "due by 2026-08-11",
+        "max_age_days": null,
+        "status": "OK",
+        "table": "daily_dividends",
+        "ticker": "VMBS"
+      },
+      {
+        "age_days": null,
+        "age_label": "interval 30 d",
+        "column": "ex_date",
+        "feed": "Dividends BND",
+        "latest_date": "2026-09-01",
+        "latest_label": "2026-09-01",
+        "limit_label": "due by 2026-08-11",
+        "max_age_days": null,
+        "status": "OK",
+        "table": "daily_dividends",
+        "ticker": "BND"
+      },
+      {
+        "age_days": null,
+        "age_label": "n/a",
+        "column": "ex_date",
+        "feed": "Dividends GLD",
+        "latest_date": null,
+        "latest_label": "none (audited non-payer)",
+        "limit_label": "history required",
+        "max_age_days": null,
+        "status": "OK",
+        "table": "daily_dividends",
+        "ticker": "GLD"
+      },
+      {
+        "age_days": null,
+        "age_label": "interval 364 d",
+        "column": "ex_date",
+        "feed": "Dividends DBC",
+        "latest_date": "2025-12-22",
+        "latest_label": "2025-12-22",
+        "limit_label": "due by 2025-03-28",
+        "max_age_days": null,
+        "status": "OK",
+        "table": "daily_dividends",
+        "ticker": "DBC"
+      },
+      {
+        "age_days": null,
+        "age_label": "interval 92 d",
+        "column": "ex_date",
+        "feed": "Dividends VDE",
+        "latest_date": "2026-09-23",
+        "latest_label": "2026-09-23",
+        "limit_label": "due by 2026-05-11",
+        "max_age_days": null,
+        "status": "OK",
+        "table": "daily_dividends",
+        "ticker": "VDE"
+      }
+    ],
+    "overall_status": "OK",
+    "reference_date": "2026-09-26",
+    "stale_required_feeds": [],
+    "warnings": []
+  },
+  "schema_migrations": [
+    {
+      "applied_at": "2026-04-04T03:34:13.633548+00:00",
+      "migration_id": "001_initial"
+    },
+    {
+      "applied_at": "2026-04-10T22:45:43.612438+00:00",
+      "migration_id": "002_model_performance_log"
+    },
+    {
+      "applied_at": "2026-04-10T22:45:43.613517+00:00",
+      "migration_id": "003_model_retrain_log"
+    },
+    {
+      "applied_at": "2026-09-25T11:38:50.574755+00:00",
+      "migration_id": "004_investment_book_yield_percent"
+    },
+    {
+      "applied_at": "2026-09-25T14:43:21.367122+00:00",
+      "migration_id": "005_fred_one_row_per_month"
+    },
+    {
+      "applied_at": "2026-09-25T16:27:11.926943+00:00",
+      "migration_id": "006_pgr_edgar_monthly_raw"
+    },
+    {
+      "applied_at": "2026-09-25T16:27:11.930045+00:00",
+      "migration_id": "007_pgr_fundamentals_quarterly_rebuild"
+    },
+    {
+      "applied_at": "2026-09-26T01:23:39.730555+00:00",
+      "migration_id": "008_model_performance_log_metrics_version"
+    }
+  ],
+  "status": "passed"
+}

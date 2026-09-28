@@ -17,6 +17,14 @@
 #   notes        optional
 
 studies:
+  - id: v200
+    slug: clean_baseline
+    date: "2026-09-28"
+    question: "Does the fixed incumbent retain an edge on exactly pinned repaired data under honest nested chronological validation?"
+    status: closed
+    promoted_to: null
+    closeout: research/studies/v200_clean_baseline/README.md
+    notes: "Preregistered: zero alternatives, one incumbent and fixed matched endpoint controls; development only; no live promotion."
   - id: bl01
     slug: tau_sweep_eval
     date: "2026-04-18"

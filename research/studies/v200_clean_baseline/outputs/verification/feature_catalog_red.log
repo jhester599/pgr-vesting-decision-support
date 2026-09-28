@@ -1,0 +1,18 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+_______ test_research_feature_catalog_retains_sparse_and_empty_columns ________
+tests\research\test_v200_adapters.py:353: in test_research_feature_catalog_retains_sparse_and_empty_columns
+    assert fixed <= set(early.columns) & set(later.columns)
+E   AssertionError: assert {'book_value_...mom_12m', ...} <= {'high_52w', ...n', 'vol_63d'}
+E     
+E     Extra items in the left set:
+E     'book_value_per_share_growth_yoy'
+E     'combined_ratio_ttm'
+E     'vwo_vxus_spread_6m'
+E     'rate_adequacy_gap_yoy'
+E     'yield_curvature'...
+E     
+E     ...Full output truncated (10 lines hidden), use '-vv' to show
+=========================== short test summary info ===========================
+FAILED tests/research/test_v200_adapters.py::test_research_feature_catalog_retains_sparse_and_empty_columns
+1 failed, 14 deselected in 1.33s

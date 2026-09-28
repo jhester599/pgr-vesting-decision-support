@@ -1,0 +1,11 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+_____________ test_path_b_rejects_availability_before_target_end ______________
+tests\research\test_v200_controls.py:232: in test_path_b_rejects_availability_before_target_end
+    with pytest.raises(ValueError, match="target end"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+=========================== short test summary info ===========================
+FAILED tests/research/test_v200_controls.py::test_path_b_rejects_availability_before_target_end
+1 failed in 1.36s
+PYTEST_EXIT=1

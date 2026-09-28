@@ -1,0 +1,16 @@
+FF                                                                       [100%]
+================================== FAILURES ===================================
+________ test_source_ledger_has_independent_filing_and_macro_placement ________
+tests\research\test_v200_adapters.py:193: in test_source_ledger_has_independent_filing_and_macro_placement
+    ledger = adapters.feature_source_ledger(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'pgr_vds.research_lib.adapters' has no attribute 'feature_source_ledger'
+_________ test_source_ledger_checks_first_origin_and_unknown_filings __________
+tests\research\test_v200_adapters.py:230: in test_source_ledger_checks_first_origin_and_unknown_filings
+    ledger = adapters.feature_source_ledger(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'pgr_vds.research_lib.adapters' has no attribute 'feature_source_ledger'
+=========================== short test summary info ===========================
+FAILED tests/research/test_v200_adapters.py::test_source_ledger_has_independent_filing_and_macro_placement
+FAILED tests/research/test_v200_adapters.py::test_source_ledger_checks_first_origin_and_unknown_filings
+2 failed, 12 deselected in 1.22s

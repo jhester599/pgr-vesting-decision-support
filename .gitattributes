@@ -1,0 +1,4 @@
+# Research artifacts and new installed helpers retain their hashed bytes.
+research/studies/v200_clean_baseline/** -text
+src/pgr_vds/research_lib/** -text
+tests/research/test_v200*.py -text
