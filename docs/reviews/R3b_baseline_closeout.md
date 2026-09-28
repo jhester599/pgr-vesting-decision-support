@@ -453,10 +453,14 @@ Run from the repository root unless noted.
 | `check_dividend_freshness(conn, tickers=required, as_of=…)` on both copies | 0 | before: VMBS/BND stale from April, VOO/VWO from May, VXUS/VDE from August; after: only VWO at 2026-05-22 |
 | Hybrid DB build, then February replay, cwd `$S/r3b_hybrid` | **0** | equals the refreshed February row |
 | `python $S/compare.py $S .` | 0 | sections 3.1 and 3.2 |
-| `python scripts/checks/check_doc_links.py` | see below | |
-| `sha256sum data/pgr_financials.db` before the full suite | see below | |
-| `python -m pytest -o addopts="--tb=short" -q` | see below | |
-| `sha256sum data/pgr_financials.db` after the full suite | see below | |
+| `python scripts/checks/check_doc_links.py` | **0** | `[doc-links] 354 files, 0 broken links` |
+| `sha256sum data/pgr_financials.db` before the full suite (12:19 UTC) | 0 | `38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6` |
+| `python -m pytest -o addopts="--tb=short" -q` at `8c5d43e`, with the tree left untouched throughout | **0** | **`2585 passed, 1 skipped, 131 warnings in 756.03s (0:12:36)`** |
+| `sha256sum data/pgr_financials.db` after the full suite (12:32 UTC); `git status --short` | 0 | `38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6`, unchanged; status empty |
+
+The full-suite tree `8c5d43e` differs from this final record only in this
+table. The suite matches R2-lite's final count (2585 passed, 1 skipped),
+as expected for a docs-only change.
 
 ## What is left
 
