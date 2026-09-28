@@ -534,9 +534,15 @@ scratch directory outside the repository:
 | `python3 $S/attribute.py $S/db/before.db $S/db/after.db` | 0 | attribution identity within 4.4e-16; five worked checks |
 | `pip install -e ".[dev]"` | error (output piped to `tail`, so the exit code was not captured) | the container lacked `python-dotenv` and pytest; a Debian-installed PyYAML could not be uninstalled |
 | `pip install --ignore-installed pyyaml==6.0.2`; `pip install -e ".[dev]"` | no error (also piped) | dev dependencies installed; `import dotenv, pandas, sklearn, pytest` then worked |
-| `sha256sum data/pgr_financials.db` before the suite | 0 | `38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6` |
-| `python -m pytest -o addopts="--tb=short" -q` | PYTEST_EXIT | PYTEST_SUMMARY |
-| `sha256sum data/pgr_financials.db` after the suite | 0 | PYTEST_SHA_AFTER |
+| Full suite, run 1: `python -m pytest -o addopts="--tb=short" -q` on the uncommitted tree | killed at about 19% | started before this record existed and stopped so the suite could run on the committed tree; DB sha256 afterwards still `38991c76…` |
+| Full suite, run 2: the same command at `e32d15e` | 1 | `1 failed, 2584 passed, 1 skipped, 124 warnings in 835.05s (0:13:55)`. The failure, `test_monthly_decision_dry_run_leaves_db_and_tracked_files_unchanged`, reported `CHANGELOG.md` and this record as changed tracked files: I edited both, to record the VWO decision, while that test ran. It was not a product failure. DB sha256 `38991c76…` before and after |
+| `sha256sum data/pgr_financials.db` before run 3 | 0 | `38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6` |
+| Full suite, run 3: `python -m pytest -o addopts="--tb=short" -q` at `efd75ae`, with the tree left untouched throughout | **0** | **`2585 passed, 1 skipped, 125 warnings in 808.75s (0:13:28)`** |
+| `sha256sum data/pgr_financials.db` after run 3 | 0 | `38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6`, unchanged; `git status --short` empty |
+
+Run 3's tree differs from this final record only in this table. CI on
+`efd75ae` also passed: `test`, `research`, `artifacts` and
+`windows-regressions`.
 
 ## Appendix — scripts
 
