@@ -122,9 +122,10 @@ path). Closeout, red/green outputs and the smoke replay:
   refresh, 19 were STALE, including 6 of the required tickers. GLD is a
   non-payer.
 - Prices, splits, FRED and EDGAR tables are row-for-row unchanged.
-- Open item: VWO has no March 2026 ex-date, and the provider's full history
-  has none either. The freshness check cannot see a gap in the middle of a
-  history. The owner decides whether to confirm it.
+- VWO has no March 2026 ex-date, and the provider's full history has none
+  either. The freshness check cannot see a gap in the middle of a history.
+  The owner accepted the gap as provider data (2026-09-28), so the 12
+  affected VWO targets stay as stored.
 
 Record: [R2-lite dividend refresh check](docs/reviews/2026-09-28_R2_dividend_refresh_check.md).
 This is a data check, not evidence of better forecasts or returns.

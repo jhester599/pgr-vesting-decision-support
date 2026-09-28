@@ -18,8 +18,9 @@ No code, test, workflow, config or DB file changes.
   - 223 by a dividend the refresh added or revised inside the row's window;
   - 50 DBC rows by float noise of at most 4.4e-16, from DBC's revised
     2018–2025 amounts.
-- One caveat, open below: VWO has no March 2026 ex-date. The provider's
-  full VWO history does not contain one either.
+- One caveat, below: VWO has no March 2026 ex-date. The provider's full
+  VWO history does not contain one either. The owner accepted the gap as
+  provider data on 2026-09-28.
 
 ## Pins and isolation
 
@@ -465,7 +466,7 @@ dividends imply.
     - All 50 anchors fall after 2018-12-24. The ratio predicted for these
       rows is exactly 1.
 
-## Open items
+## Caveats and open items
 
 1. **VWO has no March 2026 ex-date.**
    - VWO has a March ex-date every year from 2013 to 2025. For example,
@@ -484,8 +485,9 @@ dividends imply.
    - Illustration only: a March 2026 payment the size of March 2025's
      (0.0468 at the 2026-03-20 close of 52.56) would raise those
      benchmark returns by about 0.09 percentage points.
-   - Owner decision: confirm against the issuer's distribution history, or
-     accept the gap as provider data.
+   - **Owner decision (2026-09-28): accept the gap as-is, as provider
+     data.** The 12 VWO targets stay as stored. No source will be queried
+     and no row added, so R3b uses this DB unchanged.
    - The audit flagged every gap since 2014 longer than 1.5 times the
      ticker's median gap. For PGR, the ETF benchmarks and DBC, the only
      one without a known cause is VWO's. The others are cadence changes or
