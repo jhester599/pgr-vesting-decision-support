@@ -16,7 +16,7 @@ matched-endpoint controls. It changes research artifacts only.
 - [x] Produce production-equivalence bridge at a development as-of date.
 - [x] Repeat read-only forecasts to tolerance 1e-10, inspect all ledgers.
 - [x] Run full pytest command, hash tracked DB before/after, report failures.
-- [ ] Review and open one research-only PR.
+- [x] Review and open one research-only PR: #147.
 
 If any required preflight fails, stop before fitting, record a blocked
 README and lock status, and publish the blocker. Later studies cannot use
