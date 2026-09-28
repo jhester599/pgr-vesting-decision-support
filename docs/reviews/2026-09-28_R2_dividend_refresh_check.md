@@ -58,8 +58,8 @@ Exactly one commit changed `data/pgr_financials.db` after 2026-09-27:
 | DB after, sha256 | `38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6` (git blob `3f32d1571ebd7a6efd179e967495c49f07cf9d20`) |
 | Tracked DB on `master` now | same as the after DB, `38991c76…` |
 
-The before hash matches the pre-refresh pins in
-[the R3 closeout and governance](../model-governance.md) and
+The before hash matches the pre-refresh DB pins of R3 (in
+[`docs/model-governance.md`](../model-governance.md)) and of
 [the R4 closeout](R4_shadow_closeout.md).
 
 What the run's log reports, quoted from job `108888719045`:
