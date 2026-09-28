@@ -116,7 +116,8 @@
     "repaired EDGAR lacks original-vintage per-row retrievaltime",
     "weekly raw ex-date DRIP price approximation",
     "overlapping monthly annual targets",
-    "only3 supported annual positiveevents"
+    "only3 supported annual positiveevents",
+    "Valuation/actions follow weekly observed-bar boundaries within the declared monthly origin/end months; calendar-exact daily reconstruction would require separately approved data rebuild"
   ],
   "live_changes": [],
   "negative_results": [
@@ -127,6 +128,12 @@
     "PathB skill adjusted p=1 and calibrated ECE .1078",
     "annual positive endpoint only3 uniqueevents, unscorable"
   ],
+  "post_execution_observation_audit": {
+    "forecast_or_target_changes": 0,
+    "rows": 3816,
+    "scope": "development only; metadata of already-used approved convention",
+    "start_end_observations_in_expected_calendar_month": true
+  },
   "post_full_suite_verification": {
     "changes": "preflight artifact marker/Iterator annotation; CI artifact fetch-depth0 for exact historical Git blob",
     "command": "python -m pytest -o addopts=\"--tb=short\" -q tests/research/test_v200_preflight.py tests/integration/repo/test_workflow_contracts.py",

@@ -30,7 +30,7 @@
     "annual_excess": "x23/x18 post-policy November origin Dec1-nextFeb28/29 excess cash over past24M positive-payment median<=.25 / current originBVPS; unique annual events; positive-excess survivor",
     "bvps_growth": "latest-filed reportBVPS at origin to exact reportmonth+12 BVPS; available on target filing; mature mean growth comparator",
     "cash12": "next12M per origin-share cash vs past12M per origin-share cash",
-    "regression": "fractional raw split/fractional-share DRIP PGR-minus-benchmark h6/h12; available at BME origin+h"
+    "regression": "PGR-minus-benchmark h6/h12 total return: one raw share at last observed price bar on/before monthly origin; manual splits and fractional DRIP over (start_bar,end_bar]; end_bar last observed price on/before BME origin+h; label available at that BME. Weekly observation approximation, not exact daily month-end valuation."
   },
   "input_db": {
     "git_commit": "ed7997f6f540f664e59dd44a4079616d74a8e8cb",
@@ -309,6 +309,12 @@
       "hash_basis": "exact_bytes",
       "path": "research/studies/v200_clean_baseline/outputs/source_availability_ledger.csv",
       "sha256": "ac3724c5f38a207ce2249516d9822898eaf06f0fd53d00d20f28107efbb8520c"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/target_observation_windows.csv",
+      "role": "explicit approved-target raw observation dates",
+      "sha256": "e6f9c72212f1a3ef26db982e7e44670ae84597c3e6562de681e25265b20edb21"
     },
     {
       "hash_basis": "exact_bytes",

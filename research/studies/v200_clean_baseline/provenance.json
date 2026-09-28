@@ -90,7 +90,7 @@
     }
   ],
   "baseline_code_commit": "c3b4798b90a43f9dbd616981861e9ff01fa2de72",
-  "baseline_lock_sha256": "750f0f709f4b611b7d6261337deae341769c1eae28c2582d9ab9e91a1546580a",
+  "baseline_lock_sha256": "c4cb2aff16016107f8d2b4ac4db4e8e313f9ddfcc236ff32b6a09511259f64d0",
   "budget": "one incumbent blueprint, 50 inner Ridge penalties, 10 mature shrinkage values, fixed endpoint controls; no searched alternatives",
   "code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
   "code_dirty_status": "?? .codex/\n?? research/studies/v200_clean_baseline/outputs/bridge_table.csv\n?? research/studies/v200_clean_baseline/outputs/control_predictions.csv\n?? research/studies/v200_clean_baseline/outputs/control_support.json\n?? research/studies/v200_clean_baseline/outputs/db_hash_check.json\n?? research/studies/v200_clean_baseline/outputs/fold_ledger.csv\n?? research/studies/v200_clean_baseline/outputs/metrics.json\n?? research/studies/v200_clean_baseline/outputs/multiplicity.json\n?? research/studies/v200_clean_baseline/outputs/path_b_fold_ledger.csv\n?? research/studies/v200_clean_baseline/outputs/path_b_predictions.csv\n?? research/studies/v200_clean_baseline/outputs/predictions.csv",
@@ -101,6 +101,7 @@
     "dividends": "SELECT * FROM daily_dividends WHERE ex_date < ? ORDER BY ticker,ex_date",
     "macro": "SELECT * FROM fred_macro_monthly WHERE month_end < ? ORDER BY series_id,month_end",
     "monthly": "SELECT * FROM pgr_edgar_monthly WHERE filing_date < ? ORDER BY month_end",
+    "observation_audit": "SELECT ticker,date FROM daily_prices WHERE date<'2023-09-29' AND ticker!='CB' ORDER BY ticker,date",
     "prices": "SELECT * FROM daily_prices WHERE date < ? AND ticker != 'CB' ORDER BY ticker,date",
     "quarterly": "SELECT * FROM pgr_fundamentals_quarterly WHERE filing_date < ? ORDER BY period_end",
     "splits": "SELECT * FROM split_history WHERE split_date < ? ORDER BY ticker,split_date",
@@ -388,6 +389,12 @@
       "hash_basis": "exact_bytes",
       "path": "research/studies/v200_clean_baseline/outputs/source_availability_ledger.csv",
       "sha256": "ac3724c5f38a207ce2249516d9822898eaf06f0fd53d00d20f28107efbb8520c"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/target_observation_windows.csv",
+      "role": "explicit approved-target raw observation dates",
+      "sha256": "e6f9c72212f1a3ef26db982e7e44670ae84597c3e6562de681e25265b20edb21"
     },
     {
       "hash_basis": "exact_bytes",
@@ -775,10 +782,10 @@
   "output_sha256": {
     "outputs/access_ledger.json": "ec141113b2d82776255bad0e702a708862b2e17fa558bd861a9764a0a301d902",
     "outputs/availability_ledger.csv": "7c412c5ce522a2d4c2fb5312e8c8f80db187dc6b7a81237359db865adb62deb5",
-    "outputs/baseline_lock.json": "750f0f709f4b611b7d6261337deae341769c1eae28c2582d9ab9e91a1546580a",
+    "outputs/baseline_lock.json": "c4cb2aff16016107f8d2b4ac4db4e8e313f9ddfcc236ff32b6a09511259f64d0",
     "outputs/bridge_table.csv": "2d822b32df7cfe3f2fe9c303a9918eeef3e4d9a8e7b2be2449863d1c6470ff67",
     "outputs/candidate_ledger.json": "92dcf9543f81db129e52eb8555ef0031a04dfe3b31d62023109aed1f55c22093",
-    "outputs/closeout.json": "9f7449c67321f2ba945ac2495f1142d8f3acbffe44d04b7453e643047f394507",
+    "outputs/closeout.json": "ec5c1192dffbd3ecd7c4515553b546c14ad1315bb07d5f4e52d25a84b966db23",
     "outputs/comparison.json": "65c38cf2e5d9b2ce7354e2c1502ca639027071b4a01749e1ff55f330951d6e2b",
     "outputs/control_predictions.csv": "4198eef62332cfa02ab59b8cf1b52328b66dc8cd547181751dc0949c4943830b",
     "outputs/control_support.json": "ae4976bf9a28ea6a0dd257bbfdf7fd326e4449be42a10ee5df82c599d73679c7",
@@ -789,7 +796,7 @@
     "outputs/fold_ledger.csv": "3f0a7200ff807bcfdacc3b2dc90e90c3143fba783fe6044fd7e2dc5df4d3528b",
     "outputs/metrics.json": "5ffaed246c7c94250e8db27a1dadf8c0ffa2ae40bbc086938368293809a790ed",
     "outputs/multiplicity.json": "373bd54b582ff27121178bc7a8f22114199602097f7e20561f71f0a1ef926dc5",
-    "outputs/output_manifest.json": "cfc30bd100c70bda9af5f9b73d5f6052b7dee7e099f0c084a50432c33c6d1635",
+    "outputs/output_manifest.json": "1eee65495f7de13aa15395309cf70fb4cb7c8811bfbafc6b7ad279ac4ec7993e",
     "outputs/partitions.json": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed",
     "outputs/path_b_fold_ledger.csv": "ee1a89b4929e0afe9debc3950701ba19724411791a82b379af23e47bda9e1d5a",
     "outputs/path_b_predictions.csv": "30983ee2930ca9b91e804acb47845492b58293c04df298010b3e1c44664841f8",
@@ -800,6 +807,7 @@
     "outputs/reproducibility.json": "9640518d99c06fc43160c73f4261f2b80d4376196d28324c23036cb36eae0538",
     "outputs/runtime_lock.json": "ed8a5eea976ce21c816beb3b305b3a1d6fde6c59ea87c261aedab7ee0304d1e9",
     "outputs/source_availability_ledger.csv": "ac3724c5f38a207ce2249516d9822898eaf06f0fd53d00d20f28107efbb8520c",
+    "outputs/target_observation_windows.csv": "e6f9c72212f1a3ef26db982e7e44670ae84597c3e6562de681e25265b20edb21",
     "outputs/verification/adapters_green.log": "944f77ba497d1287904f25c31deaa40bdcea938a4ea1b7921a003a8ae5828f2f",
     "outputs/verification/adapters_red.log": "2d888156aeec3afb638ef0d7ae0be09af8e5ce3a25b241f5f8f8933edb40895d",
     "outputs/verification/baseline_green.log": "9485eedc53003601e34e089c13548771e2a87e04519171aef0e20049355bb384",
@@ -847,6 +855,12 @@
   },
   "parent_seed_db_sha256": "7c68efbd90ef5c10a12e05dc2a9e03402e353a06219fd2db129d711754c1c35d",
   "parent_seed_git": "aae0be883309bdc068ee9afbb78b0aa9a4b52b8d",
+  "post_execution_observation_audit": {
+    "forecast_or_target_changes": 0,
+    "rows": 3816,
+    "scope": "development only; metadata of already-used approved convention",
+    "start_end_observations_in_expected_calendar_month": true
+  },
   "post_full_suite_verification": {
     "changes": "preflight artifact marker/Iterator annotation; CI artifact fetch-depth0 for exact historical Git blob",
     "command": "python -m pytest -o addopts=\"--tb=short\" -q tests/research/test_v200_preflight.py tests/integration/repo/test_workflow_contracts.py",
@@ -989,7 +1003,8 @@
     "Current-vintage FRED",
     "Repaired historical EDGAR with no per-row fetch timestamp",
     "Accepted VWO March2026 provider gap",
-    "Weekly-bar ex-date reinvestment approximation"
+    "Weekly-bar ex-date reinvestment approximation",
+    "Approved monthly target observations/actions follow weekly-bar boundaries; daily calendar-exact reconstruction not claimed"
   ],
   "splits_dividends_fred_edgar": "Approved DB exact Git/SHA; economic-date bounded raw extraction; filings and one calendar macro publication lag; no providers called",
   "study": "v200_clean_baseline",
@@ -999,6 +1014,6 @@
     "annual_excess": "x23/x18 post-policy November origin Dec1-nextFeb28/29 excess cash over past24M positive-payment median<=.25 / current originBVPS; unique annual events; positive-excess survivor",
     "bvps_growth": "latest-filed reportBVPS at origin to exact reportmonth+12 BVPS; available on target filing; mature mean growth comparator",
     "cash12": "next12M per origin-share cash vs past12M per origin-share cash",
-    "regression": "fractional raw split/fractional-share DRIP PGR-minus-benchmark h6/h12; available at BME origin+h"
+    "regression": "PGR-minus-benchmark h6/h12 total return: one raw share at last observed price bar on/before monthly origin; manual splits and fractional DRIP over (start_bar,end_bar]; end_bar last observed price on/before BME origin+h; label available at that BME. Weekly observation approximation, not exact daily month-end valuation."
   }
 }

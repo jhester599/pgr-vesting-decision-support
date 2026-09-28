@@ -34,6 +34,14 @@ The repaired historical EDGAR values also lack original per-row retrieval
 timestamps. These limitations are disclosed rather than certified away.
 Weekly source bars require DRIP at the last observed unadjusted close on or
 before an ex-date, matching the approved stored target convention. The
+regression valuations use the last observed bar on/before each labelled
+monthly origin/end, with actions between those observed bars. The explicit
+[observation dates](outputs/target_observation_windows.csv) all fall in
+their declared origin/end months for all 3,816 development targets. Calendar
+month-end is the conservative label-availability date; these targets do not
+claim exact daily month-end valuation. A calendar-exact daily reconstruction
+would require a separately authorized data rebuild. This metadata audit
+changed no target, forecast, sample, metric or procedure. The
 [source availability ledger](outputs/source_availability_ledger.csv) records
 the assumptions and filing/first-use gates. Research extraction disables
 legacy full-frame count pruning, retains the fixed catalog, and fits each
