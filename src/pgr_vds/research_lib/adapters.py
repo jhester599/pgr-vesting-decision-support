@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 import re
 import sqlite3
+from typing import Any, Self, TypeVar, overload
 from unittest.mock import patch
 
 import numpy as np
@@ -40,16 +42,19 @@ SHRINKAGE_GRID = np.array(
         1.00,
     ]
 )
+CursorT = TypeVar("CursorT", bound=sqlite3.Cursor)
 
 
 class AsOfCursor(sqlite3.Cursor):
     """Restrict raw economic dates and filings before legacy extraction."""
 
+    connection: AsOfConnection
+
     def execute(
         self,
         sql: str,
-        parameters: tuple = (),
-    ) -> sqlite3.Cursor:
+        parameters: Any = (),
+    ) -> Self:
         return super().execute(self.connection.bound_query(sql), parameters)
 
 
@@ -77,13 +82,26 @@ class AsOfConnection(sqlite3.Connection):
             )
         return sql
 
-    def cursor(self, factory: type = AsOfCursor) -> sqlite3.Cursor:
+    @overload
+    def cursor(self, factory: None = None) -> sqlite3.Cursor: ...
+
+    @overload
+    def cursor(
+        self, factory: Callable[[sqlite3.Connection], CursorT]
+    ) -> CursorT: ...
+
+    def cursor(
+        self,
+        factory: Callable[[sqlite3.Connection], sqlite3.Cursor] | None = (
+            AsOfCursor
+        ),
+    ) -> sqlite3.Cursor:
         return super().cursor(factory)
 
     def execute(
         self,
         sql: str,
-        parameters: tuple = (),
+        parameters: Any = (),
     ) -> sqlite3.Cursor:
         return super().execute(self.bound_query(sql), parameters)
 
@@ -400,6 +418,7 @@ def nested_ridge(
     available = available.reindex(x.index)
     errors = np.zeros(len(RIDGE_GRID))
     ledger: list[dict] = []
+    alpha: float
     minimum = 24 if horizon == 6 else 60
     for train, validation in splits:
         matured = np.array(

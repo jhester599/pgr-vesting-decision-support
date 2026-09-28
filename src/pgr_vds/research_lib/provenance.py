@@ -105,7 +105,7 @@ def source_sha256(path: str | Path) -> str:
     ).hexdigest()
 
 
-def _verify_file(path: Path, expected_sha: str) -> None:
+def _verify_file(path: Path, expected_sha: object) -> None:
     """Fail before consuming any file whose exact bytes differ."""
     expected = _sha256(expected_sha, "expected_sha")
     actual = sha256_file(path)
