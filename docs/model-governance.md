@@ -137,14 +137,77 @@ NEUTRAL, or IC < 0.05 / missing → 50 %. Validation is walk-forward only; the
 representative CPCV (a combinatorial K-fold) no longer runs and no longer
 gates.
 
-### Current state after R3 (2026-09-27; pre-refresh, not the new baseline)
+<a id="current-baseline"></a>
 
-The new current health baseline must be measured on the DB after the step-0
-dividend refresh, once R2-lite has merged
-([execution plan](reviews/PRE_V200_FIX_PROMPTS_codex.md#owner-decisions-and-execution-plan-2026-09-27)).
-Until then this is the latest pinned state. It comes from a smoke replay of
+### Current baseline (R3b, pinned 2026-09-28)
+
+Measured on the DB after the step-0 dividend refresh, verified by R2-lite
+([record](reviews/2026-09-28_R2_dividend_refresh_check.md)), with the R3 gate
+contract. It comes from a replay of already-inspected history: a pre-v200
+smoke comparison, not promotion evidence
+([R3b closeout](reviews/R3b_baseline_closeout.md), rows
+[`R3b_refreshed_replay_rows.csv`](reviews/R3b_refreshed_replay_rows.csv)).
+v200 creates its own research-protocol lock from the same DB.
+
+| Pin | Value |
+|---|---|
+| DB | `data/pgr_financials.db` sha256 `38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6` (git blob `3f32d157…` at `ed7997f`, the step-0 refresh; R2-lite's "after" DB) |
+| Code | `master` `c3b4798b90a43f9dbd616981861e9ff01fa2de72` (contains R3 v188, R2-lite v187, R4 v189, R5 v190 and v192) |
+| Runtime | Python 3.11.15; pandas 3.0.6, numpy 2.4.6, scikit-learn 1.9.1, scipy 1.17.1, statsmodels 0.15.0, xgboost 3.2.0; Linux 6.18; `OMP_NUM_THREADS=1`, `OPENBLAS_NUM_THREADS=1`, `MKL_NUM_THREADS=1` |
+| `MODEL_HEALTH_METRICS_VERSION` | `prequential-2026-09-25` |
+| `DECISION_GATE_CONTRACT_VERSION` | `chronological-readiness-2026-09-27` |
+
+As of 2026-09-21 (the latest committed decision), the metrics are the same
+in two runs: `monthly_summary.json` is byte-identical.
+
+| Metric | Value | Gate |
+|---|---|---|
+| Aggregate OOS R², against each benchmark's prevailing mean of the targets realised by each forecast date | +2.85 % | PASS (≥ 2 %) |
+| Equal-weight mean IC (gated) | 0.0755 (quality-weighted 0.0815) | PASS (≥ 0.07) |
+| Pooled rank IC, Driscoll–Kraay p clustered by date | 0.1008, p 0.132 (not significant) | — |
+| Hit rate vs the constant "PGR outperforms" rule, Pesaran–Timmermann p | 62.75 % vs 68.14 %, p 0.402 | FAIL (needs p < 0.05) |
+| `wfo_completed`: walk-forward validation (16 required model/benchmark pairs) | complete, no failed pair | PASS |
+| `data_ready`: live features finite, required prices, FRED, EDGAR and dividends fresh at the as-of date | ready: no missing feature, no stale feed | PASS |
+| Prequential ECE (Platt, 1,018 obs) | 15.5 % (95 % CI 10.5–23.3 %) | — |
+| Trailing conformal coverage (target 80 %) | 42.7 % | — |
+| Shrinkage alpha (prequential) | 0.50 | — |
+
+**Current recommendation: DEFER-TO-TAX-DEFAULT, sell 50 %.** Consensus
+NEUTRAL, LOW confidence, predicted 6M relative return −1.29 %. Directional
+skill is the only failing gate: the model calls the sign right less often
+than always predicting that PGR outperforms. Every month from 2026-02 to
+2026-09 defers at 50 %.
+
+Limitations:
+
+- **Calibration.** The calibrated probability of outperforming (65.8 %) is
+  read against a prequential ECE of 15.5 %: across probability bins,
+  predicted and realised frequencies differ by about 15 percentage points
+  on average. It is not a reliable probability.
+- **Coverage.** The 80 % prediction intervals contained 42.7 % of the
+  trailing outcomes: about half of nominal. They are too narrow.
+- **Readiness is reconstructed.** The DB records no fetch times. The
+  2026-09-21 readiness is labelled `live` because the run falls in the
+  as-of month, but it passes only with the dividends fetched on 2026-09-28.
+  The decision committed on 2026-09-21 did not have them; the earlier months
+  are labelled `backdated_reconstruction`.
+- **VWO March 2026.** VWO has no March 2026 ex-date, and the provider's full
+  history has none either. The owner accepted the gap as provider data
+  (R2-lite). The 2026-05-22 replay therefore still fails `data_ready` on VWO
+  dividends, and the 6M VWO targets anchored 2025-09-30 to 2026-02-27 carry
+  no March payment.
+
+Nothing here promises a better return.
+
+### Historical: R3 pre-refresh state at 2026-09-21 (dated 2026-09-27)
+
+Kept as dated history; superseded by the current baseline above. It was the
+latest pinned state until the refreshed-DB replay (R3b). It was measured on
+the DB before the step-0 dividend refresh, from a smoke replay of
 already-inspected history, not promotion evidence
-([closeout](reviews/R3_validation_closeout.md)).
+([closeout](reviews/R3_validation_closeout.md)). R3b reproduced every column
+of its rows with the pinned code on this same DB, so the differences to the
+current baseline are the data change alone.
 
 | Pin | Value |
 |---|---|
@@ -166,10 +229,10 @@ As of 2026-09-21 (the latest committed decision):
 | Prequential ECE | 15.4 % | — |
 | Trailing conformal coverage (target 80 %) | 42.7 % | — |
 
-**Current recommendation: DEFER-TO-TAX-DEFAULT, sell 50 %.** The model has
+**Recommendation then: DEFER-TO-TAX-DEFAULT, sell 50 %.** The model had
 no directional skill beyond the base rate. Its calibrated probabilities and
-intervals are poorly calibrated: coverage is about half of nominal. Six
-benchmarks' dividends are stale, so the newest targets understate those
+intervals were poorly calibrated: coverage was about half of nominal. Six
+benchmarks' dividends were stale, so the newest targets understated those
 benchmarks' returns (verification V03/N1). Every month from 2026-02 to
 2026-09 defers at 50 % under both the old and the new gates; the R3 gates
 add a `data_ready` failure from 2026-04 on. Nothing here promises a better
@@ -179,9 +242,9 @@ return.
 
 ### Historical: step-5 health baseline at 2026-09-21 (dated 2026-09-26)
 
-Kept as dated history; superseded as the current state by the section above
-(verification V08). Replayed on the corrected pipeline of review 2026-09-25,
-step 5 (month-by-month replay in
+Kept as dated history; superseded as the current state by the
+[current baseline](#current-baseline) (verification V08). Replayed on the
+corrected pipeline of review 2026-09-25, step 5 (month-by-month replay in
 [0006](decisions/0006-validation-gates-and-cpcv-diagnostic.md)), before the
 step-6 filing-date timing repair and under the retired CPCV diagnostic.
 
@@ -260,8 +323,9 @@ Since review 2026-09-25, step 5, the corrected gates hold every month from
 that binds. Step 6 changed the ACTIONABLE sell-percentage mapping
 ([0007](decisions/0007-actionable-sell-mapping.md)). R3 made validation
 walk-forward only and added the `wfo_completed` and `data_ready` gates
-([0008](decisions/0008-chronological-validation-and-readiness-gates.md)); the
-refreshed-DB baseline follows R2-lite.
+([0008](decisions/0008-chronological-validation-and-readiness-gates.md)). The
+[current baseline](#current-baseline) (R3b) is pinned on the DB after the
+step-0 dividend refresh; it still defers on directional skill.
 
 The most immediate governance questions are now:
 

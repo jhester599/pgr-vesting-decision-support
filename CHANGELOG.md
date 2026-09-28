@@ -18,6 +18,34 @@ afternoon bootstrap). Development starts Day 3.
   rates, lot data, DB or model changes. See the
   [closeout](docs/reviews/2026-09-27_tax_loss_label_closeout.md).
 
+## v191 (2026-09-28) — R3b: refreshed-DB replay and current baseline; no code change
+
+- Replayed the eight committed decisions (2026-02-28 to 2026-09-21) with
+  `master` `c3b4798` on R2-lite's refreshed DB (`38991c76…`), in an external
+  scratch clone. Exit 0; every DB, ledger and artifact hash unchanged. A
+  second run of 2026-09-21 gives a byte-identical `monthly_summary.json`.
+- Every month still defers at 50 % on directional skill; no mode or sell
+  percentage changed. `data_ready` now passes in every month except
+  2026-05-22, which fails on VWO dividends: VWO has no March 2026 ex-date,
+  the gap the owner accepted in R2-lite.
+- The 2026-09-21 consensus is NEUTRAL instead of UNDERPERFORM. VOO's
+  prediction moved from −1.26 % to −0.58 %, below the 1 % signal bar. Its
+  six matured 6M targets anchored 2025-09-30 to 2026-02-27 gained the
+  2026-03-27 dividend, and the last three also 2026-06-26.
+- Attribution control: the pinned code on the pre-refresh DB reproduces all
+  47 columns of R3's pre-refresh rows. So every difference is the data
+  change. A February replay on the pre-refresh DB with only DBC's changes
+  reproduces the refreshed February row, from DBC's revised amounts.
+- `docs/model-governance.md` pins the current baseline: DB, code, runtime,
+  `prequential-2026-09-25` and `chronological-readiness-2026-09-27`. The
+  R3 pre-refresh state and the step-5 baseline stay as dated history. ADR
+  0008's Consequences point to it.
+
+Record: [R3b closeout](docs/reviews/R3b_baseline_closeout.md); rows:
+[`R3b_refreshed_replay_rows.csv`](docs/reviews/R3b_refreshed_replay_rows.csv).
+A pre-v200 smoke comparison of already-inspected history, not promotion
+evidence; it promises no better return.
+
 ## v190 (2026-09-27) — R5: event holding windows and calendar tax warnings
 
 - Confirm the vest-event/monthly-target offset with independent raw-price

@@ -101,3 +101,12 @@ and not the new baseline.
 - The replay on the refreshed DB and the new current health baseline follow
   once R2-lite has merged; `docs/model-governance.md` keeps the step-5
   baseline as dated history until then.
+- *(Added 2026-09-28, R3b.)* The current baseline is pinned in
+  [`docs/model-governance.md`](../model-governance.md#current-baseline): DB
+  `38991c76…` (after the step-0 dividend refresh), code `c3b4798`,
+  `prequential-2026-09-25` and `chronological-readiness-2026-09-27`. On that
+  DB `data_ready` passes in every replayed month except 2026-05-22, which
+  fails on VWO dividends (no March 2026 ex-date; provider data the owner
+  accepted). Every month still defers at 50 % on directional skill. The R3
+  pre-refresh state and the step-5 baseline stay there as dated history.
+  Replay and attribution: [R3b closeout](../reviews/R3b_baseline_closeout.md).
