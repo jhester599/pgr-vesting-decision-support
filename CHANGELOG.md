@@ -103,6 +103,32 @@ path). Closeout, red/green outputs and the smoke replay:
   by walk-forward coverage, gap and no-future-training tests; mutations M09
   and M14 retargeted to the WFO gap and the completion gate.
 
+## v187 (2026-09-28) — R2-lite: dividend backfill verified; no code change
+
+- The owner's dispatched dividend refresh ("Weekly Data Accumulation" run
+  #29, `--dividend-refresh`) committed `ed7997f`. The DB sha256 went from
+  `f453ab98…` to `38991c76…`, and the run's integrity step passed.
+- The refresh added 57 dividend rows and revised 5 amounts: 4 DBC amounts
+  at the fourth or fifth decimal, and VXUS 2026-03-20. No row was removed.
+- 273 stored targets changed: 131 at 6M and 142 at 12M. No row was added or
+  dropped, `pgr_return` was unchanged, and no `relative_return` changed
+  sign.
+- Every changed row is explained:
+  - 223 by a new or revised dividend inside its window;
+  - 50 DBC rows by float noise of at most 4.4e-16.
+- An independent split and fractional-DRIP recompute from raw prices
+  matches all 9,658 stored rows to 1.6e-15.
+- `check_dividend_freshness` now reports no STALE ticker. Before the
+  refresh, 19 were STALE, including 6 of the required tickers. GLD is a
+  non-payer.
+- Prices, splits, FRED and EDGAR tables are row-for-row unchanged.
+- Open item: VWO has no March 2026 ex-date, and the provider's full history
+  has none either. The freshness check cannot see a gap in the middle of a
+  history. The owner decides whether to confirm it.
+
+Record: [R2-lite dividend refresh check](docs/reviews/2026-09-28_R2_dividend_refresh_check.md).
+This is a data check, not evidence of better forecasts or returns.
+
 ## v186 (2026-09-27) — R1: Windows test isolation and offline workflows
 
 - Normalize SQLite file URIs and native paths using platform path rules,
