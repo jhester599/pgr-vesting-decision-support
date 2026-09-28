@@ -1,42 +1,121 @@
 {
-  "acceptance": {
-    "annual_endpoint_status": "unscorable;3uniqueevents;notindependentmonthly evidence",
-    "closeout_path": "research/studies/v200_clean_baseline/outputs/closeout.json",
-    "full_pytest_exit": 0,
-    "full_pytest_summary": "2658 passed, 1 skipped, 2 xfailed, 105 warnings in 345.67s (0:05:45)",
-    "independent_fixtures": "passed;legacy2strictxfail",
-    "preflight": "passed",
-    "promotion": false,
-    "reproducibility": "9files byteidentical;maxdifference0",
-    "sufficient_regression_support": true
-  },
-  "accepted_exceptions": [
+  "accepted_comparator_status": "accepted_research_comparator",
+  "access_ledger_sha256": "ec141113b2d82776255bad0e702a708862b2e17fa558bd861a9764a0a301d902",
+  "artifact_publication_note": "Fitting code executed at b0a590bd2e9df975c420166d96cc3d919eb4934e; publication adds report/accepted pins and historical-input CI support; fitting code unchanged; unrelated .codex preserved",
+  "as_of": "2026-09-26 00:00:00",
+  "attempts": [
     {
-      "description": "Owner accepted provider history without March2026 ex-date; exactly12 affected targets in vwo_accepted_gap.csv, all quarantined",
-      "id": "VWO_MARCH_2026_GAP"
+      "id": "seed_freshness",
+      "log": "verification/preflight_seed.log",
+      "result": "red;20 stale tickers"
+    },
+    {
+      "id": "approved_repair_freshness",
+      "log": "verification/preflight_repair.log",
+      "result": "green;2passed exit0"
+    },
+    {
+      "id": "temporary_directory",
+      "result": "initial pytest temp permissions; isolated runtime corrected before data checks"
+    },
+    {
+      "id": "preflight_serialization",
+      "log": "verification/prepare.log",
+      "result": "blocked before fitting; SQLite migration row factory corrected"
+    },
+    {
+      "id": "provenance",
+      "log": "verification/provenance_red.log",
+      "result": "independent red then green"
+    },
+    {
+      "id": "temporal_and_metrics",
+      "log": "verification/temporal_metrics_red.log",
+      "result": "independent red then green; legacy red reproduced"
+    },
+    {
+      "id": "annual_endpoint",
+      "log": "verification/controls_endpoint_red.log",
+      "result": "corrected x23/x18 December-February and split basis before fitting; no alternative fitted"
+    },
+    {
+      "id": "ACI_and_availability",
+      "log": "verification/causal_review_red.log",
+      "result": "independent finite-sample quantile, delayed maturity and unsupported-inner red then green"
+    },
+    {
+      "id": "feature_catalog",
+      "log": "verification/feature_catalog_red.log",
+      "result": "independent sparse catalog red; disabled full-frame count pruning locally before fitting"
+    },
+    {
+      "id": "source_availability",
+      "log": "verification/source_ledger_red.log",
+      "result": "independent actualfiling and assumedmacro lag red then green"
+    },
+    {
+      "id": "cash_naive_and_control_reports",
+      "log": "verification/controls_summary_red.log",
+      "result": "independent expected scores and majority control red then green"
+    },
+    {
+      "id": "unsupported_histories",
+      "log": "verification/baseline_support_red.log",
+      "result": "independent empty/insufficient-history red then green"
+    },
+    {
+      "id": "blocked_README",
+      "log": "verification/runner_gate_red.log",
+      "result": "failure-path red then green"
+    },
+    {
+      "id": "line_endings",
+      "log": "verification/line_endings_red.log",
+      "result": "independent source equivalence and exactCSV byte hash red then green"
+    },
+    {
+      "id": "execution_one",
+      "log": "verification/execution_one.log",
+      "result": "exit0; fixed development, controls and A1 bridge"
+    },
+    {
+      "id": "execution_two",
+      "log": "verification/execution_two.log",
+      "result": "exit0; same procedure, read-only determinism repeat"
+    },
+    {
+      "id": "full_suite",
+      "log": "verification/full_pytest.log",
+      "result": "2658 passed, 1 skipped, 2 xfailed, 105 warnings in 345.67s (0:05:45);exit0"
     }
   ],
-  "access_ledger_sha256": "ec141113b2d82776255bad0e702a708862b2e17fa558bd861a9764a0a301d902",
-  "artifact_byte_policy": "Scoped -text attributes preserve exact new artifact/code bytes; inherited source text hashes use Git LF line-ending equivalence",
-  "as_of": "2026-09-26",
   "baseline_code_commit": "c3b4798b90a43f9dbd616981861e9ff01fa2de72",
-  "comparison_status": "accepted_research_comparator",
-  "data_status": "approved repair preflight passed; reconstructed historical availability, vintage limits disclosed",
+  "baseline_lock_sha256": "750f0f709f4b611b7d6261337deae341769c1eae28c2582d9ab9e91a1546580a",
+  "budget": "one incumbent blueprint, 50 inner Ridge penalties, 10 mature shrinkage values, fixed endpoint controls; no searched alternatives",
+  "code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
+  "code_dirty_status": "?? .codex/\n?? research/studies/v200_clean_baseline/outputs/bridge_table.csv\n?? research/studies/v200_clean_baseline/outputs/control_predictions.csv\n?? research/studies/v200_clean_baseline/outputs/control_support.json\n?? research/studies/v200_clean_baseline/outputs/db_hash_check.json\n?? research/studies/v200_clean_baseline/outputs/fold_ledger.csv\n?? research/studies/v200_clean_baseline/outputs/metrics.json\n?? research/studies/v200_clean_baseline/outputs/multiplicity.json\n?? research/studies/v200_clean_baseline/outputs/path_b_fold_ledger.csv\n?? research/studies/v200_clean_baseline/outputs/path_b_predictions.csv\n?? research/studies/v200_clean_baseline/outputs/predictions.csv",
   "dependency_environment_sha256": "0cd4bf33c6dc2052cf31ed7dc300ed2fd7a5462c2db1660a429dfaa6ba30f298",
-  "development_boundary": "2023-09-29",
-  "endpoint_contracts": {
-    "PathB": "1 iff fixed investable weighted PGR-minus-portfolio6M return < -.03; production C.5 balanced logistic; same-label mature temperature stream",
-    "absolute_pgr6": "unbenchmarked PGR6M fractional split/DRIP return, not absolute-value magnitude; mature mean comparator",
-    "annual_excess": "x23/x18 post-policy November origin Dec1-nextFeb28/29 excess cash over past24M positive-payment median<=.25 / current originBVPS; unique annual events; positive-excess survivor",
-    "bvps_growth": "latest-filed reportBVPS at origin to exact reportmonth+12 BVPS; available on target filing; mature mean growth comparator",
-    "cash12": "next12M per origin-share cash vs past12M per origin-share cash",
-    "regression": "fractional raw split/fractional-share DRIP PGR-minus-benchmark h6/h12; available at BME origin+h"
+  "dependency_lock_sha256": "ed8a5eea976ce21c816beb3b305b3a1d6fde6c59ea87c261aedab7ee0304d1e9",
+  "embargo": "h",
+  "extraction_sql": {
+    "dividends": "SELECT * FROM daily_dividends WHERE ex_date < ? ORDER BY ticker,ex_date",
+    "macro": "SELECT * FROM fred_macro_monthly WHERE month_end < ? ORDER BY series_id,month_end",
+    "monthly": "SELECT * FROM pgr_edgar_monthly WHERE filing_date < ? ORDER BY month_end",
+    "prices": "SELECT * FROM daily_prices WHERE date < ? AND ticker != 'CB' ORDER BY ticker,date",
+    "quarterly": "SELECT * FROM pgr_fundamentals_quarterly WHERE filing_date < ? ORDER BY period_end",
+    "splits": "SELECT * FROM split_history WHERE split_date < ? ORDER BY ticker,split_date",
+    "targets": "SELECT * FROM monthly_relative_returns ORDER BY date,benchmark,target_horizon"
   },
-  "input_db": {
-    "git_commit": "ed7997f6f540f664e59dd44a4079616d74a8e8cb",
-    "relative_path": "data/pgr_financials.db",
-    "sha256": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6"
+  "folds": "TimeSeriesSplit outer60/120,test6,gap12/24; inner3,test6,min24/60; unsupported recorded",
+  "full_pytest": {
+    "command": "python -m pytest -o addopts=\"--tb=short\" -q",
+    "exit": 0,
+    "log_sha256": "ed57fe5ea5b1ac146b9640291b1ddbac3ba5e4029c481a3acaa42c226f69332c",
+    "summary": "2658 passed, 1 skipped, 2 xfailed, 105 warnings in 345.67s (0:05:45)"
   },
+  "holdout_metric_accesses": 0,
+  "input_db_git": "ed7997f6f540f664e59dd44a4079616d74a8e8cb",
+  "input_db_sha256": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
   "input_files": [
     {
       "hash_basis": "git_source_lf",
@@ -691,80 +770,235 @@
       "sha256": "82df03653fa10db678902d851e269deeb6a4a03cf53d664dc630f39239c4f91d"
     }
   ],
-  "parent_seed": {
-    "db_sha256": "7c68efbd90ef5c10a12e05dc2a9e03402e353a06219fd2db129d711754c1c35d",
-    "git_commit": "aae0be883309bdc068ee9afbb78b0aa9a4b52b8d"
+  "max_available_development": "2023-08-31 00:00:00",
+  "metrics": "Honest R2 vs mature benchmark mean; EW and panelIC, paired date-block inference lengthh,2000 replicates; past majority base; mature Platt/ECE/Brier/logloss and incumbent80% ACI gamma.05 intervals",
+  "output_sha256": {
+    "outputs/access_ledger.json": "ec141113b2d82776255bad0e702a708862b2e17fa558bd861a9764a0a301d902",
+    "outputs/availability_ledger.csv": "7c412c5ce522a2d4c2fb5312e8c8f80db187dc6b7a81237359db865adb62deb5",
+    "outputs/baseline_lock.json": "750f0f709f4b611b7d6261337deae341769c1eae28c2582d9ab9e91a1546580a",
+    "outputs/bridge_table.csv": "2d822b32df7cfe3f2fe9c303a9918eeef3e4d9a8e7b2be2449863d1c6470ff67",
+    "outputs/candidate_ledger.json": "92dcf9543f81db129e52eb8555ef0031a04dfe3b31d62023109aed1f55c22093",
+    "outputs/closeout.json": "9f7449c67321f2ba945ac2495f1142d8f3acbffe44d04b7453e643047f394507",
+    "outputs/comparison.json": "65c38cf2e5d9b2ce7354e2c1502ca639027071b4a01749e1ff55f330951d6e2b",
+    "outputs/control_predictions.csv": "4198eef62332cfa02ab59b8cf1b52328b66dc8cd547181751dc0949c4943830b",
+    "outputs/control_support.json": "ae4976bf9a28ea6a0dd257bbfdf7fd326e4449be42a10ee5df82c599d73679c7",
+    "outputs/db_hash_check.json": "83a9165c0998a08ae7de58e00b45be7a6d88f8934f799cc90c99af626b992f8f",
+    "outputs/dependency_environment.json": "0cd4bf33c6dc2052cf31ed7dc300ed2fd7a5462c2db1660a429dfaa6ba30f298",
+    "outputs/development_features.csv": "8badaa58b240d9628bff5bcda2e9062cf41716255c9cd1f2d6ed18aa105f1268",
+    "outputs/development_targets.csv": "593a4fdc707e12834d2a0f2f49cd7f1eb5a0b337c71dffceb2b97085c6941256",
+    "outputs/fold_ledger.csv": "3f0a7200ff807bcfdacc3b2dc90e90c3143fba783fe6044fd7e2dc5df4d3528b",
+    "outputs/metrics.json": "5ffaed246c7c94250e8db27a1dadf8c0ffa2ae40bbc086938368293809a790ed",
+    "outputs/multiplicity.json": "373bd54b582ff27121178bc7a8f22114199602097f7e20561f71f0a1ef926dc5",
+    "outputs/output_manifest.json": "cfc30bd100c70bda9af5f9b73d5f6052b7dee7e099f0c084a50432c33c6d1635",
+    "outputs/partitions.json": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed",
+    "outputs/path_b_fold_ledger.csv": "ee1a89b4929e0afe9debc3950701ba19724411791a82b379af23e47bda9e1d5a",
+    "outputs/path_b_predictions.csv": "30983ee2930ca9b91e804acb47845492b58293c04df298010b3e1c44664841f8",
+    "outputs/predictions.csv": "5b671c52dbdded0b6106b02f0942d20f484df4715a21830c19ccf01320a28270",
+    "outputs/preflight.json": "554b1c8175e9805ac2391d63177a71058d16a7913cf826226401a05280f71cfc",
+    "outputs/references/2026-09-25_step5_rebaseline_rows.csv": "ad7930f77f9e4dadb8ee75a15dd55c89ae753b64cbf089dadd00398834ff8edb",
+    "outputs/references/R3b_refreshed_replay_rows.csv": "110b54d3bc186a2bdfcd2853a95f915409eb9f32388cf54c5f400c04ff2cda93",
+    "outputs/reproducibility.json": "9640518d99c06fc43160c73f4261f2b80d4376196d28324c23036cb36eae0538",
+    "outputs/runtime_lock.json": "ed8a5eea976ce21c816beb3b305b3a1d6fde6c59ea87c261aedab7ee0304d1e9",
+    "outputs/source_availability_ledger.csv": "ac3724c5f38a207ce2249516d9822898eaf06f0fd53d00d20f28107efbb8520c",
+    "outputs/verification/adapters_green.log": "944f77ba497d1287904f25c31deaa40bdcea938a4ea1b7921a003a8ae5828f2f",
+    "outputs/verification/adapters_red.log": "2d888156aeec3afb638ef0d7ae0be09af8e5ce3a25b241f5f8f8933edb40895d",
+    "outputs/verification/baseline_green.log": "9485eedc53003601e34e089c13548771e2a87e04519171aef0e20049355bb384",
+    "outputs/verification/baseline_red.log": "5d996affe49034be22b23ef8f4d7421754943ba974f074a7c10c9edb8eb70b68",
+    "outputs/verification/baseline_support_green.log": "22da45629a01bd45e44e116d1e7be6e9559b402af56f5eafca5aa0c84e51a58f",
+    "outputs/verification/baseline_support_red.log": "c2cda439b3f6e5af41c3f8cad2bad4bc6efd8e97bcda0d58236f80fc05b10819",
+    "outputs/verification/causal_review_green.log": "b35d7fda5775b8a0af3d68c97d30fde9083d7107d06f7330a2cf877fb19ed7bb",
+    "outputs/verification/causal_review_red.log": "c33c204fed13bf0d672a93ef860e452bc6f18f3db39461e6b673d94d21ca8f3a",
+    "outputs/verification/ci_pin_support.log": "2be0a7518c526b8da012ced1f40d2683bcc87414e86b03d9363d75182697d7ac",
+    "outputs/verification/controls_availability_red.log": "a129be0848d202da85a3f399716fa3c706850cc55871161dcdce30bec0d3b772",
+    "outputs/verification/controls_endpoint_red.log": "6c9c03c301f48937f235ce2b2e636d6771ccca7c709afb7a686562502f024ff8",
+    "outputs/verification/controls_green.log": "98974fa7f5a3a210e762242604028573a77756b803f65b711de8709336e21c3e",
+    "outputs/verification/controls_red.log": "cb1baf3e5a59607c08ed738e393333c9e2c4d9f3ee3d9f7554bb9c61b3d646e8",
+    "outputs/verification/controls_style.log": "a82bece8bdbd364649950c037de405021c0a627b1645be634ee7f5effc3314a8",
+    "outputs/verification/controls_summary_green.log": "3c39fd0c1b9d37e49371e0e1fa87a125056a02b3c8c8b482e69d40e9a2229754",
+    "outputs/verification/controls_summary_red.log": "9b9d2595d573321fffb57d58af706c30daafd6f11eb268c0e40b7ddebd4af91f",
+    "outputs/verification/endpoints_red.log": "b38bb66f98af065a5304d42be7282f20649d24062b3be9715be12a5a7222a2b8",
+    "outputs/verification/execution_one.log": "feac7ac3af786effc01d18fca90c829b01a17e0eec16594020ebf2d798db4da7",
+    "outputs/verification/execution_two.log": "45478ad452846eeb8d73febeb4243364d3b95aa4198da583b3a60d765488af9d",
+    "outputs/verification/feature_catalog_green.log": "90c19f654552a244fa829492f0d6c2c6dfdb782c15864814e69fca734c596bc9",
+    "outputs/verification/feature_catalog_red.log": "0d003132fb50812518a9ec90419310409ea9301f43992ba3bbe1c1da169637c7",
+    "outputs/verification/fixed_research_green.log": "60e1e77adb3b709ebd642cd81fd8a58ce06796417714a9a0ea2868796fc5c72c",
+    "outputs/verification/full_pytest.log": "ed57fe5ea5b1ac146b9640291b1ddbac3ba5e4029c481a3acaa42c226f69332c",
+    "outputs/verification/full_pytest_exit.json": "f7943bd2f546e032dc9cf421eaaa00b85838dfa5e36b97beae53d948900abd24",
+    "outputs/verification/legacy_v37_red.log": "fa6a4b3413cd955f69cd5012146edbda063055524304dae345f525d8a975a20d",
+    "outputs/verification/line_endings_green.log": "94eb762aa70d10fd303f38a772ef950b9ca9de005f21a891af11257b331eb4d4",
+    "outputs/verification/line_endings_red.log": "3c904bcb5eb73c3ac2f575ac82d53e2da2045c05d34bb434bc4c1224fec0efb1",
+    "outputs/verification/preflight_repair.log": "3e42d9f5e95597e40452555870bf080ea85d6c8a0357b56da341740d70dcea28",
+    "outputs/verification/preflight_seed.log": "3ffb1bdd61bd470c1e594b855d10785537283c878d802427c8ee04040f843e75",
+    "outputs/verification/prepare.log": "5298895574b831520062af2eb7037275d68784e250c087e7ef495c00ea08b277",
+    "outputs/verification/prepare_final.log": "4877591dbd851f3fca9e8d591a1b5431b2c2a0f618fbfa2672b721d44b6a4f28",
+    "outputs/verification/prepare_retry.log": "4877591dbd851f3fca9e8d591a1b5431b2c2a0f618fbfa2672b721d44b6a4f28",
+    "outputs/verification/prepare_sealed.log": "4877591dbd851f3fca9e8d591a1b5431b2c2a0f618fbfa2672b721d44b6a4f28",
+    "outputs/verification/provenance_green.log": "09b06ad40d45024a809a4dbd6a7ca3a08282f97bc4d96512baec8f59f7154db1",
+    "outputs/verification/provenance_red.log": "71b854bbba772ae1aee794ed9553414daba561eea5df83912c9e31421038e044",
+    "outputs/verification/runner_gate_green.log": "66df3f06b357f892f907c185943deaa6fd608fe3a54fde203292c099285d60f1",
+    "outputs/verification/runner_gate_red.log": "db1f1dd14f1252d97b8b1e3aba413641548b14ffeed7772f5ef5b98e942a26b1",
+    "outputs/verification/source_ledger_green.log": "27322c6babf82d1851be889b84fa830ade008bfde613f1c41bbca6f47d76fdce",
+    "outputs/verification/source_ledger_red.log": "13b510354a8802eb6f8ede6ee3d21c4d120910c0e7994751e508682f77d65e2b",
+    "outputs/verification/temporal_metrics_green.log": "e19a694cdd9febf58be335c4381e078ad809d0e22551f9f62df15a8e3ea82e24",
+    "outputs/verification/temporal_metrics_red.log": "39c57c0ad4931fc643e0d37969cd527fd306a4fd210f46323a87b5e1d115b0bc",
+    "outputs/verification/v200_final_green.log": "ccfddacd43a0455d1516dbd9f82910960775e0311c828120d80ff73ddc1a32a5",
+    "outputs/verification/v200_green.log": "7c1483f24fe20b225610593f117cdc56c1f6a7acf6073ec2f6663953d8268f1c",
+    "outputs/vwo_accepted_gap.csv": "cf45b1376d33599ec5976e5ad8e229b586786ad21187ce393b11a71049df90af"
   },
-  "partition_ledger_sha256": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed",
+  "parent_seed_db_sha256": "7c68efbd90ef5c10a12e05dc2a9e03402e353a06219fd2db129d711754c1c35d",
+  "parent_seed_git": "aae0be883309bdc068ee9afbb78b0aa9a4b52b8d",
+  "post_full_suite_verification": {
+    "changes": "preflight artifact marker/Iterator annotation; CI artifact fetch-depth0 for exact historical Git blob",
+    "command": "python -m pytest -o addopts=\"--tb=short\" -q tests/research/test_v200_preflight.py tests/integration/repo/test_workflow_contracts.py",
+    "exit": 0,
+    "fitting_code_changed": false,
+    "summary": "12 passed in 1.40s"
+  },
   "preregistered_lock_sha256": "17fe0b728c584df4f35f62339ce1ac6696f200c5469731adbec24f9f96388293",
-  "reference_sources": [
-    {
-      "copy_path": "research/studies/v200_clean_baseline/outputs/references/R3b_refreshed_replay_rows.csv",
-      "git_commit": "e4500daa92adf839415cd5aca25c8e3d8274bb33",
-      "original_path": "docs/reviews/R3b_refreshed_replay_rows.csv",
-      "sha256": "110b54d3bc186a2bdfcd2853a95f915409eb9f32388cf54c5f400c04ff2cda93",
-      "use": "provisional citation only; never fitted"
+  "purge": "h",
+  "quarantine_ledger_sha256": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed",
+  "reproducibility": {
+    "all_compared_files_byte_identical": true,
+    "comparisons": [
+      {
+        "byte_identical": true,
+        "file": "control_predictions.csv",
+        "first_sha256": "4198eef62332cfa02ab59b8cf1b52328b66dc8cd547181751dc0949c4943830b",
+        "max_numeric_difference": 0.0,
+        "second_sha256": "4198eef62332cfa02ab59b8cf1b52328b66dc8cd547181751dc0949c4943830b"
+      },
+      {
+        "byte_identical": true,
+        "file": "control_support.json",
+        "first_sha256": "ae4976bf9a28ea6a0dd257bbfdf7fd326e4449be42a10ee5df82c599d73679c7",
+        "max_numeric_difference": 0.0,
+        "second_sha256": "ae4976bf9a28ea6a0dd257bbfdf7fd326e4449be42a10ee5df82c599d73679c7"
+      },
+      {
+        "byte_identical": true,
+        "file": "db_hash_check.json",
+        "first_sha256": "83a9165c0998a08ae7de58e00b45be7a6d88f8934f799cc90c99af626b992f8f",
+        "max_numeric_difference": 0.0,
+        "second_sha256": "83a9165c0998a08ae7de58e00b45be7a6d88f8934f799cc90c99af626b992f8f"
+      },
+      {
+        "byte_identical": true,
+        "file": "fold_ledger.csv",
+        "first_sha256": "3f0a7200ff807bcfdacc3b2dc90e90c3143fba783fe6044fd7e2dc5df4d3528b",
+        "max_numeric_difference": 0.0,
+        "second_sha256": "3f0a7200ff807bcfdacc3b2dc90e90c3143fba783fe6044fd7e2dc5df4d3528b"
+      },
+      {
+        "byte_identical": true,
+        "file": "metrics.json",
+        "first_sha256": "5ffaed246c7c94250e8db27a1dadf8c0ffa2ae40bbc086938368293809a790ed",
+        "max_numeric_difference": 0.0,
+        "second_sha256": "5ffaed246c7c94250e8db27a1dadf8c0ffa2ae40bbc086938368293809a790ed"
+      },
+      {
+        "byte_identical": true,
+        "file": "multiplicity.json",
+        "first_sha256": "373bd54b582ff27121178bc7a8f22114199602097f7e20561f71f0a1ef926dc5",
+        "max_numeric_difference": 0.0,
+        "second_sha256": "373bd54b582ff27121178bc7a8f22114199602097f7e20561f71f0a1ef926dc5"
+      },
+      {
+        "byte_identical": true,
+        "file": "path_b_fold_ledger.csv",
+        "first_sha256": "ee1a89b4929e0afe9debc3950701ba19724411791a82b379af23e47bda9e1d5a",
+        "max_numeric_difference": 0.0,
+        "second_sha256": "ee1a89b4929e0afe9debc3950701ba19724411791a82b379af23e47bda9e1d5a"
+      },
+      {
+        "byte_identical": true,
+        "file": "path_b_predictions.csv",
+        "first_sha256": "30983ee2930ca9b91e804acb47845492b58293c04df298010b3e1c44664841f8",
+        "max_numeric_difference": 0.0,
+        "second_sha256": "30983ee2930ca9b91e804acb47845492b58293c04df298010b3e1c44664841f8"
+      },
+      {
+        "byte_identical": true,
+        "file": "predictions.csv",
+        "first_sha256": "5b671c52dbdded0b6106b02f0942d20f484df4715a21830c19ccf01320a28270",
+        "max_numeric_difference": 0.0,
+        "second_sha256": "5b671c52dbdded0b6106b02f0942d20f484df4715a21830c19ccf01320a28270"
+      }
+    ],
+    "maximum_numeric_difference": 0.0,
+    "quarantine_metrics_computed": 0,
+    "runs": [
+      {
+        "code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
+        "exit": 0,
+        "mode": "development+A1 bridge"
+      },
+      {
+        "code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
+        "exit": 0,
+        "mode": "development repeat; existing bridge evidence retained"
+      }
+    ],
+    "status": "passed",
+    "tolerance": 1e-10
+  },
+  "runtime": {
+    "implementation": "CPython",
+    "packages": {
+      "PyPortfolioOpt": "1.6.0",
+      "PyYAML": "6.0.2",
+      "beautifulsoup4": "4.15.0",
+      "lxml": "6.1.3",
+      "mapie": "1.5.0",
+      "matplotlib": "3.11.2",
+      "numpy": "2.5.3",
+      "pandas": "3.0.6",
+      "pyarrow": "25.0.1",
+      "python-dotenv": "1.2.3",
+      "requests": "2.34.2",
+      "scikit-learn": "1.9.1",
+      "scipy": "1.18.1",
+      "skfolio": "1.4.0",
+      "statsmodels": "0.15.0",
+      "xgboost": "3.4.1"
     },
-    {
-      "copy_path": "research/studies/v200_clean_baseline/outputs/references/2026-09-25_step5_rebaseline_rows.csv",
-      "git_commit": "e4500daa92adf839415cd5aca25c8e3d8274bb33",
-      "original_path": "docs/reviews/2026-09-25_step5_rebaseline_rows.csv",
-      "sha256": "ad7930f77f9e4dadb8ee75a15dd55c89ae753b64cbf089dadd00398834ff8edb",
-      "use": "provisional citation only; never fitted"
-    }
+    "pgr_vds_path": "C:\\Users\\Jeff\\.codex\\worktrees\\1c33\\pgr-vesting-decision-support\\src\\pgr_vds\\__init__.py",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.14",
+    "used_core_dependencies": [
+      "numpy",
+      "pandas",
+      "scikit-learn",
+      "scipy",
+      "statsmodels",
+      "matplotlib",
+      "xgboost",
+      "pyarrow",
+      "requests",
+      "lxml",
+      "beautifulsoup4",
+      "python-dotenv",
+      "skfolio",
+      "PyPortfolioOpt",
+      "mapie",
+      "PyYAML"
+    ]
+  },
+  "seed": 20260926,
+  "source_code_dirty": false,
+  "source_limits": [
+    "Current-vintage FRED",
+    "Repaired historical EDGAR with no per-row fetch timestamp",
+    "Accepted VWO March2026 provider gap",
+    "Weekly-bar ex-date reinvestment approximation"
   ],
-  "repairs": [
-    {
-      "commit": "ed7997f6f540f664e59dd44a4079616d74a8e8cb",
-      "id": "R2-lite",
-      "rebuild_id": "Weekly Data Accumulation run36410317252",
-      "record": "docs/reviews/2026-09-28_R2_dividend_refresh_check.md",
-      "review_pr": 144
-    },
-    {
-      "commit": "c3b4798b90a43f9dbd616981861e9ff01fa2de72",
-      "id": "R3b",
-      "record": "docs/reviews/R3b_baseline_closeout.md",
-      "review_pr": 145
-    }
-  ],
-  "research_execution_code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
-  "runtime_lock_sha256": "ed8a5eea976ce21c816beb3b305b3a1d6fde6c59ea87c261aedab7ee0304d1e9",
-  "schema_migrations": [
-    {
-      "applied_at": "2026-04-04T03:34:13.633548+00:00",
-      "migration_id": "001_initial"
-    },
-    {
-      "applied_at": "2026-04-10T22:45:43.612438+00:00",
-      "migration_id": "002_model_performance_log"
-    },
-    {
-      "applied_at": "2026-04-10T22:45:43.613517+00:00",
-      "migration_id": "003_model_retrain_log"
-    },
-    {
-      "applied_at": "2026-09-25T11:38:50.574755+00:00",
-      "migration_id": "004_investment_book_yield_percent"
-    },
-    {
-      "applied_at": "2026-09-25T14:43:21.367122+00:00",
-      "migration_id": "005_fred_one_row_per_month"
-    },
-    {
-      "applied_at": "2026-09-25T16:27:11.926943+00:00",
-      "migration_id": "006_pgr_edgar_monthly_raw"
-    },
-    {
-      "applied_at": "2026-09-25T16:27:11.930045+00:00",
-      "migration_id": "007_pgr_fundamentals_quarterly_rebuild"
-    },
-    {
-      "applied_at": "2026-09-26T01:23:39.730555+00:00",
-      "migration_id": "008_model_performance_log_metrics_version"
-    }
-  ],
-  "schema_version": 1,
-  "status": "clean",
-  "tracked_db_sha256_before": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6"
+  "splits_dividends_fred_edgar": "Approved DB exact Git/SHA; economic-date bounded raw extraction; filings and one calendar macro publication lag; no providers called",
+  "study": "v200_clean_baseline",
+  "target_definitions": {
+    "PathB": "1 iff fixed investable weighted PGR-minus-portfolio6M return < -.03; production C.5 balanced logistic; same-label mature temperature stream",
+    "absolute_pgr6": "unbenchmarked PGR6M fractional split/DRIP return, not absolute-value magnitude; mature mean comparator",
+    "annual_excess": "x23/x18 post-policy November origin Dec1-nextFeb28/29 excess cash over past24M positive-payment median<=.25 / current originBVPS; unique annual events; positive-excess survivor",
+    "bvps_growth": "latest-filed reportBVPS at origin to exact reportmonth+12 BVPS; available on target filing; mature mean growth comparator",
+    "cash12": "next12M per origin-share cash vs past12M per origin-share cash",
+    "regression": "fractional raw split/fractional-share DRIP PGR-minus-benchmark h6/h12; available at BME origin+h"
+  }
 }

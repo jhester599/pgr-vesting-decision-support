@@ -1,0 +1,122 @@
+{
+  "bridge_scope": "same repaired inputs, fixed development2022-08-31; gap+nested transforms+12M window, no tuning",
+  "campaign_candidates_executed": 0,
+  "disposition": "freeze incumbent comparator; no promotion",
+  "h12": {
+    "base_hit_rate": 0.7634408602150538,
+    "base_rate": 0.7876344086021505,
+    "block_length": 12,
+    "bootstrap_replicates": 2000,
+    "brier": 0.27335726991846576,
+    "coverage_80": 0.7450980392156863,
+    "directional_skill": -0.161002886002886,
+    "directional_skill_holm38_p": 1.0,
+    "directional_skill_p": 1.0,
+    "disposition": "research comparator; no promotion",
+    "ece": 0.31750004201618864,
+    "equal_weight_ic": -0.07151599959268815,
+    "equal_weight_ic_ci": [
+      -0.2161894284125535,
+      0.19337889545453296
+    ],
+    "equal_weight_ic_p": 0.5937031484257871,
+    "hit_rate": 0.6129032258064516,
+    "inference_method": "paired moving-date-block bootstrap; all benchmarks retained",
+    "inference_supported": true,
+    "log_loss": 1.4405217877221592,
+    "mean_squared_error_improvement": -0.015582073247162886,
+    "n_benchmarks": 8,
+    "n_calibration": 129,
+    "n_dates": 66,
+    "n_intervals": 255,
+    "n_rows": 372,
+    "oos_r2": -0.19144639775813777,
+    "oos_r2_ci": [
+      -0.7264243602256388,
+      0.05310845753692504
+    ],
+    "panel_ic": -0.02601265818358725,
+    "panel_ic_ci": [
+      -0.26471592015067363,
+      0.13467733264025278
+    ],
+    "panel_ic_p": 0.8315842078960519,
+    "secondary_squared_error_p": 1.0,
+    "seed": 20260926,
+    "test_role": "secondary 12M diagnostic only",
+    "unscorable_outer_pairs": 26
+  },
+  "h6": {
+    "base_hit_rate": 0.5881104033970276,
+    "base_rate": 0.7080679405520169,
+    "block_length": 6,
+    "bootstrap_replicates": 2000,
+    "brier": 0.2669999967058115,
+    "coverage_80": 0.7609195402298851,
+    "directional_skill": 0.07877810846560845,
+    "directional_skill_holm38_p": 1.0,
+    "directional_skill_p": 0.02948525737131434,
+    "disposition": "research comparator; no promotion",
+    "ece": 0.1719459014107176,
+    "equal_weight_ic": -0.04156253082656416,
+    "equal_weight_ic_ci": [
+      -0.21988722122702367,
+      0.12740989869885472
+    ],
+    "equal_weight_ic_p": 0.6206896551724138,
+    "hit_rate": 0.6507430997876857,
+    "inference_method": "paired moving-date-block bootstrap; all benchmarks retained",
+    "inference_supported": true,
+    "log_loss": 0.8214127218671587,
+    "mean_squared_error_improvement": 0.0016888600551628078,
+    "n_benchmarks": 8,
+    "n_calibration": 730,
+    "n_dates": 144,
+    "n_intervals": 870,
+    "n_rows": 942,
+    "oos_r2": 0.010542787001079024,
+    "oos_r2_ci": [
+      -0.13184697565039297,
+      0.12332118812490468
+    ],
+    "panel_ic": -0.02610094486569026,
+    "panel_ic_ci": [
+      -0.2057128863829908,
+      0.15348897736767886
+    ],
+    "panel_ic_p": 0.776111944027986,
+    "primary_holm38_p": 1.0,
+    "primary_p": 0.21689155422288856,
+    "seed": 20260926,
+    "test_role": "preregistered 6M baseline reference test",
+    "unscorable_outer_pairs": 35
+  },
+  "primary_endpoint": "6M regression",
+  "production_equivalence": [
+    {
+      "as_of": "2022-08-31",
+      "equal_weight_ic": 0.20661599520063445,
+      "equivalence_passed": true,
+      "hit_rate": 0.6952380952380952,
+      "horizon": 6,
+      "max_metric_difference": 0.0,
+      "oos_r2": 0.12066748265672977,
+      "panel_ic": 0.1952182674376158,
+      "pt_p": 0.010506668097487473
+    },
+    {
+      "as_of": "2022-08-31",
+      "equal_weight_ic": -0.06758698248916402,
+      "equivalence_passed": true,
+      "hit_rate": 0.7325268817204301,
+      "horizon": 12,
+      "max_metric_difference": 0.0,
+      "oos_r2": 0.03679922348398501,
+      "panel_ic": 0.03042602720287233,
+      "pt_p": 0.7513852521965116
+    }
+  ],
+  "provisional_13V_reference_only": "docs/reviews/2026-09-26_step13v_comparison.md",
+  "quarantine_metrics_computed": 0,
+  "status": "accepted_research_comparator"
+}

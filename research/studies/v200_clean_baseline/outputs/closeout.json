@@ -1,0 +1,167 @@
+{
+  "accepted_exception": {
+    "affected_targets": 12,
+    "id": "VWO_MARCH_2026_GAP",
+    "partition": "quarantine"
+  },
+  "alternatives_executed": 0,
+  "as_of": "2026-09-26",
+  "attempts": [
+    {
+      "id": "seed_freshness",
+      "log": "verification/preflight_seed.log",
+      "result": "red;20 stale tickers"
+    },
+    {
+      "id": "approved_repair_freshness",
+      "log": "verification/preflight_repair.log",
+      "result": "green;2passed exit0"
+    },
+    {
+      "id": "temporary_directory",
+      "result": "initial pytest temp permissions; isolated runtime corrected before data checks"
+    },
+    {
+      "id": "preflight_serialization",
+      "log": "verification/prepare.log",
+      "result": "blocked before fitting; SQLite migration row factory corrected"
+    },
+    {
+      "id": "provenance",
+      "log": "verification/provenance_red.log",
+      "result": "independent red then green"
+    },
+    {
+      "id": "temporal_and_metrics",
+      "log": "verification/temporal_metrics_red.log",
+      "result": "independent red then green; legacy red reproduced"
+    },
+    {
+      "id": "annual_endpoint",
+      "log": "verification/controls_endpoint_red.log",
+      "result": "corrected x23/x18 December-February and split basis before fitting; no alternative fitted"
+    },
+    {
+      "id": "ACI_and_availability",
+      "log": "verification/causal_review_red.log",
+      "result": "independent finite-sample quantile, delayed maturity and unsupported-inner red then green"
+    },
+    {
+      "id": "feature_catalog",
+      "log": "verification/feature_catalog_red.log",
+      "result": "independent sparse catalog red; disabled full-frame count pruning locally before fitting"
+    },
+    {
+      "id": "source_availability",
+      "log": "verification/source_ledger_red.log",
+      "result": "independent actualfiling and assumedmacro lag red then green"
+    },
+    {
+      "id": "cash_naive_and_control_reports",
+      "log": "verification/controls_summary_red.log",
+      "result": "independent expected scores and majority control red then green"
+    },
+    {
+      "id": "unsupported_histories",
+      "log": "verification/baseline_support_red.log",
+      "result": "independent empty/insufficient-history red then green"
+    },
+    {
+      "id": "blocked_README",
+      "log": "verification/runner_gate_red.log",
+      "result": "failure-path red then green"
+    },
+    {
+      "id": "line_endings",
+      "log": "verification/line_endings_red.log",
+      "result": "independent source equivalence and exactCSV byte hash red then green"
+    },
+    {
+      "id": "execution_one",
+      "log": "verification/execution_one.log",
+      "result": "exit0; fixed development, controls and A1 bridge"
+    },
+    {
+      "id": "execution_two",
+      "log": "verification/execution_two.log",
+      "result": "exit0; same procedure, read-only determinism repeat"
+    },
+    {
+      "id": "full_suite",
+      "log": "verification/full_pytest.log",
+      "result": "2658 passed, 1 skipped, 2 xfailed, 105 warnings in 345.67s (0:05:45);exit0"
+    }
+  ],
+  "base_master_commit": "e4500daa92adf839415cd5aca25c8e3d8274bb33",
+  "code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
+  "core_files_byte_identical": 9,
+  "discarded_comparisons": [
+    "September full-history 13V replay: prohibited before v207",
+    "seed-versus-repair performance comparison: seed freshness blocks clean fitting",
+    "sparseannual inference and row-pooled p-values",
+    "unsupported folds; no reduced gaps or support",
+    "post-result feature/metric/window/threshold searches"
+  ],
+  "emails_sent": 0,
+  "fetchers_called": 0,
+  "holdout_metric_accesses": 0,
+  "incumbent_blueprints": 1,
+  "inherited_test_failures": [],
+  "known_legacy_expected_failures": [
+    "v37 overlapping conditional-mean oracle comparator",
+    "v37 benchmark pooled R2 inflation"
+  ],
+  "limits": [
+    "current-vintage macro and assumedcalendar release lags",
+    "repaired EDGAR lacks original-vintage per-row retrievaltime",
+    "weekly raw ex-date DRIP price approximation",
+    "overlapping monthly annual targets",
+    "only3 supported annual positiveevents"
+  ],
+  "live_changes": [],
+  "negative_results": [
+    "6M R2 CI spans zero; primary Holm38 p=1",
+    "6M EW/panelIC point estimates negative",
+    "12M R2 negative and directional skill below mature base",
+    "regression ECE above .10, 12M80% coverage below .75",
+    "PathB skill adjusted p=1 and calibrated ECE .1078",
+    "annual positive endpoint only3 uniqueevents, unscorable"
+  ],
+  "post_full_suite_verification": {
+    "changes": "preflight artifact marker/Iterator annotation; CI artifact fetch-depth0 for exact historical Git blob",
+    "command": "python -m pytest -o addopts=\"--tb=short\" -q tests/research/test_v200_preflight.py tests/integration/repo/test_workflow_contracts.py",
+    "exit": 0,
+    "fitting_code_changed": false,
+    "summary": "12 passed in 1.40s"
+  },
+  "production_equivalence_max_difference": 0,
+  "production_equivalence_tolerance": 1e-09,
+  "provider_calls": 0,
+  "pytest_command": "python -m pytest -o addopts=\"--tb=short\" -q",
+  "pytest_exit": 0,
+  "pytest_summary": "2658 passed, 1 skipped, 2 xfailed, 105 warnings in 345.67s (0:05:45)",
+  "reproduction_max_difference": 0,
+  "reproduction_tolerance": 1e-10,
+  "research_test_exit": 0,
+  "research_test_summary": "73 passed, 2 xfailed in 5.89s",
+  "scope": "only v200_clean_baseline",
+  "status": "accepted_research_comparator",
+  "tracked_db_sha256_after": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
+  "tracked_db_sha256_before": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
+  "unrelated_preserved": [
+    ".codex/"
+  ],
+  "what_changed": [
+    "installed causal research_lib",
+    "exact approvedrepair/parent and finalforecast lock",
+    "independent fixtures",
+    "nested incumbent development and fixed controls",
+    "productionbridge and provenance/availability/support/inference ledgers"
+  ],
+  "what_is_left": [
+    "separately authorized v201-v206 against exact accepted lock",
+    "v207 one frozenfinalist retrospectivequarantine batch",
+    "separate governance promotionPR after amendedD2",
+    "annualsupport and historicalvintage evidence limits"
+  ]
+}

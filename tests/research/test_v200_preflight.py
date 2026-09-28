@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 import hashlib
 import json
 import os
@@ -27,10 +28,11 @@ HASHES = {
     SEED: "7c68efbd90ef5c10a12e05dc2a9e03402e353a06219fd2db129d711754c1c35d",
     REPAIR: "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
 }
+pytestmark = pytest.mark.artifact
 
 
 @pytest.fixture
-def snapshot(tmp_path: Path) -> sqlite3.Connection:
+def snapshot(tmp_path: Path) -> Iterator[sqlite3.Connection]:
     """Extract Git bytes outside the tracked DB path; never create sidecars."""
     commit = os.environ.get("V200_PREFLIGHT_COMMIT", REPAIR)
     payload = subprocess.check_output(

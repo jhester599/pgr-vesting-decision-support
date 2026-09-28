@@ -12,10 +12,10 @@ matched-endpoint controls. It changes research artifacts only.
 - [x] Complete redirected-cache feature/target availability preflight.
 - [x] Freeze exact repair/parent pins, dependencies, candidate grids and
   partition/access ledgers before fitting; register v200.
-- [ ] Run strict nested WFO and fixed endpoint controls on development only.
-- [ ] Produce production-equivalence bridge at a development as-of date.
-- [ ] Repeat read-only forecasts to tolerance 1e-10, inspect all ledgers.
-- [ ] Run full pytest command, hash tracked DB before/after, report failures.
+- [x] Run strict nested WFO and fixed endpoint controls on development only.
+- [x] Produce production-equivalence bridge at a development as-of date.
+- [x] Repeat read-only forecasts to tolerance 1e-10, inspect all ledgers.
+- [x] Run full pytest command, hash tracked DB before/after, report failures.
 - [ ] Review and open one research-only PR.
 
 If any required preflight fails, stop before fitting, record a blocked
