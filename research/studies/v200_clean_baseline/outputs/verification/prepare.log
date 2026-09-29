@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\research\studies\v200_clean_baseline\run.py", line 520, in <module>
+    main()
+  File "C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\research\studies\v200_clean_baseline\run.py", line 514, in main
+    prepare(args.scratch)
+  File "C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\research\studies\v200_clean_baseline\run.py", line 221, in prepare
+    features, targets, audit = preflight(db, scratch)
+                               ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\research\studies\v200_clean_baseline\run.py", line 189, in preflight
+    migrations = [dict(row) for row in conn.execute("SELECT * FROM schema_migrations")]
+                  ^^^^^^^^^
+ValueError: dictionary update sequence element #0 has length 11; 2 is required

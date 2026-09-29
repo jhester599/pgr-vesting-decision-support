@@ -1,0 +1,19 @@
+src\pgr_vds\research_lib\provenance.py:291: error: Argument 2 to "_verify_file" has incompatible type "Any | None"; expected "str"  [arg-type]
+src\pgr_vds\research_lib\adapters.py:48: error: Return type "Cursor" of "execute" incompatible with return type "AsOfCursor" in supertype "sqlite3.Cursor"  [override]
+src\pgr_vds\research_lib\adapters.py:51: error: Argument 2 of "execute" is incompatible with supertype "sqlite3.Cursor"; supertype defines the argument type as "SupportsLenAndGetItem[str | Buffer | int | float | None | Any] | Mapping[str, str | Buffer | int | float | None | Any]"  [override]
+src\pgr_vds\research_lib\adapters.py:51: note: This violates the Liskov substitution principle
+src\pgr_vds\research_lib\adapters.py:51: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+src\pgr_vds\research_lib\adapters.py:53: error: "Connection" has no attribute "bound_query"  [attr-defined]
+src\pgr_vds\research_lib\adapters.py:80: error: Signature of "cursor" incompatible with supertype "sqlite3.Connection"  [override]
+src\pgr_vds\research_lib\adapters.py:80: note:      Superclass:
+src\pgr_vds\research_lib\adapters.py:80: note:          @overload
+src\pgr_vds\research_lib\adapters.py:80: note:          def cursor(self, factory: None = ...) -> Cursor
+src\pgr_vds\research_lib\adapters.py:80: note:          @overload
+src\pgr_vds\research_lib\adapters.py:80: note:          def [_CursorT: Cursor] cursor(self, factory: Callable[[Connection], _CursorT]) -> _CursorT
+src\pgr_vds\research_lib\adapters.py:80: note:      Subclass:
+src\pgr_vds\research_lib\adapters.py:80: note:          def cursor(self, factory: type = ...) -> Cursor
+src\pgr_vds\research_lib\adapters.py:86: error: Argument 2 of "execute" is incompatible with supertype "sqlite3.Connection"; supertype defines the argument type as "SupportsLenAndGetItem[str | Buffer | int | float | None | Any] | Mapping[str, str | Buffer | int | float | None | Any]"  [override]
+src\pgr_vds\research_lib\adapters.py:86: note: This violates the Liskov substitution principle
+src\pgr_vds\research_lib\adapters.py:86: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+src\pgr_vds\research_lib\adapters.py:440: error: Incompatible types in assignment (expression has type "float", variable has type "float64")  [assignment]
+Found 7 errors in 2 files (checked 28 source files)

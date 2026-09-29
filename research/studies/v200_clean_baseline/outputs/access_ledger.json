@@ -1,0 +1,10 @@
+{
+  "forecast_and_metric_scope": "development only",
+  "holdout_metric_accesses": 0,
+  "label_access_purposes": [
+    "partition classification and SHA256 sealing only"
+  ],
+  "next_unseal": "v207 one frozen batch, D2",
+  "prohibited_replay": "September full-history step13V replay deferred to v207",
+  "study": "v200"
+}

@@ -1,0 +1,13 @@
+STALE_TICKERS=["VTI", "VOO", "VGT", "VHT", "VFH", "VIS", "VDE", "VPU", "KIE", "VXUS", "VEA", "VWO", "VIG", "SCHD", "BND", "BNDX", "VCIT", "VMBS", "VNQ", "ALL"]
+F
+================================== FAILURES ===================================
+______________________ test_required_dividends_are_fresh ______________________
+tests\research\test_v200_preflight.py:58: in test_required_dividends_are_fresh
+    assert not required.intersection(stale), stale
+E   AssertionError: ['VTI', 'VOO', 'VGT', 'VHT', 'VFH', 'VIS', ...]
+E   assert not {'BND', 'VDE', 'VMBS', 'VOO', 'VWO', 'VXUS'}
+E    +  where {'BND', 'VDE', 'VMBS', 'VOO', 'VWO', 'VXUS'} = <built-in method intersection of set object at 0x000001DEE710C660>(['VTI', 'VOO', 'VGT', 'VHT', 'VFH', 'VIS', ...])
+E    +    where <built-in method intersection of set object at 0x000001DEE710C660> = {'BND', 'DBC', 'GLD', 'PGR', 'VDE', 'VMBS', ...}.intersection
+=========================== short test summary info ===========================
+FAILED tests/research/test_v200_preflight.py::test_required_dividends_are_fresh
+1 failed in 0.50s

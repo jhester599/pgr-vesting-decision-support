@@ -1,0 +1,411 @@
+STRICT h6 started; development only
+STRICT h12 started; development only
+Fixed endpoint controls started
+Development-date production equivalence started
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\processing\feature_engineering.py:1876: UserWarning: The design matrix is poorly conditioned (condition number=6.16e+14). VIF calculations may be numerically unstable.
+  val = float(variance_inflation_factor(Xarr, i))
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\processing\feature_engineering.py:1876: UserWarning: The design matrix is poorly conditioned (condition number=6.16e+14). VIF calculations may be numerically unstable.
+  val = float(variance_inflation_factor(Xarr, i))
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  r_sq = OLS(x_i, x_noti).fit().rsquared
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+  train_medians = np.nanmedian(X_train, axis=0)
+warning: unable to access 'C:\Users\Jeff/.config/git/ignore': Permission denied
+warning: unable to access 'C:\Users\Jeff/.config/git/ignore': Permission denied
+DEVELOPMENT RUN COMPLETE; no quarantine metrics; tracked DB unchanged

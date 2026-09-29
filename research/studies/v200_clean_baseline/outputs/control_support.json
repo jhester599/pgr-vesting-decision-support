@@ -1,0 +1,73 @@
+{
+  "annual_excess_to_bvps": {
+    "availability": "Next-year February 28 or 29",
+    "dependence": "One annual event per November, no monthly repeats",
+    "forecast": "Mean of earlier matured positive annual ratios",
+    "horizon": 12,
+    "ordinary_rule": "Median positive payments <=.25 in prior 24 months, fixed at November origin; no December information",
+    "support": {
+      "minimum_training_months": 60,
+      "n_forecasts": 2,
+      "n_origins": 3,
+      "n_raw_history_labels": 3,
+      "n_unique_annual_events": 3,
+      "n_warmup": 1,
+      "n_zero_excess_events_excluded": 1,
+      "reason": "Sparse annual positive events are not independent monthly observations",
+      "status": "unscorable"
+    },
+    "target": "Post-policy November origin: max(December-February cash minus ordinary quarter baseline fixed at November,0)/latest filed BVPS; conditional positive-event survivor endpoint",
+    "unit": "December-February excess cash / November current BVPS"
+  },
+  "bvps_growth_12m": {
+    "availability": "Actual filing date of the exact future report",
+    "forecast": "Mean of earlier labels matured by origin",
+    "horizon": 12,
+    "support": {
+      "minimum_training_months": 60,
+      "n_forecasts": 205,
+      "n_origins": 217,
+      "n_raw_history_labels": 217,
+      "n_unique_annual_events": null,
+      "n_warmup": 12,
+      "reason": "Fixed control; model evidence requires strict chronological folds",
+      "status": "control_only"
+    },
+    "target": "Latest filed report at origin to that report month +12; future/current BVPS minus one",
+    "unit": "fractional BVPS growth on the origin share basis"
+  },
+  "cash_dividend_12m": {
+    "availability": "Target business month-end",
+    "forecast": "Cash in the past 12 calendar months, origin basis",
+    "horizon": 12,
+    "support": {
+      "minimum_training_months": 60,
+      "n_forecasts": 262,
+      "n_origins": 273,
+      "n_raw_history_labels": 274,
+      "n_unique_annual_events": null,
+      "n_warmup": 11,
+      "reason": "Fixed control; model evidence requires strict chronological folds",
+      "status": "control_only"
+    },
+    "target": "Cash ex-dates in (origin, business month-end +12M]",
+    "unit": "USD cash per one origin-date PGR share"
+  },
+  "pgr_drip_return_6m": {
+    "availability": "Target business month-end",
+    "forecast": "Mean of earlier matured PGR DRIP return labels",
+    "horizon": 6,
+    "support": {
+      "minimum_training_months": 24,
+      "n_forecasts": 274,
+      "n_origins": 279,
+      "n_raw_history_labels": 280,
+      "n_unique_annual_events": null,
+      "n_warmup": 5,
+      "reason": "Fixed control; model evidence requires strict chronological folds",
+      "status": "control_only"
+    },
+    "target": "One raw origin share, manual splits and fractional ex-date DRIP to business month-end +6M; unbenchmarked absolute asset return, never absolute-value magnitude",
+    "unit": "signed fractional total return of PGR alone"
+  }
+}

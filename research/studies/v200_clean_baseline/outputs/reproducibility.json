@@ -1,0 +1,84 @@
+{
+  "all_compared_files_byte_identical": true,
+  "comparisons": [
+    {
+      "byte_identical": true,
+      "file": "control_predictions.csv",
+      "first_sha256": "4198eef62332cfa02ab59b8cf1b52328b66dc8cd547181751dc0949c4943830b",
+      "max_numeric_difference": 0.0,
+      "second_sha256": "4198eef62332cfa02ab59b8cf1b52328b66dc8cd547181751dc0949c4943830b"
+    },
+    {
+      "byte_identical": true,
+      "file": "control_support.json",
+      "first_sha256": "ae4976bf9a28ea6a0dd257bbfdf7fd326e4449be42a10ee5df82c599d73679c7",
+      "max_numeric_difference": 0.0,
+      "second_sha256": "ae4976bf9a28ea6a0dd257bbfdf7fd326e4449be42a10ee5df82c599d73679c7"
+    },
+    {
+      "byte_identical": true,
+      "file": "db_hash_check.json",
+      "first_sha256": "83a9165c0998a08ae7de58e00b45be7a6d88f8934f799cc90c99af626b992f8f",
+      "max_numeric_difference": 0.0,
+      "second_sha256": "83a9165c0998a08ae7de58e00b45be7a6d88f8934f799cc90c99af626b992f8f"
+    },
+    {
+      "byte_identical": true,
+      "file": "fold_ledger.csv",
+      "first_sha256": "3f0a7200ff807bcfdacc3b2dc90e90c3143fba783fe6044fd7e2dc5df4d3528b",
+      "max_numeric_difference": 0.0,
+      "second_sha256": "3f0a7200ff807bcfdacc3b2dc90e90c3143fba783fe6044fd7e2dc5df4d3528b"
+    },
+    {
+      "byte_identical": true,
+      "file": "metrics.json",
+      "first_sha256": "5ffaed246c7c94250e8db27a1dadf8c0ffa2ae40bbc086938368293809a790ed",
+      "max_numeric_difference": 0.0,
+      "second_sha256": "5ffaed246c7c94250e8db27a1dadf8c0ffa2ae40bbc086938368293809a790ed"
+    },
+    {
+      "byte_identical": true,
+      "file": "multiplicity.json",
+      "first_sha256": "373bd54b582ff27121178bc7a8f22114199602097f7e20561f71f0a1ef926dc5",
+      "max_numeric_difference": 0.0,
+      "second_sha256": "373bd54b582ff27121178bc7a8f22114199602097f7e20561f71f0a1ef926dc5"
+    },
+    {
+      "byte_identical": true,
+      "file": "path_b_fold_ledger.csv",
+      "first_sha256": "ee1a89b4929e0afe9debc3950701ba19724411791a82b379af23e47bda9e1d5a",
+      "max_numeric_difference": 0.0,
+      "second_sha256": "ee1a89b4929e0afe9debc3950701ba19724411791a82b379af23e47bda9e1d5a"
+    },
+    {
+      "byte_identical": true,
+      "file": "path_b_predictions.csv",
+      "first_sha256": "30983ee2930ca9b91e804acb47845492b58293c04df298010b3e1c44664841f8",
+      "max_numeric_difference": 0.0,
+      "second_sha256": "30983ee2930ca9b91e804acb47845492b58293c04df298010b3e1c44664841f8"
+    },
+    {
+      "byte_identical": true,
+      "file": "predictions.csv",
+      "first_sha256": "5b671c52dbdded0b6106b02f0942d20f484df4715a21830c19ccf01320a28270",
+      "max_numeric_difference": 0.0,
+      "second_sha256": "5b671c52dbdded0b6106b02f0942d20f484df4715a21830c19ccf01320a28270"
+    }
+  ],
+  "maximum_numeric_difference": 0.0,
+  "quarantine_metrics_computed": 0,
+  "runs": [
+    {
+      "code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
+      "exit": 0,
+      "mode": "development+A1 bridge"
+    },
+    {
+      "code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
+      "exit": 0,
+      "mode": "development repeat; existing bridge evidence retained"
+    }
+  ],
+  "status": "passed",
+  "tolerance": 1e-10
+}

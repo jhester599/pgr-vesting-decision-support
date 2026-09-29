@@ -1,0 +1,28 @@
+{
+  "additional_fits": 0,
+  "all_prior_artifacts_unchanged": true,
+  "allowed_differences": [
+    "type annotations",
+    "typing-only imports",
+    "CursorT TypeVar declaration",
+    "overload declaration stubs"
+  ],
+  "execution_code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
+  "files": {
+    "src/pgr_vds/research_lib/adapters.py": {
+      "execution_sha256": "5dce75d0211e7027decb619390246252f0b7f04b1463089bf693d941f6641ad1",
+      "maintenance_sha256": "e5288b3965a6e300688920d0f9c11ff5cf2155d50a293be76dc26c4aa0217983",
+      "runtime_ast_sha256": "434e6e9b9dabaf822f4acd6c4dfaa837c7c23a9dd1d2ac902b77fb42b9d8c141",
+      "runtime_ast_unchanged": true
+    },
+    "src/pgr_vds/research_lib/provenance.py": {
+      "execution_sha256": "76f88735c911be10339dd4c065cccad5c1dcbf7866234e6e917a88dac1e5f75c",
+      "maintenance_sha256": "9269e75e0151ce8b87077c801a34ccc8328ee9c750c4d7ca01e5953dd9bd0a5e",
+      "runtime_ast_sha256": "f81432110f66ad4afb775c4d3d6953db5f865d628f237d39ab305a3fe8598543",
+      "runtime_ast_unchanged": true
+    }
+  },
+  "maintenance_source_commit": "10533068f92e65d66f3beffcc4a257b400bbc705",
+  "previous_accepted_lock_sha256": "c4cb2aff16016107f8d2b4ac4db4e8e313f9ddfcc236ff32b6a09511259f64d0",
+  "quarantine_metric_accesses": 0
+}

@@ -1,0 +1,27 @@
+FFF                                                                      [100%]
+================================== FAILURES ===================================
+_____________ test_empty_target_history_is_explicitly_unscorable ______________
+tests\research\test_v200_baseline.py:89: in test_empty_target_history_is_explicitly_unscorable
+    parts, ledger = strict_predictions(
+src\pgr_vds\research_lib\baseline.py:24: in strict_predictions
+    dates = pd.date_range(dates.min(), dates.max(), freq="BME")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\pandas\core\indexes\datetimes.py:1446: in date_range
+    raise ValueError("Neither `start` nor `end` can be NaT")
+E   ValueError: Neither `start` nor `end` can be NaT
+_____ test_insufficient_outer_history_is_unscorable_without_fit[6-78-12] ______
+tests\research\test_v200_baseline.py:138: in test_insufficient_outer_history_is_unscorable_without_fit
+    assert len(ledger) == 2
+E   assert 0 == 2
+E    +  where 0 = len([])
+____ test_insufficient_outer_history_is_unscorable_without_fit[12-150-24] _____
+tests\research\test_v200_baseline.py:138: in test_insufficient_outer_history_is_unscorable_without_fit
+    assert len(ledger) == 2
+E   assert 0 == 2
+E    +  where 0 = len([])
+=========================== short test summary info ===========================
+FAILED tests/research/test_v200_baseline.py::test_empty_target_history_is_explicitly_unscorable
+FAILED tests/research/test_v200_baseline.py::test_insufficient_outer_history_is_unscorable_without_fit[6-78-12]
+FAILED tests/research/test_v200_baseline.py::test_insufficient_outer_history_is_unscorable_without_fit[12-150-24]
+3 failed, 3 deselected in 1.31s
+PYTEST_EXIT=1

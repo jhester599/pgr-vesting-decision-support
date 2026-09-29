@@ -1,0 +1,9 @@
+{
+  "tracked_db_sha256_after": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
+  "db_unchanged": true,
+  "command": "python -m pytest -o addopts=\"--tb=short\" -q",
+  "summary": "2659 passed, 1 skipped, 2 xfailed, 94 warnings in 292.51s (0:04:52)",
+  "exit": 0,
+  "code_commit": "a3e4d12e852733284dee9bacdf32d91388a2bf15",
+  "tracked_db_sha256_before": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6"
+}

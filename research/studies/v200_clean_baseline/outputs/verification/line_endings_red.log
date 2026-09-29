@@ -1,0 +1,16 @@
+FF                                                                       [100%]
+================================== FAILURES ===================================
+_________ test_source_digest_accepts_only_git_line_ending_equivalence _________
+tests\research\test_v200_provenance.py:75: in test_source_digest_accepts_only_git_line_ending_equivalence
+    assert provenance.source_sha256(path) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'pgr_vds.research_lib.provenance' has no attribute 'source_sha256'
+____________ test_exact_artifact_digest_never_normalizes_csv_bytes ____________
+tests\research\test_v200_provenance.py:88: in test_exact_artifact_digest_never_normalizes_csv_bytes
+    provenance.source_sha256(path)
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'pgr_vds.research_lib.provenance' has no attribute 'source_sha256'
+=========================== short test summary info ===========================
+FAILED tests/research/test_v200_provenance.py::test_source_digest_accepts_only_git_line_ending_equivalence
+FAILED tests/research/test_v200_provenance.py::test_exact_artifact_digest_never_normalizes_csv_bytes
+2 failed, 19 deselected in 0.41s

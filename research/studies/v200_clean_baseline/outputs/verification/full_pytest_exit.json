@@ -1,0 +1,6 @@
+{
+  "command": "python -m pytest -o addopts=\"--tb=short\" -q",
+  "exit": 0,
+  "log_sha256": "ed57fe5ea5b1ac146b9640291b1ddbac3ba5e4029c481a3acaa42c226f69332c",
+  "summary": "2658 passed, 1 skipped, 2 xfailed, 105 warnings in 345.67s (0:05:45)"
+}

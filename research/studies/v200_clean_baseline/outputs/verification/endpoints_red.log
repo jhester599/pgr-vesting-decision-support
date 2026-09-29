@@ -1,0 +1,16 @@
+
+=================================== ERRORS ====================================
+____________ ERROR collecting tests/research/test_v200_adapters.py ____________
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\tests\research\test_v200_adapters.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_v200_adapters.py:12: in <module>
+    from pgr_vds.research_lib.adapters import (
+E   ImportError: cannot import name 'cash_window' from 'pgr_vds.research_lib.adapters' (C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\src\pgr_vds\research_lib\adapters.py)
+=========================== short test summary info ===========================
+ERROR tests/research/test_v200_adapters.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 1.39s

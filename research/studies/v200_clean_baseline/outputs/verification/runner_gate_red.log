@@ -1,0 +1,22 @@
+F.                                                                       [100%]
+================================== FAILURES ===================================
+______ test_failed_preflight_writes_plain_blocked_readme_without_fitting ______
+tests\research\test_v200_runner.py:40: in failed_preflight
+    raise ValueError("independent availability gate failed")
+E   ValueError: independent availability gate failed
+
+During handling of the above exception, another exception occurred:
+tests\research\test_v200_runner.py:44: in test_failed_preflight_writes_plain_blocked_readme_without_fitting
+    module.prepare(tmp_path / "scratch")
+research\studies\v200_clean_baseline\run.py:359: in prepare
+    "v200 is blocked: the approved repair failed required preflight. "
+E   TypeError: 'str' object is not callable
+============================== warnings summary ===============================
+tests/research/test_v200_runner.py::test_failed_preflight_writes_plain_blocked_readme_without_fitting
+  C:\Users\Jeff\.codex\worktrees\1c33\pgr-vesting-decision-support\research\studies\v200_clean_baseline\run.py:359: SyntaxWarning: 'str' object is not callable; perhaps you missed a comma?
+    "v200 is blocked: the approved repair failed required preflight. "
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/research/test_v200_runner.py::test_failed_preflight_writes_plain_blocked_readme_without_fitting
+1 failed, 1 passed, 1 warning in 1.32s

@@ -1,0 +1,20 @@
+........F.FF                                                             [100%]
+================================== FAILURES ===================================
+____________ test_aci_retains_production_finite_sample_adjustment _____________
+tests\research\test_v200_adapters.py:140: in test_aci_retains_production_finite_sample_adjustment
+    assert result.iloc[-1]["lower"] == -20.
+E   assert np.float64(-17.0) == -20.0
+____________________ test_delayed_inner_labels_fail_closed ____________________
+tests\research\test_v200_adapters.py:166: in test_delayed_inner_labels_fail_closed
+    nested_ridge(x, y, x.iloc[[-1]], 6, available=available)
+E   TypeError: nested_ridge() got an unexpected keyword argument 'available'
+_________ test_empty_inner_history_is_never_an_implicit_first_penalty _________
+tests\research\test_v200_adapters.py:172: in test_empty_inner_history_is_never_an_implicit_first_penalty
+    with pytest.raises(ValueError, match="Unsupported"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+=========================== short test summary info ===========================
+FAILED tests/research/test_v200_adapters.py::test_aci_retains_production_finite_sample_adjustment
+FAILED tests/research/test_v200_adapters.py::test_delayed_inner_labels_fail_closed
+FAILED tests/research/test_v200_adapters.py::test_empty_inner_history_is_never_an_implicit_first_penalty
+3 failed, 9 passed in 2.51s

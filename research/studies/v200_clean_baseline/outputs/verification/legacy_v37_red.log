@@ -1,0 +1,19 @@
+FF                                                                       [100%]
+================================== FAILURES ===================================
+_____________ test_legacy_v37_overlapping_oracle_expected_failure _____________
+tests\research\test_v200_temporal_metrics.py:140: in test_legacy_v37_overlapping_oracle_expected_failure
+    assert compute_metrics(realized, predicted)["r2"] > 0.0
+E   assert -0.24137931034482762 > 0.0
+___________________ test_legacy_v37_pooled_expected_failure ___________________
+tests\research\test_v200_temporal_metrics.py:148: in test_legacy_v37_pooled_expected_failure
+    assert compute_metrics(realized, predicted)["r2"] == pytest.approx(-3.0)
+E   assert 0.9988397146876834 == -3.0 � 3.0e-06
+E     
+E     comparison failed
+E     Obtained: 0.9988397146876834
+E     Expected: -3.0 � 3.0e-06
+=========================== short test summary info ===========================
+FAILED tests/research/test_v200_temporal_metrics.py::test_legacy_v37_overlapping_oracle_expected_failure
+FAILED tests/research/test_v200_temporal_metrics.py::test_legacy_v37_pooled_expected_failure
+2 failed, 13 deselected in 1.08s
+pytest_exit=1

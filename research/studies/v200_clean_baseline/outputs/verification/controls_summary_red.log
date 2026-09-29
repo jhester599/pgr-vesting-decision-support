@@ -1,0 +1,32 @@
+FFFF                                                                     [100%]
+================================== FAILURES ===================================
+_________ test_cash_naive_is_mature_target_mean_not_past_cash_amount __________
+tests\research\test_v200_controls.py:289: in test_cash_naive_is_mature_target_mean_not_past_cash_amount
+    assert cash["naive"] == pytest.approx(67 / 13)
+E   assert np.float64(7.0) == 5.153846153846154 � 5.2e-06
+E     
+E     comparison failed
+E     Obtained: 7.0
+E     Expected: 5.153846153846154 � 5.2e-06
+____________ test_classifier_summary_known_scores_skill_and_warmup ____________
+tests\research\test_v200_controls.py:313: in test_classifier_summary_known_scores_skill_and_warmup
+    result = controls.classifier_summary(classifier_summary_inputs())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'pgr_vds.research_lib.controls' has no attribute 'classifier_summary'
+____________ test_classifier_summary_probability_and_majority_ties ____________
+tests\research\test_v200_controls.py:345: in test_classifier_summary_probability_and_majority_ties
+    result = controls.classifier_summary(frame)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'pgr_vds.research_lib.controls' has no attribute 'classifier_summary'
+_____ test_endpoint_summary_scores_separately_and_skips_annual_inference ______
+tests\research\test_v200_controls.py:382: in test_endpoint_summary_scores_separately_and_skips_annual_inference
+    result = controls.endpoint_summary(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'pgr_vds.research_lib.controls' has no attribute 'endpoint_summary'
+=========================== short test summary info ===========================
+FAILED tests/research/test_v200_controls.py::test_cash_naive_is_mature_target_mean_not_past_cash_amount
+FAILED tests/research/test_v200_controls.py::test_classifier_summary_known_scores_skill_and_warmup
+FAILED tests/research/test_v200_controls.py::test_classifier_summary_probability_and_majority_ties
+FAILED tests/research/test_v200_controls.py::test_endpoint_summary_scores_separately_and_skips_annual_inference
+4 failed, 8 deselected in 1.40s
+PYTEST_EXIT=1

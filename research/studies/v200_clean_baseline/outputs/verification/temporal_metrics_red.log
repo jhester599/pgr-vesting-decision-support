@@ -1,0 +1,343 @@
+FFFFFFFFFFFxxFF                                                          [100%]
+================================== FAILURES ===================================
+____________ test_label_end_uses_calendar_horizon_and_last_weekday ____________
+tests\research\test_v200_temporal_metrics.py:23: in test_label_end_uses_calendar_horizon_and_last_weekday
+    module = temporal_module()
+             ^^^^^^^^^^^^^^^^^
+tests\research\test_v200_temporal_metrics.py:14: in temporal_module
+    return importlib.import_module("pgr_vds.research_lib.temporal")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib'
+________ test_outer_splits_have_independent_expected_indices[6-60-12] _________
+tests\research\test_v200_temporal_metrics.py:36: in test_outer_splits_have_independent_expected_indices
+    module = temporal_module()
+             ^^^^^^^^^^^^^^^^^
+tests\research\test_v200_temporal_metrics.py:14: in temporal_module
+    return importlib.import_module("pgr_vds.research_lib.temporal")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib'
+_______ test_outer_splits_have_independent_expected_indices[12-120-24] ________
+tests\research\test_v200_temporal_metrics.py:36: in test_outer_splits_have_independent_expected_indices
+    module = temporal_module()
+             ^^^^^^^^^^^^^^^^^
+tests\research\test_v200_temporal_metrics.py:14: in temporal_module
+    return importlib.import_module("pgr_vds.research_lib.temporal")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib'
+_________ test_inner_splits_use_explicit_six_month_tests[6-60-sizes0] _________
+tests\research\test_v200_temporal_metrics.py:54: in test_inner_splits_use_explicit_six_month_tests
+    folds = temporal_module().chronological_splits(dates, horizon, inner=True)
+            ^^^^^^^^^^^^^^^^^
+tests\research\test_v200_temporal_metrics.py:14: in temporal_module
+    return importlib.import_module("pgr_vds.research_lib.temporal")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib'
+________ test_inner_splits_use_explicit_six_month_tests[12-120-sizes1] ________
+tests\research\test_v200_temporal_metrics.py:54: in test_inner_splits_use_explicit_six_month_tests
+    folds = temporal_module().chronological_splits(dates, horizon, inner=True)
+            ^^^^^^^^^^^^^^^^^
+tests\research\test_v200_temporal_metrics.py:14: in temporal_module
+    return importlib.import_module("pgr_vds.research_lib.temporal")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib'
+_______________ test_splits_reject_duplicate_and_missing_months _______________
+tests\research\test_v200_temporal_metrics.py:63: in test_splits_reject_duplicate_and_missing_months
+    temporal_module().chronological_splits(dates.insert(1, dates[0]), 6)
+    ^^^^^^^^^^^^^^^^^
+tests\research\test_v200_temporal_metrics.py:14: in temporal_module
+    return importlib.import_module("pgr_vds.research_lib.temporal")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib'
+_________ test_training_checks_every_origin_and_availability_support __________
+tests\research\test_v200_temporal_metrics.py:69: in test_training_checks_every_origin_and_availability_support
+    module = temporal_module()
+             ^^^^^^^^^^^^^^^^^
+tests\research\test_v200_temporal_metrics.py:14: in temporal_module
+    return importlib.import_module("pgr_vds.research_lib.temporal")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib'
+______ test_prevailing_mean_uses_actual_availability_and_earlier_labels _______
+tests\research\test_v200_temporal_metrics.py:88: in test_prevailing_mean_uses_actual_availability_and_earlier_labels
+    actual = metric_module().prevailing_mean(origins, history)
+             ^^^^^^^^^^^^^^^
+tests\research\test_v200_temporal_metrics.py:19: in metric_module
+    return importlib.import_module("pgr_vds.research_lib.metrics")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib'
+____________ test_overlapping_oracle_beats_honest_prevailing_mean _____________
+tests\research\test_v200_temporal_metrics.py:106: in test_overlapping_oracle_beats_honest_prevailing_mean
+    assert metric_module().honest_r2(realized, predicted, naive) == pytest.approx(
+           ^^^^^^^^^^^^^^^
+tests\research\test_v200_temporal_metrics.py:19: in metric_module
+    return importlib.import_module("pgr_vds.research_lib.metrics")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib'
+_______________ test_pooling_two_benchmarks_does_not_inflate_r2 _______________
+tests\research\test_v200_temporal_metrics.py:120: in test_pooling_two_benchmarks_does_not_inflate_r2
+    function = metric_module().honest_r2
+               ^^^^^^^^^^^^^^^
+tests\research\test_v200_temporal_metrics.py:19: in metric_module
+    return importlib.import_module("pgr_vds.research_lib.metrics")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib'
+___________________ test_r2_masks_all_three_arrays_together ___________________
+tests\research\test_v200_temporal_metrics.py:127: in test_r2_masks_all_three_arrays_together
+    function = metric_module().honest_r2
+               ^^^^^^^^^^^^^^^
+tests\research\test_v200_temporal_metrics.py:19: in metric_module
+    return importlib.import_module("pgr_vds.research_lib.metrics")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib'
+__________ test_panel_summary_preserves_dates_and_benchmark_weights ___________
+tests\research\test_v200_temporal_metrics.py:161: in test_panel_summary_preserves_dates_and_benchmark_weights
+    result = metric_module().panel_summary(frame, 6, replicates=100, seed=19)
+             ^^^^^^^^^^^^^^^
+tests\research\test_v200_temporal_metrics.py:19: in metric_module
+    return importlib.import_module("pgr_vds.research_lib.metrics")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib'
+______________ test_holm_adjustment_counts_all_38_campaign_slots ______________
+tests\research\test_v200_temporal_metrics.py:176: in test_holm_adjustment_counts_all_38_campaign_slots
+    assert metric_module().holm38([0.001, 0.01, 1.0]) == pytest.approx(
+           ^^^^^^^^^^^^^^^
+tests\research\test_v200_temporal_metrics.py:19: in metric_module
+    return importlib.import_module("pgr_vds.research_lib.metrics")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib'
+=========================== short test summary info ===========================
+FAILED tests/research/test_v200_temporal_metrics.py::test_label_end_uses_calendar_horizon_and_last_weekday
+FAILED tests/research/test_v200_temporal_metrics.py::test_outer_splits_have_independent_expected_indices[6-60-12]
+FAILED tests/research/test_v200_temporal_metrics.py::test_outer_splits_have_independent_expected_indices[12-120-24]
+FAILED tests/research/test_v200_temporal_metrics.py::test_inner_splits_use_explicit_six_month_tests[6-60-sizes0]
+FAILED tests/research/test_v200_temporal_metrics.py::test_inner_splits_use_explicit_six_month_tests[12-120-sizes1]
+FAILED tests/research/test_v200_temporal_metrics.py::test_splits_reject_duplicate_and_missing_months
+FAILED tests/research/test_v200_temporal_metrics.py::test_training_checks_every_origin_and_availability_support
+FAILED tests/research/test_v200_temporal_metrics.py::test_prevailing_mean_uses_actual_availability_and_earlier_labels
+FAILED tests/research/test_v200_temporal_metrics.py::test_overlapping_oracle_beats_honest_prevailing_mean
+FAILED tests/research/test_v200_temporal_metrics.py::test_pooling_two_benchmarks_does_not_inflate_r2
+FAILED tests/research/test_v200_temporal_metrics.py::test_r2_masks_all_three_arrays_together
+FAILED tests/research/test_v200_temporal_metrics.py::test_panel_summary_preserves_dates_and_benchmark_weights
+FAILED tests/research/test_v200_temporal_metrics.py::test_holm_adjustment_counts_all_38_campaign_slots
+13 failed, 2 xfailed in 1.34s
+pytest_exit=1

@@ -1,0 +1,407 @@
+{
+  "alternatives": 0,
+  "calibration": "mature per-benchmark Platt C1e10/scaler, minimum20; unscored warmup",
+  "campaign_slots": [
+    {
+      "p": 1.0,
+      "slot": 1,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 2,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 3,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 4,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 5,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 6,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 7,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 8,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 9,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 10,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 11,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 12,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 13,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 14,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 15,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 16,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 17,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 18,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 19,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 20,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 21,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 22,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 23,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 24,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 25,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 26,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 27,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 28,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 29,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 30,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 31,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 32,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 33,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 34,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 35,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 36,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 37,
+      "status": "pending_or_unused"
+    },
+    {
+      "p": 1.0,
+      "slot": 38,
+      "status": "pending_or_unused"
+    }
+  ],
+  "costs": "No active policy/trade is tested; gross forecast targets, trading costs not applicable",
+  "features": {
+    "gbt": [
+      "mom_3m",
+      "mom_6m",
+      "mom_12m",
+      "vol_63d",
+      "yield_slope",
+      "yield_curvature",
+      "vwo_vxus_spread_6m",
+      "credit_spread_hy",
+      "nfci",
+      "vix",
+      "rate_adequacy_gap_yoy",
+      "pif_growth_yoy",
+      "investment_book_yield"
+    ],
+    "ridge": [
+      "mom_12m",
+      "vol_63d",
+      "yield_slope",
+      "real_yield_change_6m",
+      "real_rate_10y",
+      "credit_spread_hy",
+      "nfci",
+      "vix",
+      "combined_ratio_ttm",
+      "investment_income_growth_yoy",
+      "book_value_per_share_growth_yoy",
+      "npw_growth_yoy"
+    ]
+  },
+  "forecast_blueprints": 1,
+  "gbt": {
+    "learning_rate": 0.1,
+    "max_depth": 2,
+    "n_estimators": 50,
+    "random_state": 42,
+    "subsample": 0.8
+  },
+  "inference": {
+    "block_length": "h",
+    "replicates": 2000,
+    "seed": 20260926
+  },
+  "inner": {
+    "folds": 3,
+    "gap": "2*h",
+    "minimum_months": {
+      "h12": 60,
+      "h6": 24
+    },
+    "test": 6
+  },
+  "interval": "incumbent80% ACI gamma.05, finite-sample quantile correction, minimum4 mature same-benchmark residuals; unscored warmup",
+  "matched_controls": [
+    "same-label PathB",
+    "past12M cash dividend",
+    "mature mean annual excess/currentBVPS",
+    "mature prevailing BVPSgrowth",
+    "mature mean absolute PGR6M DRIP"
+  ],
+  "outer": {
+    "h12": {
+      "gap": 24,
+      "test": 6,
+      "train": 120
+    },
+    "h6": {
+      "gap": 12,
+      "test": 6,
+      "train": 60
+    }
+  },
+  "path_b": {
+    "C": 0.5,
+    "class_weight": "balanced",
+    "max_iter": 1000,
+    "min_calibration": 24,
+    "solver": "lbfgs",
+    "temperature_grid_ordered": [
+      0.5,
+      0.55,
+      0.6,
+      0.65,
+      0.7,
+      0.75,
+      0.8,
+      0.85,
+      0.8999999999999999,
+      0.95,
+      1.0,
+      1.05,
+      1.1,
+      1.15,
+      1.2,
+      1.25,
+      1.3,
+      1.35,
+      1.4,
+      1.45,
+      1.5,
+      1.55,
+      1.6,
+      1.65,
+      1.7000000000000002,
+      1.75,
+      1.8,
+      1.85,
+      1.9,
+      1.9500000000000002,
+      2.0,
+      2.05,
+      2.1,
+      2.1500000000000004,
+      2.2,
+      2.25,
+      2.3,
+      2.35,
+      2.4000000000000004,
+      2.45,
+      2.5,
+      2.55,
+      2.6,
+      2.6500000000000004,
+      2.7,
+      2.75,
+      2.8,
+      2.85,
+      2.9000000000000004,
+      2.95,
+      3.0
+    ],
+    "threshold": -0.03,
+    "weights": {
+      "BND": 0.05,
+      "VGT": 0.2,
+      "VIG": 0.15,
+      "VOO": 0.4,
+      "VWO": 0.1,
+      "VXUS": 0.1
+    }
+  },
+  "primary_test": "6M paired per-date squared-error improvement vs honest mature prevailing mean; baseline control only",
+  "ridge_penalties_ordered": [
+    0.0001,
+    0.00014563484775012445,
+    0.00021209508879201905,
+    0.00030888435964774815,
+    0.0004498432668969444,
+    0.0006551285568595509,
+    0.0009540954763499944,
+    0.0013894954943731374,
+    0.0020235896477251557,
+    0.0029470517025518097,
+    0.004291934260128779,
+    0.0062505519252739694,
+    0.009102981779915217,
+    0.013257113655901081,
+    0.019306977288832496,
+    0.02811768697974228,
+    0.040949150623804234,
+    0.05963623316594643,
+    0.08685113737513521,
+    0.12648552168552957,
+    0.18420699693267145,
+    0.2682695795279725,
+    0.3906939937054613,
+    0.5689866029018293,
+    0.8286427728546842,
+    1.2067926406393288,
+    1.7575106248547894,
+    2.559547922699533,
+    3.727593720314938,
+    5.428675439323859,
+    7.9060432109076855,
+    11.513953993264458,
+    16.768329368110066,
+    24.420530945486497,
+    35.564803062231285,
+    51.79474679231202,
+    75.43120063354607,
+    109.85411419875572,
+    159.98587196060572,
+    232.99518105153672,
+    339.3221771895323,
+    494.1713361323828,
+    719.6856730011514,
+    1048.1131341546852,
+    1526.4179671752302,
+    2222.996482526191,
+    3237.45754281764,
+    4714.8663634573895,
+    6866.488450042998,
+    10000.0
+  ],
+  "secondary_endpoint": "12M diagnostics; no primary success route",
+  "shrinkage_grid_ordered": [
+    0.05,
+    0.1,
+    0.15,
+    0.2,
+    0.25,
+    0.3,
+    0.4,
+    0.5,
+    0.75,
+    1.0
+  ],
+  "shrinkage_min_mature_panel_rows": 36,
+  "study": "v200_clean_baseline"
+}

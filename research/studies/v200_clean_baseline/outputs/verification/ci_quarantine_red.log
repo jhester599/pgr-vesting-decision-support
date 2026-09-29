@@ -1,0 +1,12 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+_____________ test_ci_monthly_smoke_label_ends_before_quarantine ______________
+tests\research\test_v200_runner.py:88: in test_ci_monthly_smoke_label_ends_before_quarantine
+    assert latest_label_end < pd.Timestamp("2023-09-29"), (
+E   AssertionError: CI smoke reaches the research quarantine: 2027-03-31
+E   assert Timestamp('2027-03-31 00:00:00') < Timestamp('2023-09-29 00:00:00')
+E    +  where Timestamp('2023-09-29 00:00:00') = <class 'pandas.Timestamp'>('2023-09-29')
+E    +    where <class 'pandas.Timestamp'> = pd.Timestamp
+=========================== short test summary info ===========================
+FAILED tests/research/test_v200_runner.py::test_ci_monthly_smoke_label_ends_before_quarantine
+1 failed in 0.43s

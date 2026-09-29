@@ -1,0 +1,9 @@
+.........F...                                                            [100%]
+================================== FAILURES ===================================
+_________________ test_ci_workflow_runs_lint_tests_and_smokes _________________
+tests\integration\repo\test_workflow_contracts.py:163: in test_ci_workflow_runs_lint_tests_and_smokes
+    assert (
+E   assert 'python scripts/ci_offline_smoke.py cli/monthly_decision.py --as-of 2026-04-02 --dry-run --skip-fred' in 'name: CI\n\non:\n  push:\n    branches:\n      - master\n      - codex/**\n  pull_request:\n\npermissions:\n  content...un: pip install -e ".[dev]"\n\n      - name: Run stored-artifact tests\n        run: python -m pytest -q -m artifact\n'
+=========================== short test summary info ===========================
+FAILED tests/integration/repo/test_workflow_contracts.py::test_ci_workflow_runs_lint_tests_and_smokes
+1 failed, 12 passed in 2.10s
