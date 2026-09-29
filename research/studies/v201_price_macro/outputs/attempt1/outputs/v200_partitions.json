@@ -1,0 +1,26 @@
+{
+  "boundary": "2023-09-29 00:00:00",
+  "development_rows": 3816,
+  "development_sha256": "593a4fdc707e12834d2a0f2f49cd7f1eb5a0b337c71dffceb2b97085c6941256",
+  "purged_rows": 180,
+  "purged_sha256": "11ac275922ec92b30a86424402c9d01ac07e3d764c3876312ac68f548d6465df",
+  "quarantine": {
+    "h12": [
+      "2023-09-29",
+      "2025-08-29"
+    ],
+    "h6": [
+      "2024-03-28",
+      "2026-02-27"
+    ]
+  },
+  "quarantine_prior_exposure": [
+    "v75",
+    "v129",
+    "v132",
+    "both step13V replays"
+  ],
+  "quarantine_rows": 540,
+  "quarantine_sha256": "79d6c4619c9ce1e15871a178a49ba5a1c849497b386fd91c4e0f262ee7255a55",
+  "target_end_boundary_rule": "target_end and label_available strictly before 2023-09-29"
+}

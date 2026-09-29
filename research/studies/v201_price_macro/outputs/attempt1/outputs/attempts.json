@@ -1,0 +1,17 @@
+[
+  {
+    "fits": 0,
+    "stage": "initial_reference_verification",
+    "status": "passed_before_registry_append"
+  },
+  {
+    "fits": 0,
+    "stage": "prepare",
+    "status": "blocked_registry_hash_mismatch"
+  },
+  {
+    "fits": 0,
+    "stage": "unexecuted_scaffold",
+    "status": "discarded_after_stop_condition"
+  }
+]

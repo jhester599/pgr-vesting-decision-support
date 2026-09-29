@@ -1,0 +1,73 @@
+[
+  {
+    "exit": 1,
+    "reason": "new module absent before implementation",
+    "stage": "initial_math_red",
+    "summary": "7 failed in 0.56s"
+  },
+  {
+    "exit": 0,
+    "stage": "initial_math_green",
+    "summary": "7 passed in 0.52s"
+  },
+  {
+    "exit": 1,
+    "reason": "runner absent before implementation",
+    "stage": "runner_red",
+    "summary": "3 failed in 0.40s"
+  },
+  {
+    "exit": 1,
+    "reason": "test regex preregister/preregistration mismatch; corrected",
+    "stage": "first_combined_attempt",
+    "summary": "1 failed, 9 passed in 1.47s"
+  },
+  {
+    "exit": 0,
+    "stage": "combined_green",
+    "summary": "10 passed in 1.35s"
+  },
+  {
+    "exit": 1,
+    "reason": "TEMP/TMP not isolated; Windows denied preexisting pytest-of-Jeff; no source change",
+    "stage": "nonisolated_temp_probe",
+    "summary": "10 errors in 0.45s"
+  },
+  {
+    "exit": 1,
+    "reason": "missing final weekly value reused earlier monthly value",
+    "stage": "review_gap_red",
+    "summary": "1 failed in 0.41s"
+  },
+  {
+    "exit": 0,
+    "stage": "review_green",
+    "summary": "11 passed in 0.56s"
+  },
+  {
+    "classification": "introduced preparation ordering failure",
+    "exit": 1,
+    "reason": "two doc-link tests ran before referenced v201 artifacts were written; no inherited failure",
+    "stage": "full_suite_first",
+    "summary": "2 failed, 2667 passed, 1 skipped, 2 xfailed, 120 warnings in 350.87s (0:05:50)"
+  },
+  {
+    "exit": 1,
+    "reason": "same pinned registry blocker; no fits",
+    "stage": "preflight_final_reproduction"
+  },
+  {
+    "command": "python -m pytest -o addopts=\"--tb=short\" -q",
+    "exit": 0,
+    "inherited_failures_remaining": 0,
+    "stage": "full_suite_final",
+    "summary": "2670 passed, 1 skipped, 2 xfailed, 99 warnings in 333.95s (0:05:33)",
+    "xfails": "2 inherited strict xfails document legacy v37 defects"
+  },
+  {
+    "code_changes": 0,
+    "fits": 0,
+    "reason": "Windows default cp1252 could not decode UTF8 owner report; use explicit UTF8",
+    "stage": "artifact_capture_retry"
+  }
+]

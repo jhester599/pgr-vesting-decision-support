@@ -1,0 +1,202 @@
+{
+  "all_pending_unused": true,
+  "block_length": "h; never executed",
+  "bootstrap_seed": 20260926,
+  "candidate_fits": 0,
+  "declared_slots": 6,
+  "family_size": 38,
+  "primary_endpoint": "6M paired date-block loss gain vs v200",
+  "replicates": 2000,
+  "slots": [
+    {
+      "p": 1,
+      "slot": 1,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 2,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 3,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 4,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 5,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 6,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 7,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 8,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 9,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 10,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 11,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 12,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 13,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 14,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 15,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 16,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 17,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 18,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 19,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 20,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 21,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 22,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 23,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 24,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 25,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 26,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 27,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 28,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 29,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 30,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 31,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 32,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 33,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 34,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 35,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 36,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 37,
+      "status": "pending_unused_placeholder_not_measured"
+    },
+    {
+      "p": 1,
+      "slot": 38,
+      "status": "pending_unused_placeholder_not_measured"
+    }
+  ]
+}
