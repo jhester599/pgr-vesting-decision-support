@@ -1,21 +1,828 @@
 {
-  "study": "v201_price_macro",
-  "attempt": 2,
-  "status": "prepared_not_fitted",
-  "base_master_commit": "ad5d98dde4163721fde63723fbcd97dc912d4ae7",
-  "baseline_lock_sha256": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
-  "registered_sha256": "90948977962856bf12c5f3c7214ffa8847daf8689d612a71de9dd22ca85b434a",
-  "attempt1_archive": "outputs/attempt1/archive_manifest.json",
-  "candidate_slots": [
-    1,
-    2,
-    3,
-    4,
-    5,
-    6
+  "accepted_exceptions": [
+    {
+      "description": "Owner accepted provider history without March2026 ex-date; exactly12 affected targets in vwo_accepted_gap.csv, all quarantined",
+      "id": "VWO_MARCH_2026_GAP"
+    }
   ],
-  "fits": 0,
-  "quarantine_metrics": 0,
+  "access_ledger_sha256": "10863eb06d78423e31b2d707bf358f981d3bf9def82164a96f871dbcac5404b9",
+  "artifact_finalization_git": "acc3ce98357af4d4a997daac5426537d19cfd3a0",
+  "artifact_finalizer_sha256": "253e353e9e9fa65a1173640f4b400ec87e427f367718a344ea9e243c33debefd",
+  "as_of": "2026-09-26",
+  "attempt": 2,
+  "attempt1_archive_sha256": "7ccad51b6a04e63f78ac3a1870450b7fd9f617667ebeec455458d0d1656818c2",
+  "attempts": {
+    "additional_searches": 0,
+    "attempt1": "blocked; zero fits; archived exact bytes",
+    "attempt2": [
+      {
+        "fits": 0,
+        "result": "passed exact D7 inputs, clean lock, historical registry and full v200 manifest",
+        "stage": "baseline preflight"
+      },
+      {
+        "fits": 0,
+        "result": "1 failed, 7 errors: absent relative adapter/new snapshot module",
+        "stage": "math/snapshot red"
+      },
+      {
+        "fits": 0,
+        "result": "3 failed: absent orchestration checks",
+        "stage": "runner red"
+      },
+      {
+        "fits": 0,
+        "result": "2 failed: absent disposition module",
+        "stage": "disposition red"
+      },
+      {
+        "fits": 0,
+        "result": "24 passed, exit 0",
+        "stage": "focused green"
+      },
+      {
+        "fits": 0,
+        "result": "repeated pre-fit freezing while implementing/reviewing, no forecasts; all six recipes/lags/grids unchanged",
+        "stage": "preparation"
+      },
+      {
+        "commits": [
+          "925820734875f4e148cceb44081ce2865472aaa7",
+          "acc3ce98357af4d4a997daac5426537d19cfd3a0"
+        ],
+        "result": "no blockers; example labels clarified; explicit conservative safeguards frozen before fitting",
+        "stage": "review"
+      },
+      {
+        "commit": "acc3ce98357af4d4a997daac5426537d19cfd3a0",
+        "exit_code": 0,
+        "horizons": [
+          6,
+          12
+        ],
+        "metric_driven_retries": 0,
+        "procedures": 12,
+        "registered_candidates": 6,
+        "result": "all matched support/folds/naive; no finalist",
+        "stage": "execution"
+      },
+      {
+        "command": "python -m pytest -o addopts=\"--tb=short\" -q",
+        "db_unchanged": true,
+        "exit_code": 0,
+        "fits": 0,
+        "inherited_pytest_failures": "none",
+        "stage": "full verification",
+        "summary": "2704 passed, 1 skipped, 2 xfailed, 133 warnings in 331.54s (0:05:31)"
+      }
+    ],
+    "discarded_fitted_comparisons": [],
+    "verification_probes": [
+      {
+        "probe": "DB schema file path",
+        "result": "first filename guessed incorrectly; FileNotFoundError before any query, corrected to the exported file"
+      },
+      {
+        "probe": "mypy -p pgr_vds",
+        "result": "package path invocation unsupported in this environment"
+      },
+      {
+        "probe": "unscoped mypy source tree",
+        "result": "22 errors in 6 files, including new YAML import without stubs and unchanged imported modules; YAML boundary corrected, repository scoped command passes on 32 files"
+      },
+      {
+        "probe": "archived whitespace check",
+        "result": "raw original failed-test logs include trailing whitespace; archive-only attribute added to preserve exact evidence bytes"
+      }
+    ]
+  },
+  "baseline_code_commit": "c3b4798b90a43f9dbd616981861e9ff01fa2de72",
+  "baseline_lock_sha256": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+  "bootstrap_replicates": 2000,
+  "candidate_register": {
+    "amendment": "A2: historical-registry verification, completed execution runner; unchanged six features/grids/lags; zero prior fits",
+    "archive_sha256": "7ccad51b6a04e63f78ac3a1870450b7fd9f617667ebeec455458d0d1656818c2",
+    "as_of": "2026-09-26",
+    "attempt": 2,
+    "base_master_commit": "ad5d98dde4163721fde63723fbcd97dc912d4ae7",
+    "baseline_lock_sha256": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+    "blueprints": {
+      "M1": {
+        "add": [
+          "pm_slope",
+          "pm_real_change6"
+        ],
+        "remove": [
+          "yield_slope",
+          "real_rate_10y",
+          "real_yield_change_6m"
+        ]
+      },
+      "M2": {
+        "add": [
+          "pm_vix",
+          "pm_nfci",
+          "pm_credit_hy"
+        ],
+        "remove": [
+          "vix",
+          "nfci",
+          "credit_spread_hy"
+        ]
+      },
+      "M3": {
+        "add": [
+          "pm_rate_gap"
+        ],
+        "remove": [
+          "rate_adequacy_gap_yoy"
+        ]
+      },
+      "P1": {
+        "add": [
+          "pm_mom3",
+          "pm_mom6",
+          "pm_mom12"
+        ],
+        "remove": [
+          "mom_3m",
+          "mom_6m",
+          "mom_12m"
+        ]
+      },
+      "P2": {
+        "add": [
+          "pm_vol13w",
+          "pm_high52w"
+        ],
+        "remove": [
+          "vol_63d"
+        ]
+      },
+      "P3": {
+        "add": [
+          "pm_ema12_voo",
+          "pm_rsi6_voo"
+        ],
+        "inventory": [
+          "ta_ratio_ema_gap_12m_voo",
+          "ta_ratio_rsi_6m_voo"
+        ],
+        "remove": [
+          "mom_6m",
+          "mom_12m"
+        ]
+      }
+    },
+    "calibration": "unchanged v200 mature-past ACI and Platt; missing warmup never evaluated or backfilled",
+    "candidate_order": [
+      "P1",
+      "P2",
+      "P3",
+      "M1",
+      "M2",
+      "M3"
+    ],
+    "candidate_slots": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "columns": {
+      "M1": {
+        "gbt": [
+          "mom_3m",
+          "mom_6m",
+          "mom_12m",
+          "vol_63d",
+          "yield_curvature",
+          "vwo_vxus_spread_6m",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "rate_adequacy_gap_yoy",
+          "pif_growth_yoy",
+          "investment_book_yield",
+          "pm_slope",
+          "pm_real_change6"
+        ],
+        "ridge": [
+          "mom_12m",
+          "vol_63d",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "combined_ratio_ttm",
+          "investment_income_growth_yoy",
+          "book_value_per_share_growth_yoy",
+          "npw_growth_yoy",
+          "pm_slope",
+          "pm_real_change6"
+        ]
+      },
+      "M2": {
+        "gbt": [
+          "mom_3m",
+          "mom_6m",
+          "mom_12m",
+          "vol_63d",
+          "yield_slope",
+          "yield_curvature",
+          "vwo_vxus_spread_6m",
+          "rate_adequacy_gap_yoy",
+          "pif_growth_yoy",
+          "investment_book_yield",
+          "pm_vix",
+          "pm_nfci",
+          "pm_credit_hy"
+        ],
+        "ridge": [
+          "mom_12m",
+          "vol_63d",
+          "yield_slope",
+          "real_yield_change_6m",
+          "real_rate_10y",
+          "combined_ratio_ttm",
+          "investment_income_growth_yoy",
+          "book_value_per_share_growth_yoy",
+          "npw_growth_yoy",
+          "pm_vix",
+          "pm_nfci",
+          "pm_credit_hy"
+        ]
+      },
+      "M3": {
+        "gbt": [
+          "mom_3m",
+          "mom_6m",
+          "mom_12m",
+          "vol_63d",
+          "yield_slope",
+          "yield_curvature",
+          "vwo_vxus_spread_6m",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "pif_growth_yoy",
+          "investment_book_yield",
+          "pm_rate_gap"
+        ],
+        "ridge": [
+          "mom_12m",
+          "vol_63d",
+          "yield_slope",
+          "real_yield_change_6m",
+          "real_rate_10y",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "combined_ratio_ttm",
+          "investment_income_growth_yoy",
+          "book_value_per_share_growth_yoy",
+          "npw_growth_yoy",
+          "pm_rate_gap"
+        ]
+      },
+      "P1": {
+        "gbt": [
+          "vol_63d",
+          "yield_slope",
+          "yield_curvature",
+          "vwo_vxus_spread_6m",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "rate_adequacy_gap_yoy",
+          "pif_growth_yoy",
+          "investment_book_yield",
+          "pm_mom3",
+          "pm_mom6",
+          "pm_mom12"
+        ],
+        "ridge": [
+          "vol_63d",
+          "yield_slope",
+          "real_yield_change_6m",
+          "real_rate_10y",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "combined_ratio_ttm",
+          "investment_income_growth_yoy",
+          "book_value_per_share_growth_yoy",
+          "npw_growth_yoy",
+          "pm_mom3",
+          "pm_mom6",
+          "pm_mom12"
+        ]
+      },
+      "P2": {
+        "gbt": [
+          "mom_3m",
+          "mom_6m",
+          "mom_12m",
+          "yield_slope",
+          "yield_curvature",
+          "vwo_vxus_spread_6m",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "rate_adequacy_gap_yoy",
+          "pif_growth_yoy",
+          "investment_book_yield",
+          "pm_vol13w",
+          "pm_high52w"
+        ],
+        "ridge": [
+          "mom_12m",
+          "yield_slope",
+          "real_yield_change_6m",
+          "real_rate_10y",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "combined_ratio_ttm",
+          "investment_income_growth_yoy",
+          "book_value_per_share_growth_yoy",
+          "npw_growth_yoy",
+          "pm_vol13w",
+          "pm_high52w"
+        ]
+      },
+      "P3": {
+        "gbt": [
+          "mom_3m",
+          "vol_63d",
+          "yield_slope",
+          "yield_curvature",
+          "vwo_vxus_spread_6m",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "rate_adequacy_gap_yoy",
+          "pif_growth_yoy",
+          "investment_book_yield",
+          "pm_ema12_voo",
+          "pm_rsi6_voo"
+        ],
+        "ridge": [
+          "vol_63d",
+          "yield_slope",
+          "real_yield_change_6m",
+          "real_rate_10y",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "combined_ratio_ttm",
+          "investment_income_growth_yoy",
+          "book_value_per_share_growth_yoy",
+          "npw_growth_yoy",
+          "pm_ema12_voo",
+          "pm_rsi6_voo"
+        ]
+      }
+    },
+    "costs": "forecasts only; no trading policy or cost-adjusted P&L",
+    "development_boundary": "2023-09-29",
+    "ensemble": "unchanged v200 mature-past MAE weights and 10-value shrinkage; no new upstream recipe or tuning",
+    "gbt": {
+      "learning_rate": 0.1,
+      "max_depth": 2,
+      "n_estimators": 50,
+      "random_state": 42,
+      "subsample": 0.8
+    },
+    "inference": {
+      "date_block_length": "h",
+      "family_size": 38,
+      "replicates": 2000,
+      "seed": 20260926
+    },
+    "inner": {
+      "folds": 3,
+      "gap": "2*h",
+      "max_train_size": "outer window",
+      "minimum": [
+        24,
+        60
+      ],
+      "test_size": 6
+    },
+    "input_sha256": {
+      "AGENTS.md": "e818ae6a63cdbcbae7da100e34aef5830b8641dffef918e671c061294e01d74e",
+      "docs/history/closeouts/V164_CLOSEOUT_AND_HANDOFF.md": "407c99a8e1eff2f18a6b3389487a5867ddf3c429afc39d991852e9ae38234bf3",
+      "docs/history/closeouts/V165_CLOSEOUT_AND_HANDOFF.md": "72c7db2beaf1b953e4c4a8c8eb59816977f2a3d6ed207efb2906ddcd31d4be1b",
+      "docs/history/results/V15_RESULTS_SUMMARY.md": "4682e0ca96991b468aabbfca45278a52ba7ae628503c08ad93d7ba497a79dd68",
+      "docs/history/results/V18_RESULTS_SUMMARY.md": "4c3957ba20c14388cb4a03a557d36275f734953c78f1519aa990a7030f61ae03",
+      "docs/history/results/V19_RESULTS_SUMMARY.md": "522f1c9fcc4d138730cfed7861a2c4ca2274007e4016b3f27e7244b26c10f736",
+      "docs/history/results/V20_RESULTS_SUMMARY.md": "c8ef9fa8ae6af794f861d3109abe0e07715e7c5937d33d0cf5365fbaf962dd1c",
+      "docs/history/results/V9_RESULTS_SUMMARY.md": "1e7c2231fc7327066af54970a58ae7b63e0b2a47fe5e7b379d4fb30dc5e97b6f",
+      "docs/history/superpowers/plans/2026-04-10-v37-v60-results-summary.md": "92c685a61a54e8c53b22f2561b9d865c7768f016ece23b910e2153183d064247",
+      "docs/research/RERUN_PLAN_v200_codex.md": "f1ebe79b16e3cd55ba1c807c179f908387da28c8923f5e2a2f6442da8728af7f",
+      "docs/reviews/REPO_REVIEW_2026-09-25.md": "4d2336e18aa8a6f5674129f46d8df8b7cf5a7aa3e91e400a8152c5b5dac62cc6",
+      "docs/reviews/VERIFICATION_2026-09-26.md": "d5f34bbe98162d5c77b6ad80253a0d2461529e1107be54a6ef0b32c2b3d21867",
+      "pyproject.toml": "d87c3a6493de75c57f0f2966180fe79d7d3a607bb3980c02c7eeec45f77cc29d",
+      "research/studies/v133_ridge_alpha_sweep/README.md": "70652f26af4148aa46a38c2c8b1a475c7201bec083efe11ca9814ba4116f07f9",
+      "research/studies/v133_ridge_alpha_sweep/outputs/v133_ridge_alpha_search_summary.md": "0f620d512d6e6b232131b2238b6be39776e42497153732e503bfa4eb541cbffe",
+      "research/studies/v134_fred_lag_sweep/README.md": "bc258022b6a80ca296ba5994371275893c7468c338cb1809a047d80e86868cb2",
+      "research/studies/v134_fred_lag_sweep/outputs/v134_fred_lag_search_summary.md": "9b968a337cd22a6cda473e3dabb3205ea215c2e7fed4bc722add843168bfe651",
+      "research/studies/v162_ta_broad_screen/README.md": "751020433f36d56d097b180c0312ee08e8cf3885c880e938092a43092605d740",
+      "research/studies/v162_ta_broad_screen/outputs/v162_ta_broad_screen_inventory.json": "af7b1c649d1a4cf1f4a27c2069cec41053dd4ae73764d93420176a04577dbdb6",
+      "research/studies/v163_ta_survivor_confirm/README.md": "fb9314acb9834b4cf6752dd7ff2e8ae9b8bfe25a12747964d83c1e4673f1c8fb",
+      "research/studies/v164_ta_synthesis/README.md": "9a8e23db0541320aec7d48116d1de7771eabb37d1de74fbcf537a7a5d2fb54f9",
+      "research/studies/v164_ta_synthesis/outputs/v164_ta_synthesis_summary.md": "d534cf5e7c29dac77c07521f2ece7e0405a61c524e2aece9f32173dd8802653d",
+      "research/studies/v165_ta_shadow_replacement_eval/README.md": "0e25d03bbede60a7d79ca625c210e1058a0ef00ab0fdb88b165c9e691c98b18b",
+      "research/studies/v200_clean_baseline/README.md": "53f32344ca104b5cac71d6d2ac7b91b1988d74abb789ca6b57320176b75e6f66",
+      "research/studies/v200_clean_baseline/outputs/access_ledger.json": "ec141113b2d82776255bad0e702a708862b2e17fa558bd861a9764a0a301d902",
+      "research/studies/v200_clean_baseline/outputs/baseline_lock.json": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+      "research/studies/v200_clean_baseline/outputs/dependency_environment.json": "0cd4bf33c6dc2052cf31ed7dc300ed2fd7a5462c2db1660a429dfaa6ba30f298",
+      "research/studies/v200_clean_baseline/outputs/development_features.csv": "8badaa58b240d9628bff5bcda2e9062cf41716255c9cd1f2d6ed18aa105f1268",
+      "research/studies/v200_clean_baseline/outputs/development_targets.csv": "593a4fdc707e12834d2a0f2f49cd7f1eb5a0b337c71dffceb2b97085c6941256",
+      "research/studies/v200_clean_baseline/outputs/fold_ledger.csv": "3f0a7200ff807bcfdacc3b2dc90e90c3143fba783fe6044fd7e2dc5df4d3528b",
+      "research/studies/v200_clean_baseline/outputs/output_manifest.json": "29a50c598d15ecd2472dee47ea47d4255ab9987b52d2fbcafed3a1984c861b5c",
+      "research/studies/v200_clean_baseline/outputs/partitions.json": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed",
+      "research/studies/v200_clean_baseline/outputs/predictions.csv": "5b671c52dbdded0b6106b02f0942d20f484df4715a21830c19ccf01320a28270",
+      "research/studies/v200_clean_baseline/outputs/runtime_lock.json": "ed8a5eea976ce21c816beb3b305b3a1d6fde6c59ea87c261aedab7ee0304d1e9",
+      "research/studies/v201_price_macro/outputs/attempt1/outputs/candidate_ledger.json": "3793489cc73a229eb959956ac156fb3096eb2397e9ac41763923c6c4cb24499c",
+      "research/studies/v201_price_macro/outputs/attempt2/availability_ledger.csv": "528773dec594ddcd2516ae518960228581f480e88cc1e7f37f69ebb0460f417e",
+      "research/studies/v201_price_macro/outputs/attempt2/features.csv": "235c65be42a434604d493fcfef3d2215d589f6634cdf8c6fadc0c8a2c2905a49",
+      "research/studies/v201_price_macro/outputs/attempt2/raw_macro_observations.csv": "4672bbe81538ae75cd76e29f7705c0886c0be3e84e4f70e63efdbd2a504c4c5b",
+      "research/studies/v201_price_macro/outputs/attempt2/registry_snapshot.yaml": "1fe52a9e2e1eb8ebe614caa53fb1ba4cd356dfb87695826650f1424011cf1975",
+      "research/studies/v201_price_macro/run.py": "a4dc7b3c54874ac5026ed203d0b5691a3ce5bd1ac0c5ab52aec3ada65563cfc2",
+      "research/studies/v205_dividend_bvps/outputs/multiplicity.json": "723d222410da4c3e02cf2d192d7a3226ad55ba81a788bea8e53e0ad3ecb39831",
+      "research/studies/v43_features/README.md": "86ee57763fa3a01c47cb3a9a0c8734212c4e94756640a865112794747c02e60a",
+      "research/studies/v44_pca/README.md": "4dc86b254b3c1556e4f750f39024d3bb80c813c7f0a4435d70772b6160f3f0fd",
+      "research/studies/v45_bayesian_ridge/README.md": "b9829ee4d917144a68a843a72cb9785c3db1021b07f3c64204781708282e6f19",
+      "research/studies/v54_gpr/README.md": "983f6dcadb65c774ab761f0c5a2c7e9e94c533d1445126ce480638cc9244d775",
+      "src/pgr_vds/research_lib/price_macro.py": "5703f734fffd10b83606879666abb89ae077528e05d706b21c7835b1c331c420",
+      "src/pgr_vds/research_lib/price_macro_disposition.py": "7cf4bda42aecd185cffc8076f7e1975aba28d6aeb70bc562a09e10cd890dbc63",
+      "src/pgr_vds/research_lib/snapshot.py": "e4fe885e42867f78f3f2dd43477c91fb456066b6735c54518dba982ac18a7999"
+    },
+    "macro_limits": "latest vintage; calendar availability proxy, not observed release timestamps; exact period, one lag, no filling",
+    "nomination": "highest h6 delta R2 among passers, ties retain candidate_order; at most one; h12 never rescues failed primary",
+    "outer": {
+      "12": [
+        120,
+        6,
+        24
+      ],
+      "6": [
+        60,
+        6,
+        12
+      ]
+    },
+    "primary": "paired equal-date squared-error gain at h6 vs v200",
+    "publication_lags": {
+      "BAMLH0A0HYM2": 1,
+      "CUSR0000SAM2": 1,
+      "CUSR0000SETA02": 1,
+      "GS10": 1,
+      "NFCI": 2,
+      "PCU5241265241261": 1,
+      "T10Y2Y": 1,
+      "T10YIE": 1,
+      "VIXCLS": 1
+    },
+    "ridge_grid": [
+      0.0001,
+      0.00014563484775012445,
+      0.00021209508879201905,
+      0.00030888435964774815,
+      0.0004498432668969444,
+      0.0006551285568595509,
+      0.0009540954763499944,
+      0.0013894954943731374,
+      0.0020235896477251557,
+      0.0029470517025518097,
+      0.004291934260128779,
+      0.0062505519252739694,
+      0.009102981779915217,
+      0.013257113655901081,
+      0.019306977288832496,
+      0.02811768697974228,
+      0.040949150623804234,
+      0.05963623316594643,
+      0.08685113737513521,
+      0.12648552168552957,
+      0.18420699693267145,
+      0.2682695795279725,
+      0.3906939937054613,
+      0.5689866029018293,
+      0.8286427728546842,
+      1.2067926406393288,
+      1.7575106248547894,
+      2.559547922699533,
+      3.727593720314938,
+      5.428675439323859,
+      7.9060432109076855,
+      11.513953993264458,
+      16.768329368110066,
+      24.420530945486497,
+      35.564803062231285,
+      51.79474679231202,
+      75.43120063354607,
+      109.85411419875572,
+      159.98587196060572,
+      232.99518105153672,
+      339.3221771895323,
+      494.1713361323828,
+      719.6856730011514,
+      1048.1131341546852,
+      1526.4179671752302,
+      2222.996482526191,
+      3237.45754281764,
+      4714.8663634573895,
+      6866.488450042998,
+      10000.0
+    ],
+    "safeguards": "hit rate and directional skill >= control; Brier, log loss and ECE <= control; distance of coverage from .8 <= control; missing safeguards fail; float epsilon 1e-12",
+    "secondary": "h12 diagnostics, never another primary success path",
+    "shrinkage_grid": [
+      0.05,
+      0.1,
+      0.15,
+      0.2,
+      0.25,
+      0.3,
+      0.4,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "sql": {
+      "macro": "SELECT series_id,month_end,value FROM fred_macro_monthly WHERE month_end<=? ORDER BY series_id,month_end",
+      "prices": "SELECT ticker,date,close FROM daily_prices WHERE ticker IN ('PGR','VOO') AND date<=? AND proxy_fill=0 ORDER BY ticker,date",
+      "splits": "SELECT ticker,split_date,split_ratio FROM split_history WHERE ticker IN ('PGR','VOO') AND split_date<=?"
+    },
+    "thresholds": {
+      "delta_r2": 0.01,
+      "direction_calibration": "no deterioration vs matched control",
+      "holm_p": 0.05,
+      "max_ic_loss": 0.01
+    },
+    "v207": "quarantine sealed; at most one research finalist"
+  },
+  "code_commit": "acc3ce98357af4d4a997daac5426537d19cfd3a0",
+  "code_dirty_at_execution": false,
+  "consumed_file_sha256": {
+    "AGENTS.md": "e818ae6a63cdbcbae7da100e34aef5830b8641dffef918e671c061294e01d74e",
+    "docs/history/closeouts/V164_CLOSEOUT_AND_HANDOFF.md": "407c99a8e1eff2f18a6b3389487a5867ddf3c429afc39d991852e9ae38234bf3",
+    "docs/history/closeouts/V165_CLOSEOUT_AND_HANDOFF.md": "72c7db2beaf1b953e4c4a8c8eb59816977f2a3d6ed207efb2906ddcd31d4be1b",
+    "docs/history/results/V15_RESULTS_SUMMARY.md": "4682e0ca96991b468aabbfca45278a52ba7ae628503c08ad93d7ba497a79dd68",
+    "docs/history/results/V18_RESULTS_SUMMARY.md": "4c3957ba20c14388cb4a03a557d36275f734953c78f1519aa990a7030f61ae03",
+    "docs/history/results/V19_RESULTS_SUMMARY.md": "522f1c9fcc4d138730cfed7861a2c4ca2274007e4016b3f27e7244b26c10f736",
+    "docs/history/results/V20_RESULTS_SUMMARY.md": "c8ef9fa8ae6af794f861d3109abe0e07715e7c5937d33d0cf5365fbaf962dd1c",
+    "docs/history/results/V9_RESULTS_SUMMARY.md": "1e7c2231fc7327066af54970a58ae7b63e0b2a47fe5e7b379d4fb30dc5e97b6f",
+    "docs/history/superpowers/plans/2026-04-10-v37-v60-results-summary.md": "92c685a61a54e8c53b22f2561b9d865c7768f016ece23b910e2153183d064247",
+    "docs/research/RERUN_PLAN_v200_codex.md": "f1ebe79b16e3cd55ba1c807c179f908387da28c8923f5e2a2f6442da8728af7f",
+    "docs/reviews/REPO_REVIEW_2026-09-25.md": "4d2336e18aa8a6f5674129f46d8df8b7cf5a7aa3e91e400a8152c5b5dac62cc6",
+    "docs/reviews/VERIFICATION_2026-09-26.md": "d5f34bbe98162d5c77b6ad80253a0d2461529e1107be54a6ef0b32c2b3d21867",
+    "pyproject.toml": "d87c3a6493de75c57f0f2966180fe79d7d3a607bb3980c02c7eeec45f77cc29d",
+    "research/studies/v133_ridge_alpha_sweep/README.md": "70652f26af4148aa46a38c2c8b1a475c7201bec083efe11ca9814ba4116f07f9",
+    "research/studies/v133_ridge_alpha_sweep/outputs/v133_ridge_alpha_search_summary.md": "0f620d512d6e6b232131b2238b6be39776e42497153732e503bfa4eb541cbffe",
+    "research/studies/v134_fred_lag_sweep/README.md": "bc258022b6a80ca296ba5994371275893c7468c338cb1809a047d80e86868cb2",
+    "research/studies/v134_fred_lag_sweep/outputs/v134_fred_lag_search_summary.md": "9b968a337cd22a6cda473e3dabb3205ea215c2e7fed4bc722add843168bfe651",
+    "research/studies/v162_ta_broad_screen/README.md": "751020433f36d56d097b180c0312ee08e8cf3885c880e938092a43092605d740",
+    "research/studies/v162_ta_broad_screen/outputs/v162_ta_broad_screen_inventory.json": "af7b1c649d1a4cf1f4a27c2069cec41053dd4ae73764d93420176a04577dbdb6",
+    "research/studies/v163_ta_survivor_confirm/README.md": "fb9314acb9834b4cf6752dd7ff2e8ae9b8bfe25a12747964d83c1e4673f1c8fb",
+    "research/studies/v164_ta_synthesis/README.md": "9a8e23db0541320aec7d48116d1de7771eabb37d1de74fbcf537a7a5d2fb54f9",
+    "research/studies/v164_ta_synthesis/outputs/v164_ta_synthesis_summary.md": "d534cf5e7c29dac77c07521f2ece7e0405a61c524e2aece9f32173dd8802653d",
+    "research/studies/v165_ta_shadow_replacement_eval/README.md": "0e25d03bbede60a7d79ca625c210e1058a0ef00ab0fdb88b165c9e691c98b18b",
+    "research/studies/v200_clean_baseline/README.md": "53f32344ca104b5cac71d6d2ac7b91b1988d74abb789ca6b57320176b75e6f66",
+    "research/studies/v200_clean_baseline/outputs/access_ledger.json": "ec141113b2d82776255bad0e702a708862b2e17fa558bd861a9764a0a301d902",
+    "research/studies/v200_clean_baseline/outputs/baseline_lock.json": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+    "research/studies/v200_clean_baseline/outputs/dependency_environment.json": "0cd4bf33c6dc2052cf31ed7dc300ed2fd7a5462c2db1660a429dfaa6ba30f298",
+    "research/studies/v200_clean_baseline/outputs/development_features.csv": "8badaa58b240d9628bff5bcda2e9062cf41716255c9cd1f2d6ed18aa105f1268",
+    "research/studies/v200_clean_baseline/outputs/development_targets.csv": "593a4fdc707e12834d2a0f2f49cd7f1eb5a0b337c71dffceb2b97085c6941256",
+    "research/studies/v200_clean_baseline/outputs/fold_ledger.csv": "3f0a7200ff807bcfdacc3b2dc90e90c3143fba783fe6044fd7e2dc5df4d3528b",
+    "research/studies/v200_clean_baseline/outputs/output_manifest.json": "29a50c598d15ecd2472dee47ea47d4255ab9987b52d2fbcafed3a1984c861b5c",
+    "research/studies/v200_clean_baseline/outputs/partitions.json": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed",
+    "research/studies/v200_clean_baseline/outputs/predictions.csv": "5b671c52dbdded0b6106b02f0942d20f484df4715a21830c19ccf01320a28270",
+    "research/studies/v200_clean_baseline/outputs/runtime_lock.json": "ed8a5eea976ce21c816beb3b305b3a1d6fde6c59ea87c261aedab7ee0304d1e9",
+    "research/studies/v201_price_macro/outputs/attempt1/outputs/candidate_ledger.json": "3793489cc73a229eb959956ac156fb3096eb2397e9ac41763923c6c4cb24499c",
+    "research/studies/v201_price_macro/outputs/attempt2/availability_ledger.csv": "528773dec594ddcd2516ae518960228581f480e88cc1e7f37f69ebb0460f417e",
+    "research/studies/v201_price_macro/outputs/attempt2/features.csv": "235c65be42a434604d493fcfef3d2215d589f6634cdf8c6fadc0c8a2c2905a49",
+    "research/studies/v201_price_macro/outputs/attempt2/raw_macro_observations.csv": "4672bbe81538ae75cd76e29f7705c0886c0be3e84e4f70e63efdbd2a504c4c5b",
+    "research/studies/v201_price_macro/outputs/attempt2/registry_snapshot.yaml": "1fe52a9e2e1eb8ebe614caa53fb1ba4cd356dfb87695826650f1424011cf1975",
+    "research/studies/v201_price_macro/run.py": "a4dc7b3c54874ac5026ed203d0b5691a3ce5bd1ac0c5ab52aec3ada65563cfc2",
+    "research/studies/v205_dividend_bvps/outputs/multiplicity.json": "723d222410da4c3e02cf2d192d7a3226ad55ba81a788bea8e53e0ad3ecb39831",
+    "research/studies/v43_features/README.md": "86ee57763fa3a01c47cb3a9a0c8734212c4e94756640a865112794747c02e60a",
+    "research/studies/v44_pca/README.md": "4dc86b254b3c1556e4f750f39024d3bb80c813c7f0a4435d70772b6160f3f0fd",
+    "research/studies/v45_bayesian_ridge/README.md": "b9829ee4d917144a68a843a72cb9785c3db1021b07f3c64204781708282e6f19",
+    "research/studies/v54_gpr/README.md": "983f6dcadb65c774ab761f0c5a2c7e9e94c533d1445126ce480638cc9244d775",
+    "src/pgr_vds/research_lib/price_macro.py": "5703f734fffd10b83606879666abb89ae077528e05d706b21c7835b1c331c420",
+    "src/pgr_vds/research_lib/price_macro_disposition.py": "7cf4bda42aecd185cffc8076f7e1975aba28d6aeb70bc562a09e10cd890dbc63",
+    "src/pgr_vds/research_lib/snapshot.py": "e4fe885e42867f78f3f2dd43477c91fb456066b6735c54518dba982ac18a7999"
+  },
+  "data_writes": 0,
+  "dependency_environment_sha256": "0cd4bf33c6dc2052cf31ed7dc300ed2fd7a5462c2db1660a429dfaa6ba30f298",
+  "edgar_provenance": "unchanged v200 filing-gated feature CSV and its accepted current-table vintage limits",
+  "email_calls": 0,
+  "embargo": "h",
+  "extraction_sql": {
+    "macro": "SELECT series_id,month_end,value FROM fred_macro_monthly WHERE month_end<=? ORDER BY series_id,month_end",
+    "prices": "SELECT ticker,date,close FROM daily_prices WHERE ticker IN ('PGR','VOO') AND date<=? AND proxy_fill=0 ORDER BY ticker,date",
+    "splits": "SELECT ticker,split_date,split_ratio FROM split_history WHERE ticker IN ('PGR','VOO') AND split_date<=?"
+  },
+  "fred_provenance": "latest vintage; calendar availability proxy, not observed release timestamps; exact period, one lag, no filling",
+  "full_pytest": {
+    "command": "python -m pytest -o addopts=\"--tb=short\" -q",
+    "db_sha256_after": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
+    "db_sha256_before": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
+    "exit_code": 0,
+    "inherited_failures": "none",
+    "summary": "2704 passed, 1 skipped, 2 xfailed, 133 warnings in 331.54s (0:05:31)"
+  },
+  "inner": {
+    "folds": 3,
+    "gap": "2*h",
+    "max_train_size": "outer window",
+    "minimum": [
+      24,
+      60
+    ],
+    "test_size": 6
+  },
+  "input_db": {
+    "git_commit": "ed7997f6f540f664e59dd44a4079616d74a8e8cb",
+    "relative_path": "data/pgr_financials.db",
+    "sha256": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6"
+  },
+  "live_changes": 0,
+  "max_available_development_outcome": "2023-08-31",
+  "max_feature_origin": "2023-08-31",
+  "metric_definitions": "honest realised mean R2; matched paired delta; equal-benchmark/panel IC; date-block inference; past-learned majority base; prequential Brier/log loss/ECE/nominal80% coverage",
+  "outer": {
+    "12": [
+      120,
+      6,
+      24
+    ],
+    "6": [
+      60,
+      6,
+      12
+    ]
+  },
+  "output_sha256": {
+    "outputs/attempt2/access_ledger.json": "10863eb06d78423e31b2d707bf358f981d3bf9def82164a96f871dbcac5404b9",
+    "outputs/attempt2/archived_finding_examples.json": "dad1ddfdf9325962b92b06363fc7e9845ff77bc716cf7b4ad67d2019ec51634a",
+    "outputs/attempt2/attempts.json": "1e86103a0e39ae23600ee7a0e6eca4d8e678b610de9fb1f43cd5efdb3dac946d",
+    "outputs/attempt2/availability_ledger.csv": "528773dec594ddcd2516ae518960228581f480e88cc1e7f37f69ebb0460f417e",
+    "outputs/attempt2/candidate_ledger.json": "2e166e01f3a072d79f2bd5e33e991c2e47a540d4f7900ad284711afb48597109",
+    "outputs/attempt2/closeout.json": "c78cd5fc96fda5cdd8d1498780ffe50bbdf8f46b71e3ccb88e0cce197da95f75",
+    "outputs/attempt2/comparison.csv": "c6549499103584669712bcd3489cfe82cdf26705838ecfb5f55c04a2b0c224d3",
+    "outputs/attempt2/comparison.json": "a63ba491c33f83abd569c6abf3f1e709b9a68d8234cd480d74522eb3511a1f52",
+    "outputs/attempt2/control_metrics.json": "6373786c067e0e364a18c9bd07627a208e2d17df9c723bfd9414742826d821d7",
+    "outputs/attempt2/feature_examples.json": "586b7766b59967db278637a91162a8a8bc84af3e2bad83d421c7e9fd62516776",
+    "outputs/attempt2/features.csv": "235c65be42a434604d493fcfef3d2215d589f6634cdf8c6fadc0c8a2c2905a49",
+    "outputs/attempt2/fold_ledger.csv": "c6e14c350c9bf2186bf499be4891c9d1762a80cbc7799260fa378b3160ef2675",
+    "outputs/attempt2/independent_review.json": "4978febef43e484dccbfda74d2e73037ef729b191f361471959fed9bab5a0f87",
+    "outputs/attempt2/matched_recipe_audit.json": "389b61d94ae475af96c3a4345abb2badcdc9ca0ca56d9e90a7668c316d25ae1a",
+    "outputs/attempt2/metrics.json": "92a70a423942a1ab824a294d1fd2494935a7643c707fdf0a4e033f139a064d23",
+    "outputs/attempt2/multiplicity.json": "5caaf80abe3b44a3492d6f5a30b1fe58a7fd248a3dd27b04039daf9d9412bdbe",
+    "outputs/attempt2/predictions.csv": "95779360363c3ebcb627c8bdea54cabb6e94aa81395b034162eeca74bd883a70",
+    "outputs/attempt2/predictions_M1_h12.csv": "9a065f0effe5eab51a0c2e0f66143d595daa2b62181b8a293fc85fc53c42d2a5",
+    "outputs/attempt2/predictions_M1_h6.csv": "c793ee728267a9a06766c9fe804c410eb96a35f6d5f975a62335f147c862a34a",
+    "outputs/attempt2/predictions_M2_h12.csv": "363f64af53768962a22a233f3f7e9513b490a93c6ed9078b62a20de6937d6b50",
+    "outputs/attempt2/predictions_M2_h6.csv": "594f63e3d8571cacc865f8157cfdb1989a5c465097a24e0c2965d7c1bf1ec795",
+    "outputs/attempt2/predictions_M3_h12.csv": "0dfd55f2e7201dd85c30617cc449a6a0dca70d47a8296cfcc796f3d517b37b94",
+    "outputs/attempt2/predictions_M3_h6.csv": "7b6ec7028fad602184318d3ef314aef9524e0760c6119f4dfeabb013020c0a13",
+    "outputs/attempt2/predictions_P1_h12.csv": "4388ba4523a04737d7c23969289165329efb549420930cb22cdaa569d6f21b6f",
+    "outputs/attempt2/predictions_P1_h6.csv": "cb4bbe9194e33b9e2fcf5c6f1c1c815660e640fe6bb3cc46cf85025257d7cd2b",
+    "outputs/attempt2/predictions_P2_h12.csv": "5351be46a575303cfd315ed035ac9e411bdf32b772adfc2d80a9efb1e979be15",
+    "outputs/attempt2/predictions_P2_h6.csv": "d598cd9b1a61b21742c5e13e49162e4d669f488f691eac746806859460f6da38",
+    "outputs/attempt2/predictions_P3_h12.csv": "f736ca41e80c9fe0b6f667f2153ca99ef8cc7ce85b9e00235d61f62687a042c9",
+    "outputs/attempt2/predictions_P3_h6.csv": "7efdc87e865216a1e92a8d9a7aa7955df05f4d5de0e1aef3afb73faba6d26a8b",
+    "outputs/attempt2/preflight.json": "6ba8092b539f0fac9a937310d100a4b4156d01623c7ff7b904d4057eded765de",
+    "outputs/attempt2/progress.json": "bf8dfa6438060064b852027b0ceb5e82384836b7da621eba9dd09914d442d907",
+    "outputs/attempt2/raw_macro_observations.csv": "4672bbe81538ae75cd76e29f7705c0886c0be3e84e4f70e63efdbd2a504c4c5b",
+    "outputs/attempt2/registered.json": "463f12edf464f4dce5e6a07230ec3152f47ec47fc3f876b06b3632a8019f20b3",
+    "outputs/attempt2/registry_snapshot.yaml": "1fe52a9e2e1eb8ebe614caa53fb1ba4cd356dfb87695826650f1424011cf1975",
+    "outputs/attempt2/run_record.json": "67494ff4437cac3f2826978c819808feb9ed199695515bc4a8f3ebc7f481533b",
+    "outputs/attempt2/verification/disposition_green.log": "258866bcb5f80638bb3b919312f5916b6f090ef90fcae14981be423c6e386131",
+    "outputs/attempt2/verification/disposition_red.log": "62cb290cd1f2aeb99ab2010653e8f34f2f8a25a723492df51c019572b268864a",
+    "outputs/attempt2/verification/execute.log": "6a6d938323d80f25012c5abb21512b2ea551c108c178848c718d297e6bb88025",
+    "outputs/attempt2/verification/final_checks.log": "0d1a65c2cc629af5929be7a0c5e9331042c977c9240e2471cbfe111bb106012c",
+    "outputs/attempt2/verification/focused_final.log": "f66334bce60032b4da3f07595b1efbf38dd12a563671ada5cc9c58e5fd692758",
+    "outputs/attempt2/verification/full_pytest.log": "2e17978440372fd728e13dbfe1fe5d7873fae8e88c520c90ef5106fcd39e2026",
+    "outputs/attempt2/verification/full_pytest_exit.json": "f25f2c870383d036e1433585d6482e1894f5589baeab85384ea95490fbba9d5a",
+    "outputs/attempt2/verification/math_green.log": "9ac1b20312d1ffb65c6ee165eef7d828e4a97dff2382f014d498bfb9d3d53a45",
+    "outputs/attempt2/verification/math_red.log": "20ec1ba9b0ae69ec59c4df1560b7801f7d710e37bbf755dbb8b5460c1c6bdb93",
+    "outputs/attempt2/verification/mypy.log": "3a5d3d1ae9e7079eafd3a470abe58d4f48e2f2945c2ba4ec5e79754058f72b20",
+    "outputs/attempt2/verification/prepare.log": "5952f7e94cde9f07ebc4093901022f8e18e41eac19d6bab0b6376a6838138d8c",
+    "outputs/attempt2/verification/prepare_final.log": "5952f7e94cde9f07ebc4093901022f8e18e41eac19d6bab0b6376a6838138d8c",
+    "outputs/attempt2/verification/runner_green.log": "308f132b56cf7a42d2113d6de009a2d8610ae3656bb6acab00bc981a643f7e43",
+    "outputs/attempt2/verification/runner_red.log": "072b6b9f30959fbb57e99c7be5dd048c68c811b31becaaf2abd39335351ef87b"
+  },
+  "parent_seed": {
+    "db_sha256": "7c68efbd90ef5c10a12e05dc2a9e03402e353a06219fd2db129d711754c1c35d",
+    "git_commit": "aae0be883309bdc068ee9afbb78b0aa9a4b52b8d"
+  },
+  "promotion": false,
   "provider_calls": 0,
-  "live_changes": 0
+  "purge": "h",
+  "quarantine_metrics": 0,
+  "quarantine_partition_sha256": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed",
+  "registered_sha256": "463f12edf464f4dce5e6a07230ec3152f47ec47fc3f876b06b3632a8019f20b3",
+  "registry_verification": {
+    "added_entries": [
+      "v201",
+      "v205"
+    ],
+    "current_sha256": "d21c1d4bde389db926a251471c503699acbe79da7ed577dd4b5d04727d92b132",
+    "path": "research/registry.yaml",
+    "pinned_at_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
+    "pinned_entries_unchanged": 114,
+    "pinned_sha256": "410cd237f7e0d32639db8bf9b8193a3e8ca6541e52aa2fd01fd6f962f0275806"
+  },
+  "repairs": [
+    {
+      "commit": "ed7997f6f540f664e59dd44a4079616d74a8e8cb",
+      "id": "R2-lite",
+      "rebuild_id": "Weekly Data Accumulation run36410317252",
+      "record": "docs/reviews/2026-09-28_R2_dividend_refresh_check.md",
+      "review_pr": 144
+    },
+    {
+      "commit": "c3b4798b90a43f9dbd616981861e9ff01fa2de72",
+      "id": "R3b",
+      "record": "docs/reviews/R3b_baseline_closeout.md",
+      "review_pr": 145
+    }
+  ],
+  "run_record": {
+    "baseline_lock_sha256": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+    "code_commit": "acc3ce98357af4d4a997daac5426537d19cfd3a0",
+    "emails": 0,
+    "fits": "one procedure per candidate/horizon",
+    "input_db": {
+      "git_commit": "ed7997f6f540f664e59dd44a4079616d74a8e8cb",
+      "relative_path": "data/pgr_financials.db",
+      "sha256": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6"
+    },
+    "input_git": "c3b4798b90a43f9dbd616981861e9ff01fa2de72",
+    "live_changes": 0,
+    "providers": 0,
+    "registered_sha256": "463f12edf464f4dce5e6a07230ec3152f47ec47fc3f876b06b3632a8019f20b3",
+    "seed": 20260926,
+    "tracked_db_sha256_after": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
+    "tracked_db_sha256_before": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
+    "tracked_dirty_at_start": false
+  },
+  "runtime": {
+    "implementation": "CPython",
+    "packages": {
+      "PyPortfolioOpt": "1.6.0",
+      "PyYAML": "6.0.2",
+      "beautifulsoup4": "4.15.0",
+      "lxml": "6.1.3",
+      "mapie": "1.5.0",
+      "matplotlib": "3.11.2",
+      "numpy": "2.5.3",
+      "pandas": "3.0.6",
+      "pyarrow": "25.0.1",
+      "python-dotenv": "1.2.3",
+      "requests": "2.34.2",
+      "scikit-learn": "1.9.1",
+      "scipy": "1.18.1",
+      "skfolio": "1.4.0",
+      "statsmodels": "0.15.0",
+      "xgboost": "3.4.1"
+    },
+    "pgr_vds_path": "C:\\Users\\Jeff\\.codex\\worktrees\\e7c0\\pgr-vesting-decision-support\\src\\pgr_vds\\__init__.py",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.14",
+    "used_core_dependencies": [
+      "numpy",
+      "pandas",
+      "scikit-learn",
+      "scipy",
+      "statsmodels",
+      "matplotlib",
+      "xgboost",
+      "pyarrow",
+      "requests",
+      "lxml",
+      "beautifulsoup4",
+      "python-dotenv",
+      "skfolio",
+      "PyPortfolioOpt",
+      "mapie",
+      "PyYAML"
+    ]
+  },
+  "runtime_lock_sha256": "ed8a5eea976ce21c816beb3b305b3a1d6fde6c59ea87c261aedab7ee0304d1e9",
+  "seed": 20260926,
+  "splits_dividends_provenance": "D7 approved DB; raw weekly closes; manual past splits; frozen fractional-share DRIP targets",
+  "status": "completed",
+  "study": "v201_price_macro",
+  "target_definitions": "PGR-minus-benchmark h6/h12 total return: one raw share at last observed price bar on/before monthly origin; manual splits and fractional DRIP over (start_bar,end_bar]; end_bar last observed price on/before BME origin+h; label available at that BME. Weekly observation approximation, not exact daily month-end valuation.",
+  "target_end_availability": "origin+h BME; strictly before 2023-09-29",
+  "v200_access_ledger_sha256": "ec141113b2d82776255bad0e702a708862b2e17fa558bd861a9764a0a301d902",
+  "v207_finalist": null
 }

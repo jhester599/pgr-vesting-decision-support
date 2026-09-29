@@ -6,5 +6,16 @@
   ],
   "resolution": "Matched recipe role clarified; separate documentary archived findings added before fitting.",
   "review_access": "No fitting, metrics inspection, quarantine labels, providers or edits.",
-  "pre_fit_amendment": "Explicit conservative direction/calibration gates and finalist rank, with observed red/green fixtures; no changes to candidates, lag rules or grids."
+  "pre_fit_amendment": "Explicit conservative direction/calibration gates and finalist rank, with observed red/green fixtures; no changes to candidates, lag rules or grids.",
+  "amendment_review": {
+    "reviewed_commit": "acc3ce98357af4d4a997daac5426537d19cfd3a0",
+    "blocking_findings": [],
+    "result": "All safeguard gates, h6-only finalist nomination and frozen tie order verified. All preregistered inputs matched.",
+    "review_access": "No fitting, metrics inspection, quarantine labels, providers or edits."
+  },
+  "final_artifact_review": {
+    "blocking_findings": [],
+    "result": "Frozen consumed inputs, provenance/manifests, matched targets/support/folds/naive, saved comparison tables and independently recomputed safeguard dispositions agree; no finalist. Attempt1 archive bytes and full pytest summary/exit agree. DB hash unchanged.",
+    "review_access": "No fitting, providers, edits or quarantine-label inspection."
+  }
 }

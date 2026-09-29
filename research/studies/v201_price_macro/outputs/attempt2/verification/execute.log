@@ -1,0 +1,25 @@
+warning: unable to access 'C:\Users\Jeff/.config/git/ignore': Permission denied
+START P1 h6; development only
+DONE P1_h6, 942 matched rows
+START P1 h12; development only
+DONE P1_h12, 372 matched rows
+START P2 h6; development only
+DONE P2_h6, 942 matched rows
+START P2 h12; development only
+DONE P2_h12, 372 matched rows
+START P3 h6; development only
+DONE P3_h6, 942 matched rows
+START P3 h12; development only
+DONE P3_h12, 372 matched rows
+START M1 h6; development only
+DONE M1_h6, 942 matched rows
+START M1 h12; development only
+DONE M1_h12, 372 matched rows
+START M2 h6; development only
+DONE M2_h6, 942 matched rows
+START M2 h12; development only
+DONE M2_h12, 372 matched rows
+START M3 h6; development only
+DONE M3_h6, 942 matched rows
+START M3 h12; development only
+DONE M3_h12, 372 matched rows

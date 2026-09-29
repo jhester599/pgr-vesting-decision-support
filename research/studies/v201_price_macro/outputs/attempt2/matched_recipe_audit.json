@@ -1,0 +1,54 @@
+{
+  "comparisons": [
+    {
+      "old": "mom_3m",
+      "new": "pm_mom3",
+      "max_absolute_difference": 2.220446049250313e-16,
+      "missing_status_differences": 0,
+      "joint_observations": 283
+    },
+    {
+      "old": "mom_6m",
+      "new": "pm_mom6",
+      "max_absolute_difference": 2.220446049250313e-16,
+      "missing_status_differences": 0,
+      "joint_observations": 280
+    },
+    {
+      "old": "mom_12m",
+      "new": "pm_mom12",
+      "max_absolute_difference": 2.220446049250313e-16,
+      "missing_status_differences": 0,
+      "joint_observations": 274
+    },
+    {
+      "old": "vix",
+      "new": "pm_vix",
+      "max_absolute_difference": 0.0,
+      "missing_status_differences": 0,
+      "joint_observations": 285
+    },
+    {
+      "old": "nfci",
+      "new": "pm_nfci",
+      "max_absolute_difference": 0.0,
+      "missing_status_differences": 0,
+      "joint_observations": 285
+    },
+    {
+      "old": "credit_spread_hy",
+      "new": "pm_credit_hy",
+      "max_absolute_difference": 0.0,
+      "missing_status_differences": 0,
+      "joint_observations": 285
+    },
+    {
+      "old": "rate_adequacy_gap_yoy",
+      "new": "pm_rate_gap",
+      "max_absolute_difference": 0.0,
+      "missing_status_differences": 1,
+      "joint_observations": 273
+    }
+  ],
+  "interpretation": "v200 already repaired original defects. Recipes also replace/add columns and move their frozen order; GBT tie/random-feature handling can differ with order. No post-metric refit or reordering was tried."
+}

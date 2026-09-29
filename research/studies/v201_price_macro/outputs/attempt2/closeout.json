@@ -1,0 +1,136 @@
+{
+  "active_policy_proposal": false,
+  "candidate_results": {
+    "M1": {
+      "delta_r2": 0.034185363001580815,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "holm_primary",
+        "log_loss",
+        "ece"
+      ],
+      "gates": {
+        "brier": true,
+        "coverage_80": true,
+        "delta_r2": true,
+        "directional_skill": true,
+        "ece": false,
+        "hit_rate": true,
+        "holm_primary": false,
+        "ic": true,
+        "log_loss": false
+      },
+      "passes": false
+    },
+    "M2": {
+      "delta_r2": -0.00106889835332602,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "delta_r2",
+        "holm_primary",
+        "log_loss"
+      ],
+      "gates": {
+        "brier": true,
+        "coverage_80": true,
+        "delta_r2": false,
+        "directional_skill": true,
+        "ece": true,
+        "hit_rate": true,
+        "holm_primary": false,
+        "ic": true,
+        "log_loss": false
+      },
+      "passes": false
+    },
+    "M3": {
+      "delta_r2": -0.0681515379955755,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "delta_r2",
+        "holm_primary",
+        "ic",
+        "hit_rate",
+        "directional_skill",
+        "coverage_80"
+      ],
+      "gates": {
+        "brier": true,
+        "coverage_80": false,
+        "delta_r2": false,
+        "directional_skill": false,
+        "ece": true,
+        "hit_rate": false,
+        "holm_primary": false,
+        "ic": false,
+        "log_loss": true
+      },
+      "passes": false
+    },
+    "P1": {
+      "delta_r2": 0.057645788201299175,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "holm_primary",
+        "log_loss",
+        "ece"
+      ],
+      "gates": {
+        "brier": true,
+        "coverage_80": true,
+        "delta_r2": true,
+        "directional_skill": true,
+        "ece": false,
+        "hit_rate": true,
+        "holm_primary": false,
+        "ic": true,
+        "log_loss": false
+      },
+      "passes": false
+    },
+    "P2": {
+      "delta_r2": -0.0001894179019306108,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "delta_r2",
+        "holm_primary",
+        "log_loss"
+      ],
+      "gates": {
+        "brier": true,
+        "coverage_80": true,
+        "delta_r2": false,
+        "directional_skill": true,
+        "ece": true,
+        "hit_rate": true,
+        "holm_primary": false,
+        "ic": true,
+        "log_loss": false
+      },
+      "passes": false
+    },
+    "P3": {
+      "delta_r2": 0.05424597018247068,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "holm_primary",
+        "log_loss"
+      ],
+      "gates": {
+        "brier": true,
+        "coverage_80": true,
+        "delta_r2": true,
+        "directional_skill": true,
+        "ece": true,
+        "hit_rate": true,
+        "holm_primary": false,
+        "ic": true,
+        "log_loss": false
+      },
+      "passes": false
+    }
+  },
+  "primary": "h6 only; all candidates and safeguards reported",
+  "promotion": false,
+  "v207_finalist": null
+}

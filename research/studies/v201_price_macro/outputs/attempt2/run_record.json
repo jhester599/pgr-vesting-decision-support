@@ -1,0 +1,19 @@
+{
+  "baseline_lock_sha256": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+  "code_commit": "acc3ce98357af4d4a997daac5426537d19cfd3a0",
+  "emails": 0,
+  "fits": "one procedure per candidate/horizon",
+  "input_db": {
+    "git_commit": "ed7997f6f540f664e59dd44a4079616d74a8e8cb",
+    "relative_path": "data/pgr_financials.db",
+    "sha256": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6"
+  },
+  "input_git": "c3b4798b90a43f9dbd616981861e9ff01fa2de72",
+  "live_changes": 0,
+  "providers": 0,
+  "registered_sha256": "463f12edf464f4dce5e6a07230ec3152f47ec47fc3f876b06b3632a8019f20b3",
+  "seed": 20260926,
+  "tracked_db_sha256_after": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
+  "tracked_db_sha256_before": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
+  "tracked_dirty_at_start": false
+}

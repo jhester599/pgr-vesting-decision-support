@@ -1,0 +1,8 @@
+{
+  "command": "python -m pytest -o addopts=\"--tb=short\" -q",
+  "summary": "2704 passed, 1 skipped, 2 xfailed, 133 warnings in 331.54s (0:05:31)",
+  "exit_code": 0,
+  "inherited_failures": "none",
+  "db_sha256_before": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
+  "db_sha256_after": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6"
+}
