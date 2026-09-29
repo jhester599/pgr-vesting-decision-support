@@ -350,16 +350,18 @@
     "research/studies/v201_price_macro/outputs/attempt2/features.csv": "235c65be42a434604d493fcfef3d2215d589f6634cdf8c6fadc0c8a2c2905a49",
     "research/studies/v201_price_macro/outputs/attempt2/raw_macro_observations.csv": "4672bbe81538ae75cd76e29f7705c0886c0be3e84e4f70e63efdbd2a504c4c5b",
     "research/studies/v201_price_macro/outputs/attempt2/registry_snapshot.yaml": "1fe52a9e2e1eb8ebe614caa53fb1ba4cd356dfb87695826650f1424011cf1975",
-    "research/studies/v201_price_macro/run.py": "20f0cbf86aa717fa25bf18e0326a21659a662335746891636aeda45fb692fe0c",
+    "research/studies/v201_price_macro/run.py": "a4dc7b3c54874ac5026ed203d0b5691a3ce5bd1ac0c5ab52aec3ada65563cfc2",
     "research/studies/v205_dividend_bvps/outputs/multiplicity.json": "723d222410da4c3e02cf2d192d7a3226ad55ba81a788bea8e53e0ad3ecb39831",
     "research/studies/v43_features/README.md": "86ee57763fa3a01c47cb3a9a0c8734212c4e94756640a865112794747c02e60a",
     "research/studies/v44_pca/README.md": "4dc86b254b3c1556e4f750f39024d3bb80c813c7f0a4435d70772b6160f3f0fd",
     "research/studies/v45_bayesian_ridge/README.md": "b9829ee4d917144a68a843a72cb9785c3db1021b07f3c64204781708282e6f19",
     "research/studies/v54_gpr/README.md": "983f6dcadb65c774ab761f0c5a2c7e9e94c533d1445126ce480638cc9244d775",
     "src/pgr_vds/research_lib/price_macro.py": "5703f734fffd10b83606879666abb89ae077528e05d706b21c7835b1c331c420",
+    "src/pgr_vds/research_lib/price_macro_disposition.py": "7cf4bda42aecd185cffc8076f7e1975aba28d6aeb70bc562a09e10cd890dbc63",
     "src/pgr_vds/research_lib/snapshot.py": "e4fe885e42867f78f3f2dd43477c91fb456066b6735c54518dba982ac18a7999"
   },
   "macro_limits": "latest vintage; calendar availability proxy, not observed release timestamps; exact period, one lag, no filling",
+  "nomination": "highest h6 delta R2 among passers, ties retain candidate_order; at most one; h12 never rescues failed primary",
   "outer": {
     "12": [
       120,
@@ -436,6 +438,7 @@
     6866.488450042998,
     10000.0
   ],
+  "safeguards": "hit rate and directional skill >= control; Brier, log loss and ECE <= control; distance of coverage from .8 <= control; missing safeguards fail; float epsilon 1e-12",
   "secondary": "h12 diagnostics, never another primary success path",
   "shrinkage_grid": [
     0.05,

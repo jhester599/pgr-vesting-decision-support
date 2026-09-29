@@ -29,6 +29,10 @@ from pgr_vds.research_lib.price_macro import (
     price_features,
     relative_trends,
 )
+from pgr_vds.research_lib.price_macro_disposition import (
+    candidate_disposition,
+    nominate_finalist,
+)
 from pgr_vds.research_lib.provenance import (
     export_git_blob,
     read_immutable,
@@ -255,6 +259,11 @@ def procedure() -> dict:
             "max_ic_loss": 0.01,
             "direction_calibration": "no deterioration vs matched control",
         },
+        "safeguards": "hit rate and directional skill >= control; Brier, "
+        "log loss and ECE <= control; distance of coverage from .8 <= "
+        "control; missing safeguards fail; float epsilon 1e-12",
+        "nomination": "highest h6 delta R2 among passers, ties retain "
+        "candidate_order; at most one; h12 never rescues failed primary",
         "v207": "quarantine sealed; at most one research finalist",
         "costs": "forecasts only; no trading policy or cost-adjusted P&L",
         "sql": SQL,
@@ -416,9 +425,57 @@ def prepare(scratch: Path) -> None:
                 "corrected_column": corrected,
                 "archived_v200": original.loc[date, archived],
                 "corrected": features.loc[date, corrected],
+                "comparison_role": "matched recipe example; archived v200 "
+                "already repaired the original window/publication defect",
             }
         )
     save_json(OUTPUTS / "feature_examples.json", examples)
+    save_json(
+        OUTPUTS / "archived_finding_examples.json",
+        {
+            "source": "docs/reviews/REPO_REVIEW_2026-09-25.md",
+            "role": "documentary archived findings, not rerun forecasts",
+            "mom12": {
+                "finding": "F01",
+                "origin": "2006-05-31",
+                "archived_report_value_rounded": -0.80,
+                "legacy_rule": "252 raw weekly rows, contaminated by split",
+                "repaired_calendar_value": features.loc[
+                    "2006-05-31", "pm_mom12"
+                ],
+            },
+            "april2020_vix": {
+                "finding": "F06",
+                "period": "2020-04",
+                "legacy_stored_value": 53.54,
+                "legacy_value_role": "March close stored under April; "
+                "then lagged again",
+                "repaired_raw_april_value": float(
+                    macro.loc[
+                        (macro.series_id == "VIXCLS")
+                        & (
+                            pd.to_datetime(macro.month_end).dt.to_period("M")
+                            == pd.Period("2020-04")
+                        ),
+                        "value",
+                    ].iloc[0]
+                ),
+                "single_lag_feature_at_april_origin": features.loc[
+                    "2020-04-30", "pm_vix"
+                ],
+            },
+            "rate_gap": {
+                "finding": "F07",
+                "archived_report_origin": "2026-04",
+                "archived_report_value": None,
+                "archived_reason": "Insurance PPI stale after February 2026; "
+                "live gap missing. Documentary report only, "
+                "no quarantine query.",
+                "development_origin": "2023-02-28",
+                "repaired_value": features.loc["2023-02-28", "pm_rate_gap"],
+            },
+        },
+    )
     save_json(
         OUTPUTS / "preflight.json",
         {
@@ -466,6 +523,7 @@ def prepare(scratch: Path) -> None:
             STUDY / "run.py",
             ROOT / "src/pgr_vds/research_lib/price_macro.py",
             ROOT / "src/pgr_vds/research_lib/snapshot.py",
+            ROOT / "src/pgr_vds/research_lib/price_macro_disposition.py",
         ]
     ]
     references = json.loads(
@@ -579,8 +637,38 @@ def execute(scratch: Path, destination: Path) -> None:
     for slot, name in zip(range(28, 34), ("D1", "D2", "D3", "B1", "B2", "B3")):
         family[slot] = prior[name]
     adjusted = holm38(family)
+    control_metrics = {}
+    for horizon in (6, 12):
+        incumbent = control.loc[control.horizon == horizon]
+        control_metrics[f"h{horizon}"] = panel_summary(
+            incumbent,
+            horizon,
+            2000,
+            SEED,
+        )
+        control_metrics[f"h{horizon}"].update(calibration_summary(incumbent))
+    dispositions = {}
     for slot, candidate in enumerate(registered["candidate_order"]):
         comparisons[f"{candidate}_h6"]["holm38_p"] = adjusted[slot]
+        dispositions[candidate] = candidate_disposition(
+            summaries[f"{candidate}_h6"],
+            control_metrics["h6"],
+            comparisons[f"{candidate}_h6"],
+        )
+    save_json(
+        destination / "closeout.json",
+        {
+            "candidate_results": dispositions,
+            "v207_finalist": nominate_finalist(
+                registered["candidate_order"],
+                dispositions,
+            ),
+            "promotion": False,
+            "active_policy_proposal": False,
+            "primary": "h6 only; all candidates and safeguards reported",
+        },
+    )
+    save_json(destination / "control_metrics.json", control_metrics)
     save_csv(destination / "predictions.csv", pd.concat(all_predictions))
     save_csv(destination / "fold_ledger.csv", pd.concat(all_folds))
     save_json(destination / "metrics.json", summaries)
