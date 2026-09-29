@@ -1,0 +1,5 @@
+{
+  "error": "ValueError(\"Hand-calculated targets differ from v200: {'n_rows': 772, 'max_abs_label_diff': 8.881784197001252e-16, 'max_abs_cash_control_diff': 8.881784197001252e-16, 'max_abs_naive_diff': 0.059085576542793714, 'end_mismatches': 0, 'availability_mismatches': 0, 'cash_control_nan_mismatches': 0, 'naive_nan_mismatches': 2, 'tolerance': 1e-12, 'status': 'failed'}\")",
+  "stage": "preregistration preflight",
+  "status": "blocked"
+}

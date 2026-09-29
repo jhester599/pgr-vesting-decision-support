@@ -1,0 +1,54 @@
+{
+  "basis": "features use the repaired current table with actual filing-date gates, matching the v200 controls; first-reported values are compared only for disclosure",
+  "book_value_per_share": {
+    "months_changed": [],
+    "n_changed": 0,
+    "n_compared": 229
+  },
+  "combined_ratio": {
+    "months_changed": [],
+    "n_changed": 0,
+    "n_compared": 229
+  },
+  "investment_book_yield": {
+    "months_changed": [],
+    "n_changed": 0,
+    "n_compared": 220
+  },
+  "net_premiums_written": {
+    "months_changed": [],
+    "n_changed": 0,
+    "n_compared": 229
+  },
+  "pif_total": {
+    "months_changed": [
+      "2019-07-31",
+      "2019-08-31",
+      "2019-09-30",
+      "2019-10-31",
+      "2019-11-30",
+      "2019-12-31",
+      "2020-01-31",
+      "2020-02-29",
+      "2020-03-31",
+      "2020-04-30",
+      "2020-05-31",
+      "2020-06-30",
+      "2020-07-31",
+      "2020-08-31",
+      "2020-09-30",
+      "2020-10-31",
+      "2020-11-30",
+      "2020-12-31",
+      "2021-01-31",
+      "2021-02-28"
+    ],
+    "n_changed": 50,
+    "n_compared": 229
+  },
+  "roe_net_income_ttm": {
+    "months_changed": [],
+    "n_changed": 0,
+    "n_compared": 229
+  }
+}
