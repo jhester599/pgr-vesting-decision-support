@@ -1,0 +1,155 @@
+........................................................................ [  2%]
+........................................................................ [  5%]
+........................................................................ [  8%]
+............F........................................................... [ 10%]
+................................................F....................... [ 13%]
+........................................................................ [ 16%]
+........................................................................ [ 18%]
+........................................................................ [ 21%]
+........................................................................ [ 24%]
+........................................................................ [ 26%]
+........................................................................ [ 29%]
+........................................................................ [ 32%]
+........................................................................ [ 35%]
+..........................................xx............................ [ 37%]
+........................................................................ [ 40%]
+........................................................................ [ 43%]
+........................................................................ [ 45%]
+........................................................................ [ 48%]
+........................................................................ [ 51%]
+........................................................................ [ 53%]
+........................................................................ [ 56%]
+........................................................................ [ 59%]
+............s........................................................... [ 61%]
+........................................................................ [ 64%]
+........................................................................ [ 67%]
+........................................................................ [ 70%]
+........................................................................ [ 72%]
+........................................................................ [ 75%]
+........................................................................ [ 78%]
+........................................................................ [ 80%]
+........................................................................ [ 83%]
+........................................................................ [ 86%]
+........................................................................ [ 88%]
+........................................................................ [ 91%]
+........................................................................ [ 94%]
+........................................................................ [ 97%]
+........................................................................ [ 99%]
+........                                                                 [100%]
+================================== FAILURES ===================================
+____________________ test_active_docs_have_no_broken_links ____________________
+tests\integration\repo\test_restructure_phase0.py:102: in test_active_docs_have_no_broken_links
+    assert broken == []
+E   AssertionError: assert ['research/st...issing file)'] == []
+E     
+E     Left contains 4 more items, first extra item: 'research/studies/v201_price_macro/README.md:15: outputs/verification/prepare_failed.log (missing file)'
+E     Use -v to get more diff
+__________ test_link_checker_covers_history_and_decisions_and_passes __________
+tests\integration\repo\test_restructure_phase4.py:106: in test_link_checker_covers_history_and_decisions_and_passes
+    assert broken == []
+E   AssertionError: assert ['research/st...issing file)'] == []
+E     
+E     Left contains 4 more items, first extra item: 'research/studies/v201_price_macro/README.md:15: outputs/verification/prepare_failed.log (missing file)'
+E     Use -v to get more diff
+============================== warnings summary ===============================
+tests/integration/pipeline/test_dry_run_read_only.py::test_monthly_decision_dry_run_leaves_db_and_tracked_files_unchanged
+  C:\Users\Jeff\.codex\worktrees\e7c0\pgr-vesting-decision-support\src\models\path_b_classifier.py:220: Pandas4Warning: Sorting by default when concatenating all DatetimeIndex is deprecated.  In the future, pandas will respect the default of `sort=False`. Specify `sort=True` or `sort=False` to silence this message. If you see this warnings when not directly calling concat, report a bug to pandas.
+    combined = pd.concat(rel_series_list, axis=1).dropna(how="any")
+
+tests/research/test_pb_vs_pe.py::test_roe_gap_and_normalized_yield_use_only_trailing_roe
+  C:\Users\Jeff\.codex\worktrees\e7c0\pgr-vesting-decision-support\src\research\pb_vs_pe.py:186: RankWarning: Polyfit may be poorly conditioned
+    slope, intercept = np.polyfit(xs[: i + 1][mask], ys[: i + 1][mask], 1)
+
+tests/research/test_research_v129_feature_map_eval.py::test_file_strategy_accepts_candidate_map_artifact
+  C:\Users\Jeff\.codex\worktrees\e7c0\pgr-vesting-decision-support\research\studies\v128_benchmark_feature_search\v128_benchmark_feature_search.py:232: RuntimeWarning: All-NaN slice encountered
+    medians = np.nanmedian(train, axis=0)
+
+tests/research/test_research_v137_gbt_param_sweep.py: 13 warnings
+  C:\Users\Jeff\.codex\worktrees\e7c0\pgr-vesting-decision-support\src\research\v37_utils.py:207: RuntimeWarning: All-NaN slice encountered
+    medians = np.nanmedian(X_train, axis=0)
+
+tests/research/test_research_v143_corr_prune_eval.py: 13 warnings
+  C:\Users\Jeff\.codex\worktrees\e7c0\pgr-vesting-decision-support\src\models\wfo_engine.py:305: RuntimeWarning: All-NaN slice encountered
+    train_medians = np.nanmedian(X_train, axis=0)
+
+tests/unit/ingestion/test_http_retry.py::test_av_client_uses_retry_session
+  C:\Users\Jeff\.codex\worktrees\e7c0\pgr-vesting-decision-support\src\ingestion\av_client.py:55: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+
+tests/unit/models/test_embargo_fix.py::TestRunWfoPurgeBuffer::test_default_12m_uses_gap_15
+  C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\sklearn\linear_model\_coordinate_descent.py:827: ConvergenceWarning: Objective did not converge. You might want to increase the number of iterations, check the scale of the features or consider increasing regularisation. Duality gap: 1.599705e-03, tolerance: 3.020e-04
+    model = cd_fast.enet_coordinate_descent_gram(
+
+tests/unit/models/test_embargo_fix.py::TestRunWfoPurgeBuffer::test_default_12m_uses_gap_15
+  C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\sklearn\linear_model\_coordinate_descent.py:827: ConvergenceWarning: Objective did not converge. You might want to increase the number of iterations, check the scale of the features or consider increasing regularisation. Duality gap: 1.893354e-03, tolerance: 3.020e-04
+    model = cd_fast.enet_coordinate_descent_gram(
+
+tests/unit/models/test_embargo_fix.py::TestRunWfoPurgeBuffer::test_default_12m_uses_gap_15
+  C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\sklearn\linear_model\_coordinate_descent.py:827: ConvergenceWarning: Objective did not converge. You might want to increase the number of iterations, check the scale of the features or consider increasing regularisation. Duality gap: 1.815547e-03, tolerance: 3.020e-04
+    model = cd_fast.enet_coordinate_descent_gram(
+
+tests/unit/models/test_embargo_fix.py::TestRunWfoPurgeBuffer::test_default_12m_uses_gap_15
+  C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\sklearn\linear_model\_coordinate_descent.py:827: ConvergenceWarning: Objective did not converge. You might want to increase the number of iterations, check the scale of the features or consider increasing regularisation. Duality gap: 1.589850e-03, tolerance: 3.020e-04
+    model = cd_fast.enet_coordinate_descent_gram(
+
+tests/unit/models/test_embargo_fix.py::TestRunWfoPurgeBuffer::test_default_12m_uses_gap_15
+  C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\sklearn\linear_model\_coordinate_descent.py:827: ConvergenceWarning: Objective did not converge. You might want to increase the number of iterations, check the scale of the features or consider increasing regularisation. Duality gap: 1.324625e-03, tolerance: 3.020e-04
+    model = cd_fast.enet_coordinate_descent_gram(
+
+tests/unit/models/test_embargo_fix.py::TestRunWfoPurgeBuffer::test_default_12m_uses_gap_15
+  C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\sklearn\linear_model\_coordinate_descent.py:827: ConvergenceWarning: Objective did not converge. You might want to increase the number of iterations, check the scale of the features or consider increasing regularisation. Duality gap: 1.070521e-03, tolerance: 3.020e-04
+    model = cd_fast.enet_coordinate_descent_gram(
+
+tests/unit/models/test_embargo_fix.py::TestRunWfoPurgeBuffer::test_default_12m_uses_gap_15
+  C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\sklearn\linear_model\_coordinate_descent.py:827: ConvergenceWarning: Objective did not converge. You might want to increase the number of iterations, check the scale of the features or consider increasing regularisation. Duality gap: 8.480988e-04, tolerance: 3.020e-04
+    model = cd_fast.enet_coordinate_descent_gram(
+
+tests/unit/models/test_embargo_fix.py::TestRunWfoPurgeBuffer::test_default_12m_uses_gap_15
+  C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\sklearn\linear_model\_coordinate_descent.py:827: ConvergenceWarning: Objective did not converge. You might want to increase the number of iterations, check the scale of the features or consider increasing regularisation. Duality gap: 6.628274e-04, tolerance: 3.020e-04
+    model = cd_fast.enet_coordinate_descent_gram(
+
+tests/unit/models/test_embargo_fix.py::TestRunWfoPurgeBuffer::test_default_12m_uses_gap_15
+  C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\sklearn\linear_model\_coordinate_descent.py:827: ConvergenceWarning: Objective did not converge. You might want to increase the number of iterations, check the scale of the features or consider increasing regularisation. Duality gap: 5.131201e-04, tolerance: 3.020e-04
+    model = cd_fast.enet_coordinate_descent_gram(
+
+tests/unit/processing/test_corporate_actions.py::TestApplySplits::test_empty_split_history
+  C:\Users\Jeff\.codex\worktrees\e7c0\pgr-vesting-decision-support\tests\unit\processing\test_corporate_actions.py:80: UserWarning: split_history is empty; no splits applied.
+    result = apply_splits(shares_series, empty)
+
+tests/unit/processing/test_fracdiff.py: 13 warnings
+  C:\Users\Jeff\.codex\worktrees\e7c0\pgr-vesting-decision-support\src\processing\feature_engineering.py:1628: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    adf_pval = adfuller(diff_series, autolag="AIC")[1]
+
+tests/unit/processing/test_fracdiff.py::TestApplyFracdiff::test_stationarity_after_fracdiff
+  C:\Users\Jeff\.codex\worktrees\e7c0\pgr-vesting-decision-support\tests\unit\processing\test_fracdiff.py:116: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    adf_pval = adfuller(valid.values, autolag="AIC")[1]
+
+tests/unit/processing/test_property_feature_engineering.py: 21 warnings
+  C:\Users\Jeff\.codex\worktrees\e7c0\pgr-vesting-decision-support\src\processing\feature_engineering.py:1876: UserWarning: The design matrix is poorly conditioned (condition number=inf). VIF calculations may be numerically unstable.
+    val = float(variance_inflation_factor(Xarr, i))
+
+tests/unit/processing/test_property_feature_engineering.py: 21 warnings
+  C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\stats\outliers_influence.py:235: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+    r_sq = OLS(x_i, x_noti).fit().rsquared
+
+tests/unit/processing/test_property_feature_engineering.py: 21 warnings
+  C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\regression\linear_model.py:2020: RuntimeWarning: invalid value encountered in scalar divide
+    return 1 - self.ssr / self.uncentered_tss
+
+tests/unit/processing/test_property_feature_engineering.py::test_vif_values_are_positive
+  C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\regression\linear_model.py:386: RuntimeWarning: overflow encountered in dot
+    self.normalized_cov_params = np.dot(
+
+tests/unit/processing/test_property_feature_engineering.py::test_vif_values_are_positive
+  C:\Users\Jeff\AppData\Local\Temp\pgr-verify-20260926-72d5b327\venv\Lib\site-packages\statsmodels\regression\linear_model.py:2018: RuntimeWarning: invalid value encountered in scalar divide
+    return 1 - self.ssr / self.centered_tss
+
+tests/unit/scripts/test_weekly_fetch.py::TestWeeklyFetch::test_dry_run_logs_projected_budget
+  C:\Users\Jeff\.codex\worktrees\e7c0\pgr-vesting-decision-support\src\processing\price_integrity.py:38: UserWarning: pandas only supports SQLAlchemy connectable (engine/connection) or database string URI or sqlite3 DBAPI2 connection. Other DBAPI2 objects are not tested. Please consider using SQLAlchemy.
+    return pd.read_sql_query(sql, conn, params=params)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/integration/repo/test_restructure_phase0.py::test_active_docs_have_no_broken_links
+FAILED tests/integration/repo/test_restructure_phase4.py::test_link_checker_covers_history_and_decisions_and_passes
+2 failed, 2667 passed, 1 skipped, 2 xfailed, 120 warnings in 350.87s (0:05:50)

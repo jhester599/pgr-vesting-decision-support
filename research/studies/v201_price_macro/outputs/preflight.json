@@ -1,0 +1,12 @@
+{
+  "baseline_lock_sha256": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+  "conflicting_path": "research/registry.yaml",
+  "db_writes": 0,
+  "error": "ValueError('SHA256 mismatch for source text: research/registry.yaml')",
+  "expected_git_source_lf_sha256": "410cd237f7e0d32639db8bf9b8193a3e8ca6541e52aa2fd01fd6f962f0275806",
+  "final_reproduction_exit": 1,
+  "fits": 0,
+  "initial_master_verification": "lock/complete manifest/runtime/external exact DB passed before registry append",
+  "observed_git_source_lf_sha256": "e3c4d8444a19e38e038403d23d4d5cfe5ee4b4ac328f2da17198cfa2fa3aca7b",
+  "status": "blocked"
+}

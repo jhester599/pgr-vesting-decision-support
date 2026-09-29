@@ -1,0 +1,15 @@
+{
+  "development_forecasts_loaded": 0,
+  "external_db": "exact git blob exported/hashed; no target outcome query",
+  "holdout_metrics": 0,
+  "holdout_targets_loaded": 0,
+  "prior_exposure": [
+    "v75",
+    "v129",
+    "v132",
+    "both step13V"
+  ],
+  "raw_feature_sql_executed": 0,
+  "v200_access_ledger_sha256": "ec141113b2d82776255bad0e702a708862b2e17fa558bd861a9764a0a301d902",
+  "v200_partition_ledger_sha256": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed"
+}

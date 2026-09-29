@@ -17,6 +17,14 @@
 #   notes        optional
 
 studies:
+  - id: v201
+    slug: price_macro
+    date: "2026-09-28"
+    question: "Do six frozen price/TA/macro blocks improve the pinned v200 development forecasts?"
+    status: closed
+    promoted_to: null
+    closeout: research/studies/v201_price_macro/README.md
+    notes: "BLOCKED before fitting: v200's verifier pins the pre-v201 registry bytes. Six declared blueprints remain unscored; exact lock preserved; no quarantine metrics."
   - id: v200
     slug: clean_baseline
     date: "2026-09-28"

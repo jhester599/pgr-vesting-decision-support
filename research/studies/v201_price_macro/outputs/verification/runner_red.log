@@ -1,0 +1,37 @@
+FFF                                                                      [100%]
+================================== FAILURES ===================================
+_________________ test_absent_lock_blocks_before_any_fitting __________________
+tests\research\test_v201_runner.py:23: in test_absent_lock_blocks_before_any_fitting
+    module = runner()
+             ^^^^^^^^
+tests\research\test_v201_runner.py:13: in runner
+    assert path.is_file(), "The gated v201 runner must exist"
+E   AssertionError: The gated v201 runner must exist
+E   assert False
+E    +  where False = is_file()
+E    +    where is_file = WindowsPath('C:/Users/Jeff/.codex/worktrees/e7c0/pgr-vesting-decision-support/research/studies/v201_price_macro/run.py').is_file
+______________ test_exact_six_blueprints_and_p3_inventory_names _______________
+tests\research\test_v201_runner.py:32: in test_exact_six_blueprints_and_p3_inventory_names
+    module = runner()
+             ^^^^^^^^
+tests\research\test_v201_runner.py:13: in runner
+    assert path.is_file(), "The gated v201 runner must exist"
+E   AssertionError: The gated v201 runner must exist
+E   assert False
+E    +  where False = is_file()
+E    +    where is_file = WindowsPath('C:/Users/Jeff/.codex/worktrees/e7c0/pgr-vesting-decision-support/research/studies/v201_price_macro/run.py').is_file
+___________________ test_unregistered_execution_is_refused ____________________
+tests\research\test_v201_runner.py:43: in test_unregistered_execution_is_refused
+    module = runner()
+             ^^^^^^^^
+tests\research\test_v201_runner.py:13: in runner
+    assert path.is_file(), "The gated v201 runner must exist"
+E   AssertionError: The gated v201 runner must exist
+E   assert False
+E    +  where False = is_file()
+E    +    where is_file = WindowsPath('C:/Users/Jeff/.codex/worktrees/e7c0/pgr-vesting-decision-support/research/studies/v201_price_macro/run.py').is_file
+=========================== short test summary info ===========================
+FAILED tests/research/test_v201_runner.py::test_absent_lock_blocks_before_any_fitting
+FAILED tests/research/test_v201_runner.py::test_exact_six_blueprints_and_p3_inventory_names
+FAILED tests/research/test_v201_runner.py::test_unregistered_execution_is_refused
+3 failed in 0.40s

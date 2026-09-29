@@ -1,0 +1,278 @@
+{
+  "M1": {
+    "add": [
+      "pm_slope",
+      "pm_real_change6"
+    ],
+    "columns": {
+      "gbt": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m",
+        "vol_63d",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "rate_adequacy_gap_yoy",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "pm_slope",
+        "pm_real_change6"
+      ],
+      "ridge": [
+        "mom_12m",
+        "vol_63d",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "pm_slope",
+        "pm_real_change6"
+      ]
+    },
+    "fit_attempts": 0,
+    "remove": [
+      "yield_slope",
+      "real_rate_10y",
+      "real_yield_change_6m"
+    ],
+    "slot": 4,
+    "status": "blocked_before_fit"
+  },
+  "M2": {
+    "add": [
+      "pm_vix",
+      "pm_nfci",
+      "pm_credit_hy"
+    ],
+    "columns": {
+      "gbt": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "rate_adequacy_gap_yoy",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "pm_vix",
+        "pm_nfci",
+        "pm_credit_hy"
+      ],
+      "ridge": [
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "pm_vix",
+        "pm_nfci",
+        "pm_credit_hy"
+      ]
+    },
+    "fit_attempts": 0,
+    "remove": [
+      "vix",
+      "nfci",
+      "credit_spread_hy"
+    ],
+    "slot": 5,
+    "status": "blocked_before_fit"
+  },
+  "M3": {
+    "add": [
+      "pm_rate_gap"
+    ],
+    "columns": {
+      "gbt": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "pm_rate_gap"
+      ],
+      "ridge": [
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "pm_rate_gap"
+      ]
+    },
+    "fit_attempts": 0,
+    "remove": [
+      "rate_adequacy_gap_yoy"
+    ],
+    "slot": 6,
+    "status": "blocked_before_fit"
+  },
+  "P1": {
+    "add": [
+      "pm_mom3",
+      "pm_mom6",
+      "pm_mom12"
+    ],
+    "columns": {
+      "gbt": [
+        "vol_63d",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "rate_adequacy_gap_yoy",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "pm_mom3",
+        "pm_mom6",
+        "pm_mom12"
+      ],
+      "ridge": [
+        "vol_63d",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "pm_mom3",
+        "pm_mom6",
+        "pm_mom12"
+      ]
+    },
+    "fit_attempts": 0,
+    "remove": [
+      "mom_3m",
+      "mom_6m",
+      "mom_12m"
+    ],
+    "slot": 1,
+    "status": "blocked_before_fit"
+  },
+  "P2": {
+    "add": [
+      "pm_vol13w",
+      "pm_high52w"
+    ],
+    "columns": {
+      "gbt": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "rate_adequacy_gap_yoy",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "pm_vol13w",
+        "pm_high52w"
+      ],
+      "ridge": [
+        "mom_12m",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "pm_vol13w",
+        "pm_high52w"
+      ]
+    },
+    "fit_attempts": 0,
+    "remove": [
+      "vol_63d"
+    ],
+    "slot": 2,
+    "status": "blocked_before_fit"
+  },
+  "P3": {
+    "add": [
+      "pm_ema12_voo",
+      "pm_rsi6_voo"
+    ],
+    "columns": {
+      "gbt": [
+        "mom_3m",
+        "vol_63d",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "rate_adequacy_gap_yoy",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "pm_ema12_voo",
+        "pm_rsi6_voo"
+      ],
+      "ridge": [
+        "vol_63d",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "pm_ema12_voo",
+        "pm_rsi6_voo"
+      ]
+    },
+    "fit_attempts": 0,
+    "inventory": [
+      "ta_ratio_ema_gap_12m_voo",
+      "ta_ratio_rsi_6m_voo"
+    ],
+    "remove": [
+      "mom_6m",
+      "mom_12m"
+    ],
+    "slot": 3,
+    "status": "blocked_before_fit"
+  }
+}

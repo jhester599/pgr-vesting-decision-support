@@ -1,0 +1,8 @@
+{
+  "agent": "review_v201",
+  "fit_count": 0,
+  "issue": "P2 monthly .last() skipped missing final-week feature values",
+  "other_findings": "Blocked ledgers/no overclaims/exact five v200 copies consistent",
+  "resolution": ".last(skipna=False), independent missing-final-week fixture red1fail then focused11pass",
+  "scope": "read-only;synthetic helper probe;no DB/model/provider"
+}

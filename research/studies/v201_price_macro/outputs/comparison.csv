@@ -1,0 +1,13 @@
+candidate,horizon,status,delta_r2,primary_p,adjusted_p
+P1,6,unscorable_preflight_blocked,,,
+P1,12,unscorable_preflight_blocked,,,
+P2,6,unscorable_preflight_blocked,,,
+P2,12,unscorable_preflight_blocked,,,
+P3,6,unscorable_preflight_blocked,,,
+P3,12,unscorable_preflight_blocked,,,
+M1,6,unscorable_preflight_blocked,,,
+M1,12,unscorable_preflight_blocked,,,
+M2,6,unscorable_preflight_blocked,,,
+M2,12,unscorable_preflight_blocked,,,
+M3,6,unscorable_preflight_blocked,,,
+M3,12,unscorable_preflight_blocked,,,
