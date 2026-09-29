@@ -1,0 +1,8 @@
+{
+  "forecast_and_metric_scope": "development only",
+  "holdout_metric_accesses": 0,
+  "next_unseal": "v207 one frozen batch, D2",
+  "quarantine_label_reads": 0,
+  "source_bound": "every SELECT is dated before 2023-09-29",
+  "study": "v205"
+}

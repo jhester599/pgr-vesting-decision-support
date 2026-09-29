@@ -1,0 +1,7 @@
+== runner fixtures red (pre-fit amendment A1, after independent review) ==
+E   AttributeError: module 'v205_run' has no attribute 'd3_closure'
+/home/user/pgr-vesting-decision-support/tests/research/test_v205_runner.py:100: AttributeError: module 'v205_run' has no attribute 'd3_closure'
+=========================== short test summary info ============================
+FAILED tests/research/test_v205_runner.py::test_runner_restates_share_basis_and_scores_matched_rows
+FAILED tests/research/test_v205_runner.py::test_d3_closure_is_enforced_from_the_rule_outcome
+2 failed in 3.04s

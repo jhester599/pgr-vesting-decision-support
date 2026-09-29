@@ -1,0 +1,21 @@
+{
+  "family": "38 campaign primary tests; v205 slots 29-34; pending slots p=1",
+  "familywise_alpha": 0.05,
+  "holm_adjusted_p": {
+    "B1": 1.0,
+    "B2": 1.0,
+    "B3": 1.0,
+    "D1": 1.0,
+    "D2": 1.0,
+    "D3": 1.0
+  },
+  "raw_p": {
+    "B1": 1.0,
+    "B2": 1.0,
+    "B3": 1.0,
+    "D1": 1.0,
+    "D2": 0.2683658170914543,
+    "D3": 1.0
+  },
+  "v207": "completes the campaign adjustment"
+}

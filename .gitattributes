@@ -4,3 +4,5 @@ src/pgr_vds/research_lib/** -text whitespace=blank-at-eol,blank-at-eof,space-bef
 tests/research/test_v200*.py -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 research/studies/v201_price_macro/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 tests/research/test_v201*.py -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+research/studies/v205_dividend_bvps/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+tests/research/test_v205*.py -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

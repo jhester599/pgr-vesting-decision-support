@@ -33,6 +33,14 @@ studies:
     promoted_to: null
     closeout: research/studies/v200_clean_baseline/README.md
     notes: "Preregistered: zero alternatives, one incumbent and fixed matched endpoint controls; development only; no live promotion."
+  - id: v205
+    slug: dividend_bvps
+    date: "2026-09-29"
+    question: "Do clean DRIP, December-special, calendar and share-basis handling let dividend or BVPS x-series lanes beat their matched v200 controls under honest nested chronological validation?"
+    status: closed
+    promoted_to: null
+    closeout: research/studies/v205_dividend_bvps/README.md
+    notes: "Preregistered six candidates (D1-D3, B1-B3), campaign slots 29-34; none passed (D2 nearest: MAE -9.0%, Holm p 1), D3 closed for 3 annual events; no v207 finalist; development only."
   - id: bl01
     slug: tau_sweep_eval
     date: "2026-04-18"

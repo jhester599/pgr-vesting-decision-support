@@ -1,0 +1,354 @@
+{
+  "amendments": [
+    {
+      "changes": "evaluate casts v200_warmup explicitly; D3 closure enforced from the rule outcome; outer minimum support and B3 differences stated; runner-level synthetic test added",
+      "effect_on_candidates_grids_thresholds": "none",
+      "id": "A1",
+      "when": "after independent code review, before any fit"
+    }
+  ],
+  "archived_contracts": {
+    "b3_differences": "BVPS lags use the latest report filed by the origin; month_of_year, q4_flag and dividend_season_flag use the origin month (x9 indexed them by the lagged feature month, one month earlier). Inner alpha selection scores the adjusted-BVPS training label, not the 6M DRIP outcome, which is scored only in outer tests",
+    "x16_alpha_note": "The archived ridge_bridge used a fixed alpha 1000; this campaign's budget allows only the nested {1,10,100} grid, so B3 selects inside that grid",
+    "x16_structural": "adjusted_structural_bvps_pb_6m = ridge_bridge__no_change_pb on x9 bvps_lags; x12 adjusted target (future BVPS + dividends paid in the next h report months) / current BVPS - 1; P/B held at its current value",
+    "x17_persistent": "BVPS plus cumulative dividends; the x12 adjusted target is the same idea over each forecast window",
+    "x23_excess": "x18/x23: November post-policy origin, December 1 to next February 28/29 cash minus the median positive payment <= .25 in the prior 24 months (v200 freezes it at the November origin), divided by the latest filed November BVPS; conditional positive-excess survivor to_current_bvps"
+  },
+  "artifact_sha256": {
+    "b3_training_labels.csv": "a30fe4355e3c8326d8d15f2f409fb22ec8c11ddaf43c81504192f2e810e42425",
+    "features.csv": "a39558e0700b1164933221a89d208b3bf0b7bbeb243ef189d22e6694027adbb9",
+    "targets.csv": "14d5cffeb77821e00e9dfea22a41e5b84861979599f0485d730638c8b0e78e8a"
+  },
+  "as_of": "2026-09-26",
+  "candidates": [
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "control": "v200 fixed past-12M cash per origin share",
+      "endpoint": "cash_dividend_12m",
+      "features": [
+        "past12_cash",
+        "prior_past12_cash",
+        "cr_ttm"
+      ],
+      "horizon": 12,
+      "id": "D1",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "dividend_12m",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 29,
+      "status": "registered",
+      "training_target": "next-12M cash minus the fixed past-12M control (offset added back after prediction)"
+    },
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "control": "v200 fixed past-12M cash per origin share",
+      "endpoint": "cash_dividend_12m",
+      "features": [
+        "past12_cash",
+        "prior_past12_cash",
+        "cr_ttm",
+        "pif_growth_yoy_cal",
+        "npw_growth_ttm"
+      ],
+      "horizon": 12,
+      "id": "D2",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "dividend_12m",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 30,
+      "status": "registered",
+      "training_target": "next-12M cash minus the fixed past-12M control (offset added back after prediction)"
+    },
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "closure_rule": "Fit only if at least 5 positive annual events matured before a scored November origin and a three-fold inner history with 60 usable monthly labels exists; otherwise close as insufficient annual support with primary p=1. Exclusions and gaps are never reduced.",
+      "control": "v200 past-only mean of matured positive annual ratios (same label)",
+      "endpoint": "annual_excess_to_bvps",
+      "features": [
+        "gainshare_estimate",
+        "investment_book_yield"
+      ],
+      "horizon": 12,
+      "id": "D3",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "dividend_12m",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 31,
+      "status": "registered",
+      "training_target": "archived x23 annual excess / current BVPS"
+    },
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "control": "v200 past-only prevailing mean BVPS growth",
+      "endpoint": "bvps_growth_12m",
+      "features": [
+        "bvps_growth_yoy",
+        "bvps_growth_3m",
+        "bvps_growth_6m",
+        "roe_ttm"
+      ],
+      "horizon": 12,
+      "id": "B1",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "bvps_12m",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 32,
+      "status": "registered",
+      "training_target": "next-12M BVPS growth (the endpoint label)"
+    },
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "control": "v200 past-only prevailing mean BVPS growth",
+      "endpoint": "bvps_growth_12m",
+      "features": [
+        "bvps_growth_yoy",
+        "bvps_growth_3m",
+        "bvps_growth_6m",
+        "roe_ttm",
+        "cr_ttm",
+        "pif_growth_yoy_cal",
+        "npw_growth_ttm"
+      ],
+      "horizon": 12,
+      "id": "B2",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "bvps_12m",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 33,
+      "status": "registered",
+      "training_target": "next-12M BVPS growth (the endpoint label)"
+    },
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "control": "v200 past-only mean absolute 6M PGR split/DRIP return",
+      "endpoint": "pgr_drip_return_6m",
+      "features": [
+        "current_bvps",
+        "bvps_growth_1m",
+        "bvps_growth_3m",
+        "bvps_growth_6m",
+        "bvps_growth_ytd",
+        "bvps_yoy_dollar_change",
+        "month_of_year",
+        "q4_flag",
+        "dividend_season_flag"
+      ],
+      "horizon": 6,
+      "id": "B3",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "bvps_12m",
+      "mapping": "x16 adjusted_structural_bvps_pb_6m, ridge_bridge__no_change_pb on the x9 bvps_lags block: implied price = forecast adjusted BVPS x current P/B, so the forecast 6M PGR return equals the forecast adjusted BVPS growth",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 34,
+      "status": "registered",
+      "training_target": "archived x12/x16 dividend-adjusted 6M BVPS growth, split-consistent, available on the future report's filing"
+    }
+  ],
+  "d3_support": {
+    "positive_annual_events": 3,
+    "rule_outcome": "closed_insufficient_annual_support"
+  },
+  "development_boundary": "2023-09-29",
+  "endpoints": {
+    "annual_excess_to_bvps": {
+      "event": "not scored: conditional positive-event endpoint",
+      "horizon": 12,
+      "threshold": "none",
+      "unit": "December-February excess cash / November current BVPS"
+    },
+    "bvps_growth_12m": {
+      "event": "BVPS growth strictly above zero",
+      "horizon": 12,
+      "threshold": "zero",
+      "unit": "fractional BVPS growth on the origin share basis"
+    },
+    "cash_dividend_12m": {
+      "event": "next-12M cash strictly above the fixed past-12M control",
+      "horizon": 12,
+      "threshold": "control",
+      "unit": "USD cash per one origin-date PGR share"
+    },
+    "pgr_drip_return_6m": {
+      "event": "total return strictly above zero",
+      "horizon": 6,
+      "threshold": "zero",
+      "unit": "signed fractional PGR total return, splits and DRIP"
+    }
+  },
+  "extraction_sql": {
+    "dividends": "SELECT ex_date,amount FROM daily_dividends WHERE ticker='PGR' AND ex_date < ? ORDER BY ex_date",
+    "first_reported": "SELECT month_end,field,value_real,filing_date FROM pgr_edgar_monthly_first_reported WHERE month_end < ? AND filing_date < ? AND field IN ('book_value_per_share','combined_ratio','pif_total','net_premiums_written','roe_net_income_ttm','investment_book_yield') ORDER BY month_end,field",
+    "prices": "SELECT date,close FROM daily_prices WHERE ticker='PGR' AND date < ? ORDER BY date",
+    "reports": "SELECT month_end,filing_date,book_value_per_share,combined_ratio,pif_total,net_premiums_written,roe_net_income_ttm,gainshare_estimate,investment_book_yield FROM pgr_edgar_monthly WHERE month_end < ? AND filing_date < ? ORDER BY month_end",
+    "splits": "SELECT split_date,split_ratio FROM split_history WHERE ticker='PGR' AND split_date < ? ORDER BY split_date"
+  },
+  "partition_lock": {
+    "boundary": "2023-09-29",
+    "endpoints": {
+      "adjusted_bvps_growth_6m": {
+        "first_origin": "2004-09-30",
+        "last_available": "2023-08-16",
+        "last_origin": "2023-02-28",
+        "n_rows": 222,
+        "sha256_dates_ends_availability": "e0e07f56c3c207a5fb09e69db8276127c23a5c25bca5bbb3d9a75a71cdac016a"
+      },
+      "annual_excess_to_bvps": {
+        "first_origin": "2019-11-29",
+        "last_available": "2022-02-28",
+        "last_origin": "2021-11-30",
+        "n_rows": 3,
+        "sha256_dates_ends_availability": "bfc7655daeb65ef88050a1e19848dca3e65126068cfb325c3fa3a2dc152d9870"
+      },
+      "bvps_growth_12m": {
+        "first_origin": "2004-09-30",
+        "last_available": "2023-09-15",
+        "last_origin": "2022-09-30",
+        "n_rows": 217,
+        "sha256_dates_ends_availability": "00d5d707ee7193481fa28f98b667b56e17728c00223c6860f9c6d6237fe147bd"
+      },
+      "cash_dividend_12m": {
+        "first_origin": "1999-11-30",
+        "last_available": "2023-08-31",
+        "last_origin": "2022-08-31",
+        "n_rows": 274,
+        "sha256_dates_ends_availability": "e208ab57cb957065cbd88b7b83cb64a89180570e9eeb9d225069e2ea70c1ca87"
+      },
+      "pgr_drip_return_6m": {
+        "first_origin": "1999-11-30",
+        "last_available": "2023-08-31",
+        "last_origin": "2023-02-28",
+        "n_rows": 280,
+        "sha256_dates_ends_availability": "c86887dbac9e8389848e1c0a87af1f0b045aa16accf3dbd097f17e5e0a057243"
+      }
+    },
+    "rule": "target_end and label availability strictly before the boundary; quarantine definitions inherited from v200 unchanged",
+    "v200_partitions_sha256": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed",
+    "v200_quarantine": {
+      "h12": [
+        "2023-09-29",
+        "2025-08-29"
+      ],
+      "h6": [
+        "2024-03-28",
+        "2026-02-27"
+      ]
+    }
+  },
+  "pins": {
+    "baseline_code_commit": "c3b4798b90a43f9dbd616981861e9ff01fa2de72",
+    "baseline_lock_sha256": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+    "input_db_commit": "ed7997f6f540f664e59dd44a4079616d74a8e8cb",
+    "input_db_sha256": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
+    "parent_seed_commit": "aae0be883309bdc068ee9afbb78b0aa9a4b52b8d",
+    "parent_seed_db_sha256": "7c68efbd90ef5c10a12e05dc2a9e03402e353a06219fd2db129d711754c1c35d",
+    "v200_files": {
+      "research/studies/v200_clean_baseline/outputs/baseline_lock.json": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+      "research/studies/v200_clean_baseline/outputs/control_predictions.csv": "4198eef62332cfa02ab59b8cf1b52328b66dc8cd547181751dc0949c4943830b",
+      "research/studies/v200_clean_baseline/outputs/control_support.json": "ae4976bf9a28ea6a0dd257bbfdf7fd326e4449be42a10ee5df82c599d73679c7",
+      "research/studies/v200_clean_baseline/outputs/dependency_environment.json": "0cd4bf33c6dc2052cf31ed7dc300ed2fd7a5462c2db1660a429dfaa6ba30f298",
+      "research/studies/v200_clean_baseline/outputs/partitions.json": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed",
+      "research/studies/v200_clean_baseline/outputs/runtime_lock.json": "ed8a5eea976ce21c816beb3b305b3a1d6fde6c59ea87c261aedab7ee0304d1e9"
+    }
+  },
+  "rules": {
+    "calibration": {
+      "interval": "nominal 80%: forecast + 10th/90th residual quantile",
+      "matched": "rows where candidate and control are both past warmup",
+      "method": "prequential empirical residual quantiles/frequency from the same stream's matured residuals only",
+      "minimum_matured_residuals": 12,
+      "probability": "share of matured residuals with forecast + residual above the event threshold",
+      "scores": "Brier, log loss clipped [1e-6,1-1e-6], 10-bin ECE"
+    },
+    "campaign_slots": {
+      "v201": "1-6",
+      "v202": "7-14",
+      "v203": "15-22",
+      "v204": "23-28",
+      "v205": "29-34",
+      "v206": "35-38"
+    },
+    "direction": {
+      "base": "constant majority event of labels matured by origin",
+      "bvps_growth_12m": "BVPS growth strictly above zero",
+      "cash_dividend_12m": "next-12M cash strictly above the fixed past-12M control",
+      "pgr_drip_return_6m": "total return strictly above zero",
+      "skill_test": "one-sided block test of per-date hit minus base hit, reported raw; a safeguard, not a success route"
+    },
+    "disposition": "Pass only if relative MAE reduction >= .10 vs the matched v200 control, Holm-adjusted primary p < .05 (38-test campaign family, pending slots p=1), delta honest R2 >= .01, candidate hit rate >= control hit rate, candidate Brier <= control Brier, |coverage80-.80| <= control's + .05, scored dates / horizon >= 5 independent blocks and supported block inference. NaN fails.",
+    "feature_rows": "all registered features finite; no imputation of a missing report month",
+    "folds": {
+      "availability": "training labels need target end, filing or label availability and origin before the (inner) test origin; inner validation labels must have arrived by the outer origin",
+      "dates": "contiguous business month-ends spanning the v200 control origins of each endpoint; unique monthly dates split before any row expansion",
+      "h12": "outer TimeSeriesSplit 120 train / 6 test / gap 24; inner 3 folds test 6 gap 24, minimum 60 usable months",
+      "h6": "outer TimeSeriesSplit 60 train / 6 test / gap 12; inner 3 folds test 6 gap 12, minimum 24 usable months",
+      "outer_minimum": "the outer training fold also needs at least 60 (h12) or 24 (h6) usable mature labels, or it is unscorable",
+      "unsupported": "unscorable; gaps and support are never reduced"
+    },
+    "holdout": "no quarantine label, feature or metric is read",
+    "honest_r2_naive": "v200 prevailing mean of same-endpoint labels matured by origin",
+    "ic": "Spearman, two-sided centered moving-date-block p (reported)",
+    "matched_rows": "Outer-test rows with a finite candidate forecast, a finite non-warmup v200 control forecast and naive mean, and a finite label",
+    "nomination": "At most one winner across both lanes: lowest adjusted p, then largest relative MAE reduction; none if nothing passes",
+    "post_result_search": "none; no feature, lag, threshold, window or grid change after results",
+    "primary_test": {
+      "block_length": "horizon months (12 or 6)",
+      "minimum_dates": "two full blocks",
+      "replicates": 2000,
+      "seed": 20260926,
+      "sidedness": "one-sided, centered bootstrap",
+      "statistic": "mean over dates of |y-control| - |y-candidate|"
+    },
+    "share_basis": "Dollar features, targets and offsets are restated to the share basis of each fold's first test origin before fitting; forecasts are restated back to each test origin's basis",
+    "thresholds": {
+      "adjusted_p": 0.05,
+      "coverage_tolerance": 0.05,
+      "delta_r2": 0.01,
+      "independent_blocks": 5.0,
+      "relative_mae_reduction": 0.1
+    }
+  },
+  "study": "v205_dividend_bvps",
+  "target_checks": {
+    "availability_mismatches": 0,
+    "cash_control_nan_mismatches": 0,
+    "end_mismatches": 0,
+    "max_abs_cash_control_diff": 8.881784197001252e-16,
+    "max_abs_label_diff": 8.881784197001252e-16,
+    "max_abs_naive_diff": 2.220446049250313e-16,
+    "n_pre_output_history_rows": 2,
+    "n_rows": 772,
+    "naive_nan_mismatches": 0,
+    "status": "passed",
+    "tolerance": 1e-12
+  }
+}
