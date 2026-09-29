@@ -1,0 +1,9 @@
+{
+  "reason": "Preparation stopped before source SQL/feature construction; synthetic tests are separate",
+  "requested_examples": [
+    "mom12 corrected/archived",
+    "April2020 VIX",
+    "rate gap"
+  ],
+  "status": "not_computed"
+}

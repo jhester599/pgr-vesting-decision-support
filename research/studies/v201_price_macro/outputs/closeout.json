@@ -1,0 +1,23 @@
+{
+  "candidate_fits": 0,
+  "code_commit": "c1a08828b3984d9d275891c83b55fad407ffe9c5",
+  "data_writes": false,
+  "email": false,
+  "first_suite_failures": "2 introduced premature-artifact-link failures, fixed before final run",
+  "full_pytest_exit": 0,
+  "full_pytest_summary": "2670 passed, 1 skipped, 2 xfailed, 99 warnings in 333.95s (0:05:33)",
+  "inherited_test_failures": 0,
+  "live_changes": false,
+  "mypy": "29 source files passed; explicit locked Python3.12",
+  "new_focused_pytest": "11 passed, exit0",
+  "performance_metrics": 0,
+  "provider_calls": 0,
+  "quarantine_metrics": 0,
+  "reason": "Accepted v200 verifier checks its prior registry pin against current mandatory v201 registration",
+  "registry": "115 studies,0 problems",
+  "status": "blocked",
+  "strict_pep8": "E,F line79 passed",
+  "sys_path": "0 new edits,0 stale allowlist entries",
+  "what_left": "review frozen-reference verification for downstream registration before fresh execution",
+  "winner": null
+}

@@ -1,0 +1,114 @@
+{
+  "candidates": [
+    {
+      "adjusted_p": null,
+      "candidate": "P1",
+      "delta_r2": null,
+      "finalist": false,
+      "horizon": 6,
+      "primary_p": null,
+      "status": "unscorable_preflight_blocked"
+    },
+    {
+      "adjusted_p": null,
+      "candidate": "P1",
+      "delta_r2": null,
+      "finalist": false,
+      "horizon": 12,
+      "primary_p": null,
+      "status": "unscorable_preflight_blocked"
+    },
+    {
+      "adjusted_p": null,
+      "candidate": "P2",
+      "delta_r2": null,
+      "finalist": false,
+      "horizon": 6,
+      "primary_p": null,
+      "status": "unscorable_preflight_blocked"
+    },
+    {
+      "adjusted_p": null,
+      "candidate": "P2",
+      "delta_r2": null,
+      "finalist": false,
+      "horizon": 12,
+      "primary_p": null,
+      "status": "unscorable_preflight_blocked"
+    },
+    {
+      "adjusted_p": null,
+      "candidate": "P3",
+      "delta_r2": null,
+      "finalist": false,
+      "horizon": 6,
+      "primary_p": null,
+      "status": "unscorable_preflight_blocked"
+    },
+    {
+      "adjusted_p": null,
+      "candidate": "P3",
+      "delta_r2": null,
+      "finalist": false,
+      "horizon": 12,
+      "primary_p": null,
+      "status": "unscorable_preflight_blocked"
+    },
+    {
+      "adjusted_p": null,
+      "candidate": "M1",
+      "delta_r2": null,
+      "finalist": false,
+      "horizon": 6,
+      "primary_p": null,
+      "status": "unscorable_preflight_blocked"
+    },
+    {
+      "adjusted_p": null,
+      "candidate": "M1",
+      "delta_r2": null,
+      "finalist": false,
+      "horizon": 12,
+      "primary_p": null,
+      "status": "unscorable_preflight_blocked"
+    },
+    {
+      "adjusted_p": null,
+      "candidate": "M2",
+      "delta_r2": null,
+      "finalist": false,
+      "horizon": 6,
+      "primary_p": null,
+      "status": "unscorable_preflight_blocked"
+    },
+    {
+      "adjusted_p": null,
+      "candidate": "M2",
+      "delta_r2": null,
+      "finalist": false,
+      "horizon": 12,
+      "primary_p": null,
+      "status": "unscorable_preflight_blocked"
+    },
+    {
+      "adjusted_p": null,
+      "candidate": "M3",
+      "delta_r2": null,
+      "finalist": false,
+      "horizon": 6,
+      "primary_p": null,
+      "status": "unscorable_preflight_blocked"
+    },
+    {
+      "adjusted_p": null,
+      "candidate": "M3",
+      "delta_r2": null,
+      "finalist": false,
+      "horizon": 12,
+      "primary_p": null,
+      "status": "unscorable_preflight_blocked"
+    }
+  ],
+  "reason": "preflight failed before fitting",
+  "status": "not_computed"
+}

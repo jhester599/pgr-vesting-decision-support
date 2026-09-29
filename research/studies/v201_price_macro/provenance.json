@@ -1,0 +1,733 @@
+{
+  "as_of": "2026-09-26",
+  "attempts": [
+    {
+      "fits": 0,
+      "stage": "initial_reference_verification",
+      "status": "passed_before_registry_append"
+    },
+    {
+      "fits": 0,
+      "stage": "prepare",
+      "status": "blocked_registry_hash_mismatch"
+    },
+    {
+      "fits": 0,
+      "stage": "unexecuted_scaffold",
+      "status": "discarded_after_stop_condition"
+    }
+  ],
+  "baseline_artifact_manifest_sha256": "29a50c598d15ecd2472dee47ea47d4255ab9987b52d2fbcafed3a1984c861b5c",
+  "baseline_artifacts_verified_hash_only": {
+    "README.md": "53f32344ca104b5cac71d6d2ac7b91b1988d74abb789ca6b57320176b75e6f66",
+    "outputs/access_ledger.json": "ec141113b2d82776255bad0e702a708862b2e17fa558bd861a9764a0a301d902",
+    "outputs/availability_ledger.csv": "7c412c5ce522a2d4c2fb5312e8c8f80db187dc6b7a81237359db865adb62deb5",
+    "outputs/baseline_lock.json": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+    "outputs/bridge_table.csv": "2d822b32df7cfe3f2fe9c303a9918eeef3e4d9a8e7b2be2449863d1c6470ff67",
+    "outputs/candidate_ledger.json": "92dcf9543f81db129e52eb8555ef0031a04dfe3b31d62023109aed1f55c22093",
+    "outputs/closeout.json": "5560c78a089cb985534993c684cfe27e900d3e7155d274c961149306194ddf4c",
+    "outputs/comparison.json": "65c38cf2e5d9b2ce7354e2c1502ca639027071b4a01749e1ff55f330951d6e2b",
+    "outputs/control_predictions.csv": "4198eef62332cfa02ab59b8cf1b52328b66dc8cd547181751dc0949c4943830b",
+    "outputs/control_support.json": "ae4976bf9a28ea6a0dd257bbfdf7fd326e4449be42a10ee5df82c599d73679c7",
+    "outputs/db_hash_check.json": "83a9165c0998a08ae7de58e00b45be7a6d88f8934f799cc90c99af626b992f8f",
+    "outputs/dependency_environment.json": "0cd4bf33c6dc2052cf31ed7dc300ed2fd7a5462c2db1660a429dfaa6ba30f298",
+    "outputs/development_features.csv": "8badaa58b240d9628bff5bcda2e9062cf41716255c9cd1f2d6ed18aa105f1268",
+    "outputs/development_targets.csv": "593a4fdc707e12834d2a0f2f49cd7f1eb5a0b337c71dffceb2b97085c6941256",
+    "outputs/fold_ledger.csv": "3f0a7200ff807bcfdacc3b2dc90e90c3143fba783fe6044fd7e2dc5df4d3528b",
+    "outputs/metrics.json": "5ffaed246c7c94250e8db27a1dadf8c0ffa2ae40bbc086938368293809a790ed",
+    "outputs/multiplicity.json": "373bd54b582ff27121178bc7a8f22114199602097f7e20561f71f0a1ef926dc5",
+    "outputs/partitions.json": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed",
+    "outputs/path_b_fold_ledger.csv": "ee1a89b4929e0afe9debc3950701ba19724411791a82b379af23e47bda9e1d5a",
+    "outputs/path_b_predictions.csv": "30983ee2930ca9b91e804acb47845492b58293c04df298010b3e1c44664841f8",
+    "outputs/predictions.csv": "5b671c52dbdded0b6106b02f0942d20f484df4715a21830c19ccf01320a28270",
+    "outputs/preflight.json": "554b1c8175e9805ac2391d63177a71058d16a7913cf826226401a05280f71cfc",
+    "outputs/references/2026-09-25_step5_rebaseline_rows.csv": "ad7930f77f9e4dadb8ee75a15dd55c89ae753b64cbf089dadd00398834ff8edb",
+    "outputs/references/R3b_refreshed_replay_rows.csv": "110b54d3bc186a2bdfcd2853a95f915409eb9f32388cf54c5f400c04ff2cda93",
+    "outputs/references/v200_baseline_lock_before_ci.json": "c4cb2aff16016107f8d2b4ac4db4e8e313f9ddfcc236ff32b6a09511259f64d0",
+    "outputs/reproducibility.json": "9640518d99c06fc43160c73f4261f2b80d4376196d28324c23036cb36eae0538",
+    "outputs/runtime_lock.json": "ed8a5eea976ce21c816beb3b305b3a1d6fde6c59ea87c261aedab7ee0304d1e9",
+    "outputs/source_availability_ledger.csv": "ac3724c5f38a207ce2249516d9822898eaf06f0fd53d00d20f28107efbb8520c",
+    "outputs/target_observation_windows.csv": "e6f9c72212f1a3ef26db982e7e44670ae84597c3e6562de681e25265b20edb21",
+    "outputs/verification/adapters_green.log": "944f77ba497d1287904f25c31deaa40bdcea938a4ea1b7921a003a8ae5828f2f",
+    "outputs/verification/adapters_red.log": "2d888156aeec3afb638ef0d7ae0be09af8e5ce3a25b241f5f8f8933edb40895d",
+    "outputs/verification/baseline_green.log": "9485eedc53003601e34e089c13548771e2a87e04519171aef0e20049355bb384",
+    "outputs/verification/baseline_red.log": "5d996affe49034be22b23ef8f4d7421754943ba974f074a7c10c9edb8eb70b68",
+    "outputs/verification/baseline_support_green.log": "22da45629a01bd45e44e116d1e7be6e9559b402af56f5eafca5aa0c84e51a58f",
+    "outputs/verification/baseline_support_red.log": "c2cda439b3f6e5af41c3f8cad2bad4bc6efd8e97bcda0d58236f80fc05b10819",
+    "outputs/verification/causal_review_green.log": "b35d7fda5775b8a0af3d68c97d30fde9083d7107d06f7330a2cf877fb19ed7bb",
+    "outputs/verification/causal_review_red.log": "c33c204fed13bf0d672a93ef860e452bc6f18f3db39461e6b673d94d21ca8f3a",
+    "outputs/verification/ci_command_hygiene_green.log": "dca2f6c2da461964044f7837e3edb469cb910fe280590c9a0ae3fd9ded93676b",
+    "outputs/verification/ci_command_hygiene_red.log": "95bf30fbefcd2fb4ab775a73604ef3e7feb61c2e264f8c28d5249a7f638c775e",
+    "outputs/verification/ci_mypy_green.log": "e135b1fbc13e9616f6c4932f047bc42c8815dd18540caf5d3b4c9210b2c6c210",
+    "outputs/verification/ci_mypy_red.log": "b0fba561608506c438bfebbc645892d95d9422d9341f67ddacb0803cb5b19906",
+    "outputs/verification/ci_pin_support.log": "2be0a7518c526b8da012ced1f40d2683bcc87414e86b03d9363d75182697d7ac",
+    "outputs/verification/ci_quarantine_contract_red.log": "4ee45566649aa5645d2119abcb592b998fc68bebbc532baf4cacab85afbf75e9",
+    "outputs/verification/ci_quarantine_green.log": "4bf32014e2dfe17e6b67c9c814ba92a4ee779da66cf9dcef19cd08208b0c770f",
+    "outputs/verification/ci_quarantine_red.log": "e4b2da67cb68ae891e7d0eea8e995019117bb5539c5e2d2f45de3eec6ea05f55",
+    "outputs/verification/ci_typing_equivalence.json": "ad0d6a7b61d7e102b6d1ff93153ec04a7cc62296978ddae4ec316695aac8e0be",
+    "outputs/verification/ci_typing_pytest.log": "56aa589382f76843e60c01da909835b16f6d7b6c8fd4b67683fcd925042e2164",
+    "outputs/verification/controls_availability_red.log": "a129be0848d202da85a3f399716fa3c706850cc55871161dcdce30bec0d3b772",
+    "outputs/verification/controls_endpoint_red.log": "6c9c03c301f48937f235ce2b2e636d6771ccca7c709afb7a686562502f024ff8",
+    "outputs/verification/controls_green.log": "98974fa7f5a3a210e762242604028573a77756b803f65b711de8709336e21c3e",
+    "outputs/verification/controls_red.log": "cb1baf3e5a59607c08ed738e393333c9e2c4d9f3ee3d9f7554bb9c61b3d646e8",
+    "outputs/verification/controls_style.log": "a82bece8bdbd364649950c037de405021c0a627b1645be634ee7f5effc3314a8",
+    "outputs/verification/controls_summary_green.log": "3c39fd0c1b9d37e49371e0e1fa87a125056a02b3c8c8b482e69d40e9a2229754",
+    "outputs/verification/controls_summary_red.log": "9b9d2595d573321fffb57d58af706c30daafd6f11eb268c0e40b7ddebd4af91f",
+    "outputs/verification/endpoints_red.log": "b38bb66f98af065a5304d42be7282f20649d24062b3be9715be12a5a7222a2b8",
+    "outputs/verification/execution_one.log": "feac7ac3af786effc01d18fca90c829b01a17e0eec16594020ebf2d798db4da7",
+    "outputs/verification/execution_two.log": "45478ad452846eeb8d73febeb4243364d3b95aa4198da583b3a60d765488af9d",
+    "outputs/verification/feature_catalog_green.log": "90c19f654552a244fa829492f0d6c2c6dfdb782c15864814e69fca734c596bc9",
+    "outputs/verification/feature_catalog_red.log": "0d003132fb50812518a9ec90419310409ea9301f43992ba3bbe1c1da169637c7",
+    "outputs/verification/fixed_research_green.log": "60e1e77adb3b709ebd642cd81fd8a58ce06796417714a9a0ea2868796fc5c72c",
+    "outputs/verification/full_pytest.log": "ed57fe5ea5b1ac146b9640291b1ddbac3ba5e4029c481a3acaa42c226f69332c",
+    "outputs/verification/full_pytest_ci_final.log": "e688ce1a09cc2bc357d875ff52b04ae325601af9b02c25f271c451088ffc88f8",
+    "outputs/verification/full_pytest_ci_final_exit.json": "99e9744df07bab8100bcdb57f8c4a92fbc32473601f65a31685c88998ebd557f",
+    "outputs/verification/full_pytest_ci_fix.log": "6d91b49d439e6fd724fc9d24f26991610cb9535669b9bbf8dc475fc60c7ce9c4",
+    "outputs/verification/full_pytest_ci_fix_exit.json": "82e170c7fcf9a178c011a5101923c34a2c19c32532e95ba92d881fe804da8ef3",
+    "outputs/verification/full_pytest_ci_verified.log": "083c5d1837c0e0f9b1968ee5eb4e95934f0a3abe80fcb73fb939d55b59d8061d",
+    "outputs/verification/full_pytest_ci_verified_exit.json": "cab84d09e7d6e21f72703f27cfa79cfcfbe5d35b50363609958711ec6c99fa8c",
+    "outputs/verification/full_pytest_exit.json": "f7943bd2f546e032dc9cf421eaaa00b85838dfa5e36b97beae53d948900abd24",
+    "outputs/verification/legacy_v37_red.log": "fa6a4b3413cd955f69cd5012146edbda063055524304dae345f525d8a975a20d",
+    "outputs/verification/line_endings_green.log": "94eb762aa70d10fd303f38a772ef950b9ca9de005f21a891af11257b331eb4d4",
+    "outputs/verification/line_endings_red.log": "3c904bcb5eb73c3ac2f575ac82d53e2da2045c05d34bb434bc4c1224fec0efb1",
+    "outputs/verification/preflight_repair.log": "3e42d9f5e95597e40452555870bf080ea85d6c8a0357b56da341740d70dcea28",
+    "outputs/verification/preflight_seed.log": "3ffb1bdd61bd470c1e594b855d10785537283c878d802427c8ee04040f843e75",
+    "outputs/verification/prepare.log": "5298895574b831520062af2eb7037275d68784e250c087e7ef495c00ea08b277",
+    "outputs/verification/prepare_final.log": "4877591dbd851f3fca9e8d591a1b5431b2c2a0f618fbfa2672b721d44b6a4f28",
+    "outputs/verification/prepare_retry.log": "4877591dbd851f3fca9e8d591a1b5431b2c2a0f618fbfa2672b721d44b6a4f28",
+    "outputs/verification/prepare_sealed.log": "4877591dbd851f3fca9e8d591a1b5431b2c2a0f618fbfa2672b721d44b6a4f28",
+    "outputs/verification/provenance_green.log": "09b06ad40d45024a809a4dbd6a7ca3a08282f97bc4d96512baec8f59f7154db1",
+    "outputs/verification/provenance_red.log": "71b854bbba772ae1aee794ed9553414daba561eea5df83912c9e31421038e044",
+    "outputs/verification/runner_gate_green.log": "66df3f06b357f892f907c185943deaa6fd608fe3a54fde203292c099285d60f1",
+    "outputs/verification/runner_gate_red.log": "db1f1dd14f1252d97b8b1e3aba413641548b14ffeed7772f5ef5b98e942a26b1",
+    "outputs/verification/source_ledger_green.log": "27322c6babf82d1851be889b84fa830ade008bfde613f1c41bbca6f47d76fdce",
+    "outputs/verification/source_ledger_red.log": "13b510354a8802eb6f8ede6ee3d21c4d120910c0e7994751e508682f77d65e2b",
+    "outputs/verification/temporal_metrics_green.log": "e19a694cdd9febf58be335c4381e078ad809d0e22551f9f62df15a8e3ea82e24",
+    "outputs/verification/temporal_metrics_red.log": "39c57c0ad4931fc643e0d37969cd527fd306a4fd210f46323a87b5e1d115b0bc",
+    "outputs/verification/v200_final_green.log": "ccfddacd43a0455d1516dbd9f82910960775e0311c828120d80ff73ddc1a32a5",
+    "outputs/verification/v200_green.log": "7c1483f24fe20b225610593f117cdc56c1f6a7acf6073ec2f6663953d8268f1c",
+    "outputs/vwo_accepted_gap.csv": "cf45b1376d33599ec5976e5ad8e229b586786ad21187ce393b11a71049df90af"
+  },
+  "baseline_code_commit": "c3b4798b90a43f9dbd616981861e9ff01fa2de72",
+  "baseline_copy_sha256": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+  "baseline_lock_sha256": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+  "blocker": {
+    "baseline_lock_sha256": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+    "conflicting_path": "research/registry.yaml",
+    "db_writes": 0,
+    "error": "ValueError('SHA256 mismatch for source text: research/registry.yaml')",
+    "expected_git_source_lf_sha256": "410cd237f7e0d32639db8bf9b8193a3e8ca6541e52aa2fd01fd6f962f0275806",
+    "final_reproduction_exit": 1,
+    "fits": 0,
+    "initial_master_verification": "lock/complete manifest/runtime/external exact DB passed before registry append",
+    "observed_git_source_lf_sha256": "e3c4d8444a19e38e038403d23d4d5cfe5ee4b4ac328f2da17198cfa2fa3aca7b",
+    "status": "blocked"
+  },
+  "candidate_fits": 0,
+  "code_commit": "c1a08828b3984d9d275891c83b55fad407ffe9c5",
+  "code_commit_role": "verified v201 source; zero fitting",
+  "consumed_v200_control_rows": 0,
+  "db_sha_after": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
+  "db_sha_before": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
+  "declared_blueprints": {
+    "M1": {
+      "add": [
+        "pm_slope",
+        "pm_real_change6"
+      ],
+      "columns": {
+        "gbt": [
+          "mom_3m",
+          "mom_6m",
+          "mom_12m",
+          "vol_63d",
+          "yield_curvature",
+          "vwo_vxus_spread_6m",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "rate_adequacy_gap_yoy",
+          "pif_growth_yoy",
+          "investment_book_yield",
+          "pm_slope",
+          "pm_real_change6"
+        ],
+        "ridge": [
+          "mom_12m",
+          "vol_63d",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "combined_ratio_ttm",
+          "investment_income_growth_yoy",
+          "book_value_per_share_growth_yoy",
+          "npw_growth_yoy",
+          "pm_slope",
+          "pm_real_change6"
+        ]
+      },
+      "fit_attempts": 0,
+      "remove": [
+        "yield_slope",
+        "real_rate_10y",
+        "real_yield_change_6m"
+      ],
+      "slot": 4,
+      "status": "blocked_before_fit"
+    },
+    "M2": {
+      "add": [
+        "pm_vix",
+        "pm_nfci",
+        "pm_credit_hy"
+      ],
+      "columns": {
+        "gbt": [
+          "mom_3m",
+          "mom_6m",
+          "mom_12m",
+          "vol_63d",
+          "yield_slope",
+          "yield_curvature",
+          "vwo_vxus_spread_6m",
+          "rate_adequacy_gap_yoy",
+          "pif_growth_yoy",
+          "investment_book_yield",
+          "pm_vix",
+          "pm_nfci",
+          "pm_credit_hy"
+        ],
+        "ridge": [
+          "mom_12m",
+          "vol_63d",
+          "yield_slope",
+          "real_yield_change_6m",
+          "real_rate_10y",
+          "combined_ratio_ttm",
+          "investment_income_growth_yoy",
+          "book_value_per_share_growth_yoy",
+          "npw_growth_yoy",
+          "pm_vix",
+          "pm_nfci",
+          "pm_credit_hy"
+        ]
+      },
+      "fit_attempts": 0,
+      "remove": [
+        "vix",
+        "nfci",
+        "credit_spread_hy"
+      ],
+      "slot": 5,
+      "status": "blocked_before_fit"
+    },
+    "M3": {
+      "add": [
+        "pm_rate_gap"
+      ],
+      "columns": {
+        "gbt": [
+          "mom_3m",
+          "mom_6m",
+          "mom_12m",
+          "vol_63d",
+          "yield_slope",
+          "yield_curvature",
+          "vwo_vxus_spread_6m",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "pif_growth_yoy",
+          "investment_book_yield",
+          "pm_rate_gap"
+        ],
+        "ridge": [
+          "mom_12m",
+          "vol_63d",
+          "yield_slope",
+          "real_yield_change_6m",
+          "real_rate_10y",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "combined_ratio_ttm",
+          "investment_income_growth_yoy",
+          "book_value_per_share_growth_yoy",
+          "npw_growth_yoy",
+          "pm_rate_gap"
+        ]
+      },
+      "fit_attempts": 0,
+      "remove": [
+        "rate_adequacy_gap_yoy"
+      ],
+      "slot": 6,
+      "status": "blocked_before_fit"
+    },
+    "P1": {
+      "add": [
+        "pm_mom3",
+        "pm_mom6",
+        "pm_mom12"
+      ],
+      "columns": {
+        "gbt": [
+          "vol_63d",
+          "yield_slope",
+          "yield_curvature",
+          "vwo_vxus_spread_6m",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "rate_adequacy_gap_yoy",
+          "pif_growth_yoy",
+          "investment_book_yield",
+          "pm_mom3",
+          "pm_mom6",
+          "pm_mom12"
+        ],
+        "ridge": [
+          "vol_63d",
+          "yield_slope",
+          "real_yield_change_6m",
+          "real_rate_10y",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "combined_ratio_ttm",
+          "investment_income_growth_yoy",
+          "book_value_per_share_growth_yoy",
+          "npw_growth_yoy",
+          "pm_mom3",
+          "pm_mom6",
+          "pm_mom12"
+        ]
+      },
+      "fit_attempts": 0,
+      "remove": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m"
+      ],
+      "slot": 1,
+      "status": "blocked_before_fit"
+    },
+    "P2": {
+      "add": [
+        "pm_vol13w",
+        "pm_high52w"
+      ],
+      "columns": {
+        "gbt": [
+          "mom_3m",
+          "mom_6m",
+          "mom_12m",
+          "yield_slope",
+          "yield_curvature",
+          "vwo_vxus_spread_6m",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "rate_adequacy_gap_yoy",
+          "pif_growth_yoy",
+          "investment_book_yield",
+          "pm_vol13w",
+          "pm_high52w"
+        ],
+        "ridge": [
+          "mom_12m",
+          "yield_slope",
+          "real_yield_change_6m",
+          "real_rate_10y",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "combined_ratio_ttm",
+          "investment_income_growth_yoy",
+          "book_value_per_share_growth_yoy",
+          "npw_growth_yoy",
+          "pm_vol13w",
+          "pm_high52w"
+        ]
+      },
+      "fit_attempts": 0,
+      "remove": [
+        "vol_63d"
+      ],
+      "slot": 2,
+      "status": "blocked_before_fit"
+    },
+    "P3": {
+      "add": [
+        "pm_ema12_voo",
+        "pm_rsi6_voo"
+      ],
+      "columns": {
+        "gbt": [
+          "mom_3m",
+          "vol_63d",
+          "yield_slope",
+          "yield_curvature",
+          "vwo_vxus_spread_6m",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "rate_adequacy_gap_yoy",
+          "pif_growth_yoy",
+          "investment_book_yield",
+          "pm_ema12_voo",
+          "pm_rsi6_voo"
+        ],
+        "ridge": [
+          "vol_63d",
+          "yield_slope",
+          "real_yield_change_6m",
+          "real_rate_10y",
+          "credit_spread_hy",
+          "nfci",
+          "vix",
+          "combined_ratio_ttm",
+          "investment_income_growth_yoy",
+          "book_value_per_share_growth_yoy",
+          "npw_growth_yoy",
+          "pm_ema12_voo",
+          "pm_rsi6_voo"
+        ]
+      },
+      "fit_attempts": 0,
+      "inventory": [
+        "ta_ratio_ema_gap_12m_voo",
+        "ta_ratio_rsi_6m_voo"
+      ],
+      "remove": [
+        "mom_6m",
+        "mom_12m"
+      ],
+      "slot": 3,
+      "status": "blocked_before_fit"
+    }
+  },
+  "dependency_environment_sha256": "0cd4bf33c6dc2052cf31ed7dc300ed2fd7a5462c2db1660a429dfaa6ba30f298",
+  "edgar_provenance": "v200 exact pins checked;no EDGAR access",
+  "email_calls": 0,
+  "embargo_months": "h",
+  "exploratory_read_only_sql": [
+    "PRAGMA table_info(fred_macro_monthly)",
+    "SELECT series_id,min(month_end),max(month_end),count(*) FROM fred_macro_monthly GROUP BY series_id"
+  ],
+  "extraction_sql_declared_not_executed": {
+    "macro": "SELECT series_id,month_end,value FROM fred_macro_monthly WHERE month_end<=? ORDER BY series_id,month_end",
+    "prices": "SELECT ticker,date,close FROM daily_prices WHERE ticker IN ('PGR','VOO') AND date<=? AND proxy_fill=0 ORDER BY ticker,date",
+    "splits": "SELECT ticker,split_date,split_ratio FROM split_history WHERE ticker IN ('PGR','VOO') AND split_date<=?"
+  },
+  "fred_provenance": "approved raw DB;latest vintage;historical release timestamps absent;no request",
+  "full_pytest_exit": 0,
+  "full_pytest_summary": "2670 passed, 1 skipped, 2 xfailed, 99 warnings in 333.95s (0:05:33)",
+  "initial_reference_verification": "clean lock/all manifest/runtime/external exact DB passed before v201 registry append",
+  "inner_folds_declared": {
+    "folds": 3,
+    "gap": "2*h",
+    "minimum_months": {
+      "h12": 60,
+      "h6": 24
+    },
+    "test": 6
+  },
+  "inner_grid_budget": "unchanged50 Ridge/10 mature shrinkage/fixed GBT;never executed",
+  "input_db": {
+    "git_commit": "ed7997f6f540f664e59dd44a4079616d74a8e8cb",
+    "relative_path": "data/pgr_financials.db",
+    "sha256": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6"
+  },
+  "live_changes": false,
+  "max_available_date": null,
+  "max_available_date_reason": "no study extraction after blocked gate; only descriptive schema/range inspection",
+  "metric_definitions": "honest mature-mean R2;paired equal-date loss gain;equal-weight/panel IC;past-majority hit skill;mature Brier/logloss/ECE/80%coverage;all uncomputed",
+  "multiplicity": "38 pending/unused p1 placeholders;no measured p-values",
+  "no_forward_fill": true,
+  "outer_folds_declared": {
+    "h12": {
+      "gap": 24,
+      "test": 6,
+      "train": 120
+    },
+    "h6": {
+      "gap": 12,
+      "test": 6,
+      "train": 60
+    }
+  },
+  "outer_folds_executed": 0,
+  "output_sha256": {
+    "outputs/README.md": "3de5ecf5b298c77a307cc73c08136aa2640a12b28bbbe754588f611468bff864",
+    "outputs/access_ledger.json": "71b340dddfedc7c349cc52247d7958de1a6585cb3e0b7b88079c50fbed807386",
+    "outputs/attempts.json": "ebc779c216801eacf5f7f65fa4525aaf642ecfa3e1ad765f27b3db8d384dcc11",
+    "outputs/availability_ledger.csv": "513b45d67717f962d3aa12d4d280c2c8ed7297ef787f84db6094e82cc94c03c0",
+    "outputs/candidate_ledger.json": "3793489cc73a229eb959956ac156fb3096eb2397e9ac41763923c6c4cb24499c",
+    "outputs/closeout.json": "9c3dc046bfd30abbee2c1f7170b50997cc4471c7d7332bd1cb0d507bc94a3f28",
+    "outputs/comparison.csv": "ed4f61c778107dc6439f5d7219e82ff96a09a9a786a9c2627aa95cd7033786d8",
+    "outputs/comparison.json": "d37ca9575eb655bca2186a14b3c068b8d87761f91e5c8873f4557bf2503bcd09",
+    "outputs/db_hash_check.json": "c79dcb9f315983e3d2f92e66dcb6a81a3f7bbf720c2ddd4719bf33f4f389e229",
+    "outputs/feature_examples.json": "cdd7012b0ffa71f0502b785641dee94c85133a532ffaeedfe5cadd7aa227758d",
+    "outputs/fold_ledger.csv": "4f30f644d6eb8f6c9a98c9c9e3eafeab76e1e43f6e4787edba468aeddd67aba5",
+    "outputs/independent_review.json": "c3cb0eb28303dbb8b2ed3ca096c3b43ac8d6bfa909fd54489bb4a415ba1ccbf0",
+    "outputs/metrics.json": "3030aba8b10bd3bfcc9d3f427cd28dd603150018f9ae99fafd224be287614269",
+    "outputs/multiplicity.json": "2a29f69d3f96df7b3d655ce2cd29b3f37371a99260c996f01d7026050cd0fb37",
+    "outputs/predictions.csv": "143af99f6c04ade3ac11034cce34556bde2a63aab4bf7edeaeefa348d4bc31fe",
+    "outputs/preflight.json": "0c7df430dafa6af15a89deb737da230c90a26337c4814158bb3c0862c2dcc4ed",
+    "outputs/v200_access_ledger.json": "ec141113b2d82776255bad0e702a708862b2e17fa558bd861a9764a0a301d902",
+    "outputs/v200_baseline_lock.json": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+    "outputs/v200_candidate_ledger.json": "92dcf9543f81db129e52eb8555ef0031a04dfe3b31d62023109aed1f55c22093",
+    "outputs/v200_partitions.json": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed",
+    "outputs/v200_runtime_lock.json": "ed8a5eea976ce21c816beb3b305b3a1d6fde6c59ea87c261aedab7ee0304d1e9",
+    "outputs/verification/endpoint_gap_red.log": "97134ab2e368e6bbf74260b1049fc9613821414c124f0e36a775a6da7263a22a",
+    "outputs/verification/focused_green.log": "3bb36110c6345c1c6a2849e24ed98b27f7b284cfe855b1ccff90844d58008730",
+    "outputs/verification/full_pytest.log": "0851f10cd6f43a232d41bd9e165f3a9ea733e3eef9bfb2952845e76f6af8b0e5",
+    "outputs/verification/full_pytest_exit.json": "f90e3ad3ae9b0f9ec21c4e930cbd9b87303145be428ee58c4a279b758cf34154",
+    "outputs/verification/full_pytest_final.exit": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354",
+    "outputs/verification/full_pytest_final.log": "c1ca16d762388bb577ddc0fc0927ed8f8ec3d3863311be95613dbeaeb1e57a55",
+    "outputs/verification/math_green.log": "fd777829910172aacda9b52706cf92e82ec5dde5ecfb84799f655d7eb679dc54",
+    "outputs/verification/math_red.log": "477b56eab492f690a8983fd4defbc6ea94cc543f0f61f2052ca60d9277e38c76",
+    "outputs/verification/preflight_final.log": "3a710faca99a70091833bd16acabba72f146f1d5b220ee3f310196f722b837ae",
+    "outputs/verification/prepare_failed.log": "ecf0a522529cb1e1675db9f1e331e9eca07519db1e48e1bcbcddcaa73c6557ae",
+    "outputs/verification/review_green.log": "64d490aa699d3e095b5a7b1d2d7a606186ab85e9c887bcb5b5a14a5765e3c752",
+    "outputs/verification/runner_red.log": "c84dff5bdc90971297537bd8535fbe7446d2b4d192a4df339f08e58841fcd687",
+    "outputs/verification_attempts.json": "c55318a029c63cb10e77978d55b067c38c3b42a4031db9a56554c59e121325eb"
+  },
+  "parent_seed": {
+    "db_sha256": "7c68efbd90ef5c10a12e05dc2a9e03402e353a06219fd2db129d711754c1c35d",
+    "git_commit": "aae0be883309bdc068ee9afbb78b0aa9a4b52b8d"
+  },
+  "promotion": false,
+  "provider_calls": 0,
+  "publication_rules_proposed": {
+    "BAMLH0A0HYM2": 1,
+    "CUSR0000SAM2": 1,
+    "CUSR0000SETA02": 1,
+    "GS10": 1,
+    "NFCI": 2,
+    "PCU5241265241261": 1,
+    "T10Y2Y": 1,
+    "T10YIE": 1,
+    "VIXCLS": 1
+  },
+  "purge_months": "h",
+  "quarantine_metrics": 0,
+  "quarantine_target_rows_loaded": 0,
+  "reference_file_sha256": {
+    "AGENTS.md": "e818ae6a63cdbcbae7da100e34aef5830b8641dffef918e671c061294e01d74e",
+    "docs/history/closeouts/V164_CLOSEOUT_AND_HANDOFF.md": "407c99a8e1eff2f18a6b3389487a5867ddf3c429afc39d991852e9ae38234bf3",
+    "docs/history/closeouts/V165_CLOSEOUT_AND_HANDOFF.md": "72c7db2beaf1b953e4c4a8c8eb59816977f2a3d6ed207efb2906ddcd31d4be1b",
+    "docs/history/results/V15_RESULTS_SUMMARY.md": "4682e0ca96991b468aabbfca45278a52ba7ae628503c08ad93d7ba497a79dd68",
+    "docs/history/results/V18_RESULTS_SUMMARY.md": "4c3957ba20c14388cb4a03a557d36275f734953c78f1519aa990a7030f61ae03",
+    "docs/history/results/V19_RESULTS_SUMMARY.md": "522f1c9fcc4d138730cfed7861a2c4ca2274007e4016b3f27e7244b26c10f736",
+    "docs/history/results/V20_RESULTS_SUMMARY.md": "c8ef9fa8ae6af794f861d3109abe0e07715e7c5937d33d0cf5365fbaf962dd1c",
+    "docs/history/results/V9_RESULTS_SUMMARY.md": "1e7c2231fc7327066af54970a58ae7b63e0b2a47fe5e7b379d4fb30dc5e97b6f",
+    "docs/history/superpowers/plans/2026-04-10-v37-v60-results-summary.md": "92c685a61a54e8c53b22f2561b9d865c7768f016ece23b910e2153183d064247",
+    "docs/research/RERUN_PLAN_v200_codex.md": "f1ebe79b16e3cd55ba1c807c179f908387da28c8923f5e2a2f6442da8728af7f",
+    "docs/reviews/REPO_REVIEW_2026-09-25.md": "4d2336e18aa8a6f5674129f46d8df8b7cf5a7aa3e91e400a8152c5b5dac62cc6",
+    "docs/reviews/VERIFICATION_2026-09-26.md": "d5f34bbe98162d5c77b6ad80253a0d2461529e1107be54a6ef0b32c2b3d21867",
+    "pyproject.toml": "d87c3a6493de75c57f0f2966180fe79d7d3a607bb3980c02c7eeec45f77cc29d",
+    "research/registry.yaml": "7171ef71ed383c05396f740e30aa41b3ae08379c999ce664a35a689cd1bd574e",
+    "research/studies/v133_ridge_alpha_sweep/README.md": "70652f26af4148aa46a38c2c8b1a475c7201bec083efe11ca9814ba4116f07f9",
+    "research/studies/v133_ridge_alpha_sweep/outputs/v133_ridge_alpha_search_summary.md": "0f620d512d6e6b232131b2238b6be39776e42497153732e503bfa4eb541cbffe",
+    "research/studies/v134_fred_lag_sweep/README.md": "bc258022b6a80ca296ba5994371275893c7468c338cb1809a047d80e86868cb2",
+    "research/studies/v134_fred_lag_sweep/outputs/v134_fred_lag_search_summary.md": "9b968a337cd22a6cda473e3dabb3205ea215c2e7fed4bc722add843168bfe651",
+    "research/studies/v162_ta_broad_screen/README.md": "751020433f36d56d097b180c0312ee08e8cf3885c880e938092a43092605d740",
+    "research/studies/v162_ta_broad_screen/outputs/v162_ta_broad_screen_inventory.json": "af7b1c649d1a4cf1f4a27c2069cec41053dd4ae73764d93420176a04577dbdb6",
+    "research/studies/v163_ta_survivor_confirm/README.md": "fb9314acb9834b4cf6752dd7ff2e8ae9b8bfe25a12747964d83c1e4673f1c8fb",
+    "research/studies/v164_ta_synthesis/README.md": "9a8e23db0541320aec7d48116d1de7771eabb37d1de74fbcf537a7a5d2fb54f9",
+    "research/studies/v164_ta_synthesis/outputs/v164_ta_synthesis_summary.md": "d534cf5e7c29dac77c07521f2ece7e0405a61c524e2aece9f32173dd8802653d",
+    "research/studies/v165_ta_shadow_replacement_eval/README.md": "0e25d03bbede60a7d79ca625c210e1058a0ef00ab0fdb88b165c9e691c98b18b",
+    "research/studies/v200_clean_baseline/README.md": "53f32344ca104b5cac71d6d2ac7b91b1988d74abb789ca6b57320176b75e6f66",
+    "research/studies/v43_features/README.md": "86ee57763fa3a01c47cb3a9a0c8734212c4e94756640a865112794747c02e60a",
+    "research/studies/v44_pca/README.md": "4dc86b254b3c1556e4f750f39024d3bb80c813c7f0a4435d70772b6160f3f0fd",
+    "research/studies/v45_bayesian_ridge/README.md": "b9829ee4d917144a68a843a72cb9785c3db1021b07f3c64204781708282e6f19",
+    "research/studies/v54_gpr/README.md": "983f6dcadb65c774ab761f0c5a2c7e9e94c533d1445126ce480638cc9244d775"
+  },
+  "repairs": [
+    {
+      "commit": "ed7997f6f540f664e59dd44a4079616d74a8e8cb",
+      "id": "R2-lite",
+      "rebuild_id": "Weekly Data Accumulation run36410317252",
+      "record": "docs/reviews/2026-09-28_R2_dividend_refresh_check.md",
+      "review_pr": 144
+    },
+    {
+      "commit": "c3b4798b90a43f9dbd616981861e9ff01fa2de72",
+      "id": "R3b",
+      "record": "docs/reviews/R3b_baseline_closeout.md",
+      "review_pr": 145
+    }
+  ],
+  "runtime": {
+    "implementation": "CPython",
+    "packages": {
+      "PyPortfolioOpt": "1.6.0",
+      "PyYAML": "6.0.2",
+      "beautifulsoup4": "4.15.0",
+      "lxml": "6.1.3",
+      "mapie": "1.5.0",
+      "matplotlib": "3.11.2",
+      "numpy": "2.5.3",
+      "pandas": "3.0.6",
+      "pyarrow": "25.0.1",
+      "python-dotenv": "1.2.3",
+      "requests": "2.34.2",
+      "scikit-learn": "1.9.1",
+      "scipy": "1.18.1",
+      "skfolio": "1.4.0",
+      "statsmodels": "0.15.0",
+      "xgboost": "3.4.1"
+    },
+    "pgr_vds_path": "C:\\Users\\Jeff\\.codex\\worktrees\\e7c0\\pgr-vesting-decision-support\\src\\pgr_vds\\__init__.py",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.14",
+    "used_core_dependencies": [
+      "numpy",
+      "pandas",
+      "scikit-learn",
+      "scipy",
+      "statsmodels",
+      "matplotlib",
+      "xgboost",
+      "pyarrow",
+      "requests",
+      "lxml",
+      "beautifulsoup4",
+      "python-dotenv",
+      "skfolio",
+      "PyPortfolioOpt",
+      "mapie",
+      "PyYAML"
+    ]
+  },
+  "runtime_lock_sha256": "ed8a5eea976ce21c816beb3b305b3a1d6fde6c59ea87c261aedab7ee0304d1e9",
+  "schema_migrations": [
+    {
+      "applied_at": "2026-04-04T03:34:13.633548+00:00",
+      "migration_id": "001_initial"
+    },
+    {
+      "applied_at": "2026-04-10T22:45:43.612438+00:00",
+      "migration_id": "002_model_performance_log"
+    },
+    {
+      "applied_at": "2026-04-10T22:45:43.613517+00:00",
+      "migration_id": "003_model_retrain_log"
+    },
+    {
+      "applied_at": "2026-09-25T11:38:50.574755+00:00",
+      "migration_id": "004_investment_book_yield_percent"
+    },
+    {
+      "applied_at": "2026-09-25T14:43:21.367122+00:00",
+      "migration_id": "005_fred_one_row_per_month"
+    },
+    {
+      "applied_at": "2026-09-25T16:27:11.926943+00:00",
+      "migration_id": "006_pgr_edgar_monthly_raw"
+    },
+    {
+      "applied_at": "2026-09-25T16:27:11.930045+00:00",
+      "migration_id": "007_pgr_fundamentals_quarterly_rebuild"
+    },
+    {
+      "applied_at": "2026-09-26T01:23:39.730555+00:00",
+      "migration_id": "008_model_performance_log_metrics_version"
+    }
+  ],
+  "schema_version": 1,
+  "seed": 20260926,
+  "session_access_ledger_sha256": "71b340dddfedc7c349cc52247d7958de1a6585cb3e0b7b88079c50fbed807386",
+  "source_sha256": {
+    "research/studies/v201_price_macro/run.py": "4300f76774e95e7d5ed92d194d5fa574ca6d744b4d5b826d29df966d50318b37",
+    "src/pgr_vds/research_lib/price_macro.py": "bdc8afb26ca50499cdc9a18bf249d9ffecfa6abedcac60b7bf37bc8206addc84",
+    "tests/research/test_v201_price_macro.py": "eb5a2f8c1b2b362cae4c935324d7c0246fad941b5bf16dbfcf33f84746cd5ce5",
+    "tests/research/test_v201_runner.py": "28f0ebd3e646115cb16477764a985e179646a30ccb642985dbd9ce7ce2ab2d07"
+  },
+  "splits_dividends_provenance": "D7/R2-lite/R3b exact DB; no alteration; v200 manual split/DRIP targets would be reused; none extracted",
+  "status": "blocked_before_fit",
+  "study": "v201_price_macro",
+  "target_definitions": "PGR-minus-benchmark h6/h12 total return: one raw share at last observed price bar on/before monthly origin; manual splits and fractional DRIP over (start_bar,end_bar]; end_bar last observed price on/before BME origin+h; label available at that BME. Weekly observation approximation, not exact daily month-end valuation.",
+  "unrelated_work_preserved": [
+    "untracked .codex/"
+  ],
+  "v200_access_ledger_sha256": "ec141113b2d82776255bad0e702a708862b2e17fa558bd861a9764a0a301d902",
+  "v200_partition_sha256": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed",
+  "verification_attempts": [
+    {
+      "exit": 1,
+      "reason": "new module absent before implementation",
+      "stage": "initial_math_red",
+      "summary": "7 failed in 0.56s"
+    },
+    {
+      "exit": 0,
+      "stage": "initial_math_green",
+      "summary": "7 passed in 0.52s"
+    },
+    {
+      "exit": 1,
+      "reason": "runner absent before implementation",
+      "stage": "runner_red",
+      "summary": "3 failed in 0.40s"
+    },
+    {
+      "exit": 1,
+      "reason": "test regex preregister/preregistration mismatch; corrected",
+      "stage": "first_combined_attempt",
+      "summary": "1 failed, 9 passed in 1.47s"
+    },
+    {
+      "exit": 0,
+      "stage": "combined_green",
+      "summary": "10 passed in 1.35s"
+    },
+    {
+      "exit": 1,
+      "reason": "TEMP/TMP not isolated; Windows denied preexisting pytest-of-Jeff; no source change",
+      "stage": "nonisolated_temp_probe",
+      "summary": "10 errors in 0.45s"
+    },
+    {
+      "exit": 1,
+      "reason": "missing final weekly value reused earlier monthly value",
+      "stage": "review_gap_red",
+      "summary": "1 failed in 0.41s"
+    },
+    {
+      "exit": 0,
+      "stage": "review_green",
+      "summary": "11 passed in 0.56s"
+    },
+    {
+      "classification": "introduced preparation ordering failure",
+      "exit": 1,
+      "reason": "two doc-link tests ran before referenced v201 artifacts were written; no inherited failure",
+      "stage": "full_suite_first",
+      "summary": "2 failed, 2667 passed, 1 skipped, 2 xfailed, 120 warnings in 350.87s (0:05:50)"
+    },
+    {
+      "exit": 1,
+      "reason": "same pinned registry blocker; no fits",
+      "stage": "preflight_final_reproduction"
+    },
+    {
+      "command": "python -m pytest -o addopts=\"--tb=short\" -q",
+      "exit": 0,
+      "inherited_failures_remaining": 0,
+      "stage": "full_suite_final",
+      "summary": "2670 passed, 1 skipped, 2 xfailed, 99 warnings in 333.95s (0:05:33)",
+      "xfails": "2 inherited strict xfails document legacy v37 defects"
+    },
+    {
+      "code_changes": 0,
+      "fits": 0,
+      "reason": "Windows default cp1252 could not decode UTF8 owner report; use explicit UTF8",
+      "stage": "artifact_capture_retry"
+    }
+  ],
+  "verification_start_commit": "363ef5e3ec607aa2c5776ab296de18d25ed9ee4a",
+  "verification_start_dirty": true
+}

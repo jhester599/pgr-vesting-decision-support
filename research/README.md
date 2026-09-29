@@ -23,7 +23,7 @@ are in [`tests/research/`](../tests/research/).
 - **promoted** (3): its result sets a live production setting.
 - **retained** (7): it tested a live setting and kept the incumbent value.
 - **shadow** (13): its result feeds a reporting-only (shadow) lane of the monthly run.
-- **closed** (91): research only; nothing it found is used by the monthly run.
+- **closed** (92): research only; nothing it found is used by the monthly run.
 
 ## Studies
 
@@ -117,6 +117,7 @@ are in [`tests/research/`](../tests/research/).
 | [v164_ta_synthesis](studies/v164_ta_synthesis/) | 2026-04-18 | Which technical-analysis features survived the v160-v163 screen? (synthesis) | closed |  | [V164_CLOSEOUT_AND_HANDOFF.md](../docs/history/closeouts/V164_CLOSEOUT_AND_HANDOFF.md) |
 | [v165_ta_shadow_replacement_eval](studies/v165_ta_shadow_replacement_eval/) | 2026-04-18 | TA classification replacement shadow evaluation. Monitoring maturity recomputed as-of on actual BME endpoint; complete basket outcomes required (2026-09-27 R4). | shadow | `src/reporting/classification_artifacts.py` | [V165_CLOSEOUT_AND_HANDOFF.md](../docs/history/closeouts/V165_CLOSEOUT_AND_HANDOFF.md) |
 | [v200_clean_baseline](studies/v200_clean_baseline/) | 2026-09-28 | Does the fixed incumbent retain an edge on exactly pinned repaired data under honest nested chronological validation? | closed |  | [README.md](../research/studies/v200_clean_baseline/README.md) |
+| [v201_price_macro](studies/v201_price_macro/) | 2026-09-28 | Do six frozen price/TA/macro blocks improve the pinned v200 development forecasts? | closed |  | [README.md](../research/studies/v201_price_macro/README.md) |
 | [x1_feature_inventory](studies/x1_feature_inventory/) | 2026-04-22 | Feature inventory and target sufficiency artifacts. | closed |  | [2026-04-22-x1-absolute-pgr-and-special-dividend-lane.md](../docs/history/superpowers/plans/2026-04-22-x1-absolute-pgr-and-special-dividend-lane.md) |
 | [x2_absolute_classification](studies/x2_absolute_classification/) | 2026-04-22 | Absolute PGR direction classification baselines. | closed |  | [2026-04-22-x2-absolute-classification-baseline.md](../docs/history/superpowers/plans/2026-04-22-x2-absolute-classification-baseline.md) |
 | [x3_direct_return](studies/x3_direct_return/) | 2026-04-22 | Direct PGR forward-return regression benchmarks. | closed |  | [2026-04-22-x3-direct-return-benchmark.md](../docs/history/superpowers/plans/2026-04-22-x3-direct-return-benchmark.md) |
