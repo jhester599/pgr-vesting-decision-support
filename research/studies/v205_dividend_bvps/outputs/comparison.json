@@ -1,0 +1,43 @@
+{
+  "note": "Each candidate is compared only with its own matched v200 control; endpoints and units are never pooled",
+  "rows": [
+    {
+      "adjusted_p": 1.0,
+      "candidate": "D1",
+      "passes": false,
+      "relative_mae_reduction": -0.39460543003742266
+    },
+    {
+      "adjusted_p": 1.0,
+      "candidate": "D2",
+      "passes": false,
+      "relative_mae_reduction": 0.08972881628412555
+    },
+    {
+      "adjusted_p": 1.0,
+      "candidate": "D3",
+      "passes": false,
+      "relative_mae_reduction": null
+    },
+    {
+      "adjusted_p": 1.0,
+      "candidate": "B1",
+      "passes": false,
+      "relative_mae_reduction": -0.4603508773771723
+    },
+    {
+      "adjusted_p": 1.0,
+      "candidate": "B2",
+      "passes": false,
+      "relative_mae_reduction": -0.40769921357959515
+    },
+    {
+      "adjusted_p": 1.0,
+      "candidate": "B3",
+      "passes": false,
+      "relative_mae_reduction": -0.34506283820252115
+    }
+  ],
+  "rule": "At most one winner across both lanes: lowest adjusted p, then largest relative MAE reduction; none if nothing passes",
+  "winner": null
+}

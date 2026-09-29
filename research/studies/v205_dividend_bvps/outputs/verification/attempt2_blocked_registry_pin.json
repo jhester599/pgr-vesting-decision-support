@@ -1,0 +1,5 @@
+{
+  "error": "ValueError('SHA256 mismatch for source text: research/registry.yaml')",
+  "stage": "preregistration preflight",
+  "status": "blocked"
+}

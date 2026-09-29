@@ -1,0 +1,76 @@
+{
+  "annual_excess_to_bvps": {
+    "first_over_01": "2021-11-30 00:00:00",
+    "last_over_01": "2021-11-30 00:00:00",
+    "max_abs_diff": 1.5,
+    "mean_signed_diff": -0.5,
+    "n": 3,
+    "n_abs_diff_over_01": 1
+  },
+  "bvps_growth_12m": {
+    "first_over_01": "2005-06-30 00:00:00",
+    "last_over_01": "2006-05-31 00:00:00",
+    "max_abs_diff": 0.91353001017294,
+    "mean_signed_diff": -0.0490819617920425,
+    "n": 217,
+    "n_abs_diff_over_01": 12
+  },
+  "cash_dividend_12m": {
+    "first_over_01": "2001-06-29 00:00:00",
+    "last_over_01": "2006-04-28 00:00:00",
+    "max_abs_diff": 0.19660000000000005,
+    "mean_signed_diff": -0.006061355311355313,
+    "n": 273,
+    "n_abs_diff_over_01": 21
+  },
+  "december_ex_dates_before_boundary": [
+    {
+      "amount": 0.065,
+      "ex_date": "1999-12-08"
+    },
+    {
+      "amount": 0.07,
+      "ex_date": "2000-12-06"
+    },
+    {
+      "amount": 0.07,
+      "ex_date": "2001-12-12"
+    },
+    {
+      "amount": 0.025,
+      "ex_date": "2002-12-11"
+    },
+    {
+      "amount": 0.025,
+      "ex_date": "2003-12-10"
+    },
+    {
+      "amount": 0.03,
+      "ex_date": "2004-12-08"
+    },
+    {
+      "amount": 0.03,
+      "ex_date": "2005-12-07"
+    },
+    {
+      "amount": 0.00875,
+      "ex_date": "2006-12-06"
+    },
+    {
+      "amount": 1.0,
+      "ex_date": "2010-12-16"
+    },
+    {
+      "amount": 1.5,
+      "ex_date": "2021-12-17"
+    }
+  ],
+  "pgr_drip_return_6m": {
+    "first_over_01": "2001-10-31 00:00:00",
+    "last_over_01": "2021-11-30 00:00:00",
+    "max_abs_diff": 0.8094378846578845,
+    "mean_signed_diff": -0.04222109107764274,
+    "n": 279,
+    "n_abs_diff_over_01": 98
+  }
+}

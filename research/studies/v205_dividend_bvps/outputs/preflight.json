@@ -1,0 +1,58 @@
+{
+  "baseline_lock_sha256": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+  "input_db_location": "external scratch copy, immutable read",
+  "input_db_sha256": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
+  "registry_check": {
+    "added_entries": [
+      "v205"
+    ],
+    "current_sha256": "4a72bbc9ed0598b69a2920bb08c32c8a0b07efcd9563a94b7a0a94f2d27ca9df",
+    "path": "research/registry.yaml",
+    "pinned_at_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
+    "pinned_entries_unchanged": 114,
+    "pinned_sha256": "410cd237f7e0d32639db8bf9b8193a3e8ca6541e52aa2fd01fd6f962f0275806"
+  },
+  "runtime": "matches v200 runtime lock",
+  "source_docs": {
+    "AGENTS.md": "8d9a6f433100e89e1480425d008331217eebe068a12a5d4e1e5113f12967a77f",
+    "docs/model-governance.md": "4efe216da69cdd3b7760cbff219f523ca0f542ba60f939fa213ef1a0fdd5a6e0",
+    "docs/research/RERUN_PLAN_v200_codex.md": "4bea95d2a758a06d53133aefb1867057dd1acd8dd3a34d4306c14f3d1a19835a",
+    "docs/research/x_series_resume_2026-04-24.md": "f68867293f819b105a5cc6ec33119ae05ac576eb4c06a1c7249e3e9d96934259",
+    "docs/reviews/REPO_REVIEW_2026-09-25.md": "e6bc200514a55e4f06f2b10387e6c186e22eb2350825834e7dfdddacd659dfbe",
+    "docs/reviews/VERIFICATION_2026-09-26.md": "603646451e0678f8d6c2d7024c593d0fb4b333d8fc211a206ac5adc6c60c45bb",
+    "docs/reviews/VERIFICATION_2026-09-26_claude.md": "0bc15309d2ca75d3e5b34ca8755fba6ab878bd40f89273b2178141c858141fd5",
+    "research/studies/v200_clean_baseline/README.md": "53f32344ca104b5cac71d6d2ac7b91b1988d74abb789ca6b57320176b75e6f66",
+    "src/research/x12_bvps_target_audit.py": "6bbaea76358ebf7c3c40ffb51c0a366e49deeca5df0b8d292f5b0019d88b59ce",
+    "src/research/x16_indicator_package.py": "d16aa593bbc951652eed667fc2b39e444295654227165b82ef1c5d104aa2d39f",
+    "src/research/x17_persistent_bvps.py": "6110aadb18de62be6a82532fbeac5342e13bedccfbc1e96adf97fcd36bfa4e7b",
+    "src/research/x18_dividend_policy_regime.py": "31f0effed9b6a80b95dc4d7a0ca9d8ae5992cdf20fc30e3fb1f21c099b6ba9af",
+    "src/research/x1_targets.py": "3948021c43b7fb800ad8b6a64d2c3fb44993f328c72485d0cb2048e37e29c639",
+    "src/research/x21_dividend_target_scales.py": "fce88ea05062969fc7b76942446fcb37701e25be94daabd4d2b9f52de7d0b972",
+    "src/research/x22_dividend_size_baselines.py": "2b0271a2756a184581b4d9833176fe4f24d596c33f079928aaf42d29f586d18d",
+    "src/research/x23_dividend_lane_package.py": "82df03653fa10db678902d851e269deeb6a4a03cf53d664dc630f39239c4f91d",
+    "src/research/x9_bvps_bridge.py": "4e41da51869e38657705bc6db6698bfb2a37fe7fc5b18695a78d3dfbfc3eb4c8"
+  },
+  "status": "passed",
+  "target_checks": {
+    "availability_mismatches": 0,
+    "cash_control_nan_mismatches": 0,
+    "end_mismatches": 0,
+    "max_abs_cash_control_diff": 8.881784197001252e-16,
+    "max_abs_label_diff": 8.881784197001252e-16,
+    "max_abs_naive_diff": 2.220446049250313e-16,
+    "n_pre_output_history_rows": 2,
+    "n_rows": 772,
+    "naive_nan_mismatches": 0,
+    "status": "passed",
+    "tolerance": 1e-12
+  },
+  "tracked_db_sha256": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
+  "v200_pins": {
+    "research/studies/v200_clean_baseline/outputs/baseline_lock.json": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+    "research/studies/v200_clean_baseline/outputs/control_predictions.csv": "4198eef62332cfa02ab59b8cf1b52328b66dc8cd547181751dc0949c4943830b",
+    "research/studies/v200_clean_baseline/outputs/control_support.json": "ae4976bf9a28ea6a0dd257bbfdf7fd326e4449be42a10ee5df82c599d73679c7",
+    "research/studies/v200_clean_baseline/outputs/dependency_environment.json": "0cd4bf33c6dc2052cf31ed7dc300ed2fd7a5462c2db1660a429dfaa6ba30f298",
+    "research/studies/v200_clean_baseline/outputs/partitions.json": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed",
+    "research/studies/v200_clean_baseline/outputs/runtime_lock.json": "ed8a5eea976ce21c816beb3b305b3a1d6fde6c59ea87c261aedab7ee0304d1e9"
+  }
+}

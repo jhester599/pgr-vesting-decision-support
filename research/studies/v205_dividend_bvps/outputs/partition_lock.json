@@ -1,0 +1,52 @@
+{
+  "boundary": "2023-09-29",
+  "endpoints": {
+    "adjusted_bvps_growth_6m": {
+      "first_origin": "2004-09-30",
+      "last_available": "2023-08-16",
+      "last_origin": "2023-02-28",
+      "n_rows": 222,
+      "sha256_dates_ends_availability": "e0e07f56c3c207a5fb09e69db8276127c23a5c25bca5bbb3d9a75a71cdac016a"
+    },
+    "annual_excess_to_bvps": {
+      "first_origin": "2019-11-29",
+      "last_available": "2022-02-28",
+      "last_origin": "2021-11-30",
+      "n_rows": 3,
+      "sha256_dates_ends_availability": "bfc7655daeb65ef88050a1e19848dca3e65126068cfb325c3fa3a2dc152d9870"
+    },
+    "bvps_growth_12m": {
+      "first_origin": "2004-09-30",
+      "last_available": "2023-09-15",
+      "last_origin": "2022-09-30",
+      "n_rows": 217,
+      "sha256_dates_ends_availability": "00d5d707ee7193481fa28f98b667b56e17728c00223c6860f9c6d6237fe147bd"
+    },
+    "cash_dividend_12m": {
+      "first_origin": "1999-11-30",
+      "last_available": "2023-08-31",
+      "last_origin": "2022-08-31",
+      "n_rows": 274,
+      "sha256_dates_ends_availability": "e208ab57cb957065cbd88b7b83cb64a89180570e9eeb9d225069e2ea70c1ca87"
+    },
+    "pgr_drip_return_6m": {
+      "first_origin": "1999-11-30",
+      "last_available": "2023-08-31",
+      "last_origin": "2023-02-28",
+      "n_rows": 280,
+      "sha256_dates_ends_availability": "c86887dbac9e8389848e1c0a87af1f0b045aa16accf3dbd097f17e5e0a057243"
+    }
+  },
+  "rule": "target_end and label availability strictly before the boundary; quarantine definitions inherited from v200 unchanged",
+  "v200_partitions_sha256": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed",
+  "v200_quarantine": {
+    "h12": [
+      "2023-09-29",
+      "2025-08-29"
+    ],
+    "h6": [
+      "2024-03-28",
+      "2026-02-27"
+    ]
+  }
+}

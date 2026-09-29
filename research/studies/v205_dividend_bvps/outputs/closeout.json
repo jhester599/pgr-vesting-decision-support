@@ -1,0 +1,107 @@
+{
+  "candidates": {
+    "B1": {
+      "adjusted_p": 1.0,
+      "delta_r2": -1.4200784257604737,
+      "failed_gates": [
+        "mae_reduction_at_least_10pct",
+        "holm_adjusted_p_below_05",
+        "delta_r2_at_least_01",
+        "no_directional_deterioration",
+        "no_brier_deterioration",
+        "no_coverage_deterioration"
+      ],
+      "passes": false,
+      "raw_p": 1.0,
+      "relative_mae_reduction": -0.4603508773771723,
+      "status": "scored"
+    },
+    "B2": {
+      "adjusted_p": 1.0,
+      "delta_r2": -1.088272523291109,
+      "failed_gates": [
+        "mae_reduction_at_least_10pct",
+        "holm_adjusted_p_below_05",
+        "delta_r2_at_least_01",
+        "no_directional_deterioration",
+        "no_brier_deterioration",
+        "no_coverage_deterioration"
+      ],
+      "passes": false,
+      "raw_p": 1.0,
+      "relative_mae_reduction": -0.40769921357959515,
+      "status": "scored"
+    },
+    "B3": {
+      "adjusted_p": 1.0,
+      "delta_r2": -0.9439283244934915,
+      "failed_gates": [
+        "mae_reduction_at_least_10pct",
+        "holm_adjusted_p_below_05",
+        "delta_r2_at_least_01",
+        "no_directional_deterioration",
+        "no_coverage_deterioration"
+      ],
+      "passes": false,
+      "raw_p": 1.0,
+      "relative_mae_reduction": -0.34506283820252115,
+      "status": "scored"
+    },
+    "D1": {
+      "adjusted_p": 1.0,
+      "delta_r2": -0.5225158103507594,
+      "failed_gates": [
+        "mae_reduction_at_least_10pct",
+        "holm_adjusted_p_below_05",
+        "delta_r2_at_least_01",
+        "no_brier_deterioration",
+        "no_coverage_deterioration"
+      ],
+      "passes": false,
+      "raw_p": 1.0,
+      "relative_mae_reduction": -0.39460543003742266,
+      "status": "scored"
+    },
+    "D2": {
+      "adjusted_p": 1.0,
+      "delta_r2": 0.1909283331952928,
+      "failed_gates": [
+        "mae_reduction_at_least_10pct",
+        "holm_adjusted_p_below_05"
+      ],
+      "passes": false,
+      "raw_p": 0.2683658170914543,
+      "relative_mae_reduction": 0.08972881628412555,
+      "status": "scored"
+    },
+    "D3": {
+      "adjusted_p": 1.0,
+      "delta_r2": null,
+      "failed_gates": [
+        "closed_insufficient_annual_support"
+      ],
+      "passes": false,
+      "raw_p": 1.0,
+      "relative_mae_reduction": null,
+      "status": "closed_insufficient_annual_support"
+    }
+  },
+  "disposition": "no winner; all lanes remain research-only",
+  "live_changes": "none: no config, feature, model, policy or email change",
+  "negative_results": [
+    "B1/B2 Ridge BVPS-growth models lose to the past-only mean (MAE +46%/+41%) with strongly negative IC.",
+    "B3 structural adjusted-BVPS/no-change-P/B mapping loses to the mature mean 6M PGR DRIP return (MAE +35%).",
+    "D1 (past cash + combined ratio) loses to past-12M cash.",
+    "D2 improves MAE 9.0% and R2 by .19 but misses the 10% MAE bar and its primary test (raw p .268, Holm p 1).",
+    "D3 closed: 3 positive annual events."
+  ],
+  "promotion": false,
+  "study": "v205_dividend_bvps",
+  "v207_finalist": null,
+  "what_is_left": [
+    "v207 opens the quarantine once; v205 contributes no finalist.",
+    "The annual excess-dividend endpoint needs more post-policy years before any honest test is possible.",
+    "Any rerun of D2's idea is a new candidate needing its own registration; no post-result search was done here."
+  ],
+  "winner": null
+}
