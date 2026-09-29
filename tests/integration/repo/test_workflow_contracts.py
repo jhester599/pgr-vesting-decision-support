@@ -162,7 +162,7 @@ def test_ci_workflow_runs_lint_tests_and_smokes() -> None:
     assert "python scripts/ci_offline_smoke.py scripts/weekly_fetch.py --dry-run --skip-fred" in text
     assert (
         "python scripts/ci_offline_smoke.py cli/monthly_decision.py "
-        "--as-of 2026-04-02 --dry-run --skip-fred"
+        "--as-of 2022-08-31 --dry-run --skip-fred"
     ) in text
 
 

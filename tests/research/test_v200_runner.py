@@ -5,9 +5,12 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+import shlex
 from types import ModuleType
 
+import pandas as pd
 import pytest
+import yaml
 
 
 def isolated_runner(
@@ -62,3 +65,28 @@ def test_absent_lock_stops_before_fit_and_records_zero_attempts(
     )
     assert attempt["fit_count"] == 0
     assert (tmp_path / "README.md").read_text().startswith("v200 is blocked")
+
+
+def test_ci_monthly_smoke_label_ends_before_quarantine() -> None:
+    """Even the smoke's longest horizon stays inside development history."""
+    root = Path(__file__).resolve().parents[2]
+    workflow = yaml.safe_load((root / ".github/workflows/ci.yml").read_text())
+    steps = workflow["jobs"]["test"]["steps"]
+    smoke = next(
+        step for step in steps
+        if step.get("name") == (
+            "Smoke test production entrypoints (network mocked)"
+        )
+    )
+    command = next(
+        line for line in smoke["run"].splitlines()
+        if "cli/monthly_decision.py" in line
+    )
+    arguments = shlex.split(command)
+    assert "--dry-run" in arguments
+    assert "--skip-fred" in arguments
+    as_of = pd.Timestamp(arguments[arguments.index("--as-of") + 1])
+    latest_label_end = as_of + pd.offsets.BMonthEnd(12)
+    assert latest_label_end < pd.Timestamp("2023-09-29"), (
+        f"CI smoke reaches the research quarantine: {latest_label_end.date()}"
+    )
