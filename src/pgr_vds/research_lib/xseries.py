@@ -459,8 +459,10 @@ def nested_ridge_forecast(
     ``label_end`` and ``available`` dates. Training rows must have ended and
     arrived by the relevant (inner or outer) test origin; inner validation
     labels must also have arrived by the outer test origin. The inner loss
-    is summed absolute error, the lane's primary loss; exact ties choose the
-    larger penalty. Unsupported histories are never shortened.
+    is summed absolute error of the supplied training target (the scored
+    endpoint, or a registered proxy label); exact ties choose the larger
+    penalty. The outer training fold also needs the minimum usable support.
+    Unsupported histories are never shortened.
     """
     if horizon not in (6, 12):
         raise ValueError("The registered horizons are six and twelve months.")

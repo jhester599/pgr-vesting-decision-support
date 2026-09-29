@@ -1,5 +1,14 @@
 {
+  "amendments": [
+    {
+      "changes": "evaluate casts v200_warmup explicitly; D3 closure enforced from the rule outcome; outer minimum support and B3 differences stated; runner-level synthetic test added",
+      "effect_on_candidates_grids_thresholds": "none",
+      "id": "A1",
+      "when": "after independent code review, before any fit"
+    }
+  ],
   "archived_contracts": {
+    "b3_differences": "BVPS lags use the latest report filed by the origin; month_of_year, q4_flag and dividend_season_flag use the origin month (x9 indexed them by the lagged feature month, one month earlier). Inner alpha selection scores the adjusted-BVPS training label, not the 6M DRIP outcome, which is scored only in outer tests",
     "x16_alpha_note": "The archived ridge_bridge used a fixed alpha 1000; this campaign's budget allows only the nested {1,10,100} grid, so B3 selects inside that grid",
     "x16_structural": "adjusted_structural_bvps_pb_6m = ridge_bridge__no_change_pb on x9 bvps_lags; x12 adjusted target (future BVPS + dividends paid in the next h report months) / current BVPS - 1; P/B held at its current value",
     "x17_persistent": "BVPS plus cumulative dividends; the x12 adjusted target is the same idea over each forecast window",
@@ -302,6 +311,7 @@
       "dates": "contiguous business month-ends spanning the v200 control origins of each endpoint; unique monthly dates split before any row expansion",
       "h12": "outer TimeSeriesSplit 120 train / 6 test / gap 24; inner 3 folds test 6 gap 24, minimum 60 usable months",
       "h6": "outer TimeSeriesSplit 60 train / 6 test / gap 12; inner 3 folds test 6 gap 12, minimum 24 usable months",
+      "outer_minimum": "the outer training fold also needs at least 60 (h12) or 24 (h6) usable mature labels, or it is unscorable",
       "unsupported": "unscorable; gaps and support are never reduced"
     },
     "holdout": "no quarantine label, feature or metric is read",

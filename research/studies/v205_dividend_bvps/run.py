@@ -348,6 +348,8 @@ def preregistered_rules() -> dict[str, Any]:
             "availability": "training labels need target end, filing or "
             "label availability and origin before the (inner) test origin; "
             "inner validation labels must have arrived by the outer origin",
+            "outer_minimum": "the outer training fold also needs at least "
+            "60 (h12) or 24 (h6) usable mature labels, or it is unscorable",
             "unsupported": "unscorable; gaps and support are never reduced",
         },
         "share_basis": (
@@ -1066,6 +1068,12 @@ def preregistration_payload(
             "{1,10,100} grid, so B3 selects inside that grid",
             "x17_persistent": "BVPS plus cumulative dividends; the x12 "
             "adjusted target is the same idea over each forecast window",
+            "b3_differences": "BVPS lags use the latest report filed by the "
+            "origin; month_of_year, q4_flag and dividend_season_flag use the "
+            "origin month (x9 indexed them by the lagged feature month, one "
+            "month earlier). Inner alpha selection scores the adjusted-BVPS "
+            "training label, not the 6M DRIP outcome, which is scored only "
+            "in outer tests",
         },
         "d3_support": {
             "positive_annual_events": positives,
@@ -1090,6 +1098,16 @@ def preregistration_payload(
             "b3_training_labels.csv": frame_hash(frozen["training"]),
         },
         "extraction_sql": SQL,
+        "amendments": [
+            {
+                "id": "A1",
+                "when": "after independent code review, before any fit",
+                "changes": "evaluate casts v200_warmup explicitly; D3 closure "
+                "enforced from the rule outcome; outer minimum support and "
+                "B3 differences stated; runner-level synthetic test added",
+                "effect_on_candidates_grids_thresholds": "none",
+            }
+        ],
     }
 
 
@@ -1314,8 +1332,10 @@ def evaluate(
         "n_forecasts": int(np.isfinite(predictions["y_hat"]).sum()),
         "n_scored": len(matched),
     }
+    warm = history["v200_warmup"].astype("boolean").fillna(True)
     control_stream = history.loc[
-        np.isfinite(history["v200_y_hat"]) & ~history["v200_warmup"]
+        np.isfinite(history["v200_y_hat"].astype(float))
+        & ~warm.astype(bool)
     ].assign(y_hat=lambda f: f["v200_y_hat"])
     control_stream["threshold"] = _threshold(
         endpoint, control_stream, "v200_y_hat"
@@ -1451,6 +1471,30 @@ def evaluate(
     return summary, calibration
 
 
+def d3_closure(support: dict[str, Any]) -> dict[str, Any]:
+    """Apply D3's preregistered closure rule, or stop the run.
+
+    One annual event per November can never supply 60 usable monthly
+    inner-training labels, so the second condition always fails; the event
+    count is reported as the binding evidence limit. If five or more
+    positive events ever existed, this preregistration has no D3 fit path
+    and the run must stop for an amended registration.
+    """
+    positives = int(support["positive_annual_events"])
+    if positives >= 5:
+        raise ValueError(
+            "D3 support rule no longer closes the lane; amend first"
+        )
+    return {
+        "closed": True,
+        "status": "closed_insufficient_annual_support",
+        "positive_annual_events": positives,
+        "reason": f"Preregistered closure: {positives} positive annual "
+        "events (<5), and an annual endpoint cannot supply a three-fold "
+        "inner history of 60 usable monthly labels; not fitted",
+    }
+
+
 def execute(scratch: Path, destination: Path) -> None:
     """Fit registered candidates after verifying the frozen register."""
     started = time.time()
@@ -1486,19 +1530,19 @@ def execute(scratch: Path, destination: Path) -> None:
     attempts = []
     for candidate in candidate_register():
         if candidate["id"] == "D3":
-            outcome = preregistration_payload(context, frozen)["d3_support"]
+            closure = d3_closure(
+                preregistration_payload(context, frozen)["d3_support"]
+            )
             summaries.append(
                 {
                     "candidate": "D3",
                     "endpoint": candidate["endpoint"],
-                    "status": outcome["rule_outcome"],
-                    "positive_annual_events": outcome[
+                    "status": closure["status"],
+                    "positive_annual_events": closure[
                         "positive_annual_events"
                     ],
                     "raw_p": 1.0,
-                    "reason": "Preregistered closure: fewer than five "
-                    "positive annual events and no 60-month inner history "
-                    "for an annual endpoint; not fitted",
+                    "reason": closure["reason"],
                 }
             )
             attempts.append({"candidate": "D3", "fits": 0, "closed": True})
