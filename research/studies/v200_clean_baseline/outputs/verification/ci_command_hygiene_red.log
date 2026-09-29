@@ -1,0 +1,10 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+_______________ test_ci_smoke_tests_run_with_the_network_mocked _______________
+tests\integration\pipeline\test_ops_contracts.py:125: in test_ci_smoke_tests_run_with_the_network_mocked
+    assert len(commands) == 4
+E   AssertionError: assert 6 == 4
+E    +  where 6 = len(['python scripts/ci_offline_smoke.py scripts/weekly_fetch.py --dry-run --skip-fred', 'python scripts/ci_offline_smoke....tine boundary.', 'python scripts/ci_offline_smoke.py cli/monthly_decision.py --as-of 2022-08-31 --dry-run --skip-fred'])
+=========================== short test summary info ===========================
+FAILED tests/integration/pipeline/test_ops_contracts.py::test_ci_smoke_tests_run_with_the_network_mocked
+1 failed in 0.39s

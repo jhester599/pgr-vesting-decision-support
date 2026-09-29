@@ -296,12 +296,6 @@
     },
     {
       "hash_basis": "exact_bytes",
-      "path": "research/studies/v200_clean_baseline/outputs/references/v200_baseline_lock_before_ci.json",
-      "role": "previous_accepted_lock_before_typing_maintenance",
-      "sha256": "c4cb2aff16016107f8d2b4ac4db4e8e313f9ddfcc236ff32b6a09511259f64d0"
-    },
-    {
-      "hash_basis": "exact_bytes",
       "path": "research/studies/v200_clean_baseline/outputs/reproducibility.json",
       "role": "accepted_v200_forecast_or_support",
       "sha256": "9640518d99c06fc43160c73f4261f2b80d4376196d28324c23036cb36eae0538"
@@ -321,12 +315,6 @@
       "path": "research/studies/v200_clean_baseline/outputs/target_observation_windows.csv",
       "role": "explicit approved-target raw observation dates",
       "sha256": "e6f9c72212f1a3ef26db982e7e44670ae84597c3e6562de681e25265b20edb21"
-    },
-    {
-      "hash_basis": "exact_bytes",
-      "path": "research/studies/v200_clean_baseline/outputs/verification/ci_typing_equivalence.json",
-      "role": "typing_only_runtime_equivalence",
-      "sha256": "ad0d6a7b61d7e102b6d1ff93153ec04a7cc62296978ddae4ec316695aac8e0be"
     },
     {
       "hash_basis": "exact_bytes",
@@ -534,12 +522,9 @@
       "sha256": "0415099908194f0eee67f2e979dd79d9b62192c4cb72d9bc1acba84c30be7636"
     },
     {
-      "execution_code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
-      "execution_sha256": "5dce75d0211e7027decb619390246252f0b7f04b1463089bf693d941f6641ad1",
       "hash_basis": "exact_bytes",
-      "maintenance_source_commit": "10533068f92e65d66f3beffcc4a257b400bbc705",
       "path": "src/pgr_vds/research_lib/adapters.py",
-      "sha256": "e5288b3965a6e300688920d0f9c11ff5cf2155d50a293be76dc26c4aa0217983"
+      "sha256": "5dce75d0211e7027decb619390246252f0b7f04b1463089bf693d941f6641ad1"
     },
     {
       "hash_basis": "exact_bytes",
@@ -557,12 +542,9 @@
       "sha256": "a0b566f57e25ba734c73ab3aa5b1b59890c8712aa1c1d5833050c8bed455d2c1"
     },
     {
-      "execution_code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
-      "execution_sha256": "76f88735c911be10339dd4c065cccad5c1dcbf7866234e6e917a88dac1e5f75c",
       "hash_basis": "exact_bytes",
-      "maintenance_source_commit": "10533068f92e65d66f3beffcc4a257b400bbc705",
       "path": "src/pgr_vds/research_lib/provenance.py",
-      "sha256": "9269e75e0151ce8b87077c801a34ccc8328ee9c750c4d7ca01e5953dd9bd0a5e"
+      "sha256": "76f88735c911be10339dd4c065cccad5c1dcbf7866234e6e917a88dac1e5f75c"
     },
     {
       "hash_basis": "exact_bytes",
@@ -789,32 +771,6 @@
     }
   ],
   "schema_version": 1,
-  "source_typing_maintenance": {
-    "adapter_provenance_pytest_exit": 0,
-    "adapter_provenance_pytest_summary": "37 passed in 2.81s",
-    "additional_fits": 0,
-    "ci_failures": [
-      "https://github.com/jhester599/pgr-vesting-decision-support/actions/runs/36499140069/job/109185649669",
-      "https://github.com/jhester599/pgr-vesting-decision-support/actions/runs/36499144234/job/109185608273"
-    ],
-    "dependency_changes": 0,
-    "equivalence_proof_path": "research/studies/v200_clean_baseline/outputs/verification/ci_typing_equivalence.json",
-    "equivalence_proof_sha256": "ad0d6a7b61d7e102b6d1ff93153ec04a7cc62296978ddae4ec316695aac8e0be",
-    "execution_code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
-    "forecast_changes": 0,
-    "id": "CI_TYPING_MAINTENANCE",
-    "input_file_interpretation": "Current installed source SHA pins include the type repair; execution_sha256 and the original full execution commit retain the fitted bytes. Other input pins are unchanged.",
-    "local_mypy_command": "python -m mypy --python-version 3.12 --follow-imports=silent src/pgr_vds cli",
-    "local_mypy_exit": 0,
-    "local_mypy_summary": "Success: no issues found in 28 source files",
-    "local_runtime_note": "The immutable fitting environment has Python3.12 and NumPy2.5.3 stubs using 3.12 type statements. Configured3.11 parsing stopped before source checking. The explicit3.12 target reproduced all six CI errors plus an inferred NumPy alpha type; green followed. CI retains its unchanged3.11 command. No package was installed or upgraded.",
-    "maintenance_source_commit": "10533068f92e65d66f3beffcc4a257b400bbc705",
-    "previous_accepted_lock_copy": "research/studies/v200_clean_baseline/outputs/references/v200_baseline_lock_before_ci.json",
-    "previous_accepted_lock_git_commit": "d5e9cb6ecb5f9bc28c7d378d29ff590d97a47187",
-    "previous_accepted_lock_sha256": "c4cb2aff16016107f8d2b4ac4db4e8e313f9ddfcc236ff32b6a09511259f64d0",
-    "quarantine_metric_accesses": 0,
-    "scope": "Typing-only annotations/imports/overload stubs; normalized runtime ASTs match execution sources. Native SQLite parameter/factory validation and every calculation remain unchanged."
-  },
   "status": "clean",
   "tracked_db_sha256_before": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6"
 }

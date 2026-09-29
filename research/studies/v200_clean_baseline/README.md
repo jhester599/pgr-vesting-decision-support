@@ -188,6 +188,56 @@ The exact requested full command was
 There are no inherited test failures in this run; legacy warnings and the
 skip are reported, and the two xfails document the old helper defects.
 The v200 fixtures separately report `73 passed, 2 xfailed`, exit 0.
+
+The push and PR CI jobs subsequently both stopped at the same six mypy
+errors in the new installed namespace. They did not fail the intentional
+pytest xfails. A type-only correction at
+`10533068f92e65d66f3beffcc4a257b400bbc705` repairs SQLite parameter/factory
+and self-return annotations, identifies the bounded connection type, and
+allows the digest validator to accept an unknown input before checking it.
+An explicit Ridge alpha annotation also avoids a local NumPy stub inference
+conflict. SQL, function defaults, calculations and grids are unchanged;
+[normalized runtime ASTs](outputs/verification/ci_typing_equivalence.json)
+match the actual execution sources. No study was fitted again.
+
+The [previous accepted lock](outputs/references/v200_baseline_lock_before_ci.json)
+is preserved byte for byte. The current lock explicitly pins the maintained
+source commit/SHA256, keeps both original execution source digests and the
+original full fitting commit, and records the previous lock's exact hash.
+Forecast, data, procedure and dependency pins are unchanged. Provenance
+`input_files` remains the bytes actually consumed by the original fitting
+commit; `source_typing_maintenance` records this separate compatibility fix.
+Local mypy is green for all 28 package/CLI files and the 11 hardened files,
+and the 37 adapter/provenance fixtures pass. Local checking explicitly uses
+Python 3.12 because the locked NumPy stubs use that syntax; CI retains its
+existing Python 3.11 command. No dependency was installed or upgraded.
+
+CI's existing monthly smoke had an April 2026 as-of date. Before allowing
+that step to run, it was moved to the same fixed August 2022 development
+date as A1, so even its longest declared 12M label ends in August 2023,
+before the September quarantine boundary. The new boundary fixture was
+[red](outputs/verification/ci_quarantine_red.log) on the old date and then
+[green](outputs/verification/ci_quarantine_green.log). An existing test's
+literal smoke date was updated while retaining its command/network guard
+coverage. The CI/test source commit is
+`c50d17148f9c56c6b2e3fbea5002ce8a9e50c6eb`. This adds no research candidate,
+window search or study refit and changes no live workflow or policy.
+
+The first full rerun with the boundary fixture reported one failure because
+my explanatory comments inside the shell block violated the existing
+four-command network-wrapper safeguard. The comments were moved outside
+the shell block, without weakening that safeguard, at
+`a3e4d12e852733284dee9bacdf32d91388a2bf15`. All 14 affected checks pass.
+The final exact full command reports
+`2659 passed, 1 skipped, 2 xfailed, 94 warnings in 292.51s (0:04:52)`, exit 0.
+Its [complete log](outputs/verification/full_pytest_ci_verified.log) and
+[exit/hash record](outputs/verification/full_pytest_ci_verified_exit.json)
+are retained alongside the failed attempt. No inherited failures remain;
+legacy warnings, the skip and the two intentional xfails remain disclosed.
+All nine original forecast/control/metric files and the tracked DB are
+unchanged. The accepted comparator remains the original fitted output;
+these fixes add no study fitting or quarantine metrics.
+
 The second read-only run reproduces all nine core files byte for byte;
 maximum numeric difference is 0 against tolerance 1e-10. The production
 bridge is independently assembled at the same development date in the

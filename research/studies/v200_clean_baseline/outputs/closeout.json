@@ -90,9 +90,79 @@
       "id": "full_suite",
       "log": "verification/full_pytest.log",
       "result": "2658 passed, 1 skipped, 2 xfailed, 105 warnings in 345.67s (0:05:45);exit0"
+    },
+    {
+      "id": "CI_smoke_quarantine_guard",
+      "log": "verification/ci_quarantine_red.log",
+      "result": "Metadata fixture red on old April2026 smoke. Development Aug2022 date passes. Existing literal-date contract updated; final13passed exit0."
+    },
+    {
+      "id": "CI_source_metadata_hash",
+      "result": "The source-only digest helper rejects .yml; maintenance metadata instead records verified full-commit Git blob SHA256 and working byte SHA256 with only Git line-ending equivalence. No research helper behavior changed."
+    },
+    {
+      "id": "post_publication_ci_typing",
+      "log": "verification/ci_mypy_red.log",
+      "result": "Both CI checks stopped at six typing errors. Local reproduced red, then green; runtime AST unchanged, no study refit."
+    },
+    {
+      "id": "post_typing_full_suite",
+      "log": "verification/full_pytest_ci_fix.log",
+      "result": "2658 passed, 1 skipped, 2 xfailed, 112 warnings in 304.10s (0:05:04);exit0"
+    },
+    {
+      "id": "CI_shell_comment_contract",
+      "log": "verification/full_pytest_ci_final.log",
+      "result": "1 failed, 2658 passed, 1 skipped, 2 xfailed, 94 warnings in 333.78s (0:05:33);exit1. New inline shell comments violated the inherited four-command guard. Comments moved to YAML documentation; guard retained."
+    },
+    {
+      "id": "post_CI_final_full_suite",
+      "log": "verification/full_pytest_ci_verified.log",
+      "result": "2659 passed, 1 skipped, 2 xfailed, 94 warnings in 292.51s (0:04:52);exit0; DB unchanged; all9 original forecast/control/metric files unchanged"
     }
   ],
   "base_master_commit": "e4500daa92adf839415cd5aca25c8e3d8274bb33",
+  "ci_quarantine_maintenance": {
+    "boundary_guard_commit": "c50d17148f9c56c6b2e3fbea5002ce8a9e50c6eb",
+    "command_hygiene_green_exit": 0,
+    "command_hygiene_green_log": "outputs/verification/ci_command_hygiene_green.log",
+    "command_hygiene_green_summary": "14 passed in 1.89s",
+    "existing_contract_update_log": "outputs/verification/ci_quarantine_contract_red.log",
+    "green_exit": 0,
+    "green_log": "outputs/verification/ci_quarantine_green.log",
+    "green_summary": "13 passed in 1.90s",
+    "latest_declared_label_end": "2023-08-31",
+    "max_declared_horizon_months": 12,
+    "previous_smoke_as_of": "2026-04-02",
+    "quarantine_boundary": "2023-09-29",
+    "red_log": "outputs/verification/ci_quarantine_red.log",
+    "scope": "CI validation date and boundary fixture only; same predeclared development date as the production equivalence bridge. No live workflow, config, email format or forecast changed.",
+    "smoke_as_of": "2022-08-31",
+    "source_commit": "a3e4d12e852733284dee9bacdf32d91388a2bf15",
+    "source_files": [
+      {
+        "git_blob_sha256": "0cd1b1755069c81358e3105e82daea95ba9b099b40035839ed6b8413f77e9d8f",
+        "git_commit": "a3e4d12e852733284dee9bacdf32d91388a2bf15",
+        "path": ".github/workflows/ci.yml",
+        "working_tree_equivalence": "Git text CRLF/LF conversion only",
+        "working_tree_sha256": "2b61287c8f6cd2d911277b7f5cfb56d781480c6f023fdb3144640ba5578e2e1c"
+      },
+      {
+        "git_blob_sha256": "0ec4dc706333f37c94193a4f44d5a3a7618c1fc49257c05b89258d8bdba83c70",
+        "git_commit": "a3e4d12e852733284dee9bacdf32d91388a2bf15",
+        "path": "tests/integration/repo/test_workflow_contracts.py",
+        "working_tree_equivalence": "Git text CRLF/LF conversion only",
+        "working_tree_sha256": "0873b596fa24c4a85175d4121a7025cd53e343015d604a50a9c066d84319c90f"
+      },
+      {
+        "git_blob_sha256": "50e2e396e5ea36b4daacbd6d201ba5a6a047d623b0d0d9b8c7dfaec5c01642f0",
+        "git_commit": "a3e4d12e852733284dee9bacdf32d91388a2bf15",
+        "path": "tests/research/test_v200_runner.py",
+        "working_tree_equivalence": "Git text CRLF/LF conversion only",
+        "working_tree_sha256": "50e2e396e5ea36b4daacbd6d201ba5a6a047d623b0d0d9b8c7dfaec5c01642f0"
+      }
+    ]
+  },
   "code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
   "core_files_byte_identical": 9,
   "discarded_comparisons": [
@@ -111,6 +181,7 @@
     "v37 overlapping conditional-mean oracle comparator",
     "v37 benchmark pooled R2 inflation"
   ],
+  "latest_verification_code_commit": "a3e4d12e852733284dee9bacdf32d91388a2bf15",
   "limits": [
     "current-vintage macro and assumedcalendar release lags",
     "repaired EDGAR lacks original-vintage per-row retrievaltime",
@@ -128,6 +199,19 @@
     "PathB skill adjusted p=1 and calibrated ECE .1078",
     "annual positive endpoint only3 uniqueevents, unscorable"
   ],
+  "post_ci_full_suite": {
+    "additional_study_fits": 0,
+    "code_commit": "a3e4d12e852733284dee9bacdf32d91388a2bf15",
+    "command": "python -m pytest -o addopts=\"--tb=short\" -q",
+    "core_forecast_files_unchanged": 9,
+    "db_unchanged": true,
+    "exit": 0,
+    "log": "outputs/verification/full_pytest_ci_verified.log",
+    "log_sha256": "083c5d1837c0e0f9b1968ee5eb4e95934f0a3abe80fcb73fb939d55b59d8061d",
+    "summary": "2659 passed, 1 skipped, 2 xfailed, 94 warnings in 292.51s (0:04:52)",
+    "tracked_db_sha256_after": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
+    "tracked_db_sha256_before": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6"
+  },
   "post_execution_observation_audit": {
     "forecast_or_target_changes": 0,
     "rows": 3816,
@@ -146,12 +230,38 @@
   "provider_calls": 0,
   "pytest_command": "python -m pytest -o addopts=\"--tb=short\" -q",
   "pytest_exit": 0,
-  "pytest_summary": "2658 passed, 1 skipped, 2 xfailed, 105 warnings in 345.67s (0:05:45)",
+  "pytest_summary": "2659 passed, 1 skipped, 2 xfailed, 94 warnings in 292.51s (0:04:52)",
   "reproduction_max_difference": 0,
   "reproduction_tolerance": 1e-10,
   "research_test_exit": 0,
   "research_test_summary": "73 passed, 2 xfailed in 5.89s",
   "scope": "only v200_clean_baseline",
+  "source_typing_maintenance": {
+    "adapter_provenance_pytest_exit": 0,
+    "adapter_provenance_pytest_summary": "37 passed in 2.81s",
+    "additional_fits": 0,
+    "ci_failures": [
+      "https://github.com/jhester599/pgr-vesting-decision-support/actions/runs/36499140069/job/109185649669",
+      "https://github.com/jhester599/pgr-vesting-decision-support/actions/runs/36499144234/job/109185608273"
+    ],
+    "dependency_changes": 0,
+    "equivalence_proof_path": "research/studies/v200_clean_baseline/outputs/verification/ci_typing_equivalence.json",
+    "equivalence_proof_sha256": "ad0d6a7b61d7e102b6d1ff93153ec04a7cc62296978ddae4ec316695aac8e0be",
+    "execution_code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
+    "forecast_changes": 0,
+    "id": "CI_TYPING_MAINTENANCE",
+    "input_file_interpretation": "Current installed source SHA pins include the type repair; execution_sha256 and the original full execution commit retain the fitted bytes. Other input pins are unchanged.",
+    "local_mypy_command": "python -m mypy --python-version 3.12 --follow-imports=silent src/pgr_vds cli",
+    "local_mypy_exit": 0,
+    "local_mypy_summary": "Success: no issues found in 28 source files",
+    "local_runtime_note": "The immutable fitting environment has Python3.12 and NumPy2.5.3 stubs using 3.12 type statements. Configured3.11 parsing stopped before source checking. The explicit3.12 target reproduced all six CI errors plus an inferred NumPy alpha type; green followed. CI retains its unchanged3.11 command. No package was installed or upgraded.",
+    "maintenance_source_commit": "10533068f92e65d66f3beffcc4a257b400bbc705",
+    "previous_accepted_lock_copy": "research/studies/v200_clean_baseline/outputs/references/v200_baseline_lock_before_ci.json",
+    "previous_accepted_lock_git_commit": "d5e9cb6ecb5f9bc28c7d378d29ff590d97a47187",
+    "previous_accepted_lock_sha256": "c4cb2aff16016107f8d2b4ac4db4e8e313f9ddfcc236ff32b6a09511259f64d0",
+    "quarantine_metric_accesses": 0,
+    "scope": "Typing-only annotations/imports/overload stubs; normalized runtime ASTs match execution sources. Native SQLite parameter/factory validation and every calculation remain unchanged."
+  },
   "status": "accepted_research_comparator",
   "tracked_db_sha256_after": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
   "tracked_db_sha256_before": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
