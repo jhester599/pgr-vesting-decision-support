@@ -1,0 +1,417 @@
+{
+  "access_ledger_sha256": "3b070e94f71f64cc961351c4c5461c7bcae5993221400541bec7f6fa514334a5",
+  "as_of": "2026-09-26",
+  "baseline_lock": {
+    "path": "research/studies/v200_clean_baseline/outputs/baseline_lock.json",
+    "registry_exception": "research/registry.yaml verified at the v200 execution commit; all pinned entries unchanged, v205 appended (outputs/preflight.json)",
+    "sha256": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0"
+  },
+  "bootstrap_replicates": 2000,
+  "budget": {
+    "alpha_grid": [
+      1,
+      10,
+      100
+    ],
+    "campaign_candidates": 6,
+    "fits_beyond_register": 0
+  },
+  "candidates": [
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "control": "v200 fixed past-12M cash per origin share",
+      "endpoint": "cash_dividend_12m",
+      "features": [
+        "past12_cash",
+        "prior_past12_cash",
+        "cr_ttm"
+      ],
+      "horizon": 12,
+      "id": "D1",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "dividend_12m",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 29,
+      "status": "registered",
+      "training_target": "next-12M cash minus the fixed past-12M control (offset added back after prediction)"
+    },
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "control": "v200 fixed past-12M cash per origin share",
+      "endpoint": "cash_dividend_12m",
+      "features": [
+        "past12_cash",
+        "prior_past12_cash",
+        "cr_ttm",
+        "pif_growth_yoy_cal",
+        "npw_growth_ttm"
+      ],
+      "horizon": 12,
+      "id": "D2",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "dividend_12m",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 30,
+      "status": "registered",
+      "training_target": "next-12M cash minus the fixed past-12M control (offset added back after prediction)"
+    },
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "closure_rule": "Fit only if at least 5 positive annual events matured before a scored November origin and a three-fold inner history with 60 usable monthly labels exists; otherwise close as insufficient annual support with primary p=1. Exclusions and gaps are never reduced.",
+      "control": "v200 past-only mean of matured positive annual ratios (same label)",
+      "endpoint": "annual_excess_to_bvps",
+      "features": [
+        "gainshare_estimate",
+        "investment_book_yield"
+      ],
+      "horizon": 12,
+      "id": "D3",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "dividend_12m",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 31,
+      "status": "registered",
+      "training_target": "archived x23 annual excess / current BVPS"
+    },
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "control": "v200 past-only prevailing mean BVPS growth",
+      "endpoint": "bvps_growth_12m",
+      "features": [
+        "bvps_growth_yoy",
+        "bvps_growth_3m",
+        "bvps_growth_6m",
+        "roe_ttm"
+      ],
+      "horizon": 12,
+      "id": "B1",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "bvps_12m",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 32,
+      "status": "registered",
+      "training_target": "next-12M BVPS growth (the endpoint label)"
+    },
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "control": "v200 past-only prevailing mean BVPS growth",
+      "endpoint": "bvps_growth_12m",
+      "features": [
+        "bvps_growth_yoy",
+        "bvps_growth_3m",
+        "bvps_growth_6m",
+        "roe_ttm",
+        "cr_ttm",
+        "pif_growth_yoy_cal",
+        "npw_growth_ttm"
+      ],
+      "horizon": 12,
+      "id": "B2",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "bvps_12m",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 33,
+      "status": "registered",
+      "training_target": "next-12M BVPS growth (the endpoint label)"
+    },
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "control": "v200 past-only mean absolute 6M PGR split/DRIP return",
+      "endpoint": "pgr_drip_return_6m",
+      "features": [
+        "current_bvps",
+        "bvps_growth_1m",
+        "bvps_growth_3m",
+        "bvps_growth_6m",
+        "bvps_growth_ytd",
+        "bvps_yoy_dollar_change",
+        "month_of_year",
+        "q4_flag",
+        "dividend_season_flag"
+      ],
+      "horizon": 6,
+      "id": "B3",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "bvps_12m",
+      "mapping": "x16 adjusted_structural_bvps_pb_6m, ridge_bridge__no_change_pb on the x9 bvps_lags block: implied price = forecast adjusted BVPS x current P/B, so the forecast 6M PGR return equals the forecast adjusted BVPS growth",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 34,
+      "status": "registered",
+      "training_target": "archived x12/x16 dividend-adjusted 6M BVPS growth, split-consistent, available on the future report's filing"
+    }
+  ],
+  "code": {
+    "execution_code_commit": "e2d3906c096400c34bfa64e2d10685af7b23f4d6",
+    "execution_tree_note": "execute requires the committed, clean preregistration; source files listed here are compared with the execution commit",
+    "preregistration_commit": "e2d3906c096400c34bfa64e2d10685af7b23f4d6",
+    "source_sha256": {
+      "research/studies/v205_dividend_bvps/run.py": "4a293f49a0c8298f875e3a46b205d2abb0bfb660df28d15f187984af1d9af07b",
+      "src/pgr_vds/research_lib/adapters.py": "d5042c0ad60d4b899db8959254aaf298ff35f5abbb8a460fd7809eaeec583787",
+      "src/pgr_vds/research_lib/metrics.py": "a0b566f57e25ba734c73ab3aa5b1b59890c8712aa1c1d5833050c8bed455d2c1",
+      "src/pgr_vds/research_lib/provenance.py": "9269e75e0151ce8b87077c801a34ccc8328ee9c750c4d7ca01e5953dd9bd0a5e",
+      "src/pgr_vds/research_lib/temporal.py": "5d7de5d706c6616e00e413876d91676755e24ef80918f6322cb2a6999c97d2f5",
+      "src/pgr_vds/research_lib/xseries.py": "d77e014c551539187be26ee017d5e8daf5c51899b7518e7886a88a978ff81ece",
+      "tests/research/test_v205_runner.py": "571a58e841727315b8f98e5d7e636cafdc717c864eaf15c84daffd91156242fd",
+      "tests/research/test_v205_xseries.py": "a6ebb2dc0d43e6b5dadad44f5a3bf58ca4e30b130b2a652a8108bc0a5b1d78f0"
+    },
+    "sources_changed_since_execution": []
+  },
+  "development_boundary": "2023-09-29",
+  "extraction_sql": {
+    "dividends": "SELECT ex_date,amount FROM daily_dividends WHERE ticker='PGR' AND ex_date < ? ORDER BY ex_date",
+    "first_reported": "SELECT month_end,field,value_real,filing_date FROM pgr_edgar_monthly_first_reported WHERE month_end < ? AND filing_date < ? AND field IN ('book_value_per_share','combined_ratio','pif_total','net_premiums_written','roe_net_income_ttm','investment_book_yield') ORDER BY month_end,field",
+    "prices": "SELECT date,close FROM daily_prices WHERE ticker='PGR' AND date < ? ORDER BY date",
+    "reports": "SELECT month_end,filing_date,book_value_per_share,combined_ratio,pif_total,net_premiums_written,roe_net_income_ttm,gainshare_estimate,investment_book_yield FROM pgr_edgar_monthly WHERE month_end < ? AND filing_date < ? ORDER BY month_end",
+    "splits": "SELECT split_date,split_ratio FROM split_history WHERE ticker='PGR' AND split_date < ? ORDER BY split_date"
+  },
+  "input_db": {
+    "access": "git show export outside the repository, verified, opened read-only immutable",
+    "git_commit": "ed7997f6f540f664e59dd44a4079616d74a8e8cb",
+    "sha256": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6"
+  },
+  "max_available_label": "2023-09-15",
+  "parent_seed": {
+    "db_sha256": "7c68efbd90ef5c10a12e05dc2a9e03402e353a06219fd2db129d711754c1c35d",
+    "git_commit": "aae0be883309bdc068ee9afbb78b0aa9a4b52b8d"
+  },
+  "partition_lock_sha256": "76c707c9b37287dcfa50f67dee9f3af4bce63fd1ce3a7e057efa230a1bfc66e4",
+  "procedure": {
+    "calibration": {
+      "interval": "nominal 80%: forecast + 10th/90th residual quantile",
+      "matched": "rows where candidate and control are both past warmup",
+      "method": "prequential empirical residual quantiles/frequency from the same stream's matured residuals only",
+      "minimum_matured_residuals": 12,
+      "probability": "share of matured residuals with forecast + residual above the event threshold",
+      "scores": "Brier, log loss clipped [1e-6,1-1e-6], 10-bin ECE"
+    },
+    "campaign_slots": {
+      "v201": "1-6",
+      "v202": "7-14",
+      "v203": "15-22",
+      "v204": "23-28",
+      "v205": "29-34",
+      "v206": "35-38"
+    },
+    "direction": {
+      "base": "constant majority event of labels matured by origin",
+      "bvps_growth_12m": "BVPS growth strictly above zero",
+      "cash_dividend_12m": "next-12M cash strictly above the fixed past-12M control",
+      "pgr_drip_return_6m": "total return strictly above zero",
+      "skill_test": "one-sided block test of per-date hit minus base hit, reported raw; a safeguard, not a success route"
+    },
+    "disposition": "Pass only if relative MAE reduction >= .10 vs the matched v200 control, Holm-adjusted primary p < .05 (38-test campaign family, pending slots p=1), delta honest R2 >= .01, candidate hit rate >= control hit rate, candidate Brier <= control Brier, |coverage80-.80| <= control's + .05, scored dates / horizon >= 5 independent blocks and supported block inference. NaN fails.",
+    "feature_rows": "all registered features finite; no imputation of a missing report month",
+    "folds": {
+      "availability": "training labels need target end, filing or label availability and origin before the (inner) test origin; inner validation labels must have arrived by the outer origin",
+      "dates": "contiguous business month-ends spanning the v200 control origins of each endpoint; unique monthly dates split before any row expansion",
+      "h12": "outer TimeSeriesSplit 120 train / 6 test / gap 24; inner 3 folds test 6 gap 24, minimum 60 usable months",
+      "h6": "outer TimeSeriesSplit 60 train / 6 test / gap 12; inner 3 folds test 6 gap 12, minimum 24 usable months",
+      "outer_minimum": "the outer training fold also needs at least 60 (h12) or 24 (h6) usable mature labels, or it is unscorable",
+      "unsupported": "unscorable; gaps and support are never reduced"
+    },
+    "holdout": "no quarantine label, feature or metric is read",
+    "honest_r2_naive": "v200 prevailing mean of same-endpoint labels matured by origin",
+    "ic": "Spearman, two-sided centered moving-date-block p (reported)",
+    "matched_rows": "Outer-test rows with a finite candidate forecast, a finite non-warmup v200 control forecast and naive mean, and a finite label",
+    "nomination": "At most one winner across both lanes: lowest adjusted p, then largest relative MAE reduction; none if nothing passes",
+    "post_result_search": "none; no feature, lag, threshold, window or grid change after results",
+    "primary_test": {
+      "block_length": "horizon months (12 or 6)",
+      "minimum_dates": "two full blocks",
+      "replicates": 2000,
+      "seed": 20260926,
+      "sidedness": "one-sided, centered bootstrap",
+      "statistic": "mean over dates of |y-control| - |y-candidate|"
+    },
+    "share_basis": "Dollar features, targets and offsets are restated to the share basis of each fold's first test origin before fitting; forecasts are restated back to each test origin's basis",
+    "thresholds": {
+      "adjusted_p": 0.05,
+      "coverage_tolerance": 0.05,
+      "delta_r2": 0.01,
+      "independent_blocks": 5.0,
+      "relative_mae_reduction": 0.1
+    }
+  },
+  "reproducibility": true,
+  "runtime": {
+    "execution": {
+      "implementation": "CPython",
+      "packages": {
+        "PyPortfolioOpt": "1.6.0",
+        "PyYAML": "6.0.2",
+        "beautifulsoup4": "4.15.0",
+        "lxml": "6.1.3",
+        "mapie": "1.5.0",
+        "matplotlib": "3.11.2",
+        "numpy": "2.5.3",
+        "pandas": "3.0.6",
+        "pyarrow": "25.0.1",
+        "python-dotenv": "1.2.3",
+        "requests": "2.34.2",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "skfolio": "1.4.0",
+        "statsmodels": "0.15.0",
+        "xgboost": "3.4.1"
+      },
+      "pgr_vds_path": "/home/user/pgr-vesting-decision-support/src/pgr_vds/__init__.py",
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "python": "3.12.14",
+      "used_core_dependencies": [
+        "numpy",
+        "pandas",
+        "scikit-learn",
+        "scipy",
+        "statsmodels",
+        "matplotlib",
+        "xgboost",
+        "pyarrow",
+        "requests",
+        "lxml",
+        "beautifulsoup4",
+        "python-dotenv",
+        "skfolio",
+        "PyPortfolioOpt",
+        "mapie",
+        "PyYAML"
+      ]
+    },
+    "finalize": {
+      "implementation": "CPython",
+      "packages": {
+        "PyPortfolioOpt": "1.6.0",
+        "PyYAML": "6.0.2",
+        "beautifulsoup4": "4.15.0",
+        "lxml": "6.1.3",
+        "mapie": "1.5.0",
+        "matplotlib": "3.11.2",
+        "numpy": "2.5.3",
+        "pandas": "3.0.6",
+        "pyarrow": "25.0.1",
+        "python-dotenv": "1.2.3",
+        "requests": "2.34.2",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "skfolio": "1.4.0",
+        "statsmodels": "0.15.0",
+        "xgboost": "3.4.1"
+      },
+      "pgr_vds_path": "/home/user/pgr-vesting-decision-support/src/pgr_vds/__init__.py",
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "python": "3.12.14",
+      "used_core_dependencies": [
+        "numpy",
+        "pandas",
+        "scikit-learn",
+        "scipy",
+        "statsmodels",
+        "matplotlib",
+        "xgboost",
+        "pyarrow",
+        "requests",
+        "lxml",
+        "beautifulsoup4",
+        "python-dotenv",
+        "skfolio",
+        "PyPortfolioOpt",
+        "mapie",
+        "PyYAML"
+      ]
+    },
+    "installation_note": "Python 3.12.14 and the complete v200 package set installed at exact versions in an isolated venv; verify_runtime passed",
+    "v200_dependency_environment_sha256": "0cd4bf33c6dc2052cf31ed7dc300ed2fd7a5462c2db1660a429dfaa6ba30f298",
+    "v200_runtime_lock_sha256": "ed8a5eea976ce21c816beb3b305b3a1d6fde6c59ea87c261aedab7ee0304d1e9"
+  },
+  "seed": 20260926,
+  "sources": {
+    "dividends": "daily_dividends PGR by ex-date; December specials included by the December-February window",
+    "edgar": "pgr_edgar_monthly repaired current values gated by actual filing_date; first-reported comparison in source_vintage_audit.json",
+    "fred": "not used",
+    "provider_calls": 0,
+    "splits": "split_history PGR, explicit ratios only"
+  },
+  "study": "v205_dividend_bvps",
+  "target_checks": {
+    "availability_mismatches": 0,
+    "cash_control_nan_mismatches": 0,
+    "end_mismatches": 0,
+    "max_abs_cash_control_diff": 8.881784197001252e-16,
+    "max_abs_label_diff": 8.881784197001252e-16,
+    "max_abs_naive_diff": 2.220446049250313e-16,
+    "n_pre_output_history_rows": 2,
+    "n_rows": 772,
+    "naive_nan_mismatches": 0,
+    "status": "passed",
+    "tolerance": 1e-12
+  },
+  "targets": {
+    "annual_excess_to_bvps": {
+      "event": "not scored: conditional positive-event endpoint",
+      "horizon": 12,
+      "threshold": "none",
+      "unit": "December-February excess cash / November current BVPS"
+    },
+    "bvps_growth_12m": {
+      "event": "BVPS growth strictly above zero",
+      "horizon": 12,
+      "threshold": "zero",
+      "unit": "fractional BVPS growth on the origin share basis"
+    },
+    "cash_dividend_12m": {
+      "event": "next-12M cash strictly above the fixed past-12M control",
+      "horizon": 12,
+      "threshold": "control",
+      "unit": "USD cash per one origin-date PGR share"
+    },
+    "pgr_drip_return_6m": {
+      "event": "total return strictly above zero",
+      "horizon": 6,
+      "threshold": "zero",
+      "unit": "signed fractional PGR total return, splits and DRIP"
+    }
+  },
+  "tracked_db_sha256": {
+    "after_execution": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6",
+    "before": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6"
+  },
+  "v200_quarantine": {
+    "h12": [
+      "2023-09-29",
+      "2025-08-29"
+    ],
+    "h6": [
+      "2024-03-28",
+      "2026-02-27"
+    ]
+  }
+}

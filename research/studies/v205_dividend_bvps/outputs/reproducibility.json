@@ -1,0 +1,41 @@
+{
+  "all_identical": true,
+  "files": {
+    "calibration_streams.csv": {
+      "identical": true,
+      "second_run_sha256": "d0b297a4d296afc326e05f4146e1e90185d70aac6bb6dfa6f847b32edd9ef454",
+      "sha256": "d0b297a4d296afc326e05f4146e1e90185d70aac6bb6dfa6f847b32edd9ef454"
+    },
+    "candidate_ledger.json": {
+      "identical": true,
+      "second_run_sha256": "02300243f4c97931edd6dd6d59f5c63997261d6f09ae16a90285b4d82041e13d",
+      "sha256": "02300243f4c97931edd6dd6d59f5c63997261d6f09ae16a90285b4d82041e13d"
+    },
+    "comparison.json": {
+      "identical": true,
+      "second_run_sha256": "dd79a0fcbd524010945d75a02692cf874a9e089d4ae451378fe0f823dddf2c4f",
+      "sha256": "dd79a0fcbd524010945d75a02692cf874a9e089d4ae451378fe0f823dddf2c4f"
+    },
+    "fold_ledger.csv": {
+      "identical": true,
+      "second_run_sha256": "b55a642a236ecdd6faf17f6007c5bc3436ab31769abad7a0a01fdccc94253c06",
+      "sha256": "b55a642a236ecdd6faf17f6007c5bc3436ab31769abad7a0a01fdccc94253c06"
+    },
+    "metrics.json": {
+      "identical": true,
+      "second_run_sha256": "4cf9e026542fe3545eb796df136137480516adad946aab4f3d3f3d0d240cd7cd",
+      "sha256": "4cf9e026542fe3545eb796df136137480516adad946aab4f3d3f3d0d240cd7cd"
+    },
+    "multiplicity.json": {
+      "identical": true,
+      "second_run_sha256": "723d222410da4c3e02cf2d192d7a3226ad55ba81a788bea8e53e0ad3ecb39831",
+      "sha256": "723d222410da4c3e02cf2d192d7a3226ad55ba81a788bea8e53e0ad3ecb39831"
+    },
+    "predictions.csv": {
+      "identical": true,
+      "second_run_sha256": "4edb88ce91a357a82219995e220164d85a6c3c98bd5c52b29692a4a7d94356d2",
+      "sha256": "4edb88ce91a357a82219995e220164d85a6c3c98bd5c52b29692a4a7d94356d2"
+    }
+  },
+  "method": "second --execute into an external directory with a fresh verified DB export"
+}

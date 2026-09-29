@@ -1,0 +1,195 @@
+{
+  "alternatives_beyond_register": 0,
+  "attempts": [
+    {
+      "candidate": "D1",
+      "closed": false,
+      "outer_folds": 21,
+      "scorable_outer_folds": 13
+    },
+    {
+      "candidate": "D2",
+      "closed": false,
+      "outer_folds": 21,
+      "scorable_outer_folds": 11
+    },
+    {
+      "candidate": "D3",
+      "closed": true,
+      "fits": 0
+    },
+    {
+      "candidate": "B1",
+      "closed": false,
+      "outer_folds": 12,
+      "scorable_outer_folds": 12
+    },
+    {
+      "candidate": "B2",
+      "closed": false,
+      "outer_folds": 12,
+      "scorable_outer_folds": 11
+    },
+    {
+      "candidate": "B3",
+      "closed": false,
+      "outer_folds": 34,
+      "scorable_outer_folds": 24
+    }
+  ],
+  "preregistration_commit": "e2d3906c096400c34bfa64e2d10685af7b23f4d6",
+  "register": [
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "control": "v200 fixed past-12M cash per origin share",
+      "endpoint": "cash_dividend_12m",
+      "features": [
+        "past12_cash",
+        "prior_past12_cash",
+        "cr_ttm"
+      ],
+      "horizon": 12,
+      "id": "D1",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "dividend_12m",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 29,
+      "status": "registered",
+      "training_target": "next-12M cash minus the fixed past-12M control (offset added back after prediction)"
+    },
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "control": "v200 fixed past-12M cash per origin share",
+      "endpoint": "cash_dividend_12m",
+      "features": [
+        "past12_cash",
+        "prior_past12_cash",
+        "cr_ttm",
+        "pif_growth_yoy_cal",
+        "npw_growth_ttm"
+      ],
+      "horizon": 12,
+      "id": "D2",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "dividend_12m",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 30,
+      "status": "registered",
+      "training_target": "next-12M cash minus the fixed past-12M control (offset added back after prediction)"
+    },
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "closure_rule": "Fit only if at least 5 positive annual events matured before a scored November origin and a three-fold inner history with 60 usable monthly labels exists; otherwise close as insufficient annual support with primary p=1. Exclusions and gaps are never reduced.",
+      "control": "v200 past-only mean of matured positive annual ratios (same label)",
+      "endpoint": "annual_excess_to_bvps",
+      "features": [
+        "gainshare_estimate",
+        "investment_book_yield"
+      ],
+      "horizon": 12,
+      "id": "D3",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "dividend_12m",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 31,
+      "status": "registered",
+      "training_target": "archived x23 annual excess / current BVPS"
+    },
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "control": "v200 past-only prevailing mean BVPS growth",
+      "endpoint": "bvps_growth_12m",
+      "features": [
+        "bvps_growth_yoy",
+        "bvps_growth_3m",
+        "bvps_growth_6m",
+        "roe_ttm"
+      ],
+      "horizon": 12,
+      "id": "B1",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "bvps_12m",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 32,
+      "status": "registered",
+      "training_target": "next-12M BVPS growth (the endpoint label)"
+    },
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "control": "v200 past-only prevailing mean BVPS growth",
+      "endpoint": "bvps_growth_12m",
+      "features": [
+        "bvps_growth_yoy",
+        "bvps_growth_3m",
+        "bvps_growth_6m",
+        "roe_ttm",
+        "cr_ttm",
+        "pif_growth_yoy_cal",
+        "npw_growth_ttm"
+      ],
+      "horizon": 12,
+      "id": "B2",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "bvps_12m",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 33,
+      "status": "registered",
+      "training_target": "next-12M BVPS growth (the endpoint label)"
+    },
+    {
+      "alpha_grid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "control": "v200 past-only mean absolute 6M PGR split/DRIP return",
+      "endpoint": "pgr_drip_return_6m",
+      "features": [
+        "current_bvps",
+        "bvps_growth_1m",
+        "bvps_growth_3m",
+        "bvps_growth_6m",
+        "bvps_growth_ytd",
+        "bvps_yoy_dollar_change",
+        "month_of_year",
+        "q4_flag",
+        "dividend_season_flag"
+      ],
+      "horizon": 6,
+      "id": "B3",
+      "inner_selection": "summed absolute error over three inner folds; exact ties choose the larger alpha",
+      "lane": "bvps_12m",
+      "mapping": "x16 adjusted_structural_bvps_pb_6m, ridge_bridge__no_change_pb on the x9 bvps_lags block: implied price = forecast adjusted BVPS x current P/B, so the forecast 6M PGR return equals the forecast adjusted BVPS growth",
+      "model": "median imputer, standard scaler, Ridge; all fitted inside each training history",
+      "primary_test": "one-sided paired moving-date-block bootstrap of the per-date absolute-error improvement over the matched v200 control",
+      "slot": 34,
+      "status": "registered",
+      "training_target": "archived x12/x16 dividend-adjusted 6M BVPS growth, split-consistent, available on the future report's filing"
+    }
+  ]
+}
