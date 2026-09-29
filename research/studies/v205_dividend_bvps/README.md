@@ -357,7 +357,10 @@ family gives 1 for all; v207 completes the campaign adjustment.
   directory reproduced all seven core outputs byte for byte
   ([reproducibility.json](outputs/reproducibility.json)).
 - **Full suite.** `python -m pytest -o addopts="--tb=short" -q` reports:
-  PYTEST_SUMMARY
+  `2680 passed, 1 skipped, 2 xfailed, 116 warnings in 641.79s (0:10:41)`,
+  exit 0 ([log](outputs/verification/full_pytest.log)). There are no inherited
+  failures. The skip, the legacy warnings and the two strict xfails are
+  inherited from v200; the xfails document the old v37 helper defects.
 - **Tracked DB.** SHA256 of `data/pgr_financials.db` was
   `38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6` before
   execution, after execution and after the full suite (unchanged).

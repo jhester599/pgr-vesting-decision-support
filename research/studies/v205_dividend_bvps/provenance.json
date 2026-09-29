@@ -194,6 +194,10 @@
     "reports": "SELECT month_end,filing_date,book_value_per_share,combined_ratio,pif_total,net_premiums_written,roe_net_income_ttm,gainshare_estimate,investment_book_yield FROM pgr_edgar_monthly WHERE month_end < ? AND filing_date < ? ORDER BY month_end",
     "splits": "SELECT split_date,split_ratio FROM split_history WHERE ticker='PGR' AND split_date < ? ORDER BY split_date"
   },
+  "full_pytest": [
+    "2680 passed, 1 skipped, 2 xfailed, 116 warnings in 641.79s (0:10:41)",
+    "exit=0"
+  ],
   "input_db": {
     "access": "git show export outside the repository, verified, opened read-only immutable",
     "git_commit": "ed7997f6f540f664e59dd44a4079616d74a8e8cb",

@@ -1,6 +1,6 @@
 {
   "sha256": {
-    "README.md": "af30b0cc3023ae54de988ad75ebff381d69bce8320d7f15560a62a4203ed7cba",
+    "README.md": "36b32eae11e0fdb0f6e194c8071e66e8c8b75fd6a4a9f6549da4d44a9c800de3",
     "outputs/access_ledger.json": "3b070e94f71f64cc961351c4c5461c7bcae5993221400541bec7f6fa514334a5",
     "outputs/annual_support.csv": "e7dce3aaad9d517e851e0b120a6104a6131c597a237e756d0fd08a052f495c3d",
     "outputs/b3_training_labels.csv": "a30fe4355e3c8326d8d15f2f409fb22ec8c11ddaf43c81504192f2e810e42425",
@@ -25,10 +25,11 @@
     "outputs/targets.csv": "14d5cffeb77821e00e9dfea22a41e5b84861979599f0485d730638c8b0e78e8a",
     "outputs/verification/attempt1_blocked_naive_history.json": "d60ffbb21fb1b51cd7238cf8c22217d2e7f5449e936457f8cd3aa0cad7c0ea43",
     "outputs/verification/attempt2_blocked_registry_pin.json": "8f211b5c0dbd0757bd63a31388cb0f67dd1462302cc7ed11f9ae69fea6f2ce67",
+    "outputs/verification/full_pytest.log": "b7204c15be74f30a9757391185f9bad5dfaae8f82edca35a42d67de5c5d0b42a",
     "outputs/verification/runner_green.log": "1ce38927a49aeb85b7370c527c9f96930ad0b85e8dda0c16a36645a23edea27f",
     "outputs/verification/runner_red.log": "f8570e6f6ba1fc743cb1d651f9bc6591b415d23b2c224a37b442630ced840743",
     "outputs/verification/xseries_green.log": "35579c1b28ab56e6c3904746bc67551ec02bcf907cc08a1f3e87a10e69bdecae",
     "outputs/verification/xseries_red.log": "6f98aa69fcc703aa45009734ff3530e13b486fcc4b181ee5ce5261c1c462ce93",
-    "provenance.json": "9b65f64012d1763b7f488d87c92ab6a48fde1458475f370f2d4b493be5da56cd"
+    "provenance.json": "2803626ab54d947d734ad45ca1a5a8644b173a72a27185a7b9b851d95ae23be5"
   }
 }
