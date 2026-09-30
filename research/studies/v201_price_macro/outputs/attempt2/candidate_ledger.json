@@ -1,0 +1,532 @@
+{
+  "M1": {
+    "blueprint": {
+      "add": [
+        "pm_slope",
+        "pm_real_change6"
+      ],
+      "remove": [
+        "yield_slope",
+        "real_rate_10y",
+        "real_yield_change_6m"
+      ]
+    },
+    "columns": {
+      "gbt": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m",
+        "vol_63d",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "rate_adequacy_gap_yoy",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "pm_slope",
+        "pm_real_change6"
+      ],
+      "ridge": [
+        "mom_12m",
+        "vol_63d",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "pm_slope",
+        "pm_real_change6"
+      ]
+    },
+    "disposition": {
+      "delta_r2": 0.034185363001580815,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "holm_primary",
+        "log_loss",
+        "ece"
+      ],
+      "gates": {
+        "brier": true,
+        "coverage_80": true,
+        "delta_r2": true,
+        "directional_skill": true,
+        "ece": false,
+        "hit_rate": true,
+        "holm_primary": false,
+        "ic": true,
+        "log_loss": false
+      },
+      "passes": false
+    },
+    "fit_attempts": {
+      "h12": 1,
+      "h6": 1
+    },
+    "primary": {
+      "block_length": 6,
+      "bootstrap_replicates": 2000,
+      "delta_r2": 0.034185363001580815,
+      "delta_r2_ci": [
+        -0.0146486738736482,
+        0.1361815855611031
+      ],
+      "holm38_p": 1.0,
+      "inference_supported": true,
+      "mean_date_loss_gain": 0.0010018296305941562,
+      "n_dates": 144,
+      "n_rows": 942,
+      "primary_p": 0.2673663168415792,
+      "seed": 20260926
+    },
+    "slot": 4,
+    "source_commit": "acc3ce98357af4d4a997daac5426537d19cfd3a0"
+  },
+  "M2": {
+    "blueprint": {
+      "add": [
+        "pm_vix",
+        "pm_nfci",
+        "pm_credit_hy"
+      ],
+      "remove": [
+        "vix",
+        "nfci",
+        "credit_spread_hy"
+      ]
+    },
+    "columns": {
+      "gbt": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "rate_adequacy_gap_yoy",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "pm_vix",
+        "pm_nfci",
+        "pm_credit_hy"
+      ],
+      "ridge": [
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "pm_vix",
+        "pm_nfci",
+        "pm_credit_hy"
+      ]
+    },
+    "disposition": {
+      "delta_r2": -0.00106889835332602,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "delta_r2",
+        "holm_primary",
+        "log_loss"
+      ],
+      "gates": {
+        "brier": true,
+        "coverage_80": true,
+        "delta_r2": false,
+        "directional_skill": true,
+        "ece": true,
+        "hit_rate": true,
+        "holm_primary": false,
+        "ic": true,
+        "log_loss": false
+      },
+      "passes": false
+    },
+    "fit_attempts": {
+      "h12": 1,
+      "h6": 1
+    },
+    "primary": {
+      "block_length": 6,
+      "bootstrap_replicates": 2000,
+      "delta_r2": -0.00106889835332602,
+      "delta_r2_ci": [
+        -0.006103023413004729,
+        0.003246871877511958
+      ],
+      "holm38_p": 1.0,
+      "inference_supported": true,
+      "mean_date_loss_gain": -6.6202477696796555e-06,
+      "n_dates": 144,
+      "n_rows": 942,
+      "primary_p": 1.0,
+      "seed": 20260926
+    },
+    "slot": 5,
+    "source_commit": "acc3ce98357af4d4a997daac5426537d19cfd3a0"
+  },
+  "M3": {
+    "blueprint": {
+      "add": [
+        "pm_rate_gap"
+      ],
+      "remove": [
+        "rate_adequacy_gap_yoy"
+      ]
+    },
+    "columns": {
+      "gbt": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "pm_rate_gap"
+      ],
+      "ridge": [
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "pm_rate_gap"
+      ]
+    },
+    "disposition": {
+      "delta_r2": -0.0681515379955755,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "delta_r2",
+        "holm_primary",
+        "ic",
+        "hit_rate",
+        "directional_skill",
+        "coverage_80"
+      ],
+      "gates": {
+        "brier": true,
+        "coverage_80": false,
+        "delta_r2": false,
+        "directional_skill": false,
+        "ece": true,
+        "hit_rate": false,
+        "holm_primary": false,
+        "ic": false,
+        "log_loss": true
+      },
+      "passes": false
+    },
+    "fit_attempts": {
+      "h12": 1,
+      "h6": 1
+    },
+    "primary": {
+      "block_length": 6,
+      "bootstrap_replicates": 2000,
+      "delta_r2": -0.0681515379955755,
+      "delta_r2_ci": [
+        -0.17771892566845057,
+        0.02052582791937253
+      ],
+      "holm38_p": 1.0,
+      "inference_supported": true,
+      "mean_date_loss_gain": -0.0019400055470153628,
+      "n_dates": 144,
+      "n_rows": 942,
+      "primary_p": 1.0,
+      "seed": 20260926
+    },
+    "slot": 6,
+    "source_commit": "acc3ce98357af4d4a997daac5426537d19cfd3a0"
+  },
+  "P1": {
+    "blueprint": {
+      "add": [
+        "pm_mom3",
+        "pm_mom6",
+        "pm_mom12"
+      ],
+      "remove": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m"
+      ]
+    },
+    "columns": {
+      "gbt": [
+        "vol_63d",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "rate_adequacy_gap_yoy",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "pm_mom3",
+        "pm_mom6",
+        "pm_mom12"
+      ],
+      "ridge": [
+        "vol_63d",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "pm_mom3",
+        "pm_mom6",
+        "pm_mom12"
+      ]
+    },
+    "disposition": {
+      "delta_r2": 0.057645788201299175,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "holm_primary",
+        "log_loss",
+        "ece"
+      ],
+      "gates": {
+        "brier": true,
+        "coverage_80": true,
+        "delta_r2": true,
+        "directional_skill": true,
+        "ece": false,
+        "hit_rate": true,
+        "holm_primary": false,
+        "ic": true,
+        "log_loss": false
+      },
+      "passes": false
+    },
+    "fit_attempts": {
+      "h12": 1,
+      "h6": 1
+    },
+    "primary": {
+      "block_length": 6,
+      "bootstrap_replicates": 2000,
+      "delta_r2": 0.057645788201299175,
+      "delta_r2_ci": [
+        -0.005221551554550937,
+        0.14907303450467896
+      ],
+      "holm38_p": 1.0,
+      "inference_supported": true,
+      "mean_date_loss_gain": 0.001632479574846678,
+      "n_dates": 144,
+      "n_rows": 942,
+      "primary_p": 0.08695652173913043,
+      "seed": 20260926
+    },
+    "slot": 1,
+    "source_commit": "acc3ce98357af4d4a997daac5426537d19cfd3a0"
+  },
+  "P2": {
+    "blueprint": {
+      "add": [
+        "pm_vol13w",
+        "pm_high52w"
+      ],
+      "remove": [
+        "vol_63d"
+      ]
+    },
+    "columns": {
+      "gbt": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "rate_adequacy_gap_yoy",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "pm_vol13w",
+        "pm_high52w"
+      ],
+      "ridge": [
+        "mom_12m",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "pm_vol13w",
+        "pm_high52w"
+      ]
+    },
+    "disposition": {
+      "delta_r2": -0.0001894179019306108,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "delta_r2",
+        "holm_primary",
+        "log_loss"
+      ],
+      "gates": {
+        "brier": true,
+        "coverage_80": true,
+        "delta_r2": false,
+        "directional_skill": true,
+        "ece": true,
+        "hit_rate": true,
+        "holm_primary": false,
+        "ic": true,
+        "log_loss": false
+      },
+      "passes": false
+    },
+    "fit_attempts": {
+      "h12": 1,
+      "h6": 1
+    },
+    "primary": {
+      "block_length": 6,
+      "bootstrap_replicates": 2000,
+      "delta_r2": -0.0001894179019306108,
+      "delta_r2_ci": [
+        -0.027572862915747186,
+        0.022636094828712306
+      ],
+      "holm38_p": 1.0,
+      "inference_supported": true,
+      "mean_date_loss_gain": -1.374272284538322e-05,
+      "n_dates": 144,
+      "n_rows": 942,
+      "primary_p": 1.0,
+      "seed": 20260926
+    },
+    "slot": 2,
+    "source_commit": "acc3ce98357af4d4a997daac5426537d19cfd3a0"
+  },
+  "P3": {
+    "blueprint": {
+      "add": [
+        "pm_ema12_voo",
+        "pm_rsi6_voo"
+      ],
+      "inventory": [
+        "ta_ratio_ema_gap_12m_voo",
+        "ta_ratio_rsi_6m_voo"
+      ],
+      "remove": [
+        "mom_6m",
+        "mom_12m"
+      ]
+    },
+    "columns": {
+      "gbt": [
+        "mom_3m",
+        "vol_63d",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "rate_adequacy_gap_yoy",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "pm_ema12_voo",
+        "pm_rsi6_voo"
+      ],
+      "ridge": [
+        "vol_63d",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "pm_ema12_voo",
+        "pm_rsi6_voo"
+      ]
+    },
+    "disposition": {
+      "delta_r2": 0.05424597018247068,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "holm_primary",
+        "log_loss"
+      ],
+      "gates": {
+        "brier": true,
+        "coverage_80": true,
+        "delta_r2": true,
+        "directional_skill": true,
+        "ece": true,
+        "hit_rate": true,
+        "holm_primary": false,
+        "ic": true,
+        "log_loss": false
+      },
+      "passes": false
+    },
+    "fit_attempts": {
+      "h12": 1,
+      "h6": 1
+    },
+    "primary": {
+      "block_length": 6,
+      "bootstrap_replicates": 2000,
+      "delta_r2": 0.05424597018247068,
+      "delta_r2_ci": [
+        -0.004568639538118371,
+        0.13527018008628372
+      ],
+      "holm38_p": 1.0,
+      "inference_supported": true,
+      "mean_date_loss_gain": 0.0015635639757756645,
+      "n_dates": 144,
+      "n_rows": 942,
+      "primary_p": 0.06446776611694154,
+      "seed": 20260926
+    },
+    "slot": 3,
+    "source_commit": "acc3ce98357af4d4a997daac5426537d19cfd3a0"
+  }
+}

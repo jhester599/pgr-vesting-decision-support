@@ -1,0 +1,32 @@
+FF                                                                       [100%]
+================================== FAILURES ===================================
+_______ test_all_gates_and_failed_primary_cannot_use_secondary_success ________
+tests\research\test_v201_disposition.py:9: in test_all_gates_and_failed_primary_cannot_use_secondary_success
+    module = importlib.import_module(
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib.price_macro_disposition'
+_________ test_finalist_uses_only_passed_primary_and_frozen_tie_order _________
+tests\research\test_v201_disposition.py:35: in test_finalist_uses_only_passed_primary_and_frozen_tie_order
+    module = importlib.import_module(
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib.price_macro_disposition'
+=========================== short test summary info ===========================
+FAILED tests/research/test_v201_disposition.py::test_all_gates_and_failed_primary_cannot_use_secondary_success
+FAILED tests/research/test_v201_disposition.py::test_finalist_uses_only_passed_primary_and_frozen_tie_order
+2 failed in 0.44s

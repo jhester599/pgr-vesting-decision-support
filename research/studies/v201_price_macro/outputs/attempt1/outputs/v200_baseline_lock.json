@@ -1,0 +1,820 @@
+{
+  "acceptance": {
+    "annual_endpoint_status": "unscorable;3uniqueevents;notindependentmonthly evidence",
+    "closeout_path": "research/studies/v200_clean_baseline/outputs/closeout.json",
+    "full_pytest_exit": 0,
+    "full_pytest_summary": "2658 passed, 1 skipped, 2 xfailed, 105 warnings in 345.67s (0:05:45)",
+    "independent_fixtures": "passed;legacy2strictxfail",
+    "preflight": "passed",
+    "promotion": false,
+    "reproducibility": "9files byteidentical;maxdifference0",
+    "sufficient_regression_support": true
+  },
+  "accepted_exceptions": [
+    {
+      "description": "Owner accepted provider history without March2026 ex-date; exactly12 affected targets in vwo_accepted_gap.csv, all quarantined",
+      "id": "VWO_MARCH_2026_GAP"
+    }
+  ],
+  "access_ledger_sha256": "ec141113b2d82776255bad0e702a708862b2e17fa558bd861a9764a0a301d902",
+  "artifact_byte_policy": "Scoped -text attributes preserve exact new artifact/code bytes; inherited source text hashes use Git LF line-ending equivalence",
+  "as_of": "2026-09-26",
+  "baseline_code_commit": "c3b4798b90a43f9dbd616981861e9ff01fa2de72",
+  "comparison_status": "accepted_research_comparator",
+  "data_status": "approved repair preflight passed; reconstructed historical availability, vintage limits disclosed",
+  "dependency_environment_sha256": "0cd4bf33c6dc2052cf31ed7dc300ed2fd7a5462c2db1660a429dfaa6ba30f298",
+  "development_boundary": "2023-09-29",
+  "endpoint_contracts": {
+    "PathB": "1 iff fixed investable weighted PGR-minus-portfolio6M return < -.03; production C.5 balanced logistic; same-label mature temperature stream",
+    "absolute_pgr6": "unbenchmarked PGR6M fractional split/DRIP return, not absolute-value magnitude; mature mean comparator",
+    "annual_excess": "x23/x18 post-policy November origin Dec1-nextFeb28/29 excess cash over past24M positive-payment median<=.25 / current originBVPS; unique annual events; positive-excess survivor",
+    "bvps_growth": "latest-filed reportBVPS at origin to exact reportmonth+12 BVPS; available on target filing; mature mean growth comparator",
+    "cash12": "next12M per origin-share cash vs past12M per origin-share cash",
+    "regression": "PGR-minus-benchmark h6/h12 total return: one raw share at last observed price bar on/before monthly origin; manual splits and fractional DRIP over (start_bar,end_bar]; end_bar last observed price on/before BME origin+h; label available at that BME. Weekly observation approximation, not exact daily month-end valuation."
+  },
+  "input_db": {
+    "git_commit": "ed7997f6f540f664e59dd44a4079616d74a8e8cb",
+    "relative_path": "data/pgr_financials.db",
+    "sha256": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6"
+  },
+  "input_files": [
+    {
+      "hash_basis": "git_source_lf",
+      "path": "AGENTS.md",
+      "sha256": "8d9a6f433100e89e1480425d008331217eebe068a12a5d4e1e5113f12967a77f"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "config/__init__.py",
+      "sha256": "d1818db4177ba81bdf0e776e3daccf3897273f5b7a0a7c7f2456ac3abc750119"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "config/api.py",
+      "sha256": "6bac1a25bb27ac051b5dd300f540e8bf8b1b10909190a87f13a518bb02d4d6bb"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "config/features.py",
+      "sha256": "7dac7fdf948f12110a616283a7254bbfa53af6e789c08eaf560ec304c3cc3120"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "config/model.py",
+      "sha256": "2a0627e39eb6385108f42f5edb4659f8b32186f77f2fdee23dfda34c25aaa213"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "config/paths.py",
+      "sha256": "a8c2d824d73a86a831132651c6db267fab6cf2f853e13490cae4498b143d162d"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "config/splits.py",
+      "sha256": "a287e9f03f99ff1a1e423b98764d48bcd98e1d74975ba5b40c4645e189fd84c3"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "config/tax.py",
+      "sha256": "e05721c20aedf8d2d2e713978204db301de06b60f8f251550891951868ad6a7c"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/history/results/V18_RESULTS_SUMMARY.md",
+      "sha256": "3c580fc9c4b4facfee4efc22b2b4b7516984a7bd596e0220be93313e9c2018b4"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/history/results/V20_RESULTS_SUMMARY.md",
+      "sha256": "db72ed71f2b8275e2cf929e981ba3cecf646fd043dbd9a0c69cc00e643c4df8c"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/history/results/V21_RESULTS_SUMMARY.md",
+      "sha256": "859ab33acfd980be2cc71d8c788ae932a4c9663b5a4550841b9823ec58ae7fc8"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/history/results/V22_RESULTS_SUMMARY.md",
+      "sha256": "0b1bceb0ee6b57c2f5514f5f0d32fdaf7244125bcdbc81451500cf3592424342"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/history/results/V23_RESULTS_SUMMARY.md",
+      "sha256": "07491c5da5e9ecdb3aba3c7b9efcb469b714c1955407ba941a279a1f5e875845"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/history/results/V24_RESULTS_SUMMARY.md",
+      "sha256": "27c3141f12c85d2bf238b998bacba9826ac3f71a4f02a3572b1747d96de35ce6"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/history/results/V25_RESULTS_SUMMARY.md",
+      "sha256": "cf33e08048131134d516f3908d319346537484e0d5ce4f8bdadeac075623a01e"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/history/results/V9_RESULTS_SUMMARY.md",
+      "sha256": "9549eb6782de897a366cd5154f77de7e6413d102f2a3759ccc8c87e6dbbae9f2"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/history/superpowers/plans/2026-04-10-v37-v60-results-summary.md",
+      "sha256": "b5eabbe83b93ac5402306567275d7422dc22fe4c695bc4f760038104fb26e1ea"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/history/superpowers/plans/2026-04-10-v66-v73-calibration-and-decision-layer.md",
+      "sha256": "7dffa3b502a4a8739a0b3cd3aff712653e36fecc369020ecc7413095cd349155"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/model-governance.md",
+      "sha256": "4efe216da69cdd3b7760cbff219f523ca0f542ba60f939fa213ef1a0fdd5a6e0"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/research/RERUN_PLAN_v200_codex.md",
+      "sha256": "4bea95d2a758a06d53133aefb1867057dd1acd8dd3a34d4306c14f3d1a19835a"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/reviews/2026-09-26_step13v_comparison.md",
+      "sha256": "a98c0707b3aeddd572a76e2c29ebbb26eaf4f6a01f667e49913b8efcfacd92a6"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/reviews/2026-09-28_R2_dividend_refresh_check.md",
+      "sha256": "afe3edbfe4005f2aa0e56072a1cfa8404806d51aa1e7bfc7b21f21433dc01cc7"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/reviews/R3_validation_closeout.md",
+      "sha256": "e31e5a9b4cef9e4d660a2bb54a4949952372c72417f68e4da3d8b1c2292078aa"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/reviews/R3b_baseline_closeout.md",
+      "sha256": "42b3c77f597f8202d46794bb951902385fe395de842fdeeaae691f2394d7a906"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/reviews/REPO_REVIEW_2026-09-25.md",
+      "sha256": "e6bc200514a55e4f06f2b10387e6c186e22eb2350825834e7dfdddacd659dfbe"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/reviews/VERIFICATION_2026-09-26.md",
+      "sha256": "603646451e0678f8d6c2d7024c593d0fb4b333d8fc211a206ac5adc6c60c45bb"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "docs/reviews/VERIFICATION_2026-09-26_claude.md",
+      "sha256": "0bc15309d2ca75d3e5b34ca8755fba6ab878bd40f89273b2178141c858141fd5"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "pyproject.toml",
+      "sha256": "e1fe8912db465177fbbd73ae58aa471e0976c1c9b22acbe0ec854bf722ceeec1"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "research/registry.yaml",
+      "sha256": "410cd237f7e0d32639db8bf9b8193a3e8ca6541e52aa2fd01fd6f962f0275806"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/access_ledger.json",
+      "sha256": "ec141113b2d82776255bad0e702a708862b2e17fa558bd861a9764a0a301d902"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/availability_ledger.csv",
+      "sha256": "7c412c5ce522a2d4c2fb5312e8c8f80db187dc6b7a81237359db865adb62deb5"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/bridge_table.csv",
+      "role": "accepted_v200_forecast_or_support",
+      "sha256": "2d822b32df7cfe3f2fe9c303a9918eeef3e4d9a8e7b2be2449863d1c6470ff67"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/candidate_ledger.json",
+      "sha256": "92dcf9543f81db129e52eb8555ef0031a04dfe3b31d62023109aed1f55c22093"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/comparison.json",
+      "role": "accepted_v200_forecast_or_support",
+      "sha256": "65c38cf2e5d9b2ce7354e2c1502ca639027071b4a01749e1ff55f330951d6e2b"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/control_predictions.csv",
+      "role": "accepted_v200_forecast_or_support",
+      "sha256": "4198eef62332cfa02ab59b8cf1b52328b66dc8cd547181751dc0949c4943830b"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/control_support.json",
+      "role": "accepted_v200_forecast_or_support",
+      "sha256": "ae4976bf9a28ea6a0dd257bbfdf7fd326e4449be42a10ee5df82c599d73679c7"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/dependency_environment.json",
+      "role": "complete runtime including transitive dependencies",
+      "sha256": "0cd4bf33c6dc2052cf31ed7dc300ed2fd7a5462c2db1660a429dfaa6ba30f298"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/development_features.csv",
+      "sha256": "8badaa58b240d9628bff5bcda2e9062cf41716255c9cd1f2d6ed18aa105f1268"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/development_targets.csv",
+      "sha256": "593a4fdc707e12834d2a0f2f49cd7f1eb5a0b337c71dffceb2b97085c6941256"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/fold_ledger.csv",
+      "role": "accepted_v200_forecast_or_support",
+      "sha256": "3f0a7200ff807bcfdacc3b2dc90e90c3143fba783fe6044fd7e2dc5df4d3528b"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/metrics.json",
+      "role": "accepted_v200_forecast_or_support",
+      "sha256": "5ffaed246c7c94250e8db27a1dadf8c0ffa2ae40bbc086938368293809a790ed"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/multiplicity.json",
+      "role": "accepted_v200_forecast_or_support",
+      "sha256": "373bd54b582ff27121178bc7a8f22114199602097f7e20561f71f0a1ef926dc5"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/partitions.json",
+      "sha256": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/path_b_fold_ledger.csv",
+      "role": "accepted_v200_forecast_or_support",
+      "sha256": "ee1a89b4929e0afe9debc3950701ba19724411791a82b379af23e47bda9e1d5a"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/path_b_predictions.csv",
+      "role": "accepted_v200_forecast_or_support",
+      "sha256": "30983ee2930ca9b91e804acb47845492b58293c04df298010b3e1c44664841f8"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/predictions.csv",
+      "role": "accepted_v200_forecast_or_support",
+      "sha256": "5b671c52dbdded0b6106b02f0942d20f484df4715a21830c19ccf01320a28270"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/preflight.json",
+      "sha256": "554b1c8175e9805ac2391d63177a71058d16a7913cf826226401a05280f71cfc"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/references/2026-09-25_step5_rebaseline_rows.csv",
+      "sha256": "ad7930f77f9e4dadb8ee75a15dd55c89ae753b64cbf089dadd00398834ff8edb"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/references/R3b_refreshed_replay_rows.csv",
+      "sha256": "110b54d3bc186a2bdfcd2853a95f915409eb9f32388cf54c5f400c04ff2cda93"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/references/v200_baseline_lock_before_ci.json",
+      "role": "previous_accepted_lock_before_typing_maintenance",
+      "sha256": "c4cb2aff16016107f8d2b4ac4db4e8e313f9ddfcc236ff32b6a09511259f64d0"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/reproducibility.json",
+      "role": "accepted_v200_forecast_or_support",
+      "sha256": "9640518d99c06fc43160c73f4261f2b80d4376196d28324c23036cb36eae0538"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/runtime_lock.json",
+      "sha256": "ed8a5eea976ce21c816beb3b305b3a1d6fde6c59ea87c261aedab7ee0304d1e9"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/source_availability_ledger.csv",
+      "sha256": "ac3724c5f38a207ce2249516d9822898eaf06f0fd53d00d20f28107efbb8520c"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/target_observation_windows.csv",
+      "role": "explicit approved-target raw observation dates",
+      "sha256": "e6f9c72212f1a3ef26db982e7e44670ae84597c3e6562de681e25265b20edb21"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/verification/ci_typing_equivalence.json",
+      "role": "typing_only_runtime_equivalence",
+      "sha256": "ad0d6a7b61d7e102b6d1ff93153ec04a7cc62296978ddae4ec316695aac8e0be"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/outputs/vwo_accepted_gap.csv",
+      "sha256": "cf45b1376d33599ec5976e5ad8e229b586786ad21187ce393b11a71049df90af"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "research/studies/v200_clean_baseline/run.py",
+      "sha256": "e64f1257f2961876e7009567d66863dff1267a59fb840d33d4d9a6e7591483b2"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/database/__init__.py",
+      "sha256": "25b0dc7fe58a03523b9ba38d0803d77e0c55adeaba2a000c1d7aba04e91b383b"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/database/db_client.py",
+      "sha256": "2b4665f98118e13734a9a5382c5436094ffa69a298907c9abab3ad8aa04de587"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/database/migration_runner.py",
+      "sha256": "6c6560921e7fb5a612bc65bd1bf82f39e7e418cfb3dfd0d0d0cb17984788be0b"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/database/migrations/004_investment_book_yield_percent.py",
+      "sha256": "96d41b0b6755acb0507eeabb061ff897549fe96ca91a6af450342abbb716f87a"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/database/migrations/005_fred_one_row_per_month.py",
+      "sha256": "c10a4d6aa4ad175551000c35ae065a9e9d56b26fa08dd19f1c5b8d69fbf9f4c6"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/blp.py",
+      "sha256": "e5e263d04864d5b85864996e28a09aef97f44dc7ce5a0ebc796b49e5dc030bd9"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/calibration.py",
+      "sha256": "49512ce3e785e8ea4b3722951b605fe1e49223aec42fa8dbb44d50d4721f4fdd"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/classification_gate_overlay.py",
+      "sha256": "5aadc4c71c90b33023a363881cb403bf637f69be30390b82d60cc7583aec22bd"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/classification_monitoring.py",
+      "sha256": "59489ab5182e850c217976a1cb133bb2cfedeec1b737b00b9f2e3a705ca9aaa0"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/classification_shadow.py",
+      "sha256": "1e1c57cedf9af5764a9dc563dd105848b000889f88f3c9200b3ced74c1fc686c"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/conformal.py",
+      "sha256": "ad4cac4bba0bd0c19d35730a05f20e64cbf64b4afcd6e917fb0b1c4485617721"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/consensus_shadow.py",
+      "sha256": "8f0103450ab4fc128d5280acc2effc6059b83622c948cc39461aab38dedfba13"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/drift_monitor.py",
+      "sha256": "ad7a814fd7b59a51431a5b0c4458833f04778aec31b4503260f3b7f5b375b82b"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/evaluation.py",
+      "sha256": "1472363ed24b1ad7d64dc883a63b8079bb40efdc4d2401600ca654f0930068c7"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/forecast_diagnostics.py",
+      "sha256": "3f92abb9723f9ff8487b7350025d935585b03ba734435a1f6f9cb318cb0e6a82"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/live_policy_backtest.py",
+      "sha256": "acec549e8a89e777bcd320c3e84bd523b1add8b6358388087ad0c98cda9c81ef"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/multi_benchmark_wfo.py",
+      "sha256": "33c6cd153355256d21db49a96f4e82c3c98ffe93d63219d3fd672553a2b49068"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/path_b_classifier.py",
+      "sha256": "c15f82d009ee1f5937e21a16590f428e48e9509f88a5e361979ed4eb534415ff"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/policy_metrics.py",
+      "sha256": "2444822426d7ae2e61ce8189913b6e6964af4c0716e4e75a9d70eb5ac3f2a080"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/prequential.py",
+      "sha256": "437ba159242b72bf976b301c4f6cf145ca36bffefed9307b4092dce41c60d863"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/regularized_models.py",
+      "sha256": "561b44e3b1ae0deb58b559cc895ea3a1c39199005b069f437655787b9acafe7a"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/retrain_trigger.py",
+      "sha256": "440d4e306af90be16aa44c35475c852e186edc0f3368fe8b66a3fdd2b0ce947c"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/robust_inference.py",
+      "sha256": "52733f4dfe387ab5534cb24aee211638a30611eec59aeba40daa3ac08acaf04c"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/v129_feature_map.py",
+      "sha256": "632945749d0cb1412b79ec35f2b39bcb02c57f5f906e44e976c15305a76546a7"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/models/wfo_engine.py",
+      "sha256": "584c6bdcf86b5f2cb454f44906e4f9292a7bdd1e65fb7000cfb05b4064878236"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/pgr_vds/decision/__init__.py",
+      "sha256": "bde0562d0b24bc98123e4248226f8abb92b2e11533f60770ae5018add0beed1c"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/pgr_vds/decision/artifacts.py",
+      "sha256": "294ff3b1afc19a745f7572a7b08241d4e5a456b0c64e8e9c27a93a1dd0b8f782"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/pgr_vds/decision/diagnostic_report.py",
+      "sha256": "1bcb75a30851d4b5932de2b757e2e1aee5e66224299843f18407fc61ca7337c4"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/pgr_vds/decision/health.py",
+      "sha256": "bd17f31b70beb8bb9267cee67a8c4fb8002e1c3ed075cf0f41b7f0318393873c"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/pgr_vds/decision/pipeline.py",
+      "sha256": "0ca78462b6f1f7416653f9a69632ced4d27fe40adb7180a130ac7c53eee3875e"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/pgr_vds/decision/portfolio.py",
+      "sha256": "067140a517094e7a51a15f93668017ba3281f7f106184ff90abc09f00f89cad9"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/pgr_vds/decision/recommendation_report.py",
+      "sha256": "eafb65542454ac689c8e40fe9435f9fb4a8cad1bafcb53bd87ad27aac83c60a7"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/pgr_vds/decision/refresh.py",
+      "sha256": "2477fb6f6d013566308635e5de0d4976446e9a0f29773959abad44b45a4fca52"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/pgr_vds/decision/rendering.py",
+      "sha256": "b87e630ccc6d829f9b841ae8df4bf5cb3ea846a49e5d000686b2aba72fc8b741"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/pgr_vds/decision/schedule.py",
+      "sha256": "e0a21502eae2694fc49e8b425471255ca4e4314d80d9d1f6417d12d10847598b"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/pgr_vds/decision/signal_generation.py",
+      "sha256": "6446db6083d9ee6336903ce9ba01bb4eb29f80ad4be9b95c105909a4262f9018"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/pgr_vds/decision/tax_lots.py",
+      "sha256": "3f179e45dcc4c6890ff60d693d76cc202966859698af9b2a2b758617ded2eb84"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "src/pgr_vds/research_lib/__init__.py",
+      "sha256": "0415099908194f0eee67f2e979dd79d9b62192c4cb72d9bc1acba84c30be7636"
+    },
+    {
+      "execution_code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
+      "execution_sha256": "5dce75d0211e7027decb619390246252f0b7f04b1463089bf693d941f6641ad1",
+      "hash_basis": "exact_bytes",
+      "maintenance_source_commit": "10533068f92e65d66f3beffcc4a257b400bbc705",
+      "path": "src/pgr_vds/research_lib/adapters.py",
+      "sha256": "e5288b3965a6e300688920d0f9c11ff5cf2155d50a293be76dc26c4aa0217983"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "src/pgr_vds/research_lib/baseline.py",
+      "sha256": "3d82f8c8be2a27ab4e0dac6f4216755197639b39e160f0a8ba73a021532a54ac"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "src/pgr_vds/research_lib/controls.py",
+      "sha256": "6b4c3bd936d3b69d290855bf701891335fbdc9095588e71299b571b42d8a5cdc"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "src/pgr_vds/research_lib/metrics.py",
+      "sha256": "a0b566f57e25ba734c73ab3aa5b1b59890c8712aa1c1d5833050c8bed455d2c1"
+    },
+    {
+      "execution_code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
+      "execution_sha256": "76f88735c911be10339dd4c065cccad5c1dcbf7866234e6e917a88dac1e5f75c",
+      "hash_basis": "exact_bytes",
+      "maintenance_source_commit": "10533068f92e65d66f3beffcc4a257b400bbc705",
+      "path": "src/pgr_vds/research_lib/provenance.py",
+      "sha256": "9269e75e0151ce8b87077c801a34ccc8328ee9c750c4d7ca01e5953dd9bd0a5e"
+    },
+    {
+      "hash_basis": "exact_bytes",
+      "path": "src/pgr_vds/research_lib/temporal.py",
+      "sha256": "5d7de5d706c6616e00e413876d91676755e24ef80918f6322cb2a6999c97d2f5"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/processing/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/processing/corporate_actions.py",
+      "sha256": "6b2fd978eec5c0dc4b2f7c5ebcd86a8fd035ad28bcfb4051c5b3fa9bfec4852e"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/processing/feature_engineering.py",
+      "sha256": "7349d88d88acc24a685538197ceb3d4037c57d8fedd958ed099d10a57af5d7cc"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/processing/multi_total_return.py",
+      "sha256": "4ecca7882470c7fcb7e296bca7bf3bae408cfc849158763ea9947a6718e957cd"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/processing/pgr_edgar_derived.py",
+      "sha256": "88af3f0c566133c3b5ec56171659cc2d7e7a0565fe65bcccd7d930697eb9c701"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/processing/pgr_edgar_validation.py",
+      "sha256": "7ff16eb9dd5af95d3b29ddf311afcce5a9a53823a20bf604c846ff53eb776313"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/processing/price_adjustment.py",
+      "sha256": "cb890aa046981898763c3de1b85b88ea8b351347a75d0ba205df88aee53f8f21"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/processing/price_integrity.py",
+      "sha256": "d44073b4e54fb6725c5cec4dcb94270677c4c750c5000f32b191d1d3ff7774fd"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/processing/total_return.py",
+      "sha256": "74b7052f0108eee6e0ac5b5ae8f75665257175b46f6b3d4177832b57f6f4a8cb"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/processing/valuation_multiples.py",
+      "sha256": "4b1bcc2303b5af5e01b85c41b4ee27318aec4f4e42f35bce040283a3bf39560f"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/reporting/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/reporting/backtest_report.py",
+      "sha256": "2c750cb1cc95e58941ac70bbd1a48423710a1af84a803f188864079e1c89bd69"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/reporting/capital_return_data.py",
+      "sha256": "ad8d39218f58697c9f04a1d001f86a624f8c7544c5e852e997c03c165d4769f5"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/reporting/classification_artifacts.py",
+      "sha256": "61a621dfffa0577a0a9697c74ab3262ea371d3d89b3f8e3c10e86cbf2514b5f8"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/reporting/confidence.py",
+      "sha256": "aba02de2259e63b0b6433c63da778d1818e41a1dda4da4d519f5b7a1752b5296"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/reporting/cross_check.py",
+      "sha256": "202144ed172ee92b7479f21e17346b676c5350b4934415a5ede81ec07eadfeac"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/reporting/dashboard_snapshot.py",
+      "sha256": "d3fec6763f653fe314b52a136ef37c8c9f544de090fcf8776fbc3b80b36e8015"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/reporting/decision_rendering.py",
+      "sha256": "9bc67ae5563bca0fafeb824f686050413f1a0285a3ba8305ccea75dfd8e8c48f"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/reporting/email_sender.py",
+      "sha256": "2a6f60f4fcd6617c0cf991858912efe23f5f1ae26bd54837950c77a598e1116a"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/reporting/monthly_summary.py",
+      "sha256": "43feec92d4e8eab6331c1a5ce2b12f8d912427394fecbd2650220e79b9e09b84"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/reporting/run_manifest.py",
+      "sha256": "72a37619d32c36d0cd1275bde80fc99a1fecbc7ce0a7e767fa566d8b4cd06997"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/reporting/shadow_followon.py",
+      "sha256": "fd79f791950429da98d96bc7ad38c3a6ec18b7172eede2cec6b045142a83c914"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/reporting/snapshot_summary.py",
+      "sha256": "8043dc2676272e417e0ecc3c0b60e8cac110d273c7f7df0d210546afaa369bcf"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/research/v37_utils.py",
+      "sha256": "061adb527336c047d3311c65628b220355e8a7dee1ba53aab33d75d1678113f6"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/research/x18_dividend_policy_regime.py",
+      "sha256": "31f0effed9b6a80b95dc4d7a0ca9d8ae5992cdf20fc30e3fb1f21c099b6ba9af"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/research/x1_targets.py",
+      "sha256": "3948021c43b7fb800ad8b6a64d2c3fb44993f328c72485d0cb2048e37e29c639"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/research/x21_dividend_target_scales.py",
+      "sha256": "fce88ea05062969fc7b76942446fcb37701e25be94daabd4d2b9f52de7d0b972"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/research/x22_dividend_size_baselines.py",
+      "sha256": "2b0271a2756a184581b4d9833176fe4f24d596c33f079928aaf42d29f586d18d"
+    },
+    {
+      "hash_basis": "git_source_lf",
+      "path": "src/research/x23_dividend_lane_package.py",
+      "sha256": "82df03653fa10db678902d851e269deeb6a4a03cf53d664dc630f39239c4f91d"
+    }
+  ],
+  "parent_seed": {
+    "db_sha256": "7c68efbd90ef5c10a12e05dc2a9e03402e353a06219fd2db129d711754c1c35d",
+    "git_commit": "aae0be883309bdc068ee9afbb78b0aa9a4b52b8d"
+  },
+  "partition_ledger_sha256": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed",
+  "preregistered_lock_sha256": "17fe0b728c584df4f35f62339ce1ac6696f200c5469731adbec24f9f96388293",
+  "reference_sources": [
+    {
+      "copy_path": "research/studies/v200_clean_baseline/outputs/references/R3b_refreshed_replay_rows.csv",
+      "git_commit": "e4500daa92adf839415cd5aca25c8e3d8274bb33",
+      "original_path": "docs/reviews/R3b_refreshed_replay_rows.csv",
+      "sha256": "110b54d3bc186a2bdfcd2853a95f915409eb9f32388cf54c5f400c04ff2cda93",
+      "use": "provisional citation only; never fitted"
+    },
+    {
+      "copy_path": "research/studies/v200_clean_baseline/outputs/references/2026-09-25_step5_rebaseline_rows.csv",
+      "git_commit": "e4500daa92adf839415cd5aca25c8e3d8274bb33",
+      "original_path": "docs/reviews/2026-09-25_step5_rebaseline_rows.csv",
+      "sha256": "ad7930f77f9e4dadb8ee75a15dd55c89ae753b64cbf089dadd00398834ff8edb",
+      "use": "provisional citation only; never fitted"
+    }
+  ],
+  "repairs": [
+    {
+      "commit": "ed7997f6f540f664e59dd44a4079616d74a8e8cb",
+      "id": "R2-lite",
+      "rebuild_id": "Weekly Data Accumulation run36410317252",
+      "record": "docs/reviews/2026-09-28_R2_dividend_refresh_check.md",
+      "review_pr": 144
+    },
+    {
+      "commit": "c3b4798b90a43f9dbd616981861e9ff01fa2de72",
+      "id": "R3b",
+      "record": "docs/reviews/R3b_baseline_closeout.md",
+      "review_pr": 145
+    }
+  ],
+  "research_execution_code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
+  "runtime_lock_sha256": "ed8a5eea976ce21c816beb3b305b3a1d6fde6c59ea87c261aedab7ee0304d1e9",
+  "schema_migrations": [
+    {
+      "applied_at": "2026-04-04T03:34:13.633548+00:00",
+      "migration_id": "001_initial"
+    },
+    {
+      "applied_at": "2026-04-10T22:45:43.612438+00:00",
+      "migration_id": "002_model_performance_log"
+    },
+    {
+      "applied_at": "2026-04-10T22:45:43.613517+00:00",
+      "migration_id": "003_model_retrain_log"
+    },
+    {
+      "applied_at": "2026-09-25T11:38:50.574755+00:00",
+      "migration_id": "004_investment_book_yield_percent"
+    },
+    {
+      "applied_at": "2026-09-25T14:43:21.367122+00:00",
+      "migration_id": "005_fred_one_row_per_month"
+    },
+    {
+      "applied_at": "2026-09-25T16:27:11.926943+00:00",
+      "migration_id": "006_pgr_edgar_monthly_raw"
+    },
+    {
+      "applied_at": "2026-09-25T16:27:11.930045+00:00",
+      "migration_id": "007_pgr_fundamentals_quarterly_rebuild"
+    },
+    {
+      "applied_at": "2026-09-26T01:23:39.730555+00:00",
+      "migration_id": "008_model_performance_log_metrics_version"
+    }
+  ],
+  "schema_version": 1,
+  "source_typing_maintenance": {
+    "adapter_provenance_pytest_exit": 0,
+    "adapter_provenance_pytest_summary": "37 passed in 2.81s",
+    "additional_fits": 0,
+    "ci_failures": [
+      "https://github.com/jhester599/pgr-vesting-decision-support/actions/runs/36499140069/job/109185649669",
+      "https://github.com/jhester599/pgr-vesting-decision-support/actions/runs/36499144234/job/109185608273"
+    ],
+    "dependency_changes": 0,
+    "equivalence_proof_path": "research/studies/v200_clean_baseline/outputs/verification/ci_typing_equivalence.json",
+    "equivalence_proof_sha256": "ad0d6a7b61d7e102b6d1ff93153ec04a7cc62296978ddae4ec316695aac8e0be",
+    "execution_code_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
+    "forecast_changes": 0,
+    "id": "CI_TYPING_MAINTENANCE",
+    "input_file_interpretation": "Current installed source SHA pins include the type repair; execution_sha256 and the original full execution commit retain the fitted bytes. Other input pins are unchanged.",
+    "local_mypy_command": "python -m mypy --python-version 3.12 --follow-imports=silent src/pgr_vds cli",
+    "local_mypy_exit": 0,
+    "local_mypy_summary": "Success: no issues found in 28 source files",
+    "local_runtime_note": "The immutable fitting environment has Python3.12 and NumPy2.5.3 stubs using 3.12 type statements. Configured3.11 parsing stopped before source checking. The explicit3.12 target reproduced all six CI errors plus an inferred NumPy alpha type; green followed. CI retains its unchanged3.11 command. No package was installed or upgraded.",
+    "maintenance_source_commit": "10533068f92e65d66f3beffcc4a257b400bbc705",
+    "previous_accepted_lock_copy": "research/studies/v200_clean_baseline/outputs/references/v200_baseline_lock_before_ci.json",
+    "previous_accepted_lock_git_commit": "d5e9cb6ecb5f9bc28c7d378d29ff590d97a47187",
+    "previous_accepted_lock_sha256": "c4cb2aff16016107f8d2b4ac4db4e8e313f9ddfcc236ff32b6a09511259f64d0",
+    "quarantine_metric_accesses": 0,
+    "scope": "Typing-only annotations/imports/overload stubs; normalized runtime ASTs match execution sources. Native SQLite parameter/factory validation and every calculation remain unchanged."
+  },
+  "status": "clean",
+  "tracked_db_sha256_before": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6"
+}

@@ -90,6 +90,37 @@ def trend_features(ratio: pd.Series) -> pd.DataFrame:
     )
 
 
+def relative_trends(
+    pgr: pd.Series,
+    voo: pd.Series,
+    splits: dict[str, pd.Series],
+    origins: pd.DatetimeIndex,
+) -> pd.DataFrame:
+    """Apply each asset's past splits before forming monthly price ratios.
+
+    Only closes at or before the final origin are consumed. Empty monthly
+    endpoints remain missing rather than borrowing a prior observation.
+    Return targets are separate, pinned v200 fractional-share DRIP labels.
+    """
+    monthly_index(origins)
+    monthly: dict[str, pd.Series] = {}
+    for ticker, close in (("PGR", pgr), ("VOO", voo)):
+        raw = close.loc[close.index <= origins.max()].sort_index().copy()
+        # Reuse the independently tested raw weekly-bar validation.
+        price_features(raw, splits[ticker], origins)
+        for date, ratio in splits[ticker].sort_index().items():
+            if date <= origins.max():
+                raw.loc[raw.index >= date] *= float(ratio)
+        monthly[ticker] = (
+            raw.resample("BME")
+            .last(
+                skipna=False,
+            )
+            .reindex(origins)
+        )
+    return trend_features(monthly["PGR"] / monthly["VOO"])
+
+
 def available_macro(
     raw: pd.DataFrame,
     origins: pd.DatetimeIndex,

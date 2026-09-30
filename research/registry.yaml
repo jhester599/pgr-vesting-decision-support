@@ -24,7 +24,7 @@ studies:
     status: closed
     promoted_to: null
     closeout: research/studies/v201_price_macro/README.md
-    notes: "BLOCKED before fitting: v200's verifier pins the pre-v201 registry bytes. Six declared blueprints remain unscored; exact lock preserved; no quarantine metrics."
+    notes: "Attempt 1 blocked before fitting; preserved verbatim. Authorized attempt 2 uses historical registry verification and the same six candidates, campaign slots 1-6; exact v200 lock and data preserved. Development only; results and disposition in closeout."
   - id: v200
     slug: clean_baseline
     date: "2026-09-28"

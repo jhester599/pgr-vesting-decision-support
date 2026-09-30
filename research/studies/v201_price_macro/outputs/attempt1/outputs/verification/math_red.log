@@ -1,0 +1,130 @@
+FFFFFFF                                                                  [100%]
+================================== FAILURES ===================================
+_________ test_split_continuity_calendar_momentum_and_future_actions __________
+tests\research\test_v201_price_macro.py:20: in test_split_continuity_calendar_momentum_and_future_actions
+    result = library().price_features(raw, splits, origins)
+             ^^^^^^^^^
+tests\research\test_v201_price_macro.py:11: in library
+    return import_module("pgr_vds.research_lib.price_macro")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib.price_macro'
+______________ test_weekly_volatility_and_high_have_known_scale _______________
+tests\research\test_v201_price_macro.py:37: in test_weekly_volatility_and_high_have_known_scale
+    result = library().price_features(raw, splits, origin).iloc[0]
+             ^^^^^^^^^
+tests\research\test_v201_price_macro.py:11: in library
+    return import_module("pgr_vds.research_lib.price_macro")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib.price_macro'
+_________________ test_monthly_trend_flat_and_monotone_ratio __________________
+tests\research\test_v201_price_macro.py:48: in test_monthly_trend_flat_and_monotone_ratio
+    result = library().trend_features(rising)
+             ^^^^^^^^^
+tests\research\test_v201_price_macro.py:11: in library
+    return import_module("pgr_vds.research_lib.price_macro")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib.price_macro'
+________ test_one_calendar_lag_missing_period_and_duplicate_rejection _________
+tests\research\test_v201_price_macro.py:65: in test_one_calendar_lag_missing_period_and_duplicate_rejection
+    values, ledger = library().available_macro(raw, origins, {"VIXCLS": 1})
+                     ^^^^^^^^^
+tests\research\test_v201_price_macro.py:11: in library
+    return import_module("pgr_vds.research_lib.price_macro")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib.price_macro'
+________________ test_macro_differences_gap_and_future_values _________________
+tests\research\test_v201_price_macro.py:87: in test_macro_differences_gap_and_future_values
+    output = library().macro_features(frame)
+             ^^^^^^^^^
+tests\research\test_v201_price_macro.py:11: in library
+    return import_module("pgr_vds.research_lib.price_macro")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib.price_macro'
+__________ test_paired_date_blocks_known_improvement_and_replication __________
+tests\research\test_v201_price_macro.py:103: in test_paired_date_blocks_known_improvement_and_replication
+    output = library().paired_comparison(control, candidate, 6)
+             ^^^^^^^^^
+tests\research\test_v201_price_macro.py:11: in library
+    return import_module("pgr_vds.research_lib.price_macro")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib.price_macro'
+_______________________ test_calendar_gaps_remain_gaps ________________________
+tests\research\test_v201_price_macro.py:117: in test_calendar_gaps_remain_gaps
+    library().trend_features(pd.Series([1, 2, 3, 4], dates))
+    ^^^^^^^^^
+tests\research\test_v201_price_macro.py:11: in library
+    return import_module("pgr_vds.research_lib.price_macro")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'pgr_vds.research_lib.price_macro'
+=========================== short test summary info ===========================
+FAILED tests/research/test_v201_price_macro.py::test_split_continuity_calendar_momentum_and_future_actions
+FAILED tests/research/test_v201_price_macro.py::test_weekly_volatility_and_high_have_known_scale
+FAILED tests/research/test_v201_price_macro.py::test_monthly_trend_flat_and_monotone_ratio
+FAILED tests/research/test_v201_price_macro.py::test_one_calendar_lag_missing_period_and_duplicate_rejection
+FAILED tests/research/test_v201_price_macro.py::test_macro_differences_gap_and_future_values
+FAILED tests/research/test_v201_price_macro.py::test_paired_date_blocks_known_improvement_and_replication
+FAILED tests/research/test_v201_price_macro.py::test_calendar_gaps_remain_gaps
+7 failed in 0.56s

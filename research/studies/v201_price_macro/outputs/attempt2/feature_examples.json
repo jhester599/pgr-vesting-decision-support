@@ -1,0 +1,26 @@
+[
+  {
+    "archived_column": "mom_12m",
+    "archived_v200": 0.32236105930622916,
+    "comparison_role": "matched recipe example; archived v200 already repaired the original window/publication defect",
+    "corrected": 0.32236105930622894,
+    "corrected_column": "pm_mom12",
+    "date": "2023-02-28"
+  },
+  {
+    "archived_column": "vix",
+    "archived_v200": 53.54,
+    "comparison_role": "matched recipe example; archived v200 already repaired the original window/publication defect",
+    "corrected": 53.54,
+    "corrected_column": "pm_vix",
+    "date": "2020-04-30"
+  },
+  {
+    "archived_column": "rate_adequacy_gap_yoy",
+    "archived_v200": 0.1385031514319247,
+    "comparison_role": "matched recipe example; archived v200 already repaired the original window/publication defect",
+    "corrected": 0.1385031514319247,
+    "corrected_column": "pm_rate_gap",
+    "date": "2023-02-28"
+  }
+]

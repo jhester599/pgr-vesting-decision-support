@@ -1,0 +1,9 @@
+{
+  "attempt": 2,
+  "baseline_partition_sha256": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed",
+  "development_boundary": "2023-09-29",
+  "features_max_origin": "2023-08-31 00:00:00",
+  "quarantine_access": "v207 only; labels consumed from pinned development CSV",
+  "quarantine_metrics": 0,
+  "quarantine_target_rows_loaded": 0
+}

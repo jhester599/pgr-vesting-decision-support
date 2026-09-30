@@ -1,0 +1,27 @@
+{
+  "april2020_vix": {
+    "finding": "F06",
+    "legacy_stored_value": 53.54,
+    "legacy_value_role": "March close stored under April; then lagged again",
+    "period": "2020-04",
+    "repaired_raw_april_value": 34.15,
+    "single_lag_feature_at_april_origin": 53.54
+  },
+  "mom12": {
+    "archived_report_value_rounded": -0.8,
+    "finding": "F01",
+    "legacy_rule": "252 raw weekly rows, contaminated by split",
+    "origin": "2006-05-31",
+    "repaired_calendar_value": 0.1400377913079991
+  },
+  "rate_gap": {
+    "archived_reason": "Insurance PPI stale after February 2026; live gap missing. Documentary report only, no quarantine query.",
+    "archived_report_origin": "2026-04",
+    "archived_report_value": null,
+    "development_origin": "2023-02-28",
+    "finding": "F07",
+    "repaired_value": 0.1385031514319247
+  },
+  "role": "documentary archived findings, not rerun forecasts",
+  "source": "docs/reviews/REPO_REVIEW_2026-09-25.md"
+}

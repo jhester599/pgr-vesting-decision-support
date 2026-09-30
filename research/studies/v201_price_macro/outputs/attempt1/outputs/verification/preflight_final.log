@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "C:\Users\Jeff\.codex\worktrees\e7c0\pgr-vesting-decision-support\research\studies\v201_price_macro\run.py", line 183, in <module>
+    main()
+  File "C:\Users\Jeff\.codex\worktrees\e7c0\pgr-vesting-decision-support\research\studies\v201_price_macro\run.py", line 178, in main
+    preflight(output, args.scratch)
+  File "C:\Users\Jeff\.codex\worktrees\e7c0\pgr-vesting-decision-support\research\studies\v201_price_macro\run.py", line 112, in preflight
+    lock = verify_baseline_lock(lock_path)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Jeff\.codex\worktrees\e7c0\pgr-vesting-decision-support\src\pgr_vds\research_lib\provenance.py", line 287, in verify_baseline_lock
+    raise ValueError(
+ValueError: SHA256 mismatch for source text: research/registry.yaml

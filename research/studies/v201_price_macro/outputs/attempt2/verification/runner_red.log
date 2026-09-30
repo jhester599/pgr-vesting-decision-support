@@ -1,0 +1,22 @@
+FFF                                                                      [100%]
+================================== FAILURES ===================================
+____________ test_catalog_preserves_six_slots_and_production_grids ____________
+tests\research\test_v201_continuation_runner.py:24: in test_catalog_preserves_six_slots_and_production_grids
+    catalog = module.procedure()
+              ^^^^^^^^^^^^^^^^
+E   AttributeError: module 'v201_attempt2' has no attribute 'procedure'
+_________ test_matched_support_checks_answers_naive_and_target_dates __________
+tests\research\test_v201_continuation_runner.py:43: in test_matched_support_checks_answers_naive_and_target_dates
+    module.verify_matched_support(frame, frame.copy())
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'v201_attempt2' has no attribute 'verify_matched_support'
+____ test_outer_label_end_check_rejects_late_ends_even_if_available_early _____
+tests\research\test_v201_continuation_runner.py:69: in test_outer_label_end_check_rejects_late_ends_even_if_available_early
+    module.verify_label_ends(targets, ledger)
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'v201_attempt2' has no attribute 'verify_label_ends'
+=========================== short test summary info ===========================
+FAILED tests/research/test_v201_continuation_runner.py::test_catalog_preserves_six_slots_and_production_grids
+FAILED tests/research/test_v201_continuation_runner.py::test_matched_support_checks_answers_naive_and_target_dates
+FAILED tests/research/test_v201_continuation_runner.py::test_outer_label_end_check_rejects_late_ends_even_if_available_early
+3 failed in 0.42s

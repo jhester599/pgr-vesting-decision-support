@@ -1,0 +1,85 @@
+{
+  "attempt1": "blocked; zero fits; archived exact bytes",
+  "attempt2": [
+    {
+      "stage": "baseline preflight",
+      "result": "passed exact D7 inputs, clean lock, historical registry and full v200 manifest",
+      "fits": 0
+    },
+    {
+      "stage": "math/snapshot red",
+      "result": "1 failed, 7 errors: absent relative adapter/new snapshot module",
+      "fits": 0
+    },
+    {
+      "stage": "runner red",
+      "result": "3 failed: absent orchestration checks",
+      "fits": 0
+    },
+    {
+      "stage": "disposition red",
+      "result": "2 failed: absent disposition module",
+      "fits": 0
+    },
+    {
+      "stage": "focused green",
+      "result": "24 passed, exit 0",
+      "fits": 0
+    },
+    {
+      "stage": "preparation",
+      "result": "repeated pre-fit freezing while implementing/reviewing, no forecasts; all six recipes/lags/grids unchanged",
+      "fits": 0
+    },
+    {
+      "stage": "review",
+      "commits": [
+        "925820734875f4e148cceb44081ce2865472aaa7",
+        "acc3ce98357af4d4a997daac5426537d19cfd3a0"
+      ],
+      "result": "no blockers; example labels clarified; explicit conservative safeguards frozen before fitting"
+    },
+    {
+      "stage": "execution",
+      "commit": "acc3ce98357af4d4a997daac5426537d19cfd3a0",
+      "exit_code": 0,
+      "procedures": 12,
+      "registered_candidates": 6,
+      "horizons": [
+        6,
+        12
+      ],
+      "result": "all matched support/folds/naive; no finalist",
+      "metric_driven_retries": 0
+    },
+    {
+      "stage": "full verification",
+      "command": "python -m pytest -o addopts=\"--tb=short\" -q",
+      "summary": "2704 passed, 1 skipped, 2 xfailed, 133 warnings in 331.54s (0:05:31)",
+      "exit_code": 0,
+      "inherited_pytest_failures": "none",
+      "db_unchanged": true,
+      "fits": 0
+    }
+  ],
+  "discarded_fitted_comparisons": [],
+  "additional_searches": 0,
+  "verification_probes": [
+    {
+      "probe": "DB schema file path",
+      "result": "first filename guessed incorrectly; FileNotFoundError before any query, corrected to the exported file"
+    },
+    {
+      "probe": "mypy -p pgr_vds",
+      "result": "package path invocation unsupported in this environment"
+    },
+    {
+      "probe": "unscoped mypy source tree",
+      "result": "22 errors in 6 files, including new YAML import without stubs and unchanged imported modules; YAML boundary corrected, repository scoped command passes on 32 files"
+    },
+    {
+      "probe": "archived whitespace check",
+      "result": "raw original failed-test logs include trailing whitespace; archive-only attribute added to preserve exact evidence bytes"
+    }
+  ]
+}

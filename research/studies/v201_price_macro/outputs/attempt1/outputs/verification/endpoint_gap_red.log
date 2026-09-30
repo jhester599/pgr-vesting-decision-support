@@ -1,0 +1,12 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+__________ test_invalid_final_week_cannot_reuse_earlier_month_value ___________
+tests\research\test_v201_price_macro.py:159: in test_invalid_final_week_cannot_reuse_earlier_month_value
+    assert np.isnan(result.iloc[-1].pm_vol13w)
+E   AssertionError: assert np.False_
+E    +  where np.False_ = <ufunc 'isnan'>(np.float64(0.0012498371237185933))
+E    +    where <ufunc 'isnan'> = np.isnan
+E    +    and   np.float64(0.0012498371237185933) = pm_mom3       0.082192\npm_mom6       0.187970\npm_mom12      0.476636\npm_vol13w     0.001250\npm_high52w    0.000000\nName: 2001-02-28 00:00:00, dtype: float64.pm_vol13w
+=========================== short test summary info ===========================
+FAILED tests/research/test_v201_price_macro.py::test_invalid_final_week_cannot_reuse_earlier_month_value
+1 failed in 0.41s
