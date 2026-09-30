@@ -97,3 +97,34 @@ def test_outer_label_end_check_rejects_late_ends_even_if_available_early() -> (
     )
     with pytest.raises(ValueError, match="label end"):
         module.verify_label_ends(targets, ledger)
+
+
+def test_preregistered_inputs_are_unchanged_up_to_line_endings() -> None:
+    """Every input pinned before fitting still has the registered content.
+
+    Attempt 2 was prepared on Windows, so 27 plain-text inputs were hashed
+    with CRLF bytes while Git checks them out with LF elsewhere. Only line
+    endings may differ, and only for text; CSV inputs must match exactly.
+    Reproducing ``--execute`` needs a ``core.autocrlf=true`` checkout (see
+    the study README), because ``run.py`` itself is preregistered.
+    """
+    import hashlib
+    import json
+
+    root = Path(__file__).resolve().parents[2]
+    registered = json.loads(
+        (
+            root / "research/studies/v201_price_macro/outputs/attempt2/"
+            "registered.json"
+        ).read_text(encoding="utf-8")
+    )
+    changed = []
+    for relative, digest in registered["input_sha256"].items():
+        data = (root / relative).read_bytes()
+        forms = {data}
+        if Path(relative).suffix != ".csv":
+            lf = data.replace(b"\r\n", b"\n")
+            forms |= {lf, lf.replace(b"\n", b"\r\n")}
+        if digest not in {hashlib.sha256(form).hexdigest() for form in forms}:
+            changed.append(relative)
+    assert changed == []
