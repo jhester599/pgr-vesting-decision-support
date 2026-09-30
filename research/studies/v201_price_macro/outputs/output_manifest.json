@@ -3,7 +3,7 @@
   "sha256": {
     "CONTINUATION_PLAN.md": "41bc489af07d03f21b86f3334944b498d97ddd648f4cba5cf023652e9fef80ca",
     "PLAN.md": "892e65497cd6e20ee7b978014aa1e56272ef1da631d29c971c6c67efe56f143f",
-    "README.md": "b3284139eb084df17a571ea6ba679d80f183786eb5a7c9b9fdf3e78c03e791f3",
+    "README.md": "76dc62d555c02fd838dcc937b97740812eee78ee95debf3857d7921cf7e682d3",
     "README_TEMPLATE.md": "2eb59afdc9ac5784680ba014639bcc61aa24327b79e8014644cb73854c8e4163",
     "finalize.py": "253e353e9e9fa65a1173640f4b400ec87e427f367718a344ea9e243c33debefd",
     "outputs/README.md": "a4e32cd1d648d7d1df4266ebad98f6402a354b57f1f4b19aed89b5d6cf06b313",
@@ -90,6 +90,8 @@
     "outputs/attempt2/verification/focused_final.log": "f66334bce60032b4da3f07595b1efbf38dd12a563671ada5cc9c58e5fd692758",
     "outputs/attempt2/verification/full_pytest.log": "2e17978440372fd728e13dbfe1fe5d7873fae8e88c520c90ef5106fcd39e2026",
     "outputs/attempt2/verification/full_pytest_exit.json": "f25f2c870383d036e1433585d6482e1894f5589baeab85384ea95490fbba9d5a",
+    "outputs/attempt2/verification/linux_reproduction.json": "3887b84702ba8d500af979b55383263981bfb70d534f8d5980ba14f2edecc116",
+    "outputs/attempt2/verification/linux_reproduction_harness.py": "689a36bbf40612496d03f7f4c49b3db883383f3bf4f4a8a948729efa61ed221d",
     "outputs/attempt2/verification/math_green.log": "9ac1b20312d1ffb65c6ee165eef7d828e4a97dff2382f014d498bfb9d3d53a45",
     "outputs/attempt2/verification/math_red.log": "20ec1ba9b0ae69ec59c4df1560b7801f7d710e37bbf755dbb8b5460c1c6bdb93",
     "outputs/attempt2/verification/mypy.log": "3a5d3d1ae9e7079eafd3a470abe58d4f48e2f2945c2ba4ec5e79754058f72b20",

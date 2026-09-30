@@ -1,0 +1,35 @@
+{
+  "date": "2026-09-30",
+  "purpose": "Independent cross-platform reproduction of attempt 2 (Claude review of PR #151); no refit is accepted as a replacement result.",
+  "code": "PR head d02fdaebd94cea621db78fb02881471e44cf272b; run.py and research_lib identical to execution commit acc3ce98357af4d4a997daac5426537d19cfd3a0",
+  "runtime": {
+    "python": "3.12.14 (CPython, built from python.org source)",
+    "packages": "exact v200 runtime_lock.json versions",
+    "platform": "Linux-6.18.44-fc-v50-x86_64-with-glibc2.39"
+  },
+  "blockers_on_linux": [
+    {
+      "gate": "require_register",
+      "cause": "27 plain-text inputs were registered with Windows CRLF bytes; a default Linux checkout has LF",
+      "red": "plain checkout: ValueError('Preregistered input changed: AGENTS.md'), exit 1, before fitting",
+      "workaround": "check out with core.autocrlf=true; run.py, research_lib and data artifacts are -text and keep exact bytes"
+    },
+    {
+      "gate": "execute procedure check",
+      "cause": "np.logspace(-4, 4, 50) differs from the registered Windows grid in 3 of 50 values, by 1 ULP each",
+      "red": "autocrlf checkout: ValueError('Committed procedure differs from current code'), exit 1, before fitting",
+      "workaround": "linux_reproduction_harness.py sets adapters.RIDGE_GRID in place to the registered values, then calls the unmodified execute()"
+    }
+  ],
+  "command": "git -c core.autocrlf=true checkout (worktree) ; python linux_reproduction_harness.py <checkout> <scratch> <output>",
+  "result": {
+    "execute": "exit 0; 12 candidate-horizon fits; 26 minutes",
+    "fold_ledger.csv": "byte-identical (all learned penalties and support identical)",
+    "predictions": "13 CSV files, identical shape and non-numeric columns; max absolute numeric difference 3.56e-14",
+    "metrics.json": "11 numeric differences, max 2.22e-15",
+    "comparison.json, multiplicity.json, closeout.json, control_metrics.json, access_ledger.json": "identical content",
+    "run_record.json": "differs only in code_commit (the checked-out commit)",
+    "conclusion": "Same gates, p-values, dispositions and no finalist; differences are floating-point roundoff, within v200's 1e-10 reproduction tolerance."
+  },
+  "committed_outputs_changed": false
+}
