@@ -1,0 +1,538 @@
+{
+  "as_of": "2026-09-26",
+  "base_master_commit": "d2ca8d17d8b565fb7570cbf6ea25f7ae4a911028",
+  "baseline_lock_sha256": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+  "blueprints": {
+    "I1": {
+      "add": [
+        "iv_cr_ttm",
+        "iv_cr_change"
+      ],
+      "remove": [
+        "combined_ratio_ttm"
+      ]
+    },
+    "I2": {
+      "add": [
+        "iv_pif_growth"
+      ],
+      "remove": [
+        "pif_growth_yoy"
+      ]
+    },
+    "I3": {
+      "add": [
+        "iv_gainshare"
+      ],
+      "remove": []
+    },
+    "I4": {
+      "add": [
+        "iv_income_growth",
+        "iv_book_yield"
+      ],
+      "remove": [
+        "investment_income_growth_yoy",
+        "investment_book_yield"
+      ]
+    },
+    "I5": {
+      "add": [
+        "iv_bvps_growth"
+      ],
+      "remove": [
+        "book_value_per_share_growth_yoy"
+      ]
+    },
+    "I6": {
+      "add": [
+        "iv_roe"
+      ],
+      "remove": []
+    },
+    "I7": {
+      "add": [
+        "iv_pb",
+        "iv_pe",
+        "iv_pb_pe_spread"
+      ],
+      "remove": []
+    },
+    "I8": {
+      "add": [
+        "iv_npw_t12_yoy",
+        "iv_rate_gap"
+      ],
+      "remove": [
+        "npw_growth_yoy",
+        "rate_adequacy_gap_yoy"
+      ]
+    }
+  },
+  "candidate_order": [
+    "I1",
+    "I2",
+    "I3",
+    "I4",
+    "I5",
+    "I6",
+    "I7",
+    "I8"
+  ],
+  "candidate_rule": "eight one-factor blocks, no combinations or post-result search; at most one finalist",
+  "candidate_slots": [
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14
+  ],
+  "columns": {
+    "I1": {
+      "gbt": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "rate_adequacy_gap_yoy",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "iv_cr_ttm",
+        "iv_cr_change"
+      ],
+      "ridge": [
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "iv_cr_ttm",
+        "iv_cr_change"
+      ]
+    },
+    "I2": {
+      "gbt": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "rate_adequacy_gap_yoy",
+        "investment_book_yield",
+        "iv_pif_growth"
+      ],
+      "ridge": [
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "iv_pif_growth"
+      ]
+    },
+    "I3": {
+      "gbt": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "rate_adequacy_gap_yoy",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "iv_gainshare"
+      ],
+      "ridge": [
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "iv_gainshare"
+      ]
+    },
+    "I4": {
+      "gbt": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "rate_adequacy_gap_yoy",
+        "pif_growth_yoy",
+        "iv_income_growth",
+        "iv_book_yield"
+      ],
+      "ridge": [
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "iv_income_growth",
+        "iv_book_yield"
+      ]
+    },
+    "I5": {
+      "gbt": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "rate_adequacy_gap_yoy",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "iv_bvps_growth"
+      ],
+      "ridge": [
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "npw_growth_yoy",
+        "iv_bvps_growth"
+      ]
+    },
+    "I6": {
+      "gbt": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "rate_adequacy_gap_yoy",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "iv_roe"
+      ],
+      "ridge": [
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "iv_roe"
+      ]
+    },
+    "I7": {
+      "gbt": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "rate_adequacy_gap_yoy",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "iv_pb",
+        "iv_pe",
+        "iv_pb_pe_spread"
+      ],
+      "ridge": [
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "npw_growth_yoy",
+        "iv_pb",
+        "iv_pe",
+        "iv_pb_pe_spread"
+      ]
+    },
+    "I8": {
+      "gbt": [
+        "mom_3m",
+        "mom_6m",
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "yield_curvature",
+        "vwo_vxus_spread_6m",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "pif_growth_yoy",
+        "investment_book_yield",
+        "iv_npw_t12_yoy",
+        "iv_rate_gap"
+      ],
+      "ridge": [
+        "mom_12m",
+        "vol_63d",
+        "yield_slope",
+        "real_yield_change_6m",
+        "real_rate_10y",
+        "credit_spread_hy",
+        "nfci",
+        "vix",
+        "combined_ratio_ttm",
+        "investment_income_growth_yoy",
+        "book_value_per_share_growth_yoy",
+        "iv_npw_t12_yoy",
+        "iv_rate_gap"
+      ]
+    }
+  },
+  "costs": "forecast research only; no policy or transaction P&L",
+  "descriptive_pb_pe": {
+    "eras": [
+      [
+        "2004-01-01",
+        "2014-12-31"
+      ],
+      [
+        "2015-01-01",
+        "2023-09-28"
+      ]
+    ],
+    "holm_family": "separate from 38 candidates",
+    "signals": [
+      "iv_pb",
+      "iv_pe",
+      "iv_pb_pe_spread"
+    ],
+    "tests": 6
+  },
+  "development_boundary": "2023-09-29",
+  "gbt": {
+    "learning_rate": 0.1,
+    "max_depth": 2,
+    "n_estimators": 50,
+    "random_state": 42,
+    "subsample": 0.8
+  },
+  "inference": {
+    "date_block_length": "h",
+    "family_size": 38,
+    "replicates": 2000,
+    "seed": 20260926
+  },
+  "inner": {
+    "folds": 3,
+    "gap": "2*h",
+    "max_train_size": "outer window",
+    "minimum_months": {
+      "h12": 60,
+      "h6": 24
+    },
+    "test_size": 6
+  },
+  "input_sha256": {
+    "research/studies/v200_clean_baseline/outputs/access_ledger.json": "ec141113b2d82776255bad0e702a708862b2e17fa558bd861a9764a0a301d902",
+    "research/studies/v200_clean_baseline/outputs/baseline_lock.json": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+    "research/studies/v200_clean_baseline/outputs/development_features.csv": "8badaa58b240d9628bff5bcda2e9062cf41716255c9cd1f2d6ed18aa105f1268",
+    "research/studies/v200_clean_baseline/outputs/development_targets.csv": "593a4fdc707e12834d2a0f2f49cd7f1eb5a0b337c71dffceb2b97085c6941256",
+    "research/studies/v200_clean_baseline/outputs/fold_ledger.csv": "3f0a7200ff807bcfdacc3b2dc90e90c3143fba783fe6044fd7e2dc5df4d3528b",
+    "research/studies/v200_clean_baseline/outputs/output_manifest.json": "29a50c598d15ecd2472dee47ea47d4255ab9987b52d2fbcafed3a1984c861b5c",
+    "research/studies/v200_clean_baseline/outputs/partitions.json": "29d7f46a809ccb654ad6b393815d6b7ae889cbec67e2280aa2e19ddd269f85ed",
+    "research/studies/v200_clean_baseline/outputs/predictions.csv": "5b671c52dbdded0b6106b02f0942d20f484df4715a21830c19ccf01320a28270",
+    "research/studies/v200_clean_baseline/outputs/runtime_lock.json": "ed8a5eea976ce21c816beb3b305b3a1d6fde6c59ea87c261aedab7ee0304d1e9",
+    "research/studies/v201_price_macro/outputs/attempt2/comparison.json": "a63ba491c33f83abd569c6abf3f1e709b9a68d8234cd480d74522eb3511a1f52",
+    "research/studies/v201_price_macro/outputs/attempt2/metrics.json": "92a70a423942a1ab824a294d1fd2494935a7643c707fdf0a4e033f139a064d23",
+    "research/studies/v201_price_macro/outputs/attempt2/multiplicity.json": "5caaf80abe3b44a3492d6f5a30b1fe58a7fd248a3dd27b04039daf9d9412bdbe",
+    "research/studies/v201_price_macro/outputs/attempt2/predictions_M1_h12.csv": "9a065f0effe5eab51a0c2e0f66143d595daa2b62181b8a293fc85fc53c42d2a5",
+    "research/studies/v201_price_macro/outputs/attempt2/predictions_M1_h6.csv": "c793ee728267a9a06766c9fe804c410eb96a35f6d5f975a62335f147c862a34a",
+    "research/studies/v201_price_macro/outputs/attempt2/predictions_M2_h12.csv": "363f64af53768962a22a233f3f7e9513b490a93c6ed9078b62a20de6937d6b50",
+    "research/studies/v201_price_macro/outputs/attempt2/predictions_M2_h6.csv": "594f63e3d8571cacc865f8157cfdb1989a5c465097a24e0c2965d7c1bf1ec795",
+    "research/studies/v201_price_macro/outputs/attempt2/predictions_M3_h12.csv": "0dfd55f2e7201dd85c30617cc449a6a0dca70d47a8296cfcc796f3d517b37b94",
+    "research/studies/v201_price_macro/outputs/attempt2/predictions_M3_h6.csv": "7b6ec7028fad602184318d3ef314aef9524e0760c6119f4dfeabb013020c0a13",
+    "research/studies/v201_price_macro/outputs/attempt2/predictions_P1_h12.csv": "4388ba4523a04737d7c23969289165329efb549420930cb22cdaa569d6f21b6f",
+    "research/studies/v201_price_macro/outputs/attempt2/predictions_P1_h6.csv": "cb4bbe9194e33b9e2fcf5c6f1c1c815660e640fe6bb3cc46cf85025257d7cd2b",
+    "research/studies/v201_price_macro/outputs/attempt2/predictions_P2_h12.csv": "5351be46a575303cfd315ed035ac9e411bdf32b772adfc2d80a9efb1e979be15",
+    "research/studies/v201_price_macro/outputs/attempt2/predictions_P2_h6.csv": "d598cd9b1a61b21742c5e13e49162e4d669f488f691eac746806859460f6da38",
+    "research/studies/v201_price_macro/outputs/attempt2/predictions_P3_h12.csv": "f736ca41e80c9fe0b6f667f2153ca99ef8cc7ce85b9e00235d61f62687a042c9",
+    "research/studies/v201_price_macro/outputs/attempt2/predictions_P3_h6.csv": "7efdc87e865216a1e92a8d9a7aa7955df05f4d5de0e1aef3afb73faba6d26a8b",
+    "research/studies/v201_price_macro/outputs/attempt2/registered.json": "463f12edf464f4dce5e6a07230ec3152f47ec47fc3f876b06b3632a8019f20b3",
+    "research/studies/v202_insurance_valuation/outputs/availability_ledger.csv": "6bed3757e4fa62dfab73f98125e22fa5fc0264f7e2298da23c96dbef450b8861",
+    "research/studies/v202_insurance_valuation/outputs/features.csv": "cc931cf37f3cf4afd51a9a5444d22c453ac14c59c9976aea195c83f57bf85af0",
+    "research/studies/v202_insurance_valuation/outputs/fiscal_month_audit.json": "66178479f6961e82d0e16afd0855a492cbb95ffd99fd6ed6b419444fd14c9829",
+    "research/studies/v202_insurance_valuation/outputs/registry_snapshot.yaml": "09243ca42b988c6f6587fb89f82f4f9d6c654da3e3c7c7c3bd411ca2e8cce917",
+    "research/studies/v202_insurance_valuation/outputs/source_audit.json": "94a3c413b34899e0224cf5b947a7c51bb17c5535308d0ab65ef5b76b600409c0",
+    "research/studies/v202_insurance_valuation/run.py": "91f0689cb77fae8fb9766fe2fa314d9095f2b6fc8b2f058681c339a52ddc28ab",
+    "research/studies/v205_dividend_bvps/outputs/multiplicity.json": "723d222410da4c3e02cf2d192d7a3226ad55ba81a788bea8e53e0ad3ecb39831",
+    "src/pgr_vds/research_lib/insurance_valuation.py": "c70d6d0951e882f3da303752ed8e001a9209504001917fde56e124b3ae349a99",
+    "tests/research/test_v202_insurance_math.py": "2322cbda8c52f411ad76eceaaee2d7e9a86eb223cde353c829b1339163bf33d0"
+  },
+  "npw": "trailing twelve complete calendar-month sums after A3",
+  "outer": {
+    "h12": [
+      120,
+      6,
+      24
+    ],
+    "h6": [
+      60,
+      6,
+      12
+    ]
+  },
+  "ppi": "frozen one-month calendar publication lag; latest vintage",
+  "primary": "paired 6M squared-error gain vs exact v200 support",
+  "ridge_grid": [
+    0.0001,
+    0.00014563484775012445,
+    0.00021209508879201905,
+    0.00030888435964774815,
+    0.0004498432668969444,
+    0.0006551285568595509,
+    0.0009540954763499944,
+    0.0013894954943731374,
+    0.0020235896477251557,
+    0.0029470517025518097,
+    0.004291934260128779,
+    0.0062505519252739694,
+    0.009102981779915217,
+    0.013257113655901081,
+    0.019306977288832496,
+    0.02811768697974228,
+    0.040949150623804234,
+    0.05963623316594643,
+    0.08685113737513521,
+    0.12648552168552957,
+    0.18420699693267145,
+    0.2682695795279725,
+    0.3906939937054613,
+    0.5689866029018293,
+    0.8286427728546842,
+    1.2067926406393288,
+    1.7575106248547894,
+    2.559547922699533,
+    3.727593720314938,
+    5.428675439323859,
+    7.9060432109076855,
+    11.513953993264458,
+    16.768329368110066,
+    24.420530945486497,
+    35.564803062231285,
+    51.79474679231202,
+    75.43120063354607,
+    109.85411419875572,
+    159.98587196060572,
+    232.99518105153672,
+    339.3221771895323,
+    494.1713361323828,
+    719.6856730011514,
+    1048.1131341546852,
+    1526.4179671752302,
+    2222.996482526191,
+    3237.45754281764,
+    4714.8663634573895,
+    6866.488450042998,
+    10000.0
+  ],
+  "secondary": "12M, per-era valuation and v201 comparator cannot rescue primary",
+  "shrinkage_grid": [
+    0.05,
+    0.1,
+    0.15,
+    0.2,
+    0.25,
+    0.3,
+    0.4,
+    0.5,
+    0.75,
+    1.0
+  ],
+  "source_availability": "actual filing to same-or-next business month end; missing filing fallback report month+2; no optimized lag; maximum staleness 3 months",
+  "source_vintage": "stored revised rows; first-reported historical values unrecoverable",
+  "sql": {
+    "monthly": "SELECT * FROM pgr_edgar_monthly WHERE month_end<=? ORDER BY month_end",
+    "ppi": "SELECT month_end,value FROM fred_macro_monthly WHERE series_id='PCU5241265241261' AND month_end<=? ORDER BY month_end",
+    "prices": "SELECT date,close FROM daily_prices WHERE ticker='PGR' AND date<=? AND proxy_fill=0 ORDER BY date",
+    "quarterly": "SELECT * FROM pgr_fundamentals_quarterly WHERE period_end<=? ORDER BY period_end",
+    "splits": "SELECT split_date,split_ratio FROM split_history WHERE ticker='PGR' AND split_date<=? ORDER BY split_date"
+  },
+  "thresholds": {
+    "delta_r2": 0.01,
+    "holm_p": 0.05,
+    "max_ic_loss": 0.01,
+    "safeguards": "same strict no-deterioration rule as v201"
+  },
+  "upstream_v201": "select only from its six frozen candidates inside each downstream three-fold inner history; unsupported early folds stay missing"
+}

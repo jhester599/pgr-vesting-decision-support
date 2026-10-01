@@ -1,0 +1,35 @@
+{
+  "book_yield_min_max": [
+    1.6,
+    5.6
+  ],
+  "book_yield_unit": "stored percent, not fraction",
+  "common_equity_identity_max_abs_millions": 514.2000000000007,
+  "leap_february_rows": [
+    "2008-02-29",
+    "2012-02-29",
+    "2016-02-29",
+    "2020-02-29"
+  ],
+  "missing_calendar_months": [],
+  "monthly_rows": 229,
+  "negative_net_income_months": 11,
+  "pif_vintage_limit": "pif_total differs from first-reported values in 50 months from 2019-07; stable components are not verified first vintages",
+  "q4_compared": 15,
+  "q4_quarterly_vs_monthly_ni_max_abs_millions": 5.684341886080802e-14,
+  "source_vintage_limit": "stored repaired values are not a historical first-report vintage",
+  "split_actions": [
+    {
+      "split_date": "1992-12-09 00:00:00",
+      "split_ratio": 3.0
+    },
+    {
+      "split_date": "2002-04-23 00:00:00",
+      "split_ratio": 3.0
+    },
+    {
+      "split_date": "2006-05-19 00:00:00",
+      "split_ratio": 4.0
+    }
+  ]
+}
