@@ -1,0 +1,19 @@
+{
+  "amendment": "A4 support correction before corrected outcome computation",
+  "reason": "The initial six descriptive tests used VOO target rows, which start in 2010 and truncate the registered 2004-2014 era. Their output is discarded, not a replication.",
+  "prior_output": "outputs/descriptive_pb_pe.json",
+  "corrected_output": "outputs/descriptive_pb_pe_corrected.json",
+  "target": "The same v200 development pgr_return label, using VGT's longer target-date support as the source row; no benchmark-relative target enters this descriptive audit.",
+  "eras": [["2004-01-01", "2014-12-31"], ["2015-01-01", "2023-09-28"]],
+  "signals": ["iv_pb", "iv_pe", "iv_pb_pe_spread"],
+  "direction": "inverse for each signal, unchanged",
+  "test_count": 6,
+  "inference": "existing panel_summary two-sided IC p, six-month moving-date blocks, 2000 draws, seed 20260926, separate six-test Holm",
+  "campaign_candidate_slots": 0,
+  "forecast_refits": 0,
+  "holdout_return_metrics": 0,
+  "input_sha256": {
+    "research/studies/v200_clean_baseline/outputs/development_targets.csv": "593a4fdc707e12834d2a0f2f49cd7f1eb5a0b337c71dffceb2b97085c6941256",
+    "research/studies/v202_insurance_valuation/outputs/features.csv": "cc931cf37f3cf4afd51a9a5444d22c453ac14c59c9976aea195c83f57bf85af0"
+  }
+}
