@@ -1,0 +1,19 @@
+{
+  "amendment": "A4 matched-signal support correction before final descriptive computation",
+  "reason": "The original A4 contract requires P/B-versus-P/E inference on matched support. The first source correction restored 2004-2014 dates, but P/B retained dates where P/E or spread was undefined. Both earlier six-test outputs are discarded.",
+  "prior_outputs": ["outputs/descriptive_pb_pe.json", "outputs/descriptive_pb_pe_corrected.json"],
+  "final_output": "outputs/descriptive_pb_pe_matched.json",
+  "source": "v200 development pgr_return from VGT target rows; same PGR label verified against VOO where dates overlap",
+  "common_date_rule": "Within each era, keep only dates with finite iv_pb, iv_pe, iv_pb_pe_spread and finite PGR return; use the identical dates for all three signals",
+  "eras": [["2004-01-01", "2014-12-31"], ["2015-01-01", "2023-09-28"]],
+  "signals": ["iv_pb", "iv_pe", "iv_pb_pe_spread"],
+  "test_count": 6,
+  "inference": "existing two-sided IC date-block bootstrap, block 6 months, seed 20260926, 2000 draws; one separate six-test Holm family",
+  "campaign_candidate_slots": 0,
+  "forecast_refits": 0,
+  "holdout_return_metrics": 0,
+  "input_sha256": {
+    "research/studies/v200_clean_baseline/outputs/development_targets.csv": "593a4fdc707e12834d2a0f2f49cd7f1eb5a0b337c71dffceb2b97085c6941256",
+    "research/studies/v202_insurance_valuation/outputs/features.csv": "cc931cf37f3cf4afd51a9a5444d22c453ac14c59c9976aea195c83f57bf85af0"
+  }
+}
