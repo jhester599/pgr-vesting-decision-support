@@ -1,0 +1,49 @@
+{
+  "accepted_exception": "VWO March 2026 provider gap; 12 affected targets quarantined",
+  "baseline_code_commit": "c3b4798b90a43f9dbd616981861e9ff01fa2de72",
+  "database": {
+    "git_commit": "ed7997f6f540f664e59dd44a4079616d74a8e8cb",
+    "relative_path": "data/pgr_financials.db",
+    "sha256": "38991c7653f6c8dc6eb5f3740f3a499a7121f093019aeacbfeb1bc85001a94e6"
+  },
+  "db_copy": "C:\\Users\\Jeff\\AppData\\Local\\Temp\\pgr-v202-preflight\\pinned.db",
+  "fit_count": 0,
+  "holdout_metrics": 0,
+  "lock_sha256": "c558ecb5215cf960b2685d687b83275d43e22ff3c976221e03dc734a1f02ffb0",
+  "max_available_source_date": "2023-09-15 00:00:00",
+  "max_feature_origin": "2023-08-31 00:00:00",
+  "parent_seed": {
+    "db_sha256": "7c68efbd90ef5c10a12e05dc2a9e03402e353a06219fd2db129d711754c1c35d",
+    "git_commit": "aae0be883309bdc068ee9afbb78b0aa9a4b52b8d"
+  },
+  "registry_check": {
+    "added_entries": [
+      "v202",
+      "v201",
+      "v205"
+    ],
+    "current_sha256": "20cf8c8eb7adf31cd282c6d9a1c4e152cd3795168ea419e8851eb4520d73f727",
+    "path": "research/registry.yaml",
+    "pinned_at_commit": "b0a590bd2e9df975c420166d96cc3d919eb4934e",
+    "pinned_entries_unchanged": 114,
+    "pinned_sha256": "410cd237f7e0d32639db8bf9b8193a3e8ca6541e52aa2fd01fd6f962f0275806"
+  },
+  "repairs": [
+    {
+      "commit": "ed7997f6f540f664e59dd44a4079616d74a8e8cb",
+      "id": "R2-lite",
+      "rebuild_id": "Weekly Data Accumulation run36410317252",
+      "record": "docs/reviews/2026-09-28_R2_dividend_refresh_check.md",
+      "review_pr": 144
+    },
+    {
+      "commit": "c3b4798b90a43f9dbd616981861e9ff01fa2de72",
+      "id": "R3b",
+      "record": "docs/reviews/R3b_baseline_closeout.md",
+      "review_pr": 145
+    }
+  ],
+  "source_query_cutoff": "2023-08-31",
+  "status": "passed",
+  "tracked_db_sha256": "86329ac84fa546379781d2ca951845ea7b27583200f4cd75cac1139ec1af815d"
+}

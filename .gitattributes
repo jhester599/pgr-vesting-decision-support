@@ -7,3 +7,5 @@ tests/research/test_v201*.py -text whitespace=blank-at-eol,blank-at-eof,space-be
 research/studies/v201_price_macro/outputs/attempt1/** -text -whitespace
 research/studies/v205_dividend_bvps/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 tests/research/test_v205*.py -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+research/studies/v202_insurance_valuation/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+tests/research/test_v202*.py -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

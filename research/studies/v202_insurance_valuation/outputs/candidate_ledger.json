@@ -1,0 +1,178 @@
+{
+  "attempts": [
+    {
+      "candidate": "I1",
+      "horizon": 6,
+      "rows": 942,
+      "status": "completed"
+    },
+    {
+      "candidate": "I1",
+      "horizon": 12,
+      "rows": 372,
+      "status": "completed"
+    },
+    {
+      "candidate": "I2",
+      "horizon": 6,
+      "rows": 942,
+      "status": "completed"
+    },
+    {
+      "candidate": "I2",
+      "horizon": 12,
+      "rows": 372,
+      "status": "completed"
+    },
+    {
+      "candidate": "I3",
+      "horizon": 6,
+      "rows": 942,
+      "status": "completed"
+    },
+    {
+      "candidate": "I3",
+      "horizon": 12,
+      "rows": 372,
+      "status": "completed"
+    },
+    {
+      "candidate": "I4",
+      "horizon": 6,
+      "rows": 942,
+      "status": "completed"
+    },
+    {
+      "candidate": "I4",
+      "horizon": 12,
+      "rows": 372,
+      "status": "completed"
+    },
+    {
+      "candidate": "I5",
+      "horizon": 6,
+      "rows": 942,
+      "status": "completed"
+    },
+    {
+      "candidate": "I5",
+      "horizon": 12,
+      "rows": 372,
+      "status": "completed"
+    },
+    {
+      "candidate": "I6",
+      "horizon": 6,
+      "rows": 942,
+      "status": "completed"
+    },
+    {
+      "candidate": "I6",
+      "horizon": 12,
+      "rows": 372,
+      "status": "completed"
+    },
+    {
+      "candidate": "I7",
+      "horizon": 6,
+      "rows": 942,
+      "status": "completed"
+    },
+    {
+      "candidate": "I7",
+      "horizon": 12,
+      "rows": 372,
+      "status": "completed"
+    },
+    {
+      "candidate": "I8",
+      "horizon": 6,
+      "rows": 942,
+      "status": "completed"
+    },
+    {
+      "candidate": "I8",
+      "horizon": 12,
+      "rows": 372,
+      "status": "completed"
+    }
+  ],
+  "candidates": {
+    "I1": {
+      "add": [
+        "iv_cr_ttm",
+        "iv_cr_change"
+      ],
+      "remove": [
+        "combined_ratio_ttm"
+      ]
+    },
+    "I2": {
+      "add": [
+        "iv_pif_growth"
+      ],
+      "remove": [
+        "pif_growth_yoy"
+      ]
+    },
+    "I3": {
+      "add": [
+        "iv_gainshare"
+      ],
+      "remove": []
+    },
+    "I4": {
+      "add": [
+        "iv_income_growth",
+        "iv_book_yield"
+      ],
+      "remove": [
+        "investment_income_growth_yoy",
+        "investment_book_yield"
+      ]
+    },
+    "I5": {
+      "add": [
+        "iv_bvps_growth"
+      ],
+      "remove": [
+        "book_value_per_share_growth_yoy"
+      ]
+    },
+    "I6": {
+      "add": [
+        "iv_roe"
+      ],
+      "remove": []
+    },
+    "I7": {
+      "add": [
+        "iv_pb",
+        "iv_pe",
+        "iv_pb_pe_spread"
+      ],
+      "remove": []
+    },
+    "I8": {
+      "add": [
+        "iv_npw_t12_yoy",
+        "iv_rate_gap"
+      ],
+      "remove": [
+        "npw_growth_yoy",
+        "rate_adequacy_gap_yoy"
+      ]
+    }
+  },
+  "finalist": null,
+  "slots": [
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14
+  ]
+}

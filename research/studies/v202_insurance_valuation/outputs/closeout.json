@@ -1,0 +1,194 @@
+{
+  "active_policy_proposal": false,
+  "candidate_results": {
+    "I1": {
+      "delta_r2": -0.014615530432508406,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "delta_r2",
+        "holm_primary",
+        "ic",
+        "hit_rate",
+        "directional_skill",
+        "ece"
+      ],
+      "gates": {
+        "brier": true,
+        "coverage_80": true,
+        "delta_r2": false,
+        "directional_skill": false,
+        "ece": false,
+        "hit_rate": false,
+        "holm_primary": false,
+        "ic": false,
+        "log_loss": true
+      },
+      "passes": false
+    },
+    "I2": {
+      "delta_r2": 0.06630663889507038,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "holm_primary",
+        "brier",
+        "log_loss"
+      ],
+      "gates": {
+        "brier": false,
+        "coverage_80": true,
+        "delta_r2": true,
+        "directional_skill": true,
+        "ece": true,
+        "hit_rate": true,
+        "holm_primary": false,
+        "ic": true,
+        "log_loss": false
+      },
+      "passes": false
+    },
+    "I3": {
+      "delta_r2": 0.046086721700351,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "holm_primary",
+        "hit_rate",
+        "directional_skill",
+        "ece",
+        "coverage_80"
+      ],
+      "gates": {
+        "brier": true,
+        "coverage_80": false,
+        "delta_r2": true,
+        "directional_skill": false,
+        "ece": false,
+        "hit_rate": false,
+        "holm_primary": false,
+        "ic": true,
+        "log_loss": true
+      },
+      "passes": false
+    },
+    "I4": {
+      "delta_r2": 0.04274251005606833,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "holm_primary",
+        "hit_rate",
+        "directional_skill",
+        "ece"
+      ],
+      "gates": {
+        "brier": true,
+        "coverage_80": true,
+        "delta_r2": true,
+        "directional_skill": false,
+        "ece": false,
+        "hit_rate": false,
+        "holm_primary": false,
+        "ic": true,
+        "log_loss": true
+      },
+      "passes": false
+    },
+    "I5": {
+      "delta_r2": 0.0019341973998480144,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "delta_r2",
+        "holm_primary",
+        "ic",
+        "directional_skill",
+        "brier",
+        "log_loss",
+        "ece"
+      ],
+      "gates": {
+        "brier": false,
+        "coverage_80": true,
+        "delta_r2": false,
+        "directional_skill": false,
+        "ece": false,
+        "hit_rate": true,
+        "holm_primary": false,
+        "ic": false,
+        "log_loss": false
+      },
+      "passes": false
+    },
+    "I6": {
+      "delta_r2": 0.02505499060112837,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "holm_primary",
+        "ic",
+        "hit_rate",
+        "directional_skill",
+        "ece"
+      ],
+      "gates": {
+        "brier": true,
+        "coverage_80": true,
+        "delta_r2": true,
+        "directional_skill": false,
+        "ece": false,
+        "hit_rate": false,
+        "holm_primary": false,
+        "ic": false,
+        "log_loss": true
+      },
+      "passes": false
+    },
+    "I7": {
+      "delta_r2": -0.1272876563071641,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "delta_r2",
+        "holm_primary",
+        "hit_rate",
+        "directional_skill"
+      ],
+      "gates": {
+        "brier": true,
+        "coverage_80": true,
+        "delta_r2": false,
+        "directional_skill": false,
+        "ece": true,
+        "hit_rate": false,
+        "holm_primary": false,
+        "ic": true,
+        "log_loss": true
+      },
+      "passes": false
+    },
+    "I8": {
+      "delta_r2": -0.02712347943564386,
+      "disposition": "research only; no finalist",
+      "failed_gates": [
+        "delta_r2",
+        "holm_primary",
+        "ic",
+        "hit_rate",
+        "directional_skill",
+        "brier",
+        "ece"
+      ],
+      "gates": {
+        "brier": false,
+        "coverage_80": true,
+        "delta_r2": false,
+        "directional_skill": false,
+        "ece": false,
+        "hit_rate": false,
+        "holm_primary": false,
+        "ic": false,
+        "log_loss": true
+      },
+      "passes": false
+    }
+  },
+  "primary": "paired h6 only; first-Holm spread is descriptive",
+  "promotion": false,
+  "upstream_v201": "fold-causal partial-support reconstruction",
+  "v207_finalist": null
+}

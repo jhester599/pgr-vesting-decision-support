@@ -1,0 +1,85 @@
+{
+  "family_size": 6,
+  "note": "Descriptive; cannot rescue a failed forecast primary",
+  "promotable": false,
+  "tests": [
+    {
+      "block_length": 6,
+      "era": [
+        "2004-01-01",
+        "2014-12-31"
+      ],
+      "holm6_p": 0.008995502248875561,
+      "ic": 0.5312900196363015,
+      "n_dates": 52,
+      "raw_p": 0.0014992503748125937,
+      "signal": "iv_pb",
+      "source": "matched repaired PGR six-month DRIP targets"
+    },
+    {
+      "block_length": 6,
+      "era": [
+        "2004-01-01",
+        "2014-12-31"
+      ],
+      "holm6_p": 1.0,
+      "ic": -0.010330402117305558,
+      "n_dates": 52,
+      "raw_p": 0.968015992003998,
+      "signal": "iv_pe",
+      "source": "matched repaired PGR six-month DRIP targets"
+    },
+    {
+      "block_length": 6,
+      "era": [
+        "2004-01-01",
+        "2014-12-31"
+      ],
+      "holm6_p": 0.5417291354322838,
+      "ic": 0.30589942798599845,
+      "n_dates": 52,
+      "raw_p": 0.13543228385807096,
+      "signal": "iv_pb_pe_spread",
+      "source": "matched repaired PGR six-month DRIP targets"
+    },
+    {
+      "block_length": 6,
+      "era": [
+        "2015-01-01",
+        "2023-09-28"
+      ],
+      "holm6_p": 0.08745627186406797,
+      "ic": 0.36551715344057023,
+      "n_dates": 98,
+      "raw_p": 0.017491254372813594,
+      "signal": "iv_pb",
+      "source": "matched repaired PGR six-month DRIP targets"
+    },
+    {
+      "block_length": 6,
+      "era": [
+        "2015-01-01",
+        "2023-09-28"
+      ],
+      "holm6_p": 1.0,
+      "ic": -0.06874764901274473,
+      "n_dates": 98,
+      "raw_p": 0.7011494252873564,
+      "signal": "iv_pe",
+      "source": "matched repaired PGR six-month DRIP targets"
+    },
+    {
+      "block_length": 6,
+      "era": [
+        "2015-01-01",
+        "2023-09-28"
+      ],
+      "holm6_p": 0.800599700149925,
+      "ic": 0.1965520978775765,
+      "n_dates": 98,
+      "raw_p": 0.26686656671664166,
+      "signal": "iv_pb_pe_spread",
+      "source": "matched repaired PGR six-month DRIP targets"
+    }
+  ]
+}

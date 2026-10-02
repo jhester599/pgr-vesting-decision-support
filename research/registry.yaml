@@ -17,6 +17,14 @@
 #   notes        optional
 
 studies:
+  - id: v202
+    slug: insurance_valuation
+    date: "2026-10-01"
+    question: "Do eight frozen insurance and valuation blocks improve the accepted v200 development forecasts?"
+    status: closed
+    promoted_to: null
+    closeout: research/studies/v202_insurance_valuation/README.md
+    notes: "Research-only v202, campaign slots 7-14; development results and disposition in closeout."
   - id: v201
     slug: price_macro
     date: "2026-09-28"

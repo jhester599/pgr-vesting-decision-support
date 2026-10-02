@@ -1,0 +1,13 @@
+{
+  "as_of_max": "2023-08-31",
+  "bvps_vs_equity_per_share_first_large_month": "2018-03-31",
+  "bvps_vs_equity_per_share_gt_0_10_months": 66,
+  "bvps_vs_equity_per_share_max_abs": 0.8503202603185471,
+  "equity_identity_gt_1pct_months": 36,
+  "equity_identity_max_gap_millions": 514.2000000000007,
+  "split_2006_post_raw_close": 27.24,
+  "split_2006_pre_raw_close": 107.2,
+  "split_adjusted_price_continuity_return": 0.016417910447761086,
+  "split_factor": 4.0,
+  "valuation_limit": "Stored BVPS diverges from equity/common shares after 2018-03; v202 does not repair source rows. I5/I7 remain research only."
+}
