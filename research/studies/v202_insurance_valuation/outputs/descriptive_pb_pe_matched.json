@@ -1,0 +1,91 @@
+{
+  "amendment_sha256": "4a3267f4765885948345373cb7410e5841c4b04cea17570d9a805d54a68fad30",
+  "family_size": 6,
+  "matched_support": true,
+  "note": "Descriptive; cannot rescue a failed forecast primary",
+  "prior_outputs_discarded": [
+    "outputs/descriptive_pb_pe.json",
+    "outputs/descriptive_pb_pe_corrected.json"
+  ],
+  "promotable": false,
+  "tests": [
+    {
+      "block_length": 6,
+      "era": [
+        "2004-01-01",
+        "2014-12-31"
+      ],
+      "holm6_p": 0.0029985007496251873,
+      "ic": 0.6923180592991913,
+      "n_dates": 105,
+      "raw_p": 0.0004997501249375312,
+      "signal": "iv_pb",
+      "source": "matched repaired PGR six-month DRIP targets"
+    },
+    {
+      "block_length": 6,
+      "era": [
+        "2004-01-01",
+        "2014-12-31"
+      ],
+      "holm6_p": 1.0,
+      "ic": 0.011206717810491396,
+      "n_dates": 105,
+      "raw_p": 0.9545227386306847,
+      "signal": "iv_pe",
+      "source": "matched repaired PGR six-month DRIP targets"
+    },
+    {
+      "block_length": 6,
+      "era": [
+        "2004-01-01",
+        "2014-12-31"
+      ],
+      "holm6_p": 0.0029985007496251873,
+      "ic": 0.509143686502177,
+      "n_dates": 105,
+      "raw_p": 0.0004997501249375312,
+      "signal": "iv_pb_pe_spread",
+      "source": "matched repaired PGR six-month DRIP targets"
+    },
+    {
+      "block_length": 6,
+      "era": [
+        "2015-01-01",
+        "2023-09-28"
+      ],
+      "holm6_p": 0.06996501749125437,
+      "ic": 0.36551715344057023,
+      "n_dates": 98,
+      "raw_p": 0.017491254372813594,
+      "signal": "iv_pb",
+      "source": "matched repaired PGR six-month DRIP targets"
+    },
+    {
+      "block_length": 6,
+      "era": [
+        "2015-01-01",
+        "2023-09-28"
+      ],
+      "holm6_p": 1.0,
+      "ic": -0.06874764901274473,
+      "n_dates": 98,
+      "raw_p": 0.7011494252873564,
+      "signal": "iv_pe",
+      "source": "matched repaired PGR six-month DRIP targets"
+    },
+    {
+      "block_length": 6,
+      "era": [
+        "2015-01-01",
+        "2023-09-28"
+      ],
+      "holm6_p": 0.800599700149925,
+      "ic": 0.1965520978775765,
+      "n_dates": 98,
+      "raw_p": 0.26686656671664166,
+      "signal": "iv_pb_pe_spread",
+      "source": "matched repaired PGR six-month DRIP targets"
+    }
+  ]
+}

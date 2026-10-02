@@ -1,4 +1,102 @@
 {
+  "attempts": [
+    {
+      "candidate": "I1",
+      "horizon": 6,
+      "rows": 942,
+      "status": "completed"
+    },
+    {
+      "candidate": "I1",
+      "horizon": 12,
+      "rows": 372,
+      "status": "completed"
+    },
+    {
+      "candidate": "I2",
+      "horizon": 6,
+      "rows": 942,
+      "status": "completed"
+    },
+    {
+      "candidate": "I2",
+      "horizon": 12,
+      "rows": 372,
+      "status": "completed"
+    },
+    {
+      "candidate": "I3",
+      "horizon": 6,
+      "rows": 942,
+      "status": "completed"
+    },
+    {
+      "candidate": "I3",
+      "horizon": 12,
+      "rows": 372,
+      "status": "completed"
+    },
+    {
+      "candidate": "I4",
+      "horizon": 6,
+      "rows": 942,
+      "status": "completed"
+    },
+    {
+      "candidate": "I4",
+      "horizon": 12,
+      "rows": 372,
+      "status": "completed"
+    },
+    {
+      "candidate": "I5",
+      "horizon": 6,
+      "rows": 942,
+      "status": "completed"
+    },
+    {
+      "candidate": "I5",
+      "horizon": 12,
+      "rows": 372,
+      "status": "completed"
+    },
+    {
+      "candidate": "I6",
+      "horizon": 6,
+      "rows": 942,
+      "status": "completed"
+    },
+    {
+      "candidate": "I6",
+      "horizon": 12,
+      "rows": 372,
+      "status": "completed"
+    },
+    {
+      "candidate": "I7",
+      "horizon": 6,
+      "rows": 942,
+      "status": "completed"
+    },
+    {
+      "candidate": "I7",
+      "horizon": 12,
+      "rows": 372,
+      "status": "completed"
+    },
+    {
+      "candidate": "I8",
+      "horizon": 6,
+      "rows": 942,
+      "status": "completed"
+    },
+    {
+      "candidate": "I8",
+      "horizon": 12,
+      "rows": 372,
+      "status": "completed"
+    }
+  ],
   "candidates": {
     "I1": {
       "add": [
@@ -66,7 +164,7 @@
       ]
     }
   },
-  "fits": 0,
+  "finalist": null,
   "slots": [
     7,
     8,
@@ -76,6 +174,5 @@
     12,
     13,
     14
-  ],
-  "status": "registered_before_fitting"
+  ]
 }

@@ -1,0 +1,17 @@
+{
+  "actual_filing_rule": {
+    "affected_origins": 0,
+    "fallback_source_feature_rows": 0
+  },
+  "note": "Coverage sensitivity only; no additional fit, lag search or holdout metric.",
+  "report_plus_one_month_hypothetical": {
+    "changed_rows_where_filing_missing": 0
+  },
+  "report_plus_three_month_hypothetical": {
+    "changed_rows_where_filing_missing": 0
+  },
+  "report_plus_two_month_registered": {
+    "changed_rows_where_filing_missing": 0
+  },
+  "selection": "none; filing date present for every consumed development source row"
+}

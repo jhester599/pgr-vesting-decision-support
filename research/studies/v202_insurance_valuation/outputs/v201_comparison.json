@@ -1,0 +1,25 @@
+{
+  "fold_causal_reconstruction": {
+    "h12": {
+      "n_rows": 0,
+      "status": "unsupported"
+    },
+    "h6": {
+      "n_dates": 78,
+      "n_rows": 624,
+      "selected_counts": {
+        "M1": 5,
+        "M3": 3,
+        "P1": 3,
+        "P3": 2
+      },
+      "status": "partial matched support"
+    }
+  },
+  "frozen_attempt2": {
+    "comparison_sha256": "a63ba491c33f83abd569c6abf3f1e709b9a68d8234cd480d74522eb3511a1f52",
+    "metrics_sha256": "92a70a423942a1ab824a294d1fd2494935a7643c707fdf0a4e033f139a064d23",
+    "status": "six frozen candidates, no global winner"
+  },
+  "globally_selected_recipe": "excluded from honest inference"
+}

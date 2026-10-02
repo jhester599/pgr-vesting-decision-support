@@ -1,0 +1,293 @@
+
+=================================== ERRORS ====================================
+_ ERROR collecting tests/research/test_confirmatory_classifier_experiments.py _
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_confirmatory_classifier_experiments.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_confirmatory_classifier_experiments.py:6: in <module>
+    from research.studies.v9_experiments.confirmatory_classifier_experiments import summarize_confirmatory_classifier_results
+E   ModuleNotFoundError: No module named 'research.studies'
+_________ ERROR collecting tests/research/test_feature_experiments.py _________
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_feature_experiments.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_feature_experiments.py:10: in <module>
+    from research.studies.v9_experiments.feature_experiments import _experiment_specs, run_feature_experiments, summarize_feature_experiments
+E   ModuleNotFoundError: No module named 'research.studies'
+____ ERROR collecting tests/research/test_pooled_benchmark_experiments.py _____
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_pooled_benchmark_experiments.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_pooled_benchmark_experiments.py:8: in <module>
+    from research.studies.v9_experiments.pooled_benchmark_experiments import (
+E   ModuleNotFoundError: No module named 'research.studies'
+___ ERROR collecting tests/research/test_research_v129_feature_map_eval.py ____
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v129_feature_map_eval.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v129_feature_map_eval.py:14: in <module>
+    from research.studies.v129_feature_map_eval.v129_feature_map_eval import (
+E   ModuleNotFoundError: No module named 'research.studies'
+_ ERROR collecting tests/research/test_research_v129_vgt_robustness_audit.py __
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v129_vgt_robustness_audit.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v129_vgt_robustness_audit.py:15: in <module>
+    from research.studies.v129_feature_map_eval.v129_vgt_robustness_audit import (
+E   ModuleNotFoundError: No module named 'research.studies'
+_ ERROR collecting tests/research/test_research_v131_threshold_sweep_eval.py __
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v131_threshold_sweep_eval.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v131_threshold_sweep_eval.py:23: in <module>
+    from research.studies.v131_threshold_sweep_eval.v131_threshold_sweep_eval import (
+E   ModuleNotFoundError: No module named 'research.studies'
+_ ERROR collecting tests/research/test_research_v132_threshold_validation.py __
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v132_threshold_validation.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v132_threshold_validation.py:15: in <module>
+    from research.studies.v132_threshold_validation.v132_threshold_validation import (
+E   ModuleNotFoundError: No module named 'research.studies'
+___ ERROR collecting tests/research/test_research_v133_ridge_alpha_sweep.py ___
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v133_ridge_alpha_sweep.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v133_ridge_alpha_sweep.py:13: in <module>
+    from research.studies.v133_ridge_alpha_sweep.v133_ridge_alpha_sweep import run_ridge_alpha_sweep
+E   ModuleNotFoundError: No module named 'research.studies'
+____ ERROR collecting tests/research/test_research_v134_fred_lag_sweep.py _____
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v134_fred_lag_sweep.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v134_fred_lag_sweep.py:13: in <module>
+    from research.studies.v134_fred_lag_sweep.v134_fred_lag_sweep import (
+E   ModuleNotFoundError: No module named 'research.studies'
+___ ERROR collecting tests/research/test_research_v135_temp_param_search.py ___
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v135_temp_param_search.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v135_temp_param_search.py:16: in <module>
+    from research.studies.v135_temp_param_search.v135_temp_param_search import (
+E   ModuleNotFoundError: No module named 'research.studies'
+____ ERROR collecting tests/research/test_research_v137_gbt_param_sweep.py ____
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v137_gbt_param_sweep.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v137_gbt_param_sweep.py:13: in <module>
+    from research.studies.v137_gbt_param_sweep.v137_gbt_param_sweep import run_gbt_sweep
+E   ModuleNotFoundError: No module named 'research.studies'
+_____ ERROR collecting tests/research/test_research_v138_bl_param_eval.py _____
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v138_bl_param_eval.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v138_bl_param_eval.py:13: in <module>
+    from research.studies.v138_bl_param_eval.v138_bl_param_eval import (
+E   ModuleNotFoundError: No module named 'research.studies'
+____ ERROR collecting tests/research/test_research_v140_shrinkage_eval.py _____
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v140_shrinkage_eval.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v140_shrinkage_eval.py:13: in <module>
+    from research.studies.v140_shrinkage_eval.v140_shrinkage_eval import DEFAULT_CANDIDATE_PATH, evaluate_shrinkage
+E   ModuleNotFoundError: No module named 'research.studies'
+______ ERROR collecting tests/research/test_research_v141_blend_eval.py _______
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v141_blend_eval.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v141_blend_eval.py:13: in <module>
+    from research.studies.v141_blend_eval.v141_blend_eval import DEFAULT_CANDIDATE_PATH, evaluate_blend_weight
+E   ModuleNotFoundError: No module named 'research.studies'
+____ ERROR collecting tests/research/test_research_v142_edgar_lag_eval.py _____
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v142_edgar_lag_eval.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v142_edgar_lag_eval.py:13: in <module>
+    from research.studies.v142_edgar_lag_eval.v142_edgar_lag_eval import DEFAULT_CANDIDATE_PATH, evaluate_edgar_lag
+E   ModuleNotFoundError: No module named 'research.studies'
+____ ERROR collecting tests/research/test_research_v143_corr_prune_eval.py ____
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v143_corr_prune_eval.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v143_corr_prune_eval.py:13: in <module>
+    from research.studies.v143_corr_prune_eval.v143_corr_prune_eval import DEFAULT_CANDIDATE_PATH, evaluate_corr_pruning
+E   ModuleNotFoundError: No module named 'research.studies'
+____ ERROR collecting tests/research/test_research_v144_conformal_eval.py _____
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v144_conformal_eval.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v144_conformal_eval.py:14: in <module>
+    from research.studies.v144_conformal_eval.v144_conformal_eval import DEFAULT_CANDIDATE_PATH, evaluate_conformal_config
+E   ModuleNotFoundError: No module named 'research.studies'
+___ ERROR collecting tests/research/test_research_v145_wfo_window_sweep.py ____
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v145_wfo_window_sweep.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v145_wfo_window_sweep.py:14: in <module>
+    from research.studies.v145_wfo_window_sweep.v145_wfo_window_sweep import DEFAULT_CANDIDATE_PATH, evaluate_wfo_windows
+E   ModuleNotFoundError: No module named 'research.studies'
+____ ERROR collecting tests/research/test_research_v146_threshold_sweep.py ____
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v146_threshold_sweep.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v146_threshold_sweep.py:17: in <module>
+    from research.studies.v146_threshold_sweep.v146_threshold_sweep import DEFAULT_CANDIDATE_PATH, evaluate_threshold_candidate, main
+E   ModuleNotFoundError: No module named 'research.studies'
+_ ERROR collecting tests/research/test_research_v147_coverage_weighted_aggregate.py _
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v147_coverage_weighted_aggregate.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v147_coverage_weighted_aggregate.py:13: in <module>
+    from research.studies.v147_coverage_weighted_aggregate.v147_coverage_weighted_aggregate import DEFAULT_CANDIDATE_PATH, evaluate_coverage_weighted_aggregate
+E   ModuleNotFoundError: No module named 'research.studies'
+___ ERROR collecting tests/research/test_research_v148_class_weight_eval.py ___
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v148_class_weight_eval.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v148_class_weight_eval.py:13: in <module>
+    from research.studies.v148_class_weight_eval.v148_class_weight_eval import DEFAULT_CANDIDATE_PATH, evaluate_class_weight_proxy
+E   ModuleNotFoundError: No module named 'research.studies'
+______ ERROR collecting tests/research/test_research_v149_kelly_eval.py _______
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v149_kelly_eval.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v149_kelly_eval.py:14: in <module>
+    from research.studies.v149_kelly_eval.v149_kelly_eval import DEFAULT_CANDIDATE_PATH, evaluate_kelly_params
+E   ModuleNotFoundError: No module named 'research.studies'
+___ ERROR collecting tests/research/test_research_v150_neutral_band_eval.py ___
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_research_v150_neutral_band_eval.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_research_v150_neutral_band_eval.py:13: in <module>
+    from research.studies.v150_neutral_band_eval.v150_neutral_band_eval import DEFAULT_CANDIDATE_PATH, evaluate_neutral_band
+E   ModuleNotFoundError: No module named 'research.studies'
+_________ ERROR collecting tests/research/test_target_experiments.py __________
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_target_experiments.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_target_experiments.py:10: in <module>
+    from research.studies.v9_experiments.target_experiments import _transform_target, summarize_target_experiments
+E   ModuleNotFoundError: No module named 'research.studies'
+_____ ERROR collecting tests/research/test_weekly_snapshot_experiments.py _____
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\research\test_weekly_snapshot_experiments.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\research\test_weekly_snapshot_experiments.py:7: in <module>
+    from research.studies.v9_experiments.weekly_snapshot_experiments import (
+E   ModuleNotFoundError: No module named 'research.studies'
+__ ERROR collecting tests/unit/scripts/test_classifier_feature_selection.py ___
+ImportError while importing test module 'C:\Users\Jeff\.codex\worktrees\06ea\pgr-vesting-decision-support\tests\unit\scripts\test_classifier_feature_selection.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\unit\scripts\test_classifier_feature_selection.py:6: in <module>
+    from scripts.classifier_feature_selection import (
+scripts\classifier_feature_selection.py:19: in <module>
+    from research.studies.v9_experiments.confirmatory_classifier_experiments import evaluate_confirmatory_classifier
+E   ModuleNotFoundError: No module named 'research.studies'
+=========================== short test summary info ===========================
+ERROR tests/research/test_confirmatory_classifier_experiments.py
+ERROR tests/research/test_feature_experiments.py
+ERROR tests/research/test_pooled_benchmark_experiments.py
+ERROR tests/research/test_research_v129_feature_map_eval.py
+ERROR tests/research/test_research_v129_vgt_robustness_audit.py
+ERROR tests/research/test_research_v131_threshold_sweep_eval.py
+ERROR tests/research/test_research_v132_threshold_validation.py
+ERROR tests/research/test_research_v133_ridge_alpha_sweep.py
+ERROR tests/research/test_research_v134_fred_lag_sweep.py
+ERROR tests/research/test_research_v135_temp_param_search.py
+ERROR tests/research/test_research_v137_gbt_param_sweep.py
+ERROR tests/research/test_research_v138_bl_param_eval.py
+ERROR tests/research/test_research_v140_shrinkage_eval.py
+ERROR tests/research/test_research_v141_blend_eval.py
+ERROR tests/research/test_research_v142_edgar_lag_eval.py
+ERROR tests/research/test_research_v143_corr_prune_eval.py
+ERROR tests/research/test_research_v144_conformal_eval.py
+ERROR tests/research/test_research_v145_wfo_window_sweep.py
+ERROR tests/research/test_research_v146_threshold_sweep.py
+ERROR tests/research/test_research_v147_coverage_weighted_aggregate.py
+ERROR tests/research/test_research_v148_class_weight_eval.py
+ERROR tests/research/test_research_v149_kelly_eval.py
+ERROR tests/research/test_research_v150_neutral_band_eval.py
+ERROR tests/research/test_target_experiments.py
+ERROR tests/research/test_weekly_snapshot_experiments.py
+ERROR tests/unit/scripts/test_classifier_feature_selection.py
+!!!!!!!!!!!!!!!!!! Interrupted: 26 errors during collection !!!!!!!!!!!!!!!!!!!
+26 errors in 10.01s
