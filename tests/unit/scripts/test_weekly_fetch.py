@@ -122,3 +122,62 @@ class TestRebuildTargetsJumpGuard:
         assert wf._rebuild_targets(conn, dry_run=False) is True
         assert rebuilt.call_count == 2
         conn.close()
+
+
+class TestPriceTickerOrder:
+    """A ticker deferred by the AV quota leads the next run (DBC, 2026-10)."""
+
+    @staticmethod
+    def _conn(tmp_path, latest: dict[str, str]):
+        from src.database import db_client
+
+        conn = db_client.get_connection(str(tmp_path / "t.db"))
+        db_client.initialize_schema(conn)
+        db_client.upsert_prices(conn, [
+            {"ticker": t, "date": d, "close": 10.0} for t, d in latest.items()
+        ])
+        return conn
+
+    def test_stalest_first_ties_keep_canonical_order(self, tmp_path) -> None:
+        from scripts.weekly_fetch import order_price_tickers_by_staleness
+
+        conn = self._conn(tmp_path, {
+            "PGR": "2026-10-09", "VTI": "2026-10-09",
+            "GLD": "2026-10-09", "DBC": "2026-09-25",
+        })
+        ordered = order_price_tickers_by_staleness(
+            conn, ["PGR", "VTI", "GLD", "DBC"],
+        )
+        assert ordered == ["DBC", "PGR", "VTI", "GLD"]
+        conn.close()
+
+    def test_ticker_without_bars_goes_first(self, tmp_path) -> None:
+        from scripts.weekly_fetch import order_price_tickers_by_staleness
+
+        conn = self._conn(tmp_path, {"PGR": "2026-10-09", "VTI": "2026-10-02"})
+        ordered = order_price_tickers_by_staleness(conn, ["PGR", "VTI", "NEW"])
+        assert ordered == ["NEW", "VTI", "PGR"]
+        conn.close()
+
+    def test_proxy_fill_rows_do_not_count_as_fresh(self, tmp_path) -> None:
+        from scripts.weekly_fetch import order_price_tickers_by_staleness
+        from src.database import db_client
+
+        conn = self._conn(tmp_path, {"PGR": "2026-10-09", "VXUS": "2026-09-25"})
+        db_client.upsert_prices(conn, [{
+            "ticker": "VXUS", "date": "2026-10-09", "close": 10.0, "proxy_fill": 1,
+        }])
+        ordered = order_price_tickers_by_staleness(conn, ["PGR", "VXUS"])
+        assert ordered == ["VXUS", "PGR"]
+        conn.close()
+
+    def test_same_set_of_tickers_returned(self, tmp_path) -> None:
+        from scripts.weekly_fetch import order_price_tickers_by_staleness
+        from src.ingestion.fetch_scheduler import get_all_price_tickers
+
+        conn = self._conn(tmp_path, {"DBC": "2026-09-25", "PGR": "2026-10-09"})
+        tickers = get_all_price_tickers()
+        ordered = order_price_tickers_by_staleness(conn, tickers)
+        assert sorted(ordered) == sorted(tickers)
+        assert len(ordered) == len(tickers)
+        conn.close()
