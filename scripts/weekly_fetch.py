@@ -7,7 +7,9 @@ from SEC EDGAR XBRL and FRED macro series (v3.0+). All results are upserted
 into the v2 SQLite database.
 
 Budget per run (Friday price run):
-  22 AV calls - all ticker prices (TIME_SERIES_WEEKLY, full history)
+  22 AV calls - all ticker prices (TIME_SERIES_WEEKLY, full history),
+                stalest latest bar first so a ticker deferred by the AV
+                quota leads the next run
    1 AV call  - PGR dividends (+ up to 2 advisory retries)
   23 AV total (free-tier limit: 25/day)
    1 EDGAR call - PGR companyfacts JSON (7-day cache; most runs cost 0 calls)
@@ -121,6 +123,26 @@ def _fetch_fred_step(conn, dry_run: bool = False) -> None:
             "FRED fetch failed. Continuing with cached data. Error=%r",
             exc,
         )
+
+
+def order_price_tickers_by_staleness(conn, tickers: list[str]) -> list[str]:
+    """Return ``tickers`` with the stalest latest (non-proxy) price bar first.
+
+    The AV daily quota can run out before the batch finishes; with a fixed
+    order the last ticker (DBC) was skipped every week from 2026-10-03 and
+    went stale, failing the monthly decision's data_ready gate. Fetching the
+    stalest first makes a deferred ticker the first call of the next run.
+    Ties keep the canonical order (PGR first); a ticker with no bars sorts
+    first of all.
+    """
+    latest = {
+        row[0]: row[1]
+        for row in conn.execute(
+            "SELECT ticker, MAX(date) FROM daily_prices "
+            "WHERE COALESCE(proxy_fill, 0) = 0 GROUP BY ticker"
+        ).fetchall()
+    }
+    return sorted(tickers, key=lambda ticker: str(latest.get(ticker) or "")[:10])
 
 
 def _days_since_fetch(conn, ticker: str, today: date) -> float:
@@ -283,7 +305,7 @@ def main(dry_run: bool = False, skip_fred: bool = False) -> None:
         conn = db_client.get_connection(config.DB_PATH)
         db_client.initialize_schema(conn)
 
-    all_tickers = get_all_price_tickers()
+    all_tickers = order_price_tickers_by_staleness(conn, get_all_price_tickers())
     pgr_only = ["PGR"]
 
     logger.info("Price tickers (%s): %s", len(all_tickers), all_tickers)
