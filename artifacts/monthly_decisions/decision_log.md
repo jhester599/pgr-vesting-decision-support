@@ -46,6 +46,7 @@ rule (review 2026-09-25, F14); they are not production decisions.
 | 2026-07-22 | 2026-07-22 | NEUTRAL | 50% | -4.66% | 0.0993 | 64.9% |  |
 | 2026-08-20 | 2026-08-20 | UNDERPERFORM | 50% | -4.57% | 0.1213 | 65.4% |  |
 | 2026-09-21 | 2026-09-20 | NEUTRAL | 50% | -3.71% | 0.1133 | 66.2% |  |
+| 2026-10-15 | 2026-10-15 | NEUTRAL | 50% | +0.18% | 0.0873 | 64.3% | DEFER-TO-TAX-DEFAULT: directional_skill FAIL: p=0.311; hit 63.3% vs base rate 68.1% (needs PT p < 0.05) |
 
 ---
 
