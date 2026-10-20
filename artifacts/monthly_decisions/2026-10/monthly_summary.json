@@ -11,7 +11,7 @@
     "run_manifest_json": "run_manifest.json",
     "signals_csv": "signals.csv"
   },
-  "as_of_date": "2026-10-15",
+  "as_of_date": "2026-10-20",
   "classification_shadow": {
     "agreement_label": "Aligned",
     "agreement_with_live": true,
@@ -21,9 +21,9 @@
     "confidence_tier_investable_pool": "LOW",
     "confidence_tier_path_b": "HIGH",
     "dual_track_delta": {
-      "BND": 0.5617610817327794,
+      "BND": 0.5618129686519776,
       "VGT": 0.0,
-      "VIG": 0.1707549034162229,
+      "VIG": 0.17136407806532672,
       "VOO": 0.0,
       "VWO": 0.0,
       "VXUS": 0.0
@@ -34,20 +34,20 @@
     "interpretation": "Shadow classifier is near its neutral band (45.2%); use it as a low-confidence interpretation layer rather than a decision override.",
     "investable_benchmark_count": 6,
     "model_family": "separate_benchmark_logistic_balanced",
-    "probability_actionable_sell": 0.4519048758263678,
+    "probability_actionable_sell": 0.4520628421531994,
     "probability_actionable_sell_label": "45.2%",
-    "probability_investable_pool": 0.5673239086538955,
+    "probability_investable_pool": 0.567466122384661,
     "probability_investable_pool_label": "56.7%",
-    "probability_non_actionable": 0.5480951241736323,
+    "probability_non_actionable": 0.5479371578468006,
     "probability_non_actionable_label": "54.8%",
-    "probability_path_b_temp_scaled": 0.704987561144261,
+    "probability_path_b_temp_scaled": 0.7049851305104151,
     "probability_path_b_temp_scaled_label": "70.5%",
     "stance": "NEUTRAL",
     "stance_investable_pool": "NEUTRAL",
     "stance_path_b": "ACTIONABLE-SELL",
     "target_label": "actionable_sell_3pct",
     "top_supporting_benchmark": "DBC",
-    "top_supporting_contribution": 0.09695158382374877,
+    "top_supporting_contribution": 0.09674394201528431,
     "top_supporting_contribution_label": "9.7%"
   },
   "classification_shadow_variants": [
@@ -60,9 +60,9 @@
       "confidence_tier_investable_pool": "LOW",
       "confidence_tier_path_b": "HIGH",
       "dual_track_delta": {
-        "BND": 0.5617610817327794,
+        "BND": 0.5618129686519776,
         "VGT": 0.0,
-        "VIG": 0.1707549034162229,
+        "VIG": 0.17136407806532672,
         "VOO": 0.0,
         "VWO": 0.0,
         "VXUS": 0.0
@@ -74,20 +74,20 @@
       "investable_benchmark_count": 6,
       "label": "Current Shadow",
       "model_family": "separate_benchmark_logistic_balanced",
-      "probability_actionable_sell": 0.4519048758263678,
+      "probability_actionable_sell": 0.4520628421531994,
       "probability_actionable_sell_label": "45.2%",
-      "probability_investable_pool": 0.5673239086538955,
+      "probability_investable_pool": 0.567466122384661,
       "probability_investable_pool_label": "56.7%",
-      "probability_non_actionable": 0.5480951241736323,
+      "probability_non_actionable": 0.5479371578468006,
       "probability_non_actionable_label": "54.8%",
-      "probability_path_b_temp_scaled": 0.704987561144261,
+      "probability_path_b_temp_scaled": 0.7049851305104151,
       "probability_path_b_temp_scaled_label": "70.5%",
       "stance": "NEUTRAL",
       "stance_investable_pool": "NEUTRAL",
       "stance_path_b": "ACTIONABLE-SELL",
       "target_label": "actionable_sell_3pct",
       "top_supporting_benchmark": "DBC",
-      "top_supporting_contribution": 0.09695158382374877,
+      "top_supporting_contribution": 0.09674394201528431,
       "top_supporting_contribution_label": "9.7%",
       "variant": "baseline_shadow"
     },
@@ -110,7 +110,7 @@
       "confidence_tier": "LOW",
       "forecast_source": "baseline_shadow",
       "label": "Autoresearch Follow-On",
-      "probability_actionable_sell": 0.4519048758263678,
+      "probability_actionable_sell": 0.4520628421531994,
       "probability_actionable_sell_label": "45.2%",
       "probability_investable_pool_label": "56.7%",
       "probability_path_b_temp_scaled_label": "70.5%",
@@ -128,7 +128,7 @@
       "feature_set": "ta_pgr_obv_detrended|ta_pgr_natr_63d|yield_slope|real_yield_change_6m|real_rate_10y|credit_spread_hy|nfci|ta_ratio_bb_pct_b_6m_vwo|combined_ratio_ttm|investment_income_growth_yoy|book_value_per_share_growth_yoy|npw_growth_yoy",
       "label": "TA Minimal + VWO %B",
       "model_family": "separate_benchmark_logistic_balanced",
-      "probability_actionable_sell": 0.4490939051283801,
+      "probability_actionable_sell": 0.4491501608315408,
       "probability_actionable_sell_label": "44.9%",
       "reporting_only": true,
       "stance": "NEUTRAL",
@@ -145,7 +145,7 @@
       "feature_set": "ta_pgr_obv_detrended|ta_pgr_natr_63d|yield_slope|real_yield_change_6m|real_rate_10y|credit_spread_hy|nfci|vix|combined_ratio_ttm|investment_income_growth_yoy|book_value_per_share_growth_yoy|npw_growth_yoy",
       "label": "TA Minimal Replacement",
       "model_family": "separate_benchmark_logistic_balanced",
-      "probability_actionable_sell": 0.4526717290126031,
+      "probability_actionable_sell": 0.4528425968669388,
       "probability_actionable_sell_label": "45.3%",
       "reporting_only": true,
       "stance": "NEUTRAL",
@@ -173,7 +173,7 @@
   },
   "decision_overlay_variants": [
     {
-      "classifier_prob_actionable_sell": 0.4519048758263678,
+      "classifier_prob_actionable_sell": 0.4520628421531994,
       "gate_style": "veto_regression_sell",
       "label": "Current Shadow",
       "reason": "no regression deviation to veto",
@@ -199,7 +199,7 @@
         },
         "v150_neutral_band": 0.015
       },
-      "classifier_prob_actionable_sell": 0.4519048758263678,
+      "classifier_prob_actionable_sell": 0.4520628421531994,
       "forecast_source": "baseline_shadow",
       "gate_style": "veto_regression_sell",
       "label": "Autoresearch Follow-On",
@@ -213,41 +213,41 @@
     }
   ],
   "model_health": {
-    "aggregate_oos_r2": 0.049369733418609396,
+    "aggregate_oos_r2": 0.04850613520638425,
     "base_rate": 0.6812297734627831,
     "calibration": {
-      "ece_ci_lower": 0.1071048754470097,
-      "ece_ci_upper": 0.24932821463662025,
+      "ece_ci_lower": 0.10487695137511972,
+      "ece_ci_upper": 0.24560987421354347,
       "method": "platt",
       "n_obs": 1025,
-      "prequential_ece": 0.15879755053333655
+      "prequential_ece": 0.156166053571069
     },
-    "clark_west_p_value": 0.0004077491145279241,
-    "conformal_trailing_coverage": 0.42708333333333337,
+    "clark_west_p_value": 0.0004013171297015623,
+    "conformal_trailing_coverage": 0.41666666666666663,
     "constant_rule_hit_rate": 0.6812297734627831,
-    "equal_weight_mean_ic": 0.08733093479785296,
+    "equal_weight_mean_ic": 0.08746594004131958,
     "gate_contract_version": "chronological-readiness-2026-09-27",
     "gates": [
       {
-        "current": "4.94%",
+        "current": "4.85%",
         "name": "oos_r2",
         "status": "PASS",
         "threshold": ">= 2.00%",
-        "value": 0.049369733418609396
+        "value": 0.04850613520638425
       },
       {
-        "current": "0.0873",
+        "current": "0.0875",
         "name": "mean_ic",
         "status": "PASS",
         "threshold": ">= 0.0700",
-        "value": 0.08733093479785296
+        "value": 0.08746594004131958
       },
       {
-        "current": "p=0.311; hit 63.3% vs base rate 68.1%",
+        "current": "p=0.349; hit 63.0% vs base rate 68.1%",
         "name": "directional_skill",
         "status": "FAIL",
         "threshold": "PT p < 0.05",
-        "value": 0.3113247892004226
+        "value": 0.34895701025970693
       },
       {
         "current": "complete (16 required model/benchmark pairs)",
@@ -264,22 +264,22 @@
         "value": null
       }
     ],
-    "hit_rate": 0.6326860841423948,
-    "hit_rate_excess": -0.04854368932038833,
+    "hit_rate": 0.6302588996763754,
+    "hit_rate_excess": -0.050970873786407744,
     "metrics_version": "prequential-2026-09-25",
-    "pesaran_timmermann_p_value": 0.3113247892004226,
-    "pooled_ic": 0.11654690007158128,
-    "pooled_ic_p_value": 0.1244400973450797,
+    "pesaran_timmermann_p_value": 0.34895701025970693,
+    "pooled_ic": 0.11660279365604319,
+    "pooled_ic_p_value": 0.12428806097391694,
     "pooled_ic_p_value_method": "driscoll-kraay (clustered by date)",
-    "quality_weighted_mean_ic": 0.09858500177300233,
+    "quality_weighted_mean_ic": 0.09892550630132824,
     "readiness": {
-      "as_of": "2026-10-15",
+      "as_of": "2026-10-20",
       "data_ready": true,
       "decision_row_date": "2026-09-30",
       "missing_live_features": [],
       "readiness_basis": "live",
       "readiness_note": "",
-      "run_date": "2026-10-15",
+      "run_date": "2026-10-20",
       "stale_required_feeds": [],
       "wfo_completed": true,
       "wfo_failed_pairs": [],
@@ -307,27 +307,27 @@
   },
   "recommendation": {
     "actionability_label": "No \u2014 follow the default tax/diversification rule.",
-    "aggregate_nw_ic": 0.11654690007158128,
-    "aggregate_nw_ic_label": "0.1165",
-    "aggregate_oos_r2": 0.049369733418609396,
-    "aggregate_oos_r2_label": "+4.94%",
+    "aggregate_nw_ic": 0.11660279365604319,
+    "aggregate_nw_ic_label": "0.1166",
+    "aggregate_oos_r2": 0.04850613520638425,
+    "aggregate_oos_r2_label": "+4.85%",
     "confidence_tier": "LOW",
     "decision_headline": "Hold 50% / Sell 50% of the next vest tranche. No \u2014 follow the default tax/diversification rule.",
     "deferral_reasons": [
-      "directional_skill FAIL: p=0.311; hit 63.3% vs base rate 68.1% (needs PT p < 0.05)"
+      "directional_skill FAIL: p=0.349; hit 63.0% vs base rate 68.1% (needs PT p < 0.05)"
     ],
     "failed_gates": [
       "directional_skill"
     ],
     "hold_vs_sell_label": "Hold 50% / Sell 50% of the next vest tranche",
-    "mean_hit_rate": 0.6425303395321251,
-    "mean_hit_rate_label": "64.3%",
-    "mean_ic": 0.08733093479785296,
-    "mean_ic_label": "0.0873",
-    "predicted_6m_relative_return": 0.0017938966800271731,
-    "predicted_6m_relative_return_label": "+0.18%",
-    "prob_outperform_calibrated": 0.6563241570100232,
-    "prob_outperform_calibrated_label": "65.6%",
+    "mean_hit_rate": 0.6423833682384851,
+    "mean_hit_rate_label": "64.2%",
+    "mean_ic": 0.08746594004131958,
+    "mean_ic_label": "0.0875",
+    "predicted_6m_relative_return": 0.0016489510185360556,
+    "predicted_6m_relative_return_label": "+0.16%",
+    "prob_outperform_calibrated": 0.6570917268771507,
+    "prob_outperform_calibrated_label": "65.7%",
     "prob_outperform_raw": null,
     "prob_outperform_raw_label": null,
     "recommendation_mode": "DEFER-TO-TAX-DEFAULT",
@@ -340,10 +340,10 @@
     "label": "Live production recommendation layer (quality-weighted consensus)",
     "visible_cross_check": false
   },
-  "run_date": "2026-10-15",
+  "run_date": "2026-10-20",
   "schema_version": 3,
   "shadow_gate_overlay": {
-    "classifier_prob_actionable_sell": 0.4519048758263678,
+    "classifier_prob_actionable_sell": 0.4520628421531994,
     "gate_style": "veto_regression_sell",
     "reason": "no regression deviation to veto",
     "recommendation_mode": "DEFER-TO-TAX-DEFAULT",
@@ -353,7 +353,7 @@
     "would_change": false
   },
   "warnings": [
-    "Recommendation is DEFER-TO-TAX-DEFAULT: directional_skill FAIL: p=0.311; hit 63.3% vs base rate 68.1% (needs PT p < 0.05).",
-    "Trailing conformal coverage deviates materially from nominal: 42.7% vs 80%."
+    "Recommendation is DEFER-TO-TAX-DEFAULT: directional_skill FAIL: p=0.349; hit 63.0% vs base rate 68.1% (needs PT p < 0.05).",
+    "Trailing conformal coverage deviates materially from nominal: 41.7% vs 80%."
   ]
 }

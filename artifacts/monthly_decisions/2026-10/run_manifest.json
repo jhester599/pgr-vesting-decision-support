@@ -1,11 +1,11 @@
 {
   "artifact_classification": "production",
-  "as_of_date": "2026-10-15",
+  "as_of_date": "2026-10-20",
   "decision_gates": {
     "data_ready": true,
     "decision_row_date": "2026-09-30",
     "deferral_reasons": [
-      "directional_skill FAIL: p=0.311; hit 63.3% vs base rate 68.1% (needs PT p < 0.05)"
+      "directional_skill FAIL: p=0.349; hit 63.0% vs base rate 68.1% (needs PT p < 0.05)"
     ],
     "failed_gates": [
       "directional_skill"
@@ -41,10 +41,10 @@
     ]
   },
   "dry_run": false,
-  "git_sha": "ab4fcfbdf66c4d11696740e043ffe805d68a93af",
+  "git_sha": "38fbb4bd0b499db72d3cf657b3e691cd7c8d6af7",
   "latest_dates": {
-    "daily_dividends.ex_date": "2026-10-01",
-    "daily_prices.date": "2026-10-14",
+    "daily_dividends.ex_date": "2026-12-10",
+    "daily_prices.date": "2026-10-16",
     "fred_macro_monthly.month_end": "2026-10-30",
     "model_performance_log.month_end": "2026-10-31",
     "monthly_relative_returns.date": "2026-03-31",
@@ -64,20 +64,20 @@
     "artifacts/monthly_decisions/2026-10/monthly_summary.json"
   ],
   "row_counts": {
-    "daily_dividends": 2454,
-    "daily_prices": 29866,
-    "fred_macro_monthly": 7586,
+    "daily_dividends": 2455,
+    "daily_prices": 29870,
+    "fred_macro_monthly": 7587,
     "model_performance_log": 9,
     "monthly_relative_returns": 9700,
     "pgr_edgar_monthly": 266,
     "pgr_fundamentals_quarterly": 73
   },
-  "run_timestamp_utc": "2026-10-15T01:19:03.485425+00:00",
+  "run_timestamp_utc": "2026-10-20T18:11:43.484070+00:00",
   "schema_version": "008_model_performance_log_metrics_version",
   "script_name": "cli/monthly_decision.py",
   "warnings": [
-    "Recommendation is DEFER-TO-TAX-DEFAULT: directional_skill FAIL: p=0.311; hit 63.3% vs base rate 68.1% (needs PT p < 0.05).",
-    "Trailing conformal coverage deviates materially from nominal: 42.7% vs 80%."
+    "Recommendation is DEFER-TO-TAX-DEFAULT: directional_skill FAIL: p=0.349; hit 63.0% vs base rate 68.1% (needs PT p < 0.05).",
+    "Trailing conformal coverage deviates materially from nominal: 41.7% vs 80%."
   ],
   "workflow_name": "monthly_decision"
 }

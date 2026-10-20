@@ -27,3 +27,5 @@ as_of_date,run_date,variant,feature_anchor_date,forecast_horizon_months,mature_o
 2026-09-21,2026-09-20,ta_minimal_replacement,2026-08-31,6,2027-02-26,False,0.4443113081003572,NEUTRAL,LOW,10,,
 2026-10-15,2026-10-15,ta_minimal_plus_vwo_pct_b,2026-09-30,6,2027-03-31,False,0.4490939051283801,NEUTRAL,LOW,10,,
 2026-10-15,2026-10-15,ta_minimal_replacement,2026-09-30,6,2027-03-31,False,0.4526717290126031,NEUTRAL,LOW,10,,
+2026-10-20,2026-10-20,ta_minimal_plus_vwo_pct_b,2026-09-30,6,2027-03-31,False,0.4491501608315408,NEUTRAL,LOW,10,,
+2026-10-20,2026-10-20,ta_minimal_replacement,2026-09-30,6,2027-03-31,False,0.4528425968669388,NEUTRAL,LOW,10,,
