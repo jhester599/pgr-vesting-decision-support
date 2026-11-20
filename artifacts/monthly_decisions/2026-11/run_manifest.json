@@ -1,0 +1,83 @@
+{
+  "artifact_classification": "production",
+  "as_of_date": "2026-11-20",
+  "decision_gates": {
+    "data_ready": true,
+    "decision_row_date": "2026-10-30",
+    "deferral_reasons": [
+      "directional_skill FAIL: p=0.462; hit 62.3% vs base rate 68.3% (needs PT p < 0.05)"
+    ],
+    "failed_gates": [
+      "directional_skill"
+    ],
+    "gate_contract_version": "chronological-readiness-2026-09-27",
+    "metrics_version": "prequential-2026-09-25",
+    "missing_live_features": [],
+    "readiness_basis": "live",
+    "readiness_note": "",
+    "recommendation_mode": "DEFER-TO-TAX-DEFAULT",
+    "recommended_sell_pct": 0.5,
+    "stale_required_feeds": [],
+    "wfo_completed": true,
+    "wfo_failed_pairs": [],
+    "wfo_optional_excluded": [],
+    "wfo_required_pairs": [
+      "VOO/ridge",
+      "VOO/gbt",
+      "VXUS/ridge",
+      "VXUS/gbt",
+      "VWO/ridge",
+      "VWO/gbt",
+      "VMBS/ridge",
+      "VMBS/gbt",
+      "BND/ridge",
+      "BND/gbt",
+      "GLD/ridge",
+      "GLD/gbt",
+      "DBC/ridge",
+      "DBC/gbt",
+      "VDE/ridge",
+      "VDE/gbt"
+    ]
+  },
+  "dry_run": false,
+  "git_sha": "37b1ffcafc3046cfaeebe024f9589d3f97e7d9c5",
+  "latest_dates": {
+    "daily_dividends.ex_date": "2026-12-10",
+    "daily_prices.date": "2026-11-13",
+    "fred_macro_monthly.month_end": "2026-11-30",
+    "model_performance_log.month_end": "2026-11-30",
+    "monthly_relative_returns.date": "2026-04-30",
+    "pgr_edgar_monthly.month_end": "2026-10-31",
+    "pgr_fundamentals_quarterly.period_end": "2026-09-30"
+  },
+  "nan_live_features": [],
+  "outputs": [
+    "artifacts/monthly_decisions/2026-11/recommendation.md",
+    "artifacts/monthly_decisions/2026-11/diagnostic.md",
+    "artifacts/monthly_decisions/2026-11/signals.csv",
+    "artifacts/monthly_decisions/2026-11/benchmark_quality.csv",
+    "artifacts/monthly_decisions/2026-11/consensus_shadow.csv",
+    "artifacts/monthly_decisions/2026-11/classification_shadow.csv",
+    "artifacts/monthly_decisions/2026-11/decision_overlays.csv",
+    "artifacts/monthly_decisions/2026-11/dashboard.html",
+    "artifacts/monthly_decisions/2026-11/monthly_summary.json"
+  ],
+  "row_counts": {
+    "daily_dividends": 2461,
+    "daily_prices": 29974,
+    "fred_macro_monthly": 7599,
+    "model_performance_log": 10,
+    "monthly_relative_returns": 9742,
+    "pgr_edgar_monthly": 267,
+    "pgr_fundamentals_quarterly": 74
+  },
+  "run_timestamp_utc": "2026-11-20T21:38:04.320378+00:00",
+  "schema_version": "008_model_performance_log_metrics_version",
+  "script_name": "cli/monthly_decision.py",
+  "warnings": [
+    "Recommendation is DEFER-TO-TAX-DEFAULT: directional_skill FAIL: p=0.462; hit 62.3% vs base rate 68.3% (needs PT p < 0.05).",
+    "Trailing conformal coverage deviates materially from nominal: 54.2% vs 80%."
+  ],
+  "workflow_name": "monthly_decision"
+}
