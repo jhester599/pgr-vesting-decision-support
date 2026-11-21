@@ -159,7 +159,7 @@ INTRO = """\
 > `pgr_edgar_monthly` in `data/pgr_financials.db`; do not edit by hand.
 
 **Source file:** `data/processed/pgr_edgar_cache.csv` (exported from the DB by
-`scripts/repair_edgar_history.py --export-csv`)
+each monthly fetch, `cli/edgar_monthly_fetch.py --export-csv`)
 **Coverage:** {first} – {last} ({n} monthly observations, no missing months)
 **Filing types:** {types}
 **Parser:** `pgr_vds.ingestion.edgar_monthly` (`cli/edgar_monthly_fetch.py`), version `{parser}`

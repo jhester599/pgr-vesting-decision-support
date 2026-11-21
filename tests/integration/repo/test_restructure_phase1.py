@@ -186,6 +186,7 @@ def test_dashboard_reads_artifacts() -> None:
 ALLOWED_GIT_ADD_PATHS: frozenset[str] = frozenset(
     {
         "data/pgr_financials.db",
+        "data/processed/pgr_edgar_cache.csv",
         "artifacts/monthly_decisions/",
         '"artifacts/charts/$chart"',
         "artifacts/ops/fetch_status.md",

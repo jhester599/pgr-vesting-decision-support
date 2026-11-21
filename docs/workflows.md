@@ -54,6 +54,8 @@ Purpose:
 Outputs:
 
 - `data/pgr_financials.db`
+- `data/processed/pgr_edgar_cache.csv`, exported from the DB on each non-dry
+  run so the public CSV stays current
 - job summary with latest EDGAR row metadata
 
 ### `monthly_decision.yml`
