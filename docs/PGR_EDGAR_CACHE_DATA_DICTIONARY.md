@@ -4,9 +4,9 @@
 > `pgr_edgar_monthly` in `data/pgr_financials.db`; do not edit by hand.
 
 **Source file:** `data/processed/pgr_edgar_cache.csv` (exported from the DB by
-`scripts/repair_edgar_history.py --export-csv`)
-**Coverage:** August 2004 – August 2026 (265 monthly observations, no missing months)
-**Filing types:** `monthly_results` (177 rows) and `quarterly_earnings` (88 rows)
+each monthly fetch, `cli/edgar_monthly_fetch.py --export-csv`)
+**Coverage:** August 2004 – October 2026 (267 monthly observations, no missing months)
+**Filing types:** `monthly_results` (178 rows) and `quarterly_earnings` (89 rows)
 **Parser:** `pgr_vds.ingestion.edgar_monthly` (`cli/edgar_monthly_fetch.py`), version `8k-html/2026-09-25`
 **Units:** millions USD unless noted; shares in millions; PIF in thousands of policies.
 
@@ -29,10 +29,10 @@ summed per quarter matches XBRL quarterly net income within $1M.
 
 | Column | Non-null | Description |
 |---|---|---|
-| `report_period` | 265/265 | Month the release covers (`YYYY-MM`) |
-| `filing_date` | 265/265 | Date the 8-K was filed |
-| `filing_type` | 265/265 | `monthly_results` (item 7.01 or 9.01) or `quarterly_earnings` (item 2.02) |
-| `accession_number` | 265/265 | EDGAR accession number of the release, dashed; every value in the row comes from this filing |
+| `report_period` | 267/267 | Month the release covers (`YYYY-MM`) |
+| `filing_date` | 267/267 | Date the 8-K was filed |
+| `filing_type` | 267/267 | `monthly_results` (item 7.01 or 9.01) or `quarterly_earnings` (item 2.02) |
+| `accession_number` | 267/267 | EDGAR accession number of the release, dashed; every value in the row comes from this filing |
 
 ---
 
@@ -42,22 +42,22 @@ All figures are the **single month** reported in each release (not year-to-date)
 
 | Column | Non-null | Min | Median | Max | Notes |
 |---|---|---|---|---|---|
-| `net_premiums_written` | 265/265 | 905.7 | 1,748.3 | 9,911.0 | NPW: premiums written in the month |
-| `net_premiums_earned` | 265/265 | 1,007.4 | 1,731.6 | 7,519.0 | NPE: premiums earned in the month |
-| `investment_income` | 265/265 | 30.0 | 51.1 | 346.0 | Net investment income |
-| `total_net_realized_gains` | 265/265 | -1,039.8 | 9.8 | 537.3 | Total net realized gains (losses) on securities |
-| `service_revenues` | 265/265 | 0.9 | 7.5 | 51.0 | Fee-based service income |
-| `fees_and_other_revenues` | 164/265 | 20.7 | 46.7 | 104.0 | Reported as a separate line from ~2013 |
-| `total_revenues` | 265/265 | 71.3 | 1,812.6 | 8,059.0 | Total revenues (includes any gain or loss on extinguishment of debt, which has no column) |
-| `losses_lae` | 265/265 | 665.2 | 1,257.0 | 5,179.0 | Losses and loss adjustment expenses |
-| `policy_acquisition_costs` | 265/265 | 102.5 | 143.9 | 548.0 | Agent commissions and other acquisition costs |
-| `other_underwriting_expenses` | 265/265 | 84.4 | 226.9 | 1,069.0 | Other underwriting expenses |
-| `interest_expense` | 265/265 | 6.0 | 11.7 | 30.0 | Interest on debt |
-| `total_expenses` | 265/265 | 888.3 | 1,643.6 | 7,029.0 | Total expenses (includes policyholder credit expense where reported, e.g. 2025-09) |
-| `income_before_income_taxes` | 265/265 | -982.0 | 179.1 | 1,834.0 | Pretax income; equals total revenues − total expenses in every row |
-| `provision_for_income_taxes` | 265/265 | -351.2 | 56.4 | 389.0 | Income tax expense (benefit) |
-| `net_income` | 265/265 | -684.4 | 122.7 | 1,445.0 | GAAP net income; monthly sums reconcile to XBRL quarterly net income |
-| `total_comprehensive_income` | 187/265 | -1,485.0 | 159.6 | 1,833.0 | Net income plus OCI |
+| `net_premiums_written` | 267/267 | 905.7 | 1,773.6 | 9,911.0 | NPW: premiums written in the month |
+| `net_premiums_earned` | 267/267 | 1,007.4 | 1,741.8 | 7,519.0 | NPE: premiums earned in the month |
+| `investment_income` | 267/267 | 30.0 | 51.3 | 358.0 | Net investment income |
+| `total_net_realized_gains` | 267/267 | -1,039.8 | 9.8 | 537.3 | Total net realized gains (losses) on securities |
+| `service_revenues` | 267/267 | 0.9 | 7.6 | 51.0 | Fee-based service income |
+| `fees_and_other_revenues` | 166/267 | 20.7 | 47.1 | 105.0 | Reported as a separate line from ~2013 |
+| `total_revenues` | 267/267 | 71.3 | 1,812.7 | 8,059.0 | Total revenues (includes any gain or loss on extinguishment of debt, which has no column) |
+| `losses_lae` | 267/267 | 665.2 | 1,268.3 | 5,179.0 | Losses and loss adjustment expenses |
+| `policy_acquisition_costs` | 267/267 | 102.5 | 144.0 | 548.0 | Agent commissions and other acquisition costs |
+| `other_underwriting_expenses` | 267/267 | 84.4 | 229.2 | 1,078.0 | Other underwriting expenses |
+| `interest_expense` | 267/267 | 6.0 | 11.7 | 30.0 | Interest on debt |
+| `total_expenses` | 267/267 | 888.3 | 1,670.7 | 7,029.0 | Total expenses (includes policyholder credit expense where reported, e.g. 2025-09) |
+| `income_before_income_taxes` | 267/267 | -982.0 | 179.5 | 1,834.0 | Pretax income; equals total revenues − total expenses in every row |
+| `provision_for_income_taxes` | 267/267 | -351.2 | 56.5 | 389.0 | Income tax expense (benefit) |
+| `net_income` | 267/267 | -684.4 | 122.9 | 1,445.0 | GAAP net income; monthly sums reconcile to XBRL quarterly net income |
+| `total_comprehensive_income` | 189/267 | -1,485.0 | 159.6 | 1,833.0 | Net income plus OCI |
 
 ---
 
@@ -67,12 +67,12 @@ EPS in dollars; share counts in **millions**.
 
 | Column | Non-null | Min | Median | Max | Notes |
 |---|---|---|---|---|---|
-| `eps_basic` | 265/265 | -1.17 | 0.20 | 2.48 | Basic EPS for the month |
-| `eps_diluted` | 265/265 | -1.17 | 0.20 | 2.47 | Diluted EPS for the month |
-| `comprehensive_eps_diluted` | 176/265 | -2.54 | 0.29 | 3.12 | Comprehensive income per diluted share |
-| `avg_shares_basic` | 265/265 | 194.2 | 585.4 | 774.8 | Weighted-average basic shares (millions) |
-| `avg_shares_diluted` | 265/265 | 196.7 | 587.7 | 784.6 | Weighted-average diluted shares (millions) |
-| `avg_diluted_equivalent_shares` | 194/265 | 197.5 | 587.6 | 781.0 | Average diluted equivalent shares from the summary table (millions) |
+| `eps_basic` | 267/267 | -1.17 | 0.20 | 2.48 | Basic EPS for the month |
+| `eps_diluted` | 267/267 | -1.17 | 0.20 | 2.47 | Diluted EPS for the month |
+| `comprehensive_eps_diluted` | 178/267 | -2.54 | 0.29 | 3.12 | Comprehensive income per diluted share |
+| `avg_shares_basic` | 267/267 | 194.2 | 585.4 | 774.8 | Weighted-average basic shares (millions) |
+| `avg_shares_diluted` | 267/267 | 196.7 | 587.7 | 784.6 | Weighted-average diluted shares (millions) |
+| `avg_diluted_equivalent_shares` | 196/267 | 197.5 | 587.6 | 781.0 | Average diluted equivalent shares from the summary table (millions) |
 
 ---
 
@@ -82,9 +82,9 @@ Companywide GAAP ratios as printed (percent). The combined ratio equals the loss
 
 | Column | Non-null | Min | Median | Max | Notes |
 |---|---|---|---|---|---|
-| `combined_ratio` | 265/265 | 77.1 | 92.1 | 116.2 | Loss/LAE ratio + expense ratio; < 100 = underwriting profit |
-| `loss_lae_ratio` | 265/265 | 48.0 | 71.3 | 97.2 | Losses and LAE / NPE |
-| `expense_ratio` | 265/265 | 15.4 | 20.5 | 38.6 | Underwriting expenses / NPE (includes policyholder credits where reported) |
+| `combined_ratio` | 267/267 | 77.1 | 91.9 | 116.2 | Loss/LAE ratio + expense ratio; < 100 = underwriting profit |
+| `loss_lae_ratio` | 267/267 | 48.0 | 71.2 | 97.2 | Losses and LAE / NPE |
+| `expense_ratio` | 267/267 | 15.4 | 20.5 | 38.6 | Underwriting expenses / NPE (includes policyholder credits where reported) |
 
 ---
 
@@ -94,13 +94,13 @@ Policies at month-end, in thousands. `pif_total` and `pif_total_personal_lines` 
 
 | Column | Non-null | Min | Median | Max | Notes |
 |---|---|---|---|---|---|
-| `pif_agency_auto` | 265/265 | 4,216 | 4,864 | 11,343 | Agency auto ("Drive" brand in 2006) |
-| `pif_direct_auto` | 265/265 | 2,029 | 4,785 | 16,879 | Direct auto |
-| `pif_special_lines` | 265/265 | 2,332 | 4,121 | 7,378 | Motorcycles, RVs, watercraft, etc. |
-| `pif_property` | 137/265 | 1,043 | 2,484 | 3,660 | Homeowners / renters; from 2015 (ARX acquisition). Not in pif_total |
-| `pif_total_personal_lines` | 265/265 | 8,577 | 13,676 | 35,600 | Agency auto + direct auto + special lines |
-| `pif_commercial_lines` | 265/265 | 413 | 555 | 1,245 | Commercial auto |
-| `pif_total` | 265/265 | 8,990 | 14,223 | 36,845 | Personal lines + commercial lines (property excluded) |
+| `pif_agency_auto` | 267/267 | 4,216 | 4,865 | 11,369 | Agency auto ("Drive" brand in 2006) |
+| `pif_direct_auto` | 267/267 | 2,029 | 4,831 | 16,879 | Direct auto |
+| `pif_special_lines` | 267/267 | 2,332 | 4,121 | 7,397 | Motorcycles, RVs, watercraft, etc. |
+| `pif_property` | 139/267 | 1,043 | 2,505 | 3,660 | Homeowners / renters; from 2015 (ARX acquisition). Not in pif_total |
+| `pif_total_personal_lines` | 267/267 | 8,577 | 13,721 | 35,612 | Agency auto + direct auto + special lines |
+| `pif_commercial_lines` | 267/267 | 413 | 555 | 1,260 | Commercial auto |
+| `pif_total` | 267/267 | 8,990 | 14,270 | 36,872 | Personal lines + commercial lines (property excluded) |
 
 ---
 
@@ -110,14 +110,14 @@ Millions USD.
 
 | Column | Non-null | Min | Median | Max | Notes |
 |---|---|---|---|---|---|
-| `npw_agency` | 265/265 | 483.1 | 824.9 | 2,951.0 | Agency auto NPW |
-| `npw_direct` | 265/265 | 263.3 | 715.6 | 4,094.0 | Direct auto NPW |
-| `npw_property` | 137/265 | 49.3 | 168.4 | 304.0 | Property NPW; from 2015 |
-| `npw_commercial` | 265/265 | 86.8 | 202.0 | 2,588.0 | Commercial lines NPW |
-| `npe_agency` | 265/265 | 558.1 | 801.9 | 2,670.0 | Agency auto NPE |
-| `npe_direct` | 265/265 | 284.7 | 707.8 | 3,646.0 | Direct auto NPE |
-| `npe_property` | 137/265 | 63.5 | 155.7 | 274.6 | Property NPE; from 2015 |
-| `npe_commercial` | 265/265 | 109.3 | 178.8 | 952.0 | Commercial lines NPE |
+| `npw_agency` | 267/267 | 483.1 | 829.2 | 2,951.0 | Agency auto NPW |
+| `npw_direct` | 267/267 | 263.3 | 721.8 | 4,094.0 | Direct auto NPW |
+| `npw_property` | 139/267 | 49.3 | 174.3 | 304.0 | Property NPW; from 2015 |
+| `npw_commercial` | 267/267 | 86.8 | 203.0 | 2,588.0 | Commercial lines NPW |
+| `npe_agency` | 267/267 | 558.1 | 809.4 | 2,670.0 | Agency auto NPE |
+| `npe_direct` | 267/267 | 284.7 | 718.9 | 3,646.0 | Direct auto NPE |
+| `npe_property` | 139/267 | 63.5 | 158.2 | 280.0 | Property NPE; from 2015 |
+| `npe_commercial` | 267/267 | 109.3 | 179.0 | 959.0 | Commercial lines NPE |
 
 ---
 
@@ -127,15 +127,15 @@ Month-end, millions USD (book value per share in dollars; shares in millions).
 
 | Column | Non-null | Min | Median | Max | Notes |
 |---|---|---|---|---|---|
-| `total_investments` | 265/265 | 12,538.5 | 20,842.0 | 99,672.0 | Investment portfolio |
-| `total_assets` | 265/265 | 17,184.3 | 29,695.0 | 127,827.0 | Total GAAP assets |
-| `loss_lae_reserves` | 265/265 | 5,076.3 | 9,794.0 | 46,250.0 | Loss and LAE reserves |
-| `unearned_premiums` | 265/265 | 4,089.9 | 6,647.3 | 28,062.0 | Unearned premiums |
-| `debt` | 265/265 | 1,185.2 | 2,701.6 | 8,388.0 | Debt outstanding (the dollar line, never the debt-to-capital ratio) |
-| `total_liabilities` | 265/265 | 12,028.9 | 21,833.0 | 92,716.0 | Total liabilities |
-| `shareholders_equity` | 265/265 | 3,961.6 | 7,359.8 | 37,540.0 | Total shareholders' equity (includes $493.9M preferred stock 2018-03 … 2024-01); BVPS × shares when the release has no equity line |
-| `book_value_per_share` | 265/265 | 5.86 | 15.35 | 64.04 | Book value per common share |
-| `common_shares_outstanding` | 265/265 | 195.6 | 585.7 | 779.2 | Common shares outstanding at month-end (millions) |
+| `total_investments` | 267/267 | 12,538.5 | 20,854.1 | 100,166.0 | Investment portfolio |
+| `total_assets` | 267/267 | 17,184.3 | 29,819.3 | 128,211.0 | Total GAAP assets |
+| `loss_lae_reserves` | 267/267 | 5,076.3 | 9,827.2 | 47,059.0 | Loss and LAE reserves |
+| `unearned_premiums` | 267/267 | 4,089.9 | 6,722.4 | 28,062.0 | Unearned premiums |
+| `debt` | 267/267 | 1,185.2 | 2,704.1 | 8,389.0 | Debt outstanding (the dollar line, never the debt-to-capital ratio) |
+| `total_liabilities` | 267/267 | 12,028.9 | 22,018.6 | 93,259.0 | Total liabilities |
+| `shareholders_equity` | 267/267 | 3,961.6 | 7,385.8 | 37,540.0 | Total shareholders' equity (includes $493.9M preferred stock 2018-03 … 2024-01); BVPS × shares when the release has no equity line |
+| `book_value_per_share` | 267/267 | 5.86 | 15.48 | 64.04 | Book value per common share |
+| `common_shares_outstanding` | 267/267 | 195.6 | 585.7 | 779.2 | Common shares outstanding at month-end (millions) |
 
 ---
 
@@ -143,11 +143,11 @@ Month-end, millions USD (book value per share in dollars; shares in millions).
 
 | Column | Non-null | Min | Median | Max | Notes |
 |---|---|---|---|---|---|
-| `shares_repurchased` | 259/265 | 0.00 | 0.30 | 16.90 | Shares repurchased in the month (millions) |
-| `avg_cost_per_share` | 258/265 | 0.00 | 23.86 | 281.35 | Average repurchase price (dollars) |
-| `debt_to_total_capital` | 265/265 | 14.4 | 24.7 | 35.4 | Debt / (debt + equity), percent |
-| `roe_net_income_trailing_12m` | 265/265 | -2.1 | 19.2 | 38.5 | Trailing-12-month ROE on net income, percent (DB column `roe_net_income_ttm`) |
-| `roe_comprehensive_trailing_12m` | 177/265 | -16.3 | 19.7 | 50.9 | Trailing-12-month ROE on comprehensive income, percent |
+| `shares_repurchased` | 261/267 | 0.00 | 0.30 | 16.90 | Shares repurchased in the month (millions) |
+| `avg_cost_per_share` | 260/267 | 0.00 | 23.92 | 281.35 | Average repurchase price (dollars) |
+| `debt_to_total_capital` | 267/267 | 14.4 | 24.7 | 35.4 | Debt / (debt + equity), percent |
+| `roe_net_income_trailing_12m` | 267/267 | -2.1 | 19.2 | 38.5 | Trailing-12-month ROE on net income, percent (DB column `roe_net_income_ttm`) |
+| `roe_comprehensive_trailing_12m` | 179/267 | -16.3 | 19.8 | 50.9 | Trailing-12-month ROE on comprehensive income, percent |
 
 ---
 
@@ -157,13 +157,13 @@ Returns and yields in percent.
 
 | Column | Non-null | Min | Median | Max | Notes |
 |---|---|---|---|---|---|
-| `fixed_income_duration` | 265/265 | 1.6 | 2.8 | 3.5 | Fixed-income duration (years); pre-2006 from the release commentary |
-| `investment_book_yield` | 256/265 | 1.60 | 3.10 | 5.60 | Pretax annualized investment income book yield, percent |
-| `fte_return_fixed_income` | 265/265 | -4.2 | 0.3 | 3.0 | Fully taxable equivalent total return, fixed income (month) |
-| `fte_return_common_stocks` | 265/265 | -17.0 | 1.5 | 13.0 | Fully taxable equivalent total return, common stocks (month) |
-| `fte_return_total_portfolio` | 265/265 | -5.0 | 0.4 | 2.9 | Fully taxable equivalent total return, total portfolio (month) |
-| `net_unrealized_gains_fixed` | 265/265 | -4,226.0 | 684.6 | 1,997.6 | Net unrealized pretax gains (losses), millions |
-| `weighted_avg_credit_quality` | 257/265 | — | AA- | — | Weighted-average credit quality of fixed income (4 distinct values) |
+| `fixed_income_duration` | 267/267 | 1.6 | 2.8 | 3.6 | Fixed-income duration (years); pre-2006 from the release commentary |
+| `investment_book_yield` | 258/267 | 1.60 | 3.10 | 5.60 | Pretax annualized investment income book yield, percent |
+| `fte_return_fixed_income` | 267/267 | -4.2 | 0.3 | 3.0 | Fully taxable equivalent total return, fixed income (month) |
+| `fte_return_common_stocks` | 267/267 | -17.0 | 1.4 | 13.0 | Fully taxable equivalent total return, common stocks (month) |
+| `fte_return_total_portfolio` | 267/267 | -5.0 | 0.4 | 2.9 | Fully taxable equivalent total return, total portfolio (month) |
+| `net_unrealized_gains_fixed` | 267/267 | -4,226.0 | 684.5 | 1,997.6 | Net unrealized pretax gains (losses), millions |
+| `weighted_avg_credit_quality` | 259/267 | — | AA- | — | Weighted-average credit quality of fixed income (4 distinct values) |
 
 ---
 

@@ -133,7 +133,9 @@ Operational notes:
 
 - `data/processed/pgr_edgar_cache.csv`
   - PGR monthly operating metrics, one row per month since 2004-08, exported
-    from `pgr_edgar_monthly` (`scripts/repair_edgar_history.py --export-csv`);
+    from `pgr_edgar_monthly` by each monthly fetch
+    (`cli/edgar_monthly_fetch.py --export-csv`) and by a history repair
+    (`scripts/repair_edgar_history.py --export-csv`);
     columns are described in `docs/PGR_EDGAR_CACHE_DATA_DICTIONARY.md`
     (regenerate with `python scripts/generate_edgar_data_dictionary.py`)
 - `data/processed/pgr_valuation_monthly.csv`

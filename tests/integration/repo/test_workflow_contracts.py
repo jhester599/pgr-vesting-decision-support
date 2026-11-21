@@ -181,6 +181,16 @@ def test_monthly_8k_workflow_verifies_calendar_aware_freshness() -> None:
     assert "expected_month_end" in text
 
 
+def test_monthly_8k_workflow_commits_the_exported_csv() -> None:
+    """The committed CSV must move with the DB; a dry run must write neither."""
+    text = _read(".github/workflows/monthly_8k_fetch.yml")
+
+    assert 'EXPORT_FLAG="--export-csv data/processed/pgr_edgar_cache.csv"' in text
+    assert 'EXPORT_FLAG=""' in text
+    assert '--backfill-years "$BACKFILL" $DRY_FLAG $EXPORT_FLAG' in text
+    assert "git add data/pgr_financials.db data/processed/pgr_edgar_cache.csv" in text
+
+
 def test_weekly_workflow_refreshes_dividends_and_checks_integrity() -> None:
     """Review F08: a budget-aware dividend refresh runs on its own cron, and
     the integrity check (split jumps, duplicate week bars, dividend

@@ -13,6 +13,7 @@ full history.
 
 Usage:
     python cli/edgar_monthly_fetch.py [--backfill-years N] [--dry-run] [--cache-dir DIR]
+    python cli/edgar_monthly_fetch.py [--backfill-years N] --export-csv PATH
     python cli/edgar_monthly_fetch.py --load-from-csv [PATH] [--dry-run]
 """
 
@@ -78,7 +79,20 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Filings are immutable; the submissions index is always re-fetched."
         ),
     )
-    return parser.parse_args(argv)
+    parser.add_argument(
+        "--export-csv",
+        metavar="PATH",
+        default=None,
+        help=(
+            "After the upsert, write pgr_edgar_monthly to this CSV "
+            "(the committed file is data/processed/pgr_edgar_cache.csv). "
+            "Cannot be combined with --dry-run."
+        ),
+    )
+    args = parser.parse_args(argv)
+    if args.dry_run and args.export_csv:
+        parser.error("--export-csv writes a file, so it cannot be used with --dry-run")
+    return args
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -104,6 +118,9 @@ def main(argv: list[str] | None = None) -> None:
             )
         load.check_staleness(conn)
         log.info("Done. %d rows written.", n)
+        if args.export_csv:
+            exported = load.export_edgar_cache_csv(conn, args.export_csv)
+            log.info("Exported %d rows to %s", exported, args.export_csv)
     finally:
         conn.close()
 
